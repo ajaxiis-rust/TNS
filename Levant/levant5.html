@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Карта Средиземноморья и Леванта времён Архимеда (~250 до н.э.) — сводный вариант 5</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --bg: #0f1419;
+            --panel: #1a2332;
+            --accent: #c9a227;
+            --text: #e8e6e3;
+            --muted: #8b9bb4;
+            --border: #2a3544;
+            --seleucid: #3b82f6;
+            --ptolemaic: #22c55e;
+            --nabataean: #f59e0b;
+            --independent: #a855f7;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+        }
+        #map {
+            flex: 1;
+            height: 100vh;
+            z-index: 1;
+            background: #242424;
+        }
+        .sidebar {
+            width: 340px;
+            background: var(--panel);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            box-shadow: -4px 0 20px rgba(0,0,0,0.4);
+            transition: width 0.3s ease;
+        }
+        .sidebar-header {
+            padding: 18px 20px 12px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, #1a2332 0%, #243044 100%);
+        }
+        .sidebar-header h1 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 0.3px;
+            margin-bottom: 4px;
+        }
+        .sidebar-header p {
+            font-size: 0.78rem;
+            color: var(--muted);
+            line-height: 1.4;
+        }
+        .controls {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border);
+            background: #151c28;
+        }
+        .controls label {
+            display: block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .metric-switcher {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        .metric-btn {
+            background: #243044;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 6px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+        .metric-btn:hover {
+            background: #2d3c52;
+            border-color: #3d4f68;
+        }
+        .metric-btn.active {
+            background: var(--accent);
+            color: #0f1419;
+            border-color: var(--accent);
+            font-weight: 600;
+        }
+        .legend {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .legend h3 {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+        .legend-scale {
+            display: flex;
+            height: 12px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 6px;
+        }
+        .legend-scale span {
+            flex: 1;
+        }
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.68rem;
+            color: var(--muted);
+        }
+        .region-legend {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .region-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            color: var(--muted);
+        }
+        .region-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .details {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+        .details-empty {
+            color: var(--muted);
+            font-size: 0.85rem;
+            text-align: center;
+            margin-top: 40px;
+            line-height: 1.6;
+        }
+        .details-empty strong {
+            color: var(--accent);
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+        .city-card h2 {
+            font-size: 1.25rem;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+        .city-card .ancient-name {
+            font-size: 0.8rem;
+            color: var(--muted);
+            font-style: italic;
+            margin-bottom: 12px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge.seleucid { background: rgba(59,130,246,0.2); color: #60a5fa; }
+        .badge.ptolemaic { background: rgba(34,197,94,0.2); color: #4ade80; }
+        .badge.nabataean { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        .badge.independent { background: rgba(168,85,247,0.2); color: #c084fc; }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 14px 0;
+        }
+        .metric-box {
+            background: #243044;
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+        }
+        .metric-box .val {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        .metric-box .lbl {
+            font-size: 0.65rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+        .description {
+            font-size: 0.84rem;
+            line-height: 1.55;
+            color: #c5cdd8;
+            margin-top: 10px;
+        }
+        .roads-info {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+        .roads-info h4 {
+            font-size: 0.75rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 6px;
+        }
+        .roads-info ul {
+            list-style: none;
+            font-size: 0.8rem;
+            color: #c5cdd8;
+        }
+        .roads-info li {
+            padding: 3px 0;
+            padding-left: 12px;
+            position: relative;
+        }
+        .roads-info li::before {
+            content: "→";
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+        }
+        .leaflet-tooltip {
+            background: #1a2332 !important;
+            border: 1px solid var(--border) !important;
+            color: var(--text) !important;
+            border-radius: 6px !important;
+            padding: 8px 10px !important;
+            font-size: 0.8rem !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+        }
+        .leaflet-tooltip-top:before {
+            border-top-color: var(--border) !important;
+        }
+        .info-bar {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(26,35,50,0.92);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 0.75rem;
+            color: var(--muted);
+            z-index: 1000;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        .zoom-hint {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(26,35,50,0.9);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            color: var(--muted);
+            z-index: 1000;
+        }
+        .polities {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .polities h3 {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+        .polity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .polity-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: #243044;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.78rem;
+            text-align: left;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+        .polity-btn:hover {
+            background: #2d3c52;
+            border-color: var(--accent);
+        }
+        .polity-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex: none;
+        }
+        .polity-btn .sub {
+            color: var(--muted);
+            font-size: 0.7rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="info-bar">Пан • Масштаб • Наведение на город • Клик для деталей</div>
+    <div class="zoom-hint">Колёсико / жесты для масштаба</div>
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h1>Средиземноморье и Левант ~250 до н.э.</h1>
+            <p>Эпоха Архимеда • Эллинистический период<br>Селевкиды · Птолемеи · Набатеи<br>Сводный вариант 5: варианты 3 + 4 + карта Средиземноморья • державы из атласа</p>
+        </div>
+
+        <div class="controls">
+            <label>Метрика окраски городов</label>
+            <div class="metric-switcher">
+                <button class="metric-btn active" data-metric="population">Население</button>
+                <button class="metric-btn" data-metric="trade">Торговля</button>
+                <button class="metric-btn" data-metric="military">Военное значение</button>
+                <button class="metric-btn" data-metric="culture">Культура</button>
+            </div>
+        </div>
+
+        <div class="legend">
+            <h3>Легенда метрики</h3>
+            <div class="legend-scale" id="legendScale"></div>
+            <div class="legend-labels">
+                <span id="legendMin">низкая</span>
+                <span id="legendMax">высокая</span>
+            </div>
+            <div class="region-legend">
+                <div class="region-item"><span class="region-dot" style="background:#3b82f6"></span> Селевкиды</div>
+                <div class="region-item"><span class="region-dot" style="background:#22c55e"></span> Птолемеи</div>
+                <div class="region-item"><span class="region-dot" style="background:#f59e0b"></span> Набатеи</div>
+                <div class="region-item"><span class="region-dot" style="background:#a855f7"></span> Прочие</div>
+            </div>
+        </div>
+
+        <div class="polities">
+            <h3>Державы (атлас ~250 до н.э.)</h3>
+            <div class="polity-list" id="polityList"></div>
+        </div>
+
+        <div class="details" id="details">
+            <div class="details-empty">
+                <strong>Выберите город или державу</strong>
+                Наведите курсор для краткой информации.<br>
+                Кликните по маркеру, чтобы увидеть подробности, метрики и связанные тракты.<br>В блоке «Державы» — сводки и цифры из атласа эпохи.
+            </div>
+        </div>
+    </aside>
+
+    <script>
+        const cities = [
+            {
+                id: "antioch",
+                name: "Антиохия",
+                ancient: "Ἀντιόχεια ἡ ἐπὶ Ὀρόντου",
+                modern: "Антакья",
+                lat: 36.2023, lon: 36.1613,
+                region: "seleucid",
+                population: 85000,
+                trade: 9,
+                military: 9,
+                culture: 10,
+                description: "Столица державы Селевкидов, основана Селевком I Никатором около 300 г. до н.э. Один из крупнейших и богатейших городов эллинистического мира. Центр администрации, торговли и греческой культуры в Сирии. Расположена на реке Оронт.",
+                roads: ["Главный путь на север к Киликии и Малой Азии", "Южный тракт к Апамее и Дамаску", "Связь с портом Селевкия Пиерия"]
+            },
+            {
+                id: "apamea",
+                name: "Апамея",
+                ancient: "Ἀπάμεια",
+                modern: "Калат аль-Мадик",
+                lat: 35.4197, lon: 36.4025,
+                region: "seleucid",
+                population: 35000,
+                trade: 6,
+                military: 8,
+                culture: 7,
+                description: "Важный военный и административный центр Селевкидов на Оронте. Здесь содержались царские слоны и конница. Один из четырёх главных городов Селевкиды (вместе с Антиохией, Селевкией и Лаодикеей).",
+                roads: ["Оронтский путь Антиохия–Апамея–юг", "Связь с внутренними районами Сирии"]
+            },
+            {
+                id: "laodicea",
+                name: "Лаодикея",
+                ancient: "Λαοδίκεια ἡ ἐπὶ τῇ θαλάττῃ",
+                modern: "Латакия",
+                lat: 35.5317, lon: 35.7906,
+                region: "seleucid",
+                population: 25000,
+                trade: 8,
+                military: 6,
+                culture: 6,
+                description: "Важный порт Селевкидов на средиземноморском побережье. Основана Селевком I. Служила морскими воротами для северной Сирии и конкурировала с финикийскими портами.",
+                roads: ["Прибрежный путь на юг к финикийским городам", "Связь с Антиохией через внутренние дороги"]
+            },
+            {
+                id: "seleucia",
+                name: "Селевкия Пиерия",
+                ancient: "Σελεύκεια Πιερία",
+                modern: "Самандаг",
+                lat: 36.1167, lon: 35.9167,
+                region: "seleucid",
+                population: 20000,
+                trade: 8,
+                military: 7,
+                culture: 5,
+                description: "Главный порт Антиохии, основан Селевком I. Здесь был похоронен основатель династии. Стратегически важен, неоднократно становился объектом борьбы между Селевкидами и Птолемеями.",
+                roads: ["Короткий путь к Антиохии", "Морские пути в Эгейское море и Египет"]
+            },
+            {
+                id: "damascus",
+                name: "Дамаск",
+                ancient: "Δαμασκός",
+                modern: "Дамаск",
+                lat: 33.5138, lon: 36.2765,
+                region: "seleucid",
+                population: 45000,
+                trade: 8,
+                military: 7,
+                culture: 6,
+                description: "Древнейший непрерывно обитаемый город. В эллинистический период — важный торговый и административный центр под контролем Селевкидов (с перерывами). Узел путей между побережьем, внутренними районами и Аравией.",
+                roads: ["Царская дорога (King's Highway) на юг", "Путь к Антиохии на север", "Связь с финикийским побережьем"]
+            },
+            {
+                id: "tyre",
+                name: "Тир",
+                ancient: "Τύρος",
+                modern: "Сур",
+                lat: 33.2700, lon: 35.2033,
+                region: "ptolemaic",
+                population: 40000,
+                trade: 10,
+                military: 7,
+                culture: 8,
+                description: "Легендарный финикийский город-порт, один из богатейших торговых центров Средиземноморья. После осады Александра восстановлен. В III в. до н.э. преимущественно под контролем Птолемеев. Известен пурпуром и стеклом.",
+                roads: ["Via Maris (прибрежный путь)", "Морские пути по всему Средиземноморью", "Связь с внутренними районами через дороги к Дамаску"]
+            },
+            {
+                id: "sidon",
+                name: "Сидон",
+                ancient: "Σιδών",
+                modern: "Сайда",
+                lat: 33.5571, lon: 35.3729,
+                region: "ptolemaic",
+                population: 35000,
+                trade: 9,
+                military: 6,
+                culture: 7,
+                description: "Один из старейших и важнейших финикийских городов. Конкурент Тира. Под контролем Птолемеев большую часть III века. Центр ремёсел, торговли и финикийской культуры.",
+                roads: ["Via Maris вдоль побережья", "Дороги вглубь страны к долине Бекаа"]
+            },
+            {
+                id: "berytus",
+                name: "Берит",
+                ancient: "Βηρυτός",
+                modern: "Бейрут",
+                lat: 33.8938, lon: 35.5018,
+                region: "ptolemaic",
+                population: 18000,
+                trade: 7,
+                military: 5,
+                culture: 6,
+                description: "Финикийский порт, получивший название Лаодикея в Финикии при Селевкидах, но в середине III в. преимущественно в сфере влияния Птолемеев. Важный торговый пункт на побережье.",
+                roads: ["Прибрежный Via Maris", "Пути через горы Ливана"]
+            },
+            {
+                id: "byblos",
+                name: "Библ",
+                ancient: "Βύβλος",
+                modern: "Джебейль",
+                lat: 34.1214, lon: 35.6511,
+                region: "ptolemaic",
+                population: 12000,
+                trade: 6,
+                military: 4,
+                culture: 7,
+                description: "Один из древнейших городов мира, священный для финикийцев. Известен торговлей папирусом (отсюда греч. βίβλος — книга). В эллинистический период сохранял значение как религиозный и торговый центр.",
+                roads: ["Via Maris", "Горные тропы вглубь Ливана"]
+            },
+            {
+                id: "ptolemais",
+                name: "Птолемаида",
+                ancient: "Πτολεμαΐς (Ἄκη)",
+                modern: "Акко",
+                lat: 32.9270, lon: 35.0818,
+                region: "ptolemaic",
+                population: 22000,
+                trade: 8,
+                military: 7,
+                culture: 5,
+                description: "Древний Акко, переименованный Птолемеями. Важный порт и военная база Птолемеев в южном Леванте. Контролировал подход к Галилее и внутренним районам.",
+                roads: ["Via Maris", "Путь в Галилею и к Иерусалиму", "Связь с Дамаском"]
+            },
+            {
+                id: "joppa",
+                name: "Иоппия",
+                ancient: "Ἰόππη",
+                modern: "Яффа",
+                lat: 32.0543, lon: 34.7563,
+                region: "ptolemaic",
+                population: 15000,
+                trade: 8,
+                military: 6,
+                culture: 5,
+                description: "Один из главных портов Иудеи. В III веке до н.э. здесь располагалась администрация Птолемеев, чеканилась птолемеевская монета и базировался военный флот.",
+                roads: ["Морские маршруты в Александрию", "Via Maris", "Путь в Иерусалим"]
+            },
+            {
+                id: "gaza",
+                name: "Газа",
+                ancient: "Γάζα",
+                modern: "Газа",
+                lat: 31.5017, lon: 34.4668,
+                region: "ptolemaic",
+                population: 25000,
+                trade: 8,
+                military: 7,
+                culture: 4,
+                description: "Ключевой город на границе с Египтом, важный пункт Via Maris. После разрушения Александром восстановлен. Служил воротами Птолемеев в Азию и важным центром караванной торговли с Аравией.",
+                roads: ["Via Maris на север и в Египет", "Караванные пути в Аравию"]
+            },
+            {
+                id: "ashkelon",
+                name: "Аскалон",
+                ancient: "Ἀσκάλων",
+                modern: "Ашкелон",
+                lat: 31.6688, lon: 34.5715,
+                region: "ptolemaic",
+                population: 15000,
+                trade: 6,
+                military: 5,
+                culture: 4,
+                description: "Древний филистимский город на побережье. В эллинистический период — важный порт и сельскохозяйственный центр под контролем Птолемеев.",
+                roads: ["Via Maris"]
+            },
+            {
+                id: "jerusalem",
+                name: "Иерусалим",
+                ancient: "Ἱεροσόλυμα",
+                modern: "Иерусалим",
+                lat: 31.7780, lon: 35.2354,
+                region: "ptolemaic",
+                population: 25000,
+                trade: 4,
+                military: 5,
+                culture: 9,
+                description: "Религиозный и политический центр иудеев. В III в. до н.э. находился под властью Птолемеев (до ~200 г.). Эллинизация ещё не достигла пика — это произойдёт при Антиохе IV. Храм оставался главным святилищем, город управлялся первосвященником под надзором египетских чиновников.",
+                roads: ["Пути к побережью (Яффа/Птолемаида)", "Связь с Самарией и Галилеей", "Южные пути к Идумее"]
+            },
+            {
+                id: "samaria",
+                name: "Самария",
+                ancient: "Σαμάρεια",
+                modern: "Себастия",
+                lat: 32.2764, lon: 35.1897,
+                region: "ptolemaic",
+                population: 18000,
+                trade: 6,
+                military: 7,
+                culture: 6,
+                description: "Укреплённый город, заселённый македонскими ветеранами ещё при Александре Великом. Мощная крепость и важнейший административный центр региона.",
+                roads: ["Центральный горный тракт", "Пути к Птолемаиде и Иерусалиму"]
+            },
+            {
+                id: "jericho",
+                name: "Иерихон",
+                ancient: "Ἱεριχώ",
+                modern: "Ариха",
+                lat: 31.8711, lon: 35.4419,
+                region: "ptolemaic",
+                population: 10000,
+                trade: 6,
+                military: 4,
+                culture: 6,
+                description: "Оазис в Иорданской долине, знаменитый производством высококачественных фиников и редчайшего целебного бальзама. В III веке до н.э. был богатым царским поместьем Птолемеев.",
+                roads: ["Путь вдоль Иордана", "Дорога на подъём к Иерусалиму"]
+            },
+            {
+                id: "scythopolis",
+                name: "Скифополь",
+                ancient: "Σκυθόπολις (Бейт-Шеан)",
+                modern: "Бейт-Шеан",
+                lat: 32.5019, lon: 35.5014,
+                region: "ptolemaic",
+                population: 15000,
+                trade: 7,
+                military: 6,
+                culture: 7,
+                description: "Крупный эллинистический город в плодородной долине Иордана. Переименован Птолемеями (или ещё при македонянах). Важный стратегический узел на пересечении дорог из долины к побережью.",
+                roads: ["Перекрёсток путей из Египта в Дамаск", "Дорога к побережью"]
+            },
+            {
+                id: "philoteria",
+                name: "Филотерия",
+                ancient: "Φιλοτερία (Тель-Бет-Йерах)",
+                modern: "Бейт-Йерах",
+                lat: 32.7166, lon: 35.5733,
+                region: "ptolemaic",
+                population: 8000,
+                trade: 5,
+                military: 5,
+                culture: 5,
+                description: "Город на самом южном берегу Галилейского моря (озера Кинерет). Основан Птолемеем II Филадельфом как укреплённый форпост. Контролировал важные переправы через реку Иордан.",
+                roads: ["Путь вдоль Иордана к Скифополю", "Дороги в Галилею и Гавлан"]
+            },
+            {
+                id: "paneas",
+                name: "Панеада",
+                ancient: "Πανειάς",
+                modern: "Баниас",
+                lat: 33.2477, lon: 35.6934,
+                region: "ptolemaic",
+                population: 5000,
+                trade: 4,
+                military: 5,
+                culture: 6,
+                description: "Культовый центр у истоков Иордана, посвящённый богу Пану. Расположен у подножия горы Хермон, контролировал стратегический проход из Галилеи и Келесирии в сторону Дамаска.",
+                roads: ["Путь на восток к Дамаску", "Дорога на юг через долину Хула"]
+            },
+            {
+                id: "philadelphia",
+                name: "Филадельфия",
+                ancient: "Φιλαδέλφεια (Раббат Аммон)",
+                modern: "Амман",
+                lat: 31.9539, lon: 35.9106,
+                region: "ptolemaic",
+                population: 12000,
+                trade: 5,
+                military: 5,
+                culture: 5,
+                description: "Древняя Раббат-Аммон, переименованная Птолемеями в честь Птолемея II Филадельфа. Важный город Заиорданья на Царской дороге.",
+                roads: ["Царская дорога (King's Highway)", "Связь с Дамаском и Петрой"]
+            },
+            {
+                id: "gerasa",
+                name: "Гераса",
+                ancient: "Γέρασα",
+                modern: "Джераш",
+                lat: 32.2806, lon: 35.8997,
+                region: "ptolemaic",
+                population: 8000,
+                trade: 4,
+                military: 3,
+                culture: 5,
+                description: "Будущий крупный город Декаполиса. В III в. — относительно небольшой, но растущий эллинистический центр в Заиорданье.",
+                roads: ["Царская дорога", "Местные пути"]
+            },
+            {
+                id: "petra",
+                name: "Петра",
+                ancient: "Πέτρα",
+                modern: "Петра",
+                lat: 30.3285, lon: 35.4444,
+                region: "nabataean",
+                population: 15000,
+                trade: 9,
+                military: 6,
+                culture: 6,
+                description: "Столица Набатейского царства. Контролировала караванные пути благовоний и пряностей из Южной Аравии. Уже в III в. до н.э. город был важным торговым узлом, вступавшим в конфликты с Птолемеями, хотя настоящий расцвет придётся на более поздний период.",
+                roads: ["Царская дорога на север", "Пути в Аравию и к Красному морю"]
+            },
+            {
+                id: "alexandria",
+                name: "Александрия",
+                ancient: "Ἀλεξάνδρεια",
+                modern: "Александрия",
+                lat: 31.2001, lon: 29.9187,
+                region: "ptolemaic",
+                population: 300000,
+                trade: 10,
+                military: 8,
+                culture: 10,
+                description: "Столица державы Птолемеев и величайший научный центр античности. Здесь располагались Александрийская библиотека и Мусейон, где работал Эратосфен и учился Архимед.",
+                roads: ["Морские пути по всему Средиземноморью", "Путь к Мемфису вдоль Нила", "Пути на запад в Киренаику"]
+            },
+{
+                id: "memphis",
+                name: "Мемфис",
+                ancient: "Μέμφις",
+                modern: "Мит-Рахина",
+                lat: 29.8499, lon: 31.2536,
+                region: "ptolemaic",
+                population: 150000,
+                trade: 8,
+                military: 6,
+                culture: 8,
+                description: "Древнейшая столица Египта. В эллинистический период оставался крупнейшим экономическим и религиозным центром страны, уступая первенство лишь Александрии.",
+                roads: ["Путь по Нилу в Фивы", "Торговые пути в пустыню", "Связь с Дельтой"]
+            },
+{
+                id: "pelusium",
+                name: "Пелузий",
+                ancient: "Πηλούσιον",
+                modern: "Телль-эль-Фарама",
+                lat: 31.0455, lon: 32.5451,
+                region: "ptolemaic",
+                population: 25000,
+                trade: 7,
+                military: 9,
+                culture: 4,
+                description: "Крепость на восточной границе дельты Нила. Ключевой стратегический форпост Птолемеев, защищавший Египет от вторжений со стороны Леванта.",
+                roads: ["Via Maris к Газе и Леванту", "Путь в Александрию"]
+            },
+{
+                id: "syracuse",
+                name: "Сиракузы",
+                ancient: "Συράκουσαι",
+                modern: "Сиракуза",
+                lat: 37.0755, lon: 15.2866,
+                region: "independent",
+                population: 100000,
+                trade: 9,
+                military: 9,
+                culture: 9,
+                description: "Родной город Архимеда и столица Сицилийской державы царя Гиерона II. Один из богатейших полисов, лавировавший между интересами Рима и Карфагена в годы Пунических войн.",
+                roads: ["Морские маршруты в Грецию и Карфаген", "Пути вглубь Сицилии"]
+            },
+{
+                id: "rome",
+                name: "Рим",
+                ancient: "Roma",
+                modern: "Рим",
+                lat: 41.8926, lon: 12.4903,
+                region: "independent",
+                population: 250000,
+                trade: 7,
+                military: 10,
+                culture: 6,
+                description: "Столица Римской Республики. В 250 г. до н.э. город находится в зените Первой Пунической войны, активно строит флот и расширяет свое влияние на Средиземноморье.",
+                roads: ["Аппиева дорога на юг", "Виа Фламиния на север", "Связь с портом Остия"]
+            },
+{
+                id: "carthage",
+                name: "Карфаген",
+                ancient: "𐤒𐤓𐤕 𐤇𐤃𐤔𐤕 (Qart-ḥadašt)",
+                modern: "Тунис",
+                lat: 36.8528, lon: 10.3233,
+                region: "independent",
+                population: 400000,
+                trade: 10,
+                military: 10,
+                culture: 7,
+                description: "Могущественная морская империя и главный конкурент Рима. Контролировал торговлю в Западном Средиземноморье. Обладал огромным флотом и колоссальными богатствами.",
+                roads: ["Морская гегемония", "Караванные пути вглубь Африки"]
+            },
+{
+                id: "pella",
+                name: "Пелла",
+                ancient: "Πέλλα",
+                modern: "Пелла",
+                lat: 40.7610, lon: 22.5255,
+                region: "independent",
+                population: 40000,
+                trade: 6,
+                military: 9,
+                culture: 7,
+                description: "Столица Македонского царства, родина Александра Великого. Под властью династии Антигонидов оставалась важнейшим политическим и военным центром балканской Греции.",
+                roads: ["Эгнатиева дорога (в будущем)", "Связь с Фессалией и Фракией"]
+            },
+{
+                id: "pergamon",
+                name: "Пергам",
+                ancient: "Πέργαμον",
+                modern: "Бергама",
+                lat: 39.1240, lon: 27.1822,
+                region: "independent",
+                population: 50000,
+                trade: 7,
+                military: 7,
+                culture: 9,
+                description: "Столица царства Атталидов в Малой Азии. Город славился своей библиотекой (конкурировавшей с Александрийской) и алтарем Зевса. Родина пергамента.",
+                roads: ["Торговые пути Анатолии", "Связь с Эгейскими портами"]
+            }
+        ];
+
+        const routes = [
+            {
+                name: "Via Maris (Прибрежный путь)",
+                color: "#22d3ee",
+                weight: 3,
+                coords: [
+                    [31.50, 34.47], [31.67, 34.57], [32.05, 34.75], [32.93, 35.08], 
+                    [33.27, 35.20], [33.56, 35.37], [33.89, 35.50], [34.12, 35.65], 
+                    [35.53, 35.79], [36.12, 35.92]
+                ]
+            },
+            {
+                name: "Царская дорога (King's Highway)",
+                color: "#fbbf24",
+                weight: 3,
+                coords: [
+                    [30.33, 35.44], [30.80, 35.60], [31.50, 35.75], [31.95, 35.91], 
+                    [32.28, 35.90], [32.80, 36.10], [33.51, 36.28], [34.50, 36.40], 
+                    [35.42, 36.40], [36.20, 36.16]
+                ]
+            },
+            {
+                name: "Путь Антиохия–Дамаск (внутренний)",
+                color: "#a78bfa",
+                weight: 2.5,
+                dashArray: "8 6",
+                coords: [
+                    [36.20, 36.16], [35.70, 36.30], [35.42, 36.40], [34.80, 36.35], 
+                    [33.51, 36.28]
+                ]
+            },
+            {
+                name: "Поперечные пути к побережью",
+                color: "#94a3b8",
+                weight: 2,
+                dashArray: "4 6",
+                coords: [
+                    [33.51, 36.28], [33.40, 35.80], [33.27, 35.20]
+                ]
+            },
+            {
+                name: "Путь по долине Иордана",
+                color: "#94a3b8",
+                weight: 2,
+                dashArray: "4 6",
+                coords: [
+                    [33.24, 35.69], [32.71, 35.57], [32.50, 35.50], [31.87, 35.44]
+                ]
+            },
+            {
+                name: "Египетский тракт (Ветка Via Maris к Пелузию)",
+                color: "#22d3ee",
+                weight: 3,
+                coords: [
+                    [31.04, 32.54], [31.50, 34.47]
+                ]
+            },
+            {
+                name: "Нил и Дельта",
+                color: "#22c55e",
+                weight: 3,
+                coords: [
+                    [31.20, 29.91], // Alexandria
+                    [31.04, 32.54], // Pelusium branch approx
+                    [29.84, 31.25]  // Memphis
+                ]
+            }
+        ];
+
+        const regions = [
+            {
+                name: "Селевкидская Сирия",
+                color: "#3b82f6",
+                coords: [[37.0,35.5],[37.0,37.0],[34.5,37.2],[33.8,36.8],[33.5,35.8],[35.0,35.5],[36.5,35.3],[37.0,35.5]]
+            },
+            {
+                name: "Птолемеевская Финикия и Койлесирия",
+                color: "#22c55e",
+                coords: [[34.5,35.0],[34.3,36.0],[33.0,36.2],[31.2,35.5],[31.2,34.3],[32.5,34.5],[34.0,34.8],[34.5,35.0]]
+            },
+            {
+                name: "Набатея",
+                color: "#f59e0b",
+                coords: [[31.5,35.0],[31.0,36.5],[29.5,36.0],[29.5,34.5],[30.5,34.3],[31.5,35.0]]
+            }
+        ];
+
+        // Державы: данные из атласа TNS65/map/grok-workspace/src/data/polities.ts (~250 до н.э.)
+        const polities = [
+            {
+                id: "seleucid",
+                name: "Держава Селевкидов",
+                label: "Селевкиды",
+                native: "Σελευκίδαι",
+                capital: "Антиохия",
+                ruler: "Антиох III",
+                color: "#3b82f6",
+                population: 14000000,
+                area: 2300000,
+                army: 80000,
+                revenue: 210,
+                cities: 46,
+                summary: "Антиох III только начал собирать распавшуюся державу. Ахей самовластно сидит в селевкидской Малой Азии. Парфия и Бактрия уже отложились. Впереди восточный поход и временное возвращение величия — но не в этом году."
+            },
+            {
+                id: "ptolemy",
+                name: "Держава Птолемеев",
+                label: "Птолемеи",
+                native: "Πτολεμαῖοι",
+                capital: "Александрия",
+                ruler: "Птолемей IV Филопатор",
+                color: "#22c55e",
+                population: 5800000,
+                area: 1050000,
+                army: 70000,
+                revenue: 340,
+                cities: 16,
+                summary: "Египет, Киренаика, Кипр и Келесирия. Александрия — главный учёный город мира, Мусейон ещё полон книг, которыми пользовались бы и в Сиракузах. Птолемей IV — слабый царь при самой богатой казне эпохи. Война с Антиохом начнётся в 219 году."
+            },
+            {
+                id: "nabataea",
+                name: "Набатея",
+                label: "Набатея",
+                native: "𐢕𐢃𐢋𐢈",
+                capital: "Петра",
+                ruler: "ранние цари Петры",
+                color: "#f59e0b",
+                population: 160000,
+                area: 55000,
+                army: 8000,
+                revenue: 24,
+                cities: 3,
+                summary: "Арабское царство караванных путей между Аравией Счастливой и Средиземным морем. Петра высечена в скалах и берёт пошлину с ладана. Греки знают набатеев как народ, который нелегко осадить."
+            },
+            {
+                id: "arabia",
+                name: "Аравийские племена",
+                label: "Аравия",
+                native: "Ἄραβες",
+                capital: "Тайма",
+                ruler: "шейхи оазисов",
+                color: "#8b9bb4",
+                population: 900000,
+                area: 1600000,
+                army: 30000,
+                revenue: 14,
+                cities: 6,
+                summary: "Внутренняя Аравия без единого царя: оазисы Тайма и Дедан, бедуины Неджда и побережье Персидского залива. Ладан с юга идёт на север через их земли к Набатее и в Левант."
+            },
+            {
+                id: "cappadocia",
+                name: "Каппадокия",
+                label: "Каппадокия",
+                native: "Καππαδοκία",
+                capital: "Мазака",
+                ruler: "Ариарат IV",
+                color: "#8b9bb4",
+                population: 520000,
+                area: 90000,
+                army: 16000,
+                revenue: 12,
+                cities: 4,
+                summary: "Анатолийское плато под иранской по корням династией. Лошади, храмы и зависимость то от Селевкидов, то от собственных гор. Ариарат IV только входит в силу."
+            },
+            {
+                id: "rome",
+                name: "Римская республика",
+                label: "Рим",
+                native: "Res publica Romana",
+                capital: "Рим",
+                ruler: "сенат и консулы",
+                color: "#a855f7",
+                population: 4200000,
+                area: 310000,
+                army: 130000,
+                revenue: 85,
+                cities: 26,
+                summary: "После мира 241 года Рим держит Италию до Цизальпинской Галлии, Сардинию, Корсику и Сицилию кроме Сиракуз. Это ещё республика мелких землевладельцев и союзников, не средиземноморская империя. Ганнибал пока в Испании."
+            },
+            {
+                id: "carthage",
+                name: "Карфаген",
+                label: "Карфаген",
+                native: "𐤒𐤓𐤕𐤇𐤃𐤔𐤕",
+                capital: "Карфаген",
+                ruler: "совет старейшин; Ганнибал в Испании",
+                color: "#a855f7",
+                population: 3400000,
+                area: 460000,
+                army: 95000,
+                revenue: 155,
+                cities: 18,
+                summary: "Город потерял Сицилию и вот-вот потеряет Сардинию, но Баркиды с 237 года собирают новую державу в Испании. Гавани, серебро и наёмники. До перехода через Альпы два года, если считать от весны 218-го."
+            },
+            {
+                id: "syracuse",
+                name: "Сиракузы",
+                label: "Сиракузы",
+                native: "Συράκουσαι",
+                capital: "Сиракузы",
+                ruler: "Гиерон II",
+                color: "#a855f7",
+                population: 280000,
+                area: 7500,
+                army: 16000,
+                revenue: 14,
+                cities: 2,
+                summary: "Царство Гиерона II на юго-востоке Сицилии, союзник Рима и родной город Архимеда. Двор платит стипендию математику, верфи и склады делают город богаче, чем позволяет его размер. Осада Марцелла начнётся только в 214–212 годах."
+            },
+            {
+                id: "macedon",
+                name: "Македонское царство",
+                label: "Македония",
+                native: "Μακεδονία",
+                capital: "Пелла",
+                ruler: "Филипп V",
+                color: "#a855f7",
+                population: 950000,
+                area: 78000,
+                army: 36000,
+                revenue: 28,
+                cities: 8,
+                summary: "Антигониды держат Македонию и Фессалию. Филипп V только что принял царство и ещё не ввязался в союз с Ганнибалом. Пелла остаётся двором, который помнит Александра, но воюет уже по-другому."
+            },
+            {
+                id: "pergamon",
+                name: "Пергамское царство",
+                label: "Пергам",
+                native: "Πέργαμον",
+                capital: "Пергам",
+                ruler: "Аттал I",
+                color: "#a855f7",
+                population: 360000,
+                area: 42000,
+                army: 18000,
+                revenue: 42,
+                cities: 6,
+                summary: "Атталиды держат северо-запад Малой Азии и библиотеку, которая спорит с Александрийской. Аттал I уже принял царский титул после побед над галатами. Казна растёт на серебре и пошлинах Эгейского моря."
+            }
+        ];
+
+        const colorScales = {
+            population: {
+                min: 5000, max: 400000,
+                colors: ["#1e3a5f", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#fef08a", "#fbbf24", "#f59e0b", "#ea580c"]
+            },
+            trade: {
+                min: 4, max: 10,
+                colors: ["#14532d", "#166534", "#15803d", "#22c55e", "#4ade80", "#fef08a", "#fbbf24", "#f59e0b", "#ea580c"]
+            },
+            military: {
+                min: 3, max: 10,
+                colors: ["#3b0764", "#5b21b6", "#7c3aed", "#8b5cf6", "#a78bfa", "#fef08a", "#fbbf24", "#f59e0b", "#dc2626"]
+            },
+            culture: {
+                min: 4, max: 10,
+                colors: ["#1e1b4b", "#312e81", "#4338ca", "#6366f1", "#818cf8", "#fef08a", "#fbbf24", "#f59e0b", "#db2777"]
+            }
+        };
+
+        let currentMetric = "population";
+        let markers = {};
+        let selectedId = null;
+
+        const map = L.map("map", {
+            center: [32.7, 35.3],
+            zoom: 6,
+            minZoom: 4,
+            maxZoom: 11,
+            zoomControl: true
+        });
+
+        // Надежный слой Esri Dark Gray (работает локально, темная тема, без API-ключей)
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+            maxZoom: 16
+        }).addTo(map);
+
+        const regionPolity = {
+            "Селевкидская Сирия": "seleucid",
+            "Птолемеевская Финикия и Койлесирия": "ptolemy",
+            "Набатея": "nabataea"
+        };
+
+        regions.forEach(r => {
+            const poly = L.polygon(r.coords, {
+                color: r.color,
+                weight: 1.5,
+                opacity: 0.7,
+                fillColor: r.color,
+                fillOpacity: 0.08
+            }).addTo(map).bindTooltip(r.name, {sticky: true, direction: "center"});
+            const p = polities.find(x => x.id === regionPolity[r.name]);
+            if (p) {
+                poly.bindPopup(`
+                    <strong>${p.name}</strong> <em>${p.native}</em><br>
+                    Правитель: ${p.ruler} · Столица: ${p.capital}<br>
+                    Войско: ${fmtBig(p.army, "")} · Казна: ${p.revenue} т серебра<br><br>
+                    ${p.summary}
+                `);
+            }
+        });
+
+        routes.forEach(route => {
+            const opts = {
+                color: route.color,
+                weight: route.weight,
+                opacity: 0.75,
+                lineJoin: "round"
+            };
+            if (route.dashArray) opts.dashArray = route.dashArray;
+            L.polyline(route.coords, opts)
+                .addTo(map)
+                .bindTooltip(route.name, {sticky: true});
+        });
+
+        function getColor(value, metric) {
+            const scale = colorScales[metric];
+            const t = Math.max(0, Math.min(1, (value - scale.min) / (scale.max - scale.min)));
+            const idx = Math.min(scale.colors.length - 1, Math.floor(t * scale.colors.length));
+            return scale.colors[idx];
+        }
+
+        function getRadius(value, metric) {
+            const scale = colorScales[metric];
+            const t = (value - scale.min) / (scale.max - scale.min);
+            return 8 + t * 16;
+        }
+
+        function metricLabel(metric) {
+            return {
+                population: "Население (ок.)",
+                trade: "Торговое значение",
+                military: "Военное значение",
+                culture: "Культурное влияние"
+            }[metric];
+        }
+
+        function formatValue(city, metric) {
+            if (metric === "population") return city.population.toLocaleString("ru-RU") + " чел.";
+            return city[metric] + " / 10";
+        }
+
+        function updateLegend() {
+            const scale = colorScales[currentMetric];
+            const el = document.getElementById("legendScale");
+            el.innerHTML = scale.colors.map(c => `<span style="background:${c}"></span>`).join("");
+            document.getElementById("legendMin").textContent = currentMetric === "population" ? "мало" : "низкая";
+            document.getElementById("legendMax").textContent = currentMetric === "population" ? "много" : "высокая";
+        }
+
+        function createMarker(city) {
+            const color = getColor(city[currentMetric], currentMetric);
+            const radius = getRadius(city[currentMetric], currentMetric);
+
+            const marker = L.circleMarker([city.lat, city.lon], {
+                radius: radius,
+                fillColor: color,
+                color: "#0f1419",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.9
+            });
+
+            marker.bindTooltip(`
+                <strong>${city.name}</strong><br>
+                ${metricLabel(currentMetric)}: <b>${formatValue(city, currentMetric)}</b>
+            `, {
+                direction: "top",
+                offset: [0, -radius/2]
+            });
+
+            marker.on("click", () => showDetails(city));
+            marker.on("mouseover", function() { this.setStyle({weight: 3, color: "#fbbf24"}); });
+            marker.on("mouseout", function() {
+                if (selectedId !== city.id) this.setStyle({weight: 2, color: "#0f1419"});
+            });
+
+            markers[city.id] = marker;
+            return marker;
+        }
+
+        function refreshMarkers() {
+            Object.values(markers).forEach(m => map.removeLayer(m));
+            markers = {};
+            cities.forEach(city => {
+                const m = createMarker(city);
+                m.addTo(map);
+                if (selectedId === city.id) {
+                    m.setStyle({weight: 3, color: "#fbbf24"});
+                }
+            });
+        }
+
+        function showDetails(city) {
+            selectedId = city.id;
+            Object.entries(markers).forEach(([id, m]) => {
+                m.setStyle({weight: id === city.id ? 3 : 2, color: id === city.id ? "#fbbf24" : "#0f1419"});
+            });
+
+            const regionNames = {
+                seleucid: "Селевкиды",
+                ptolemaic: "Птолемеи",
+                nabataean: "Набатеи",
+                independent: "Прочие"
+            };
+
+            const html = `
+                <div class="city-card">
+                    <h2>${city.name}</h2>
+                    <div class="ancient-name">${city.ancient} · ${city.modern}</div>
+                    <span class="badge ${city.region}">${regionNames[city.region]}</span>
+                    <div class="metrics-grid">
+                        <div class="metric-box">
+                            <div class="val">${city.population.toLocaleString("ru-RU")}</div>
+                            <div class="lbl">Население</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="val">${city.trade}/10</div>
+                            <div class="lbl">Торговля</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="val">${city.military}/10</div>
+                            <div class="lbl">Военное</div>
+                        </div>
+                        <div class="metric-box">
+                            <div class="val">${city.culture}/10</div>
+                            <div class="lbl">Культура</div>
+                        </div>
+                    </div>
+                    <div class="description">${city.description}</div>
+                    <div class="roads-info">
+                        <h4>Связанные тракты и пути</h4>
+                        <ul>
+                            ${city.roads.map(r => `<li>${r}</li>`).join("")}
+                        </ul>
+                    </div>
+                </div>
+            `;
+            document.getElementById("details").innerHTML = html;
+        }
+
+        document.querySelectorAll(".metric-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                document.querySelectorAll(".metric-btn").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                currentMetric = btn.dataset.metric;
+                updateLegend();
+                refreshMarkers();
+            });
+        });
+
+        function fmtBig(n, suffix) {
+            const tail = suffix ? " " + suffix : "";
+            if (n >= 1000000) {
+                const v = n / 1000000;
+                const text = v >= 10 ? String(Math.round(v)) : v.toFixed(1).replace(".", ",");
+                return text + " млн" + tail;
+            }
+            if (n >= 1000) {
+                const v = n / 1000;
+                const text = v >= 10 ? String(Math.round(v)) : v.toFixed(1).replace(".", ",");
+                return text + " тыс." + tail;
+            }
+            return String(Math.round(n)) + tail;
+        }
+
+        function showPolity(p) {
+            selectedId = null;
+            Object.values(markers).forEach(m => m.setStyle({weight: 2, color: "#0f1419"}));
+            const html = `
+                <div class="city-card">
+                    <h2>${p.name}</h2>
+                    <div class="ancient-name">${p.native} · ${p.label}</div>
+                    <span class="badge" style="background:transparent;color:${p.color};border:1px solid ${p.color}">${p.label}</span>
+                    <div class="metrics-grid">
+                        <div class="metric-box"><div class="val">${fmtBig(p.population, "")}</div><div class="lbl">Население</div></div>
+                        <div class="metric-box"><div class="val">${fmtBig(p.area, "км²")}</div><div class="lbl">Территория</div></div>
+                        <div class="metric-box"><div class="val">${fmtBig(p.army, "")}</div><div class="lbl">Войско</div></div>
+                        <div class="metric-box"><div class="val">${p.revenue} т</div><div class="lbl">Казна, серебро</div></div>
+                        <div class="metric-box"><div class="val">${p.cities}</div><div class="lbl">Города</div></div>
+                    </div>
+                    <div class="description">${p.summary}</div>
+                    <div class="roads-info">
+                        <h4>Двор</h4>
+                        <ul>
+                            <li>Правитель: ${p.ruler}</li>
+                            <li>Столица: ${p.capital}</li>
+                        </ul>
+                    </div>
+                    <div class="roads-info">
+                        <h4>Источник</h4>
+                        <ul><li>Атлас держав эпохи (TNS65/map), снимок ~250 до н.э.</li></ul>
+                    </div>
+                </div>
+            `;
+            document.getElementById("details").innerHTML = html;
+        }
+
+        const polityList = document.getElementById("polityList");
+        polities.forEach(p => {
+            const btn = document.createElement("button");
+            btn.className = "polity-btn";
+            btn.innerHTML = `<span class="polity-dot" style="background:${p.color}"></span><span><b>${p.label}</b><br><span class="sub">${p.ruler}</span></span>`;
+            btn.addEventListener("click", () => showPolity(p));
+            polityList.appendChild(btn);
+        });
+
+        updateLegend();
+        refreshMarkers();
+
+        map.fitBounds([
+            [28.5, 8.5],
+            [43.0, 38.5]
+        ], {padding: [20, 20]});
+    </script>
+</body>
+</html>

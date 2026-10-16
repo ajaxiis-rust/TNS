@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+@theme {
+  --color-sea: #143238;
+  --color-sea-deep: #0d2226;
+  --color-parchment: #f3ecdf;
+  --color-parchment-2: #e6dccb;
+  --color-land: #d4c6b0;
+  --color-ink: #1c1914;
+  --color-muted: #6e655b;
+  --color-line: #d4c8b4;
+  --color-cinnabar: #8f3b2b;
+  --color-cinnabar-deep: #6e241c;
+  --color-brass: #8d6b32;
+  --color-brass-soft: #e6d3a4;
+  --color-ramp-0: #f4e7d4;
+  --color-ramp-1: #efd0a6;
+  --color-ramp-2: #e29a64;
+  --color-ramp-3: #c25436;
+  --color-ramp-4: #7a291c;
+  --font-sans: "Manrope", system-ui, sans-serif;
+  --font-display: "Cormorant Garamond", "Iowan Old Style", Palatino, serif;
+  --radius-card: 0.9rem;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-sea-deep);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+}
+
+.map-label {
+  fill: var(--color-ink);
+  stroke: var(--color-parchment);
+  paint-order: stroke;
+  pointer-events: none;
+  font-family: var(--font-sans);
+  font-weight: 650;
+}
+
+.polity {
+  stroke: color-mix(in srgb, var(--color-ink) 62%, transparent);
+  stroke-width: 0.7px;
+  vector-effect: non-scaling-stroke;
+  transition: fill 280ms ease;
+}
+
+.polity.is-hover {
+  stroke: var(--color-brass);
+  stroke-width: 1.8px;
+}
+
+.polity.is-selected {
+  stroke: var(--color-ink);
+  stroke-width: 2.4px;
+}
+
+.ramp-bar {
+  background: linear-gradient(
+    to top,
+    var(--color-ramp-0),
+    var(--color-ramp-1),
+    var(--color-ramp-2),
+    var(--color-ramp-3),
+    var(--color-ramp-4)
+  );
+}
+
+.ramp-bar-x {
+  background: linear-gradient(
+    to right,
+    var(--color-ramp-0),
+    var(--color-ramp-1),
+    var(--color-ramp-2),
+    var(--color-ramp-3),
+    var(--color-ramp-4)
+  );
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .polity {
+    transition: none;
+  }
+}

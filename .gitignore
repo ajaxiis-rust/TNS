@@ -1,0 +1,4 @@
+# Never commit RAW sources/corpora — owner PAT leaked in owner-posts-corpus (16.10.2026)
+RAW/
+*.jsonl
+.mimocode/
