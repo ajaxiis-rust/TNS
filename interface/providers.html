@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrueNeverStory — Providers</title>
+
+
+<link href="/static/fonts/fonts.css" rel="stylesheet">
+<link href="/static/theme-dark.css" rel="stylesheet">
+<link href="/static/theme-light.css" rel="stylesheet">
+<link href="/static/theme-terminal.css" rel="stylesheet">
+<link href="/static/theme-cyberpunk.css" rel="stylesheet">
+<link href="/static/theme-custom.css" rel="stylesheet">
+<link href="/static/theme.css" rel="stylesheet">
+<script src="static/server-stub.js"></script>
+  <script src="/static/theme.js"></script>
+<style>
+:root{--font-body:'Space Grotesk',system-ui,sans-serif;--font-mono:'Space Mono',monospace;--radius-md:8px;--radius-lg:12px;--radius-pill:999px;--ease-out:cubic-bezier(.22,.61,.36,1);--dur-fast:120ms;--dur-normal:200ms;--dur-slow:340ms}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;background:var(--black);overflow:hidden}
+body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:14px;color:var(--text-primary);display:flex;flex-direction:column;overflow:hidden;user-select:none}
+
+.topbar{display:flex;align-items:center;gap:12px;padding:0 20px;height:48px;border-bottom:1px solid var(--border);flex-shrink:0}
+.topbar__brand{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-disabled)}
+.topbar__brand span{color:var(--text-display);font-weight:700}
+.topbar__sep{width:1px;height:18px;background:var(--border)}
+.topbar__title{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary)}
+.topbar__spacer{flex:1}
+.topbar__btn{background:transparent;border:1px solid var(--border-visible);color:var(--text-tertiary);font-family:var(--font-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:6px 16px;cursor:pointer;border-radius:var(--radius-pill);transition:all var(--dur-fast)}
+.topbar__btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+
+.content{flex:1;overflow-y:auto;padding:20px 24px}
+.content::-webkit-scrollbar{width:2px}
+.content::-webkit-scrollbar-track{background:transparent}
+.content::-webkit-scrollbar-thumb{background:var(--border-visible);border-radius:2px}
+
+.section{margin-bottom:28px}
+.section__title{font-family:var(--font-mono);font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-secondary);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.section__title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Provider cards */
+.provider-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:10px}
+.provider-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;transition:border-color var(--dur-fast);display:flex;flex-direction:column;gap:8px}
+.provider-card:hover{border-color:var(--border-visible)}
+.provider-card--default{border-color:var(--success);background:var(--success-subtle)}
+.provider-card__head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.provider-card__name{font-family:var(--font-body);font-size:16px;color:var(--text-display);font-weight:500}
+.provider-card__badge{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;padding:3px 10px;border-radius:var(--radius-pill);border:1px solid var(--border)}
+.provider-card__badge--online{border-color:var(--success);color:var(--success)}
+.provider-card__badge--offline{border-color:var(--accent);color:var(--accent)}
+.provider-card__badge--default{border-color:var(--success);color:var(--success);background:var(--success-subtle)}
+.provider-card__meta{display:flex;gap:12px;font-size:12px;color:var(--text-disabled);letter-spacing:.04em}
+.provider-card__actions{display:flex;gap:6px;margin-top:4px}
+
+/* Keys list */
+.keys-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.key-item{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md)}
+.key-item__name{font-family:var(--font-mono);font-size:12px;color:var(--text-primary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.key-item__key{font-family:var(--font-mono);font-size:11px;color:var(--text-disabled);flex:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.key-item__actions{display:flex;gap:4px}
+
+/* Auth tabs */
+.auth-tabs{display:flex;gap:0;margin-bottom:12px;border-bottom:1px solid var(--border)}
+.auth-tab{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-disabled);padding:8px 16px;cursor:pointer;border-bottom:2px solid transparent;transition:all var(--dur-fast);background:transparent;border-top:none;border-left:none;border-right:none}
+.auth-tab:hover{color:var(--text-secondary)}
+.auth-tab--active{color:var(--text-display);border-bottom-color:var(--text-display)}
+
+/* Forms */
+.form{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:10px}
+.form__row{display:flex;gap:10px;align-items:end}
+.form__field{display:flex;flex-direction:column;gap:3px;flex:1}
+.form__field--sm{max-width:150px}
+.form__label{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-disabled)}
+.form__input{background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:9px 12px;font-family:var(--font-mono);font-size:14px;color:var(--text-primary);outline:none;transition:border-color var(--dur-fast)}
+.form__input:focus{border-color:var(--text-secondary)}
+.form__input::placeholder{color:var(--text-disabled)}
+.form__select{background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:9px 12px;font-family:var(--font-mono);font-size:14px;color:var(--text-primary);outline:none;appearance:none;cursor:pointer}
+.form__checkbox{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);cursor:pointer}
+.form__checkbox input{width:16px;height:16px;accent-color:var(--interactive)}
+.form__hint{font-size:11px;color:var(--text-disabled);margin-top:2px}
+
+/* Buttons */
+.btn{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;padding:7px 16px;border-radius:var(--radius-pill);cursor:pointer;transition:all var(--dur-fast);border:1px solid var(--border-visible);background:transparent;color:var(--text-secondary)}
+.btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+.btn--primary{background:var(--text-display);color:var(--black);border-color:var(--text-display)}
+.btn--primary:hover{opacity:.9}
+.btn--danger{border-color:var(--accent);color:var(--accent)}
+.btn--danger:hover{background:var(--accent);color:var(--black)}
+.btn--sm{padding:5px 12px;font-size:11px}
+.btn--success{border-color:var(--success);color:var(--success)}
+.btn--success:hover{background:var(--success);color:var(--black)}
+
+/* Assignment table */
+.assign-table{width:100%;border-collapse:collapse}
+.assign-table th{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-disabled);text-align:left;padding:8px 12px;border-bottom:1px solid var(--border)}
+.assign-table td{padding:8px 12px;border-bottom:1px solid var(--border);font-size:13px}
+.assign-table tr:hover{background:var(--surface-hover)}
+.assign-table__agent{color:var(--text-display);font-weight:500}
+.assign-table__select{background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:6px 10px;font-family:var(--font-mono);font-size:12px;color:var(--text-primary);outline:none;min-width:140px}
+.assign-table__input{background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:6px 10px;font-family:var(--font-mono);font-size:12px;color:var(--text-primary);outline:none;width:70px}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;padding:12px 24px;border-radius:var(--radius-md);font-family:var(--font-mono);font-size:13px;letter-spacing:.06em;z-index:100;animation:toastIn 200ms var(--ease-out)}
+.toast--ok{background:var(--success);color:var(--black)}
+.toast--err{background:var(--accent);color:var(--black)}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.empty{text-align:center;padding:40px;color:var(--text-disabled);font-size:14px;letter-spacing:.06em}
+
+/* Modal */
+.modal{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;animation:fadeIn 150ms var(--ease-out)}
+.modal__box{background:var(--surface-raised);border:1px solid var(--border-visible);border-radius:var(--radius-lg);width:500px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
+.modal__head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.modal__title{font-family:var(--font-mono);font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-secondary)}
+.modal__close{background:transparent;border:none;color:var(--text-disabled);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:4px}
+.modal__close:hover{color:var(--text-primary)}
+.modal__body{flex:1;overflow-y:auto;padding:16px}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* OAuth flow */
+.oauth-flow{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;text-align:center}
+.oauth-flow__btn{background:var(--interactive);color:var(--black);border:none;font-family:var(--font-mono);font-size:13px;padding:10px 24px;border-radius:var(--radius-pill);cursor:pointer;transition:all var(--dur-fast)}
+.oauth-flow__btn:hover{opacity:.9}
+.oauth-flow__status{font-size:12px;color:var(--text-secondary);margin-top:10px}
+
+/* Model list for assignment */
+.model-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.model-chip{font-family:var(--font-mono);font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:var(--radius-pill);color:var(--text-secondary);cursor:pointer;transition:all var(--dur-fast)}
+.model-chip:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+.model-chip--selected{border-color:var(--interactive);color:var(--interactive);background:var(--interactive-subtle)}
+
+@media(max-width:768px){
+  .page{padding:12px}
+  .page__title{font-size:18px;margin-bottom:16px}
+  .back{font-size:10px;padding:6px 12px}
+  .section{padding:14px}
+  .section__title{font-size:12px}
+  .field{flex-direction:column;align-items:stretch}
+  .field__input,.field__select{width:100%;font-size:13px}
+  .save-btn{width:100%;font-size:11px;padding:10px}
+  .provider-card{padding:12px}
+  .provider-card__head{flex-direction:column;align-items:flex-start;gap:8px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar__brand"><span>TrueNeverStory</span></div>
+  <div class="topbar__sep"></div>
+  <div class="topbar__title" data-i18n="title">Provider Manager</div>
+  <div class="topbar__spacer"></div>
+  <a href="/models" class="topbar__btn" data-i18n="models">MODELS</a>
+  <a href="/worlds" class="topbar__btn">WORLDS</a>
+  <a href="/agents" class="topbar__btn" data-i18n="agents">AGENTS</a>
+  <a href="/dashboard" class="topbar__btn">DASHBOARD</a>
+  <a href="/settings" class="topbar__btn" data-i18n="settings">SETTINGS</a>
+  <a href="/" class="topbar__btn" data-i18n="back">BACK</a>
+</div>
+
+<div class="content">
+  <!-- Quick Add Preset -->
+  <div class="section">
+    <div class="section__title" data-i18n="quickAdd">Quick Add</div>
+    <div class="form" style="flex-direction:row;align-items:end;gap:10px">
+      <div class="form__field" style="flex:1">
+        <label class="form__label">Select Provider</label>
+        <select class="form__select" id="presetSelect" onchange="applyPreset(this.value); this.selectedIndex=0;">
+          <option value="">— Choose a provider to auto-fill —</option>
+          <optgroup label="Major Players">
+            <option value="openai">OpenAI — GPT-4o, o-series ($) | en de fr es ja zh ru</option>
+            <option value="anthropic">Anthropic — Claude 4/3 ($) | en de fr es ja zh ru</option>
+            <option value="google">Google Gemini — 2.5/2.0 (free) | en de fr es ja zh ru ar ko hi</option>
+            <option value="cohere">Cohere — Command A/R (free) | en de fr es ja zh ru</option>
+            <option value="mistral">Mistral AI — Large/Small, Codestral (free) | en de fr es ja zh ru</option>
+            <option value="together">Together AI — Llama, Qwen, DeepSeek ($1 free) | en</option>
+            <option value="groq">Groq — Ultra-fast Llama, Mixtral (free) | en</option>
+            <option value="fireworks">Fireworks AI — OSS inference (free) | en</option>
+            <option value="perplexity">Perplexity — Sonar search-augmented LLM ($) | en</option>
+          </optgroup>
+          <optgroup label="Chinese Providers (Free Tier)">
+            <option value="deepseek">DeepSeek — V3/R1 reasoning | en zh ru</option>
+            <option value="moonshot">Moonshot (Kimi) — 128K context | en zh</option>
+            <option value="zhipu">Zhipu (GLM) — GLM-4 family | en zh</option>
+            <option value="baichuan">Baichuan — Baichuan 4 | en zh</option>
+            <option value="minimax">MiniMax — Text-01, 4M context | en zh</option>
+            <option value="sensenova">SenseNova — SenseTime LLM | en zh</option>
+            <option value="01ai">01.AI (Yi) — Yi-Lightning | en zh</option>
+            <option value="alibaba">Alibaba (Qwen) — Qwen-MAX/Plus | en zh ru ja ko</option>
+            <option value="baidu">Baidu (Ernie) — ERNIE 4.0/3.5 | en zh</option>
+            <option value="tencent">Tencent (Hunyuan) — text + vision | en zh</option>
+            <option value="bytedance">ByteDance (Doubao) — Doubao 1.5 | en zh</option>
+            <option value="stepfun">StepFun — step-2, vision | en zh</option>
+          </optgroup>
+        </select>
+      </div>
+      <span style="font-size:11px;color:var(--text-disabled);letter-spacing:.06em;padding-bottom:4px;white-space:nowrap">Select to auto-fill, then add your API key <a id="presetLink" href="#" target="_blank" rel="noopener" style="color:var(--interactive);text-decoration:none;display:none;margin-left:6px">open site</a></span>
+    </div>
+  </div>
+
+  <!-- Add Provider -->
+  <div class="section">
+    <div class="section__title" data-i18n="addProvider">Add Provider</div>
+    <div class="auth-tabs" id="authTabs">
+      <button class="auth-tab auth-tab--active" data-auth="apikey">API Key</button>
+      <button class="auth-tab" data-auth="oauth">OAuth 2.0</button>
+    </div>
+
+    <!-- API Key Form -->
+    <div class="form" id="apiKeyForm">
+      <div class="form__row">
+        <div class="form__field">
+          <label class="form__label">Provider Name</label>
+          <input class="form__input" id="provName" placeholder="e.g. OpenAI, Anthropic, My Ollama">
+        </div>
+        <div class="form__field form__field--sm">
+          <label class="form__label">Type</label>
+          <select class="form__select" id="provType">
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="google">Google Gemini</option>
+            <option value="ollama">Ollama</option>
+            <option value="llamacpp">llama.cpp</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div class="form__field form__field--sm">
+          <label class="form__label">Priority</label>
+          <input class="form__input" id="provPriority" type="number" value="1" min="0" max="10">
+        </div>
+      </div>
+      <div class="form__row">
+        <div class="form__field">
+          <label class="form__label">Base URL</label>
+          <input class="form__input" id="provUrl" placeholder="https://api.openai.com/v1">
+        </div>
+      </div>
+      <div class="form__row">
+        <div class="form__field">
+          <label class="form__label">API Key</label>
+          <input class="form__input" id="provApiKey" type="password" placeholder="sk-...">
+        </div>
+        <div class="form__field">
+          <label class="form__label">Key Label (optional)</label>
+          <input class="form__input" id="provKeyLabel" placeholder="e.g. Production, Dev, Team">
+        </div>
+      </div>
+      <div class="form__row">
+        <div class="form__field">
+          <label class="form__label">Default Model</label>
+          <input class="form__input" id="provDefaultModel" placeholder="e.g. gpt-4o, claude-3-opus">
+        </div>
+        <div class="form__field">
+          <label class="form__label">Models (comma separated)</label>
+          <input class="form__input" id="provModels" placeholder="gpt-4o, gpt-4o-mini, o1-preview">
+        </div>
+      </div>
+      <div class="form__row">
+        <div class="form__field form__field--sm">
+          <label class="form__label">Timeout (s)</label>
+          <input class="form__input" id="provTimeout" type="number" value="120" min="10" max="600">
+        </div>
+        <div class="form__field form__field--sm">
+          <label class="form__label">Max Tokens</label>
+          <input class="form__input" id="provMaxTokens" type="number" value="4096" min="256" max="128000">
+        </div>
+        <div class="form__field form__field--sm">
+          <label class="form__label">Temperature</label>
+          <input class="form__input" id="provTemp" type="number" value="0.7" min="0" max="2" step="0.1">
+        </div>
+        <label class="form__checkbox" style="margin-bottom:4px">
+          <input type="checkbox" id="provEnabled" checked> Enabled
+        </label>
+      </div>
+      <div class="form__row">
+        <button class="btn btn--primary" onclick="addProvider()" data-i18n="addProvider">Add Provider</button>
+        <button class="btn" onclick="testProvider()">Test Connection</button>
+      </div>
+    </div>
+
+    <!-- OAuth Form -->
+    <div class="form" id="oauthForm" style="display:none">
+      <div class="form__row">
+        <div class="form__field">
+          <label class="form__label">Provider Name</label>
+          <input class="form__input" id="oauthName" placeholder="e.g. Google AI, Azure OpenAI">
+        </div>
+        <div class="form__field form__field--sm">
+          <label class="form__label">Type</label>
+          <select class="form__select" id="oauthType">
+            <option value="openai">OpenAI (Azure)</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+      </div>
+      <div class="form__row">
+        <div class="form__field">
+          <label class="form__label">Base URL</label>
+          <input class="form__input" id="oauthUrl" placeholder="https://your-endpoint.openai.azure.com">
+        </div>
+      </div>
+      <div class="form__row">
+        <div class="form__field">
+          <label class="form__label">Client ID</label>
+          <input class="form__input" id="oauthClientId" placeholder="OAuth Client ID">
+        </div>
+        <div class="form__field">
+          <label class="form__label">Client Secret</label>
+          <input class="form__input" id="oauthClientSecret" type="password" placeholder="OAuth Client Secret">
+        </div>
+      </div>
+      <div class="form__row">
+        <div class="form__field">
+          <label class="form__label">Auth URL</label>
+          <input class="form__input" id="oauthAuthUrl" placeholder="https://login.microsoftonline.com/.../oauth2/v2.0/authorize">
+        </div>
+        <div class="form__field">
+          <label class="form__label">Token URL</label>
+          <input class="form__input" id="oauthTokenUrl" placeholder="https://login.microsoftonline.com/.../oauth2/v2.0/token">
+        </div>
+      </div>
+      <div class="form__row">
+        <div class="form__field">
+          <label class="form__label">Scopes</label>
+          <input class="form__input" id="oauthScopes" placeholder="https://cognitiveservices.azure.com/.default">
+        </div>
+      </div>
+      <div class="form__row">
+        <div class="form__field">
+          <label class="form__label">Default Model</label>
+          <input class="form__input" id="oauthDefaultModel" placeholder="e.g. gpt-4o">
+        </div>
+      </div>
+      <div class="form__row">
+        <button class="btn btn--primary" onclick="addOAuthProvider()">Add OAuth Provider</button>
+        <button class="btn" onclick="startOAuthFlow()">Authorize</button>
+      </div>
+      <div class="oauth-flow" id="oauthFlow" style="display:none">
+        <div class="oauth-flow__status" id="oauthStatus">Waiting for authorization...</div>
+        <button class="oauth-flow__btn" id="oauthOpenBtn" onclick="openOAuthWindow()">Open Authorization Page</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Installed Providers -->
+  <div class="section">
+    <div class="section__title" data-i18n="installedProviders">Installed Providers</div>
+    <div class="provider-grid" id="providerGrid">
+      <div class="empty">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Agent Assignments -->
+  <div class="section">
+    <div class="section__title" data-i18n="agentAssignments">Agent Model Assignments</div>
+    <!-- Quick Assign -->
+    <div id="quickAssign" style="margin-bottom:12px"></div>
+    <div style="overflow-x:auto">
+      <table class="assign-table" id="assignTable">
+        <thead>
+          <tr>
+            <th data-i18n="agentCol">Agent</th>
+            <th data-i18n="providerCol">Provider</th>
+            <th data-i18n="modelCol">Model</th>
+            <th data-i18n="temperatureCol">Temperature</th>
+            <th data-i18n="maxTokensCol">Max Tokens</th>
+            <th data-i18n="statusCol">Status</th>
+          </tr>
+        </thead>
+        <tbody id="assignBody">
+          <tr><td colspan="6" class="empty">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px">
+      <button class="btn btn--primary" onclick="saveAssignments()">Save Assignments</button>
+      <button class="btn" onclick="syncFromAgents()">Sync from Agents</button>
+      <button class="btn" onclick="loadAssignments()">Reset</button>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const LANG_EN = {
+  title:"Provider Manager", models:"MODELS", settings:"SETTINGS", back:"BACK", agents:"AGENTS",
+  quickAdd:"Quick Add", addProvider:"Add Provider", installedProviders:"Installed Providers",
+  agentAssignments:"Agent Model Assignments", baseUrl:"Base URL", apiKey:"API Key",
+  defaultModel:"Default Model", addKey:"Add Another Key", defaultKey:"Default Key",
+  keyLabel:"Key Label (optional)", authUrl:"Auth URL", clientId:"Client ID",
+  clientSecret:"Client Secret", addOauth:"Add OAuth Provider", loading:"Loading...",
+  save:"Save", delete:"Delete", setDefault:"Set Default", testConnection:"Test Connection",
+  open:"open", agentCol:"Agent", providerCol:"Provider", modelCol:"Model",
+  temperatureCol:"Temperature", maxTokensCol:"Max Tokens", statusCol:"Status",
+  syncFromAgents:"Sync from Agents", throttle:"Throttle",
+  rateLimitTitle:"Rate Limit Settings", rpmLimit:"RPM Limit",
+  rpmHint:"Max requests per minute to external LLM providers. Local llama.cpp ignores this.",
+  maxConcurrent:"Max Concurrent", concurrentHint:"How many LLM requests run simultaneously.",
+  queueMaxSize:"Queue Max Size", queueHint:"Max queued requests. Low-priority tasks are evicted when full.",
+  cancel:"Cancel",
+};
+const LANG_RU = {...LANG_EN,
+  title:"Менеджер провайдеров", models:"МОДЕЛИ", settings:"НАСТРОЙКИ", back:"НАЗАД", agents:"АГЕНТЫ",
+  quickAdd:"Быстрое добавление", addProvider:"Добавить провайдер", installedProviders:"Установленные провайдеры",
+  agentAssignments:"Назначение моделей агентам", baseUrl:"Base URL", apiKey:"API Key",
+  defaultModel:"Модель по умолчанию", addKey:"Добавить ключ", defaultKey:"Ключ по умолчанию",
+  keyLabel:"Метка ключа (опционально)", authUrl:"URL авторизации", clientId:"Client ID",
+  clientSecret:"Client Secret", addOauth:"Добавить OAuth", loading:"Загрузка...",
+  save:"Сохранить", delete:"Удалить", setDefault:"По умолчанию", testConnection:"Проверить",
+  open:"открыть", agentCol:"Агент", providerCol:"Провайдер", modelCol:"Модель",
+  temperatureCol:"Температура", maxTokensCol:"Макс. токенов", statusCol:"Статус",
+  syncFromAgents:"Синхронизировать из агентов", throttle:"Ограничения",
+  rateLimitTitle:"Настройки ограничений", rpmLimit:"Лимит RPM",
+  rpmHint:"Макс. запросов в минуту к внешним LLM провайдерам. Для локального llama.cpp не действует.",
+  maxConcurrent:"Макс. параллельных", concurrentHint:"Сколько LLM-запросов выполняется одновременно.",
+  queueMaxSize:"Макс. в очереди", queueHint:"Макс. запросов в очереди. Задачи с низким приоритетом отбрасываются.",
+  cancel:"Отмена",
+};
+const LANGS = { en: LANG_EN, ru: LANG_RU, de: LANG_EN, fr: LANG_EN, es: LANG_EN, ja: LANG_EN, zh: LANG_EN };
+let L = LANG_EN;
+
+async function loadLang() {
+  try {
+    const r = await tnsStubFetch();
+    const s = await r.json();
+    L = LANGS[s.language] || LANG_EN;
+  } catch { L = LANG_EN; }
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (L[k]) el.textContent = L[k];
+  });
+}
+
+let providers = [];
+let agents = [];
+let assignments = [];
+let allModels = {};
+
+// ── Provider Preset Catalog ──
+const PRESETS = {
+  openai:     { name:'OpenAI',     type:'openai',    baseUrl:'https://api.openai.com/v1',                          defaultModel:'gpt-4o',           models:['gpt-4o','gpt-4o-mini','o1','o1-mini','o1-pro','o3','o3-mini','o4-mini','gpt-4-turbo','gpt-3.5-turbo'], url:'https://openai.com', langs:['en','de','fr','es','ja','zh','ru','ar'] },
+  anthropic:  { name:'Anthropic',  type:'anthropic', baseUrl:'https://api.anthropic.com',                           defaultModel:'claude-sonnet-4-20250514', models:['claude-opus-4-20250514','claude-sonnet-4-20250514','claude-3-7-sonnet-20250219','claude-3-5-sonnet-20241022','claude-3-5-haiku-20241022'], url:'https://anthropic.com', langs:['en','de','fr','es','ja','zh','ru'] },
+  google:     { name:'Google Gemini', type:'google', baseUrl:'https://generativelanguage.googleapis.com/v1beta/openai', defaultModel:'gemini-2.0-flash', models:['gemini-2.5-pro','gemini-2.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite','gemini-1.5-pro','gemini-1.5-flash'], url:'https://aistudio.google.com', langs:['en','de','fr','es','ja','zh','ru','ar','ko','hi'] },
+  cohere:     { name:'Cohere',     type:'openai',    baseUrl:'https://api.cohere.com/v2',                           defaultModel:'command-a-20250515', models:['command-a-20250515','command-r-plus-08-2024','command-r-08-2024','command-r-plus','command-r'], url:'https://cohere.com', langs:['en','de','fr','es','ja','zh','ru'] },
+  mistral:    { name:'Mistral AI', type:'openai',    baseUrl:'https://api.mistral.ai/v1',                           defaultModel:'mistral-large-latest', models:['mistral-large-latest','mistral-medium-latest','mistral-small-latest','codestral-latest','pixtral-large-latest','open-mistral-nemo'], url:'https://mistral.ai', langs:['en','de','fr','es','ja','zh','ru'] },
+  together:   { name:'Together AI',type:'openai',    baseUrl:'https://api.together.xyz/v1',                         defaultModel:'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8', models:['meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8','meta-llama/Llama-4-Scout-17B-16E-Instruct','Qwen/Qwen2.5-72B-Instruct-Turbo','deepseek-ai/DeepSeek-R1'], url:'https://together.ai', langs:['en'] },
+  groq:       { name:'Groq',       type:'openai',    baseUrl:'https://api.groq.com/openai/v1',                      defaultModel:'llama-3.3-70b-versatile', models:['llama-3.3-70b-versatile','llama-3.1-8b-instant','gemma2-9b-it','mixtral-8x7b-32768'], url:'https://groq.com', langs:['en'] },
+  fireworks:  { name:'Fireworks AI',type:'openai',   baseUrl:'https://api.fireworks.ai/inference/v1',               defaultModel:'accounts/fireworks/models/llama-v3p3-70b-instruct', models:['accounts/fireworks/models/llama-v3p3-70b-instruct','accounts/fireworks/models/deepseek-r1','accounts/fireworks/models/qwen-v2p5-72b-instruct'], url:'https://fireworks.ai', langs:['en'] },
+  perplexity: { name:'Perplexity', type:'openai',    baseUrl:'https://api.perplexity.ai',                           defaultModel:'sonar',            models:['sonar','sonar-pro','sonar-reasoning','sonar-reasoning-pro','sonar-deep-research'], url:'https://perplexity.ai', langs:['en'] },
+  deepseek:   { name:'DeepSeek',   type:'openai',    baseUrl:'https://api.deepseek.com/v1',                         defaultModel:'deepseek-chat',     models:['deepseek-chat','deepseek-reasoner'], url:'https://deepseek.com', langs:['en','zh','ru'] },
+  moonshot:   { name:'Moonshot (Kimi)', type:'openai', baseUrl:'https://api.moonshot.cn/v1',                        defaultModel:'moonshot-v1-8k',    models:['moonshot-v1-8k','moonshot-v1-32k','moonshot-v1-128k','kimi-latest','moonshot-auto'], url:'https://moonshot.ai', langs:['en','zh'] },
+  zhipu:      { name:'Zhipu (GLM)',type:'openai',    baseUrl:'https://open.bigmodel.cn/api/paas/v4',               defaultModel:'glm-4-flash',       models:['glm-4-plus','glm-4-0520','glm-4-air','glm-4-flash','glm-4-flashx','glm-4-long','glm-4v-plus','glm-4v-flash'], url:'https://zhipuai.cn', langs:['en','zh'] },
+  baichuan:   { name:'Baichuan',   type:'openai',    baseUrl:'https://api.baichuan-ai.com/v1',                     defaultModel:'Baichuan4-Turbo',   models:['Baichuan4-Turbo','Baichuan4-Air','Baichuan4','Baichuan3-Turbo','Baichuan3-Turbo-128k'], url:'https://baichuan-ai.com', langs:['en','zh'] },
+  minimax:    { name:'MiniMax',    type:'openai',    baseUrl:'https://api.minimax.chat/v1',                         defaultModel:'MiniMax-Text-01',   models:['MiniMax-Text-01','MiniMax-Text-01-20k','abab6.5s-chat','abab5.5-chat'], url:'https://www.minimaxi.com', langs:['en','zh'] },
+  sensenova:  { name:'SenseNova',  type:'openai',    baseUrl:'https://api.sensenova.cn/v1',                         defaultModel:'nova-32k',          models:['nova-32k','nova-128k','nova-pro','nova-lite'], url:'https://platform.sensenova.cn', langs:['en','zh'] },
+  '01ai':     { name:'01.AI (Yi)', type:'openai',    baseUrl:'https://api.lingyiwanwu.com/v1',                      defaultModel:'yi-lightning',      models:['yi-lightning','yi-large','yi-medium','yi-medium-200k','yi-spark'], url:'https://01.ai', langs:['en','zh'] },
+  alibaba:    { name:'Alibaba (Qwen)', type:'openai', baseUrl:'https://dashscope.aliyuncs.com/compatible-mode/v1', defaultModel:'qwen-max',          models:['qwen-max','qwen-plus','qwen-turbo','qwen-long','qwen-vl-max','qwen-vl-plus','text-embedding-v3'], url:'https://dashscope.aliyun.com', langs:['en','zh','ru','ja','ko'] },
+  baidu:      { name:'Baidu (Ernie)', type:'openai',  baseUrl:'https://qianfan.baidubce.com/v2',                   defaultModel:'ernie-4.0-turbo-8k', models:['ernie-4.0-turbo-8k','ernie-4.0-8k','ernie-3.5-8k','ernie-3.5-128k','ernie-speed-8k','ernie-lite-8k'], url:'https://yiyan.baidu.com', langs:['en','zh'] },
+  tencent:    { name:'Tencent (Hunyuan)', type:'openai', baseUrl:'https://api.hunyuan.cloud.tencent.com/v1',      defaultModel:'hunyuan-pro',       models:['hunyuan-pro','hunyuan-standard','hunyuan-turbo','hunyuan-lite','hunyuan-vision'], url:'https://hunyuan.tencent.com', langs:['en','zh'] },
+  bytedance:  { name:'ByteDance (Doubao)', type:'openai', baseUrl:'https://ark.cn-beijing.volces.com/api/v3',     defaultModel:'doubao-1.5-pro-32k', models:['doubao-1.5-pro-32k','doubao-1.5-pro-256k','doubao-1.5-lite-32k'], url:'https://www.volcengine.com/product/doubao', langs:['en','zh'] },
+  stepfun:    { name:'StepFun',    type:'openai',    baseUrl:'https://api.stepfun.com/v1',                          defaultModel:'step-2-16k',        models:['step-2-16k','step-2-128k','step-1-flash','step-1-32k','step-1v-8k','step-2v-14k'], url:'https://stepfun.com', langs:['en','zh'] },
+};
+
+function applyPreset(key) {
+  if (!key || !PRESETS[key]) return;
+  const p = PRESETS[key];
+  document.getElementById('provName').value = p.name;
+  document.getElementById('provType').value = p.type;
+  document.getElementById('provUrl').value = p.baseUrl;
+  document.getElementById('provDefaultModel').value = p.defaultModel;
+  document.getElementById('provModels').value = p.models.join(', ');
+  document.getElementById('provApiKey').value = '';
+  document.getElementById('provKeyLabel').value = p.name;
+  document.getElementById('provApiKey').focus();
+
+  const link = document.getElementById('presetLink');
+  if (p.url) {
+    link.href = p.url;
+    link.style.display = 'inline';
+    link.textContent = L.open + ' ' + p.name;
+  } else {
+    link.style.display = 'none';
+  }
+
+  const langStr = p.langs ? p.langs.map(l => LANG_NAMES[l] || l).join(', ') : '';
+  toast('Preset loaded: ' + p.name + (langStr ? ' | ' + langStr : ''), true);
+}
+
+const LANG_NAMES = { en:'English', de:'Deutsch', fr:'Français', es:'Español', ja:'日本語', zh:'中文', ru:'Русский', ar:'العربية', ko:'한국어', hi:'हिन्दी' };
+
+function toast(msg, ok) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (ok ? 'toast--ok' : 'toast--err');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+// ── Auth Tabs ──
+document.querySelectorAll('.auth-tab').forEach(tab => {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('auth-tab--active'));
+    this.classList.add('auth-tab--active');
+    const auth = this.dataset.auth;
+    document.getElementById('apiKeyForm').style.display = auth === 'apikey' ? '' : 'none';
+    document.getElementById('oauthForm').style.display = auth === 'oauth' ? '' : 'none';
+  });
+});
+
+// ── Type-specific URL defaults ──
+document.getElementById('provType').addEventListener('change', function() {
+  const urlInput = document.getElementById('provUrl');
+  const modelInput = document.getElementById('provDefaultModel');
+  const modelsInput = document.getElementById('provModels');
+  switch(this.value) {
+    case 'ollama':
+      urlInput.placeholder = 'http://localhost:11434';
+      modelInput.placeholder = 'llama3.2:8b';
+      modelsInput.placeholder = 'llama3.2:3b, llama3.2:8b, mistral:7b';
+      break;
+    case 'llamacpp':
+      urlInput.placeholder = 'http://localhost:5001/v1';
+      modelInput.placeholder = 'local-model';
+      modelsInput.placeholder = 'model1, model2';
+      break;
+    case 'anthropic':
+      urlInput.placeholder = 'https://api.anthropic.com';
+      modelInput.placeholder = 'claude-3-opus-20240229';
+      modelsInput.placeholder = 'claude-3-opus, claude-3-sonnet, claude-3-haiku';
+      break;
+    case 'google':
+      urlInput.placeholder = 'https://generativelanguage.googleapis.com/v1beta/openai';
+      modelInput.placeholder = 'gemini-2.0-flash';
+      modelsInput.placeholder = 'gemini-2.5-pro, gemini-2.5-flash, gemini-2.0-flash';
+      break;
+    case 'openai':
+      urlInput.placeholder = 'https://api.openai.com/v1';
+      modelInput.placeholder = 'gpt-4o';
+      modelsInput.placeholder = 'gpt-4o, gpt-4o-mini, o1-preview';
+      break;
+    default:
+      urlInput.placeholder = 'https://your-api-endpoint.com/v1';
+      modelInput.placeholder = 'model-name';
+      modelsInput.placeholder = 'model1, model2';
+  }
+});
+
+// ── Load Data ──
+async function loadProviders() {
+  try {
+    const res = await tnsStubFetch();
+    if (res.status === 401) { window.location = '/login'; return; }
+    const data = await res.json();
+    providers = data.providers || [];
+    renderProviders();
+  } catch (e) {
+    toast('Failed to load providers: ' + e.message, false);
+  }
+}
+
+async function loadAssignments() {
+  try {
+    const [assignRes, agentsRes, modelsRes] = await Promise.all([
+      tnsStubFetch().catch(() => ({ ok: false, json: () => ({}) })),
+      tnsStubFetch().catch(() => ({ ok: false, json: () => ({}) })),
+      tnsStubFetch().catch(() => ({ ok: false, json: () => ({}) })),
+    ]);
+    const assignData = await assignRes.json();
+    const agentsData = await agentsRes.json();
+    const modelsData = await modelsRes.json();
+
+    assignments = assignData.assignments || [];
+    agents = agentsData.agents || [];
+    allModels = modelsData.models || {};
+
+    renderAssignments();
+  } catch (e) {
+    toast('Failed to load assignments: ' + e.message, false);
+  }
+}
+
+// ── Render Providers ──
+function renderProviders() {
+  const grid = document.getElementById('providerGrid');
+  if (providers.length === 0) {
+    grid.innerHTML = '<div class="empty">No providers configured. Add one above.</div>';
+    return;
+  }
+
+  grid.innerHTML = providers.map(p => {
+    const isDefault = providers.length > 0 && providers[0]?.id === p.id;
+    return `
+      <div class="provider-card ${isDefault ? 'provider-card--default' : ''}">
+        <div class="provider-card__head">
+          <span class="provider-card__name">${esc(p.name)}</span>
+          <div style="display:flex;gap:6px">
+            <span class="provider-card__badge provider-card__badge--${p.isAvailable ? 'online' : 'offline'}">${p.isAvailable ? 'online' : 'offline'}</span>
+            ${isDefault ? '<span class="provider-card__badge provider-card__badge--default">default</span>' : ''}
+          </div>
+        </div>
+        <div class="provider-card__meta">
+          <span>${p.type}</span>
+          <span>${p.id}</span>
+        </div>
+        <div class="provider-card__actions">
+          <button class="btn btn--sm" onclick="viewProviderKeys('${esc(p.id)}')">Keys</button>
+          <button class="btn btn--sm" onclick="openRateLimitModal()" title="Rate Limit Settings">${L.throttle}</button>
+          ${!isDefault ? `<button class="btn btn--sm btn--success" onclick="setDefault('${esc(p.id)}')">Set Default</button>` : ''}
+          <button class="btn btn--sm btn--danger" onclick="removeProvider('${esc(p.id)}')">Remove</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── Render Assignments ──
+function renderAssignments() {
+  const tbody = document.getElementById('assignBody');
+  const quickDiv = document.getElementById('quickAssign');
+
+  // Quick assign buttons
+  if (providers.length > 0) {
+    quickDiv.innerHTML = providers.map(p => {
+      const models = allModels[p.id] || [];
+      const modelBtns = models.map(m =>
+        `<button class="btn btn--sm" onclick="assignAll('${esc(p.id)}','${esc(m)}')" title="Assign all agents to ${esc(p.name)} / ${esc(m)}">${esc(m)}</button>`
+      ).join('');
+      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--text-secondary);min-width:80px;font-weight:500">${esc(p.name)}</span>
+        ${modelBtns || '<span style="font-size:11px;color:var(--text-disabled)">no models</span>'}
+      </div>`;
+    }).join('');
+  } else {
+    quickDiv.innerHTML = '';
+  }
+
+  if (agents.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">No agents found</td></tr>';
+    return;
+  }
+
+  const providerOptions = providers.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+
+  tbody.innerHTML = agents.map(agent => {
+    const assigned = assignments.find(a => a.agentId === agent.id) || {};
+    const models = allModels[assigned.providerId] || [];
+    const modelOptions = models.map(m => `<option value="${esc(m)}" ${m === assigned.modelId ? 'selected' : ''}>${esc(m)}</option>`).join('');
+
+    return `
+      <tr data-agent="${esc(agent.id)}">
+        <td class="assign-table__agent">${esc(agent.name)}</td>
+        <td>
+          <select class="assign-table__select" onchange="onProviderChange('${esc(agent.id)}', this.value)">
+            <option value="">-- Select --</option>
+            ${providerOptions.replace(`value="${esc(assigned.providerId)}"`, `value="${esc(assigned.providerId)}" selected`)}
+          </select>
+        </td>
+        <td>
+          <select class="assign-table__select assign-table__model-select" data-agent="${esc(agent.id)}">
+            <option value="">-- Select --</option>
+            ${modelOptions}
+          </select>
+        </td>
+        <td><input class="assign-table__input" type="number" value="${assigned.temperature ?? 0.7}" min="0" max="2" step="0.1" data-field="temperature"></td>
+        <td><input class="assign-table__input" type="number" value="${assigned.maxTokens ?? 4096}" min="256" max="128000" data-field="maxTokens"></td>
+        <td><span class="provider-card__badge provider-card__badge--${assigned.providerId ? 'online' : 'offline'}">${assigned.providerId ? 'assigned' : 'default'}</span></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function onProviderChange(agentId, providerId) {
+  const models = allModels[providerId] || [];
+  const select = document.querySelector(`.assign-table__model-select[data-agent="${agentId}"]`);
+  select.innerHTML = '<option value="">-- Select --</option>' +
+    models.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+}
+
+async function assignAll(providerId, modelId) {
+  if (!confirm(`Assign ALL agents to ${providerId} / ${modelId}?`)) return;
+  const results = [];
+  for (const agent of agents) {
+    try {
+      const res = await tnsStubFetch();
+      results.push({ agentId: agent.id, ok: res.ok });
+    } catch {
+      results.push({ agentId: agent.id, ok: false });
+    }
+  }
+  const success = results.filter(r => r.ok).length;
+  toast(`Assigned ${success}/${results.length} agents`, success === results.length);
+  loadAssignments();
+}
+
+// ── Save Assignments ──
+async function saveAssignments() {
+  const rows = document.querySelectorAll('#assignBody tr[data-agent]');
+  const results = [];
+
+  for (const row of rows) {
+    const agentId = row.dataset.agent;
+    const providerId = row.querySelector('.assign-table__select').value;
+    const modelId = row.querySelector('.assign-table__model-select').value;
+    const temperature = parseFloat(row.querySelector('[data-field="temperature"]').value);
+    const maxTokens = parseInt(row.querySelector('[data-field="maxTokens"]').value);
+
+    if (!providerId) continue;
+
+    try {
+      const res = await tnsStubFetch();
+      results.push({ agentId, ok: res.ok });
+    } catch (e) {
+      results.push({ agentId, ok: false, error: e.message });
+    }
+  }
+
+  const success = results.filter(r => r.ok).length;
+  const failed = results.filter(r => !r.ok).length;
+  if (failed === 0) {
+    toast(`All ${success} assignments saved`, true);
+  } else {
+    toast(`${success} saved, ${failed} failed`, false);
+  }
+  loadAssignments();
+}
+
+async function syncFromAgents() {
+  try {
+    const res = await tnsStubFetch();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    toast(`Synced ${data.count} agent assignments`, true);
+    loadAssignments();
+  } catch (e) {
+    toast('Sync failed: ' + e.message, false);
+  }
+}
+
+// ── Add Provider ──
+async function addProvider() {
+  const name = document.getElementById('provName').value.trim();
+  const type = document.getElementById('provType').value;
+  const baseUrl = document.getElementById('provUrl').value.trim();
+  const apiKey = document.getElementById('provApiKey').value.trim();
+  const keyLabel = document.getElementById('provKeyLabel').value.trim() || name;
+  const defaultModel = document.getElementById('provDefaultModel').value.trim();
+  const modelsStr = document.getElementById('provModels').value.trim();
+  const priority = parseInt(document.getElementById('provPriority').value) || 1;
+  const timeout = parseInt(document.getElementById('provTimeout').value) || 120;
+  const maxTokens = parseInt(document.getElementById('provMaxTokens').value) || 4096;
+  const temperature = parseFloat(document.getElementById('provTemp').value) || 0.7;
+  const enabled = document.getElementById('provEnabled').checked;
+
+  if (!name || !baseUrl) {
+    toast('Name and Base URL are required', false);
+    return;
+  }
+
+  const id = name.toLowerCase().replace(/[^a-z0-9]/g, '-') + (keyLabel !== name ? '-' + keyLabel.toLowerCase().replace(/[^a-z0-9]/g, '-') : '');
+
+  const models = modelsStr ? modelsStr.split(',').map(m => m.trim()).filter(Boolean) : [];
+
+  try {
+    const res = await tnsStubFetch();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+
+    toast('Provider added: ' + name, true);
+    clearForm();
+    loadProviders();
+    loadAssignments();
+  } catch (e) {
+    toast('Failed: ' + e.message, false);
+  }
+}
+
+async function addOAuthProvider() {
+  const name = document.getElementById('oauthName').value.trim();
+  const type = document.getElementById('oauthType').value;
+  const baseUrl = document.getElementById('oauthUrl').value.trim();
+  const clientId = document.getElementById('oauthClientId').value.trim();
+  const clientSecret = document.getElementById('oauthClientSecret').value.trim();
+  const authUrl = document.getElementById('oauthAuthUrl').value.trim();
+  const tokenUrl = document.getElementById('oauthTokenUrl').value.trim();
+  const scopes = document.getElementById('oauthScopes').value.trim();
+  const defaultModel = document.getElementById('oauthDefaultModel').value.trim();
+
+  if (!name || !baseUrl || !clientId) {
+    toast('Name, Base URL, and Client ID are required', false);
+    return;
+  }
+
+  const id = name.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-oauth';
+
+  try {
+    const res = await tnsStubFetch();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+
+    toast('OAuth provider added: ' + name, true);
+    loadProviders();
+  } catch (e) {
+    toast('Failed: ' + e.message, false);
+  }
+}
+
+function clearForm() {
+  ['provName', 'provUrl', 'provApiKey', 'provKeyLabel', 'provDefaultModel', 'provModels'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('provPriority').value = '1';
+  document.getElementById('provTimeout').value = '120';
+  document.getElementById('provMaxTokens').value = '4096';
+  document.getElementById('provTemp').value = '0.7';
+  document.getElementById('provEnabled').checked = true;
+}
+
+// ── Provider Actions ──
+async function removeProvider(id) {
+  if (!confirm('Remove provider ' + id + '?')) return;
+  try {
+    const res = await tnsStubFetch();
+    if (!res.ok) throw new Error('Failed');
+    toast('Provider removed', true);
+    loadProviders();
+    loadAssignments();
+  } catch (e) {
+    toast('Remove failed: ' + e.message, false);
+  }
+}
+
+async function setDefault(id) {
+  try {
+    const res = await tnsStubFetch();
+    if (!res.ok) throw new Error('Failed');
+    toast('Default provider set', true);
+    loadProviders();
+  } catch (e) {
+    toast('Failed: ' + e.message, false);
+  }
+}
+
+async function testProvider() {
+  const url = document.getElementById('provUrl').value.trim();
+  const key = document.getElementById('provApiKey').value.trim();
+  if (!url) { toast('Enter a URL first', false); return; }
+
+  try {
+    const res = await tnsStubFetch();
+    if (res.ok) {
+      toast('Connection successful!', true);
+    } else {
+      toast('Connection failed: HTTP ' + res.status, false);
+    }
+  } catch (e) {
+    toast('Connection failed: ' + e.message, false);
+  }
+}
+
+// ── Keys Modal ──
+function viewProviderKeys(providerId) {
+  const provider = providers.find(p => p.id === providerId);
+  if (!provider) return;
+
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal__box">
+      <div class="modal__head">
+        <span class="modal__title">API Keys — ${esc(provider.name)}</span>
+        <button class="modal__close">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div class="keys-list">
+          <div class="key-item">
+            <span class="key-item__name">Default Key</span>
+            <span class="key-item__key">${provider.id}</span>
+            <div class="key-item__actions">
+              <button class="btn btn--sm" onclick="rotateKey('${esc(provider.id)}')">Rotate</button>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <div class="section__title" data-i18n="addKey">Add Another Key</div>
+          <div class="form__row">
+            <div class="form__field">
+              <input class="form__input" id="newKeyLabel" placeholder="Key label (e.g. Team B)">
+            </div>
+            <div class="form__field">
+              <input class="form__input" id="newKeyValue" type="password" placeholder="API Key value">
+            </div>
+            <button class="btn btn--sm btn--primary" onclick="addKey('${esc(provider.id)}')">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  modal.querySelector('.modal__close').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+async function addKey(providerId) {
+  const label = document.getElementById('newKeyLabel').value.trim();
+  const value = document.getElementById('newKeyValue').value.trim();
+  if (!label || !value) { toast('Label and key are required', false); return; }
+
+  const newId = providerId + '-' + label.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const provider = providers.find(p => p.id === providerId);
+  if (!provider) return;
+
+  try {
+    const res = await tnsStubFetch();
+    if (!res.ok) throw new Error('Failed');
+    toast('Key added: ' + label, true);
+    document.querySelector('.modal__close')?.click();
+    loadProviders();
+  } catch (e) {
+    toast('Failed: ' + e.message, false);
+  }
+}
+
+async function rotateKey(providerId) {
+  toast('Key rotation not yet implemented', false);
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ── Rate Limit Modal ──
+let currentRateLimit = { rpm: 45, maxConcurrent: 3, maxQueueSize: 50 };
+
+async function loadRateLimit() {
+  try {
+    const res = await tnsStubFetch();
+    if (res.ok) currentRateLimit = await res.json();
+  } catch {}
+}
+
+function openRateLimitModal() {
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal__box">
+      <div class="modal__head">
+        <span class="modal__title">${L.rateLimitTitle}</span>
+        <button class="modal__close">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div class="modal__row">
+          <span class="modal__label">${L.rpmLimit}</span>
+          <input class="form__input modal__input" id="rlRpm" type="number" min="1" max="500" value="${esc(String(currentRateLimit.rpm))}">
+        </div>
+        <div class="modal__hint">${L.rpmHint}</div>
+
+        <div class="modal__row">
+          <span class="modal__label">${L.maxConcurrent}</span>
+          <input class="form__input modal__input" id="rlConcurrent" type="number" min="1" max="16" value="${esc(String(currentRateLimit.maxConcurrent))}">
+        </div>
+        <div class="modal__hint">${L.concurrentHint}</div>
+
+        <div class="modal__row">
+          <span class="modal__label">${L.queueMaxSize}</span>
+          <input class="form__input modal__input" id="rlQueueSize" type="number" min="5" max="200" value="${esc(String(currentRateLimit.maxQueueSize))}">
+        </div>
+        <div class="modal__hint">${L.queueHint}</div>
+      </div>
+      <div class="modal__footer">
+        <button class="btn" onclick="this.closest('.modal').remove()">${L.cancel}</button>
+        <button class="btn btn--primary" onclick="saveRateLimit()">${L.save}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelector('.modal__close').addEventListener('click', () => modal.remove());
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+async function saveRateLimit() {
+  const rpm = parseInt(document.getElementById('rlRpm').value) || 45;
+  const maxConcurrent = parseInt(document.getElementById('rlConcurrent').value) || 3;
+  const maxQueueSize = parseInt(document.getElementById('rlQueueSize').value) || 50;
+
+  try {
+    const res = await tnsStubFetch();
+    if (!res.ok) throw new Error('Failed');
+    currentRateLimit = { rpm, maxConcurrent, maxQueueSize };
+    document.querySelector('.modal__close')?.click();
+    toast('Rate limit saved', true);
+  } catch (e) {
+    toast('Failed: ' + e.message, false);
+  }
+}
+
+// ── Init ──
+(async () => {
+  await loadLang();
+  await loadProviders();
+  await loadAssignments();
+  loadRateLimit();
+})();
+setInterval(async () => { await loadProviders(); await loadAssignments(); }, 30000);
+</script>
+</body>
+</html>

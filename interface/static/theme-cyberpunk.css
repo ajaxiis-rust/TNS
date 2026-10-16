@@ -1,0 +1,24 @@
+/* Cyberpunk theme — neon purple/cyan */
+[data-theme="cyberpunk"] {
+  --black: #0A0014;
+  --surface: #100020;
+  --surface-raised: #180030;
+  --surface-hover: #200040;
+  --border: #2A0050;
+  --border-visible: #3A0070;
+  --border-strong: #5A00A0;
+  --text-disabled: #553388;
+  --text-tertiary: #7744AA;
+  --text-secondary: #AA66DD;
+  --text-primary: #DD99FF;
+  --text-display: #FFCCFF;
+  --accent: #FF0066;
+  --accent-subtle: rgba(255,0,102,0.12);
+  --accent-glow: rgba(255,0,102,0.25);
+  --success: #00FFCC;
+  --success-subtle: rgba(0,255,204,0.10);
+  --warning: #FFAA00;
+  --warning-subtle: rgba(255,170,0,0.10);
+  --interactive: #00CCFF;
+  --interactive-subtle: rgba(0,204,255,0.10);
+}

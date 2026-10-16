@@ -1,0 +1,24 @@
+/* Terminal theme — classic green phosphor */
+[data-theme="terminal"] {
+  --black: #0A0A0A;
+  --surface: #0D120D;
+  --surface-raised: #111A11;
+  --surface-hover: #152015;
+  --border: #1A2A1A;
+  --border-visible: #2A4A2A;
+  --border-strong: #3A6A3A;
+  --text-disabled: #2A5A2A;
+  --text-tertiary: #3A8A3A;
+  --text-secondary: #5ABB5A;
+  --text-primary: #80DD80;
+  --text-display: #AAFFAA;
+  --accent: #FF3333;
+  --accent-subtle: rgba(255,51,51,0.12);
+  --accent-glow: rgba(255,51,51,0.25);
+  --success: #5AFF5A;
+  --success-subtle: rgba(90,255,90,0.10);
+  --warning: #FFCC00;
+  --warning-subtle: rgba(255,204,0,0.10);
+  --interactive: #5AFF5A;
+  --interactive-subtle: rgba(90,255,90,0.08);
+}

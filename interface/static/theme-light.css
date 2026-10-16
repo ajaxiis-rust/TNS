@@ -1,0 +1,24 @@
+/* Light theme — inverse of dark */
+[data-theme="light"] {
+  --black: #FFFFFF;
+  --surface: #F5F5F5;
+  --surface-raised: #FFFFFF;
+  --surface-hover: #EEEEEE;
+  --border: #E0E0E0;
+  --border-visible: #CCCCCC;
+  --border-strong: #AAAAAA;
+  --text-disabled: #999999;
+  --text-tertiary: #666666;
+  --text-secondary: #444444;
+  --text-primary: #222222;
+  --text-display: #000000;
+  --accent: #C41020;
+  --accent-subtle: rgba(196,16,32,0.08);
+  --accent-glow: rgba(196,16,32,0.15);
+  --success: #2E7D32;
+  --success-subtle: rgba(46,125,50,0.10);
+  --warning: #B8860B;
+  --warning-subtle: rgba(184,134,11,0.10);
+  --interactive: #1565C0;
+  --interactive-subtle: rgba(21,101,192,0.08);
+}

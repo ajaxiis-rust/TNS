@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrueNeverStory — Theme Builder</title>
+
+<link href="/static/fonts/fonts.css" rel="stylesheet">
+<link href="/static/theme-dark.css" rel="stylesheet">
+<link href="/static/theme-light.css" rel="stylesheet">
+<link href="/static/theme-terminal.css" rel="stylesheet">
+<link href="/static/theme-cyberpunk.css" rel="stylesheet">
+<link href="/static/theme-custom.css" rel="stylesheet">
+<link href="/static/theme.css" rel="stylesheet">
+<script src="static/server-stub.js"></script>
+  <script src="/static/theme.js"></script>
+<style>
+:root{--font-body:'Space Grotesk',system-ui,sans-serif;--font-mono:'Space Mono',monospace;--radius-md:8px;--radius-lg:12px;--radius-pill:999px;--ease-out:cubic-bezier(.22,.61,.36,1);--dur-fast:120ms;--dur-normal:200ms;--dur-slow:340ms}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;background:var(--black);overflow:hidden}
+body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:12px;color:var(--text-primary);display:flex;flex-direction:column;overflow:hidden;user-select:none}
+
+.topbar{display:flex;align-items:center;gap:12px;padding:0 20px;height:40px;border-bottom:1px solid var(--border);flex-shrink:0}
+.topbar__brand{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-disabled)}
+.topbar__brand span{color:var(--text-display);font-weight:700}
+.topbar__sep{width:1px;height:14px;background:var(--border)}
+.topbar__title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary)}
+.topbar__spacer{flex:1}
+.topbar__btn{background:transparent;border:1px solid var(--border-visible);color:var(--text-tertiary);font-family:var(--font-mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase;padding:4px 12px;cursor:pointer;border-radius:var(--radius-pill);transition:all var(--dur-fast);text-decoration:none}
+.topbar__btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+
+.builder{flex:1;display:flex;overflow:hidden}
+
+.panel-left{width:340px;min-width:340px;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.panel-left__scroll{flex:1;overflow-y:auto;padding:16px}
+.panel-left__scroll::-webkit-scrollbar{width:2px}
+.panel-left__scroll::-webkit-scrollbar-track{background:transparent}
+.panel-left__scroll::-webkit-scrollbar-thumb{background:var(--border-visible);border-radius:2px}
+
+.panel-right{flex:1;overflow-y:auto;padding:20px 24px}
+.panel-right::-webkit-scrollbar{width:2px}
+.panel-right::-webkit-scrollbar-track{background:transparent}
+.panel-right::-webkit-scrollbar-thumb{background:var(--border-visible);border-radius:2px}
+
+.section{margin-bottom:20px}
+.section__title{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-secondary);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.section__title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.presets{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.preset{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border-visible);border-radius:var(--radius-md);cursor:pointer;transition:all var(--dur-fast);background:transparent}
+.preset:hover{border-color:var(--text-secondary)}
+.preset--active{border-color:var(--text-display);background:var(--surface-raised)}
+.preset__colors{display:flex;gap:2px}
+.preset__swatch{width:16px;height:16px;border-radius:4px;border:1px solid var(--border-visible);flex-shrink:0}
+.preset__name{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-secondary)}
+
+.color-group{margin-bottom:12px}
+.color-group__title{font-family:var(--font-mono);font-size:8px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-disabled);margin-bottom:6px}
+.color-row{display:flex;align-items:center;gap:8px;padding:3px 0}
+.color-row__swatch{width:20px;height:20px;border-radius:4px;border:1px solid var(--border-visible);cursor:pointer;flex-shrink:0;position:relative}
+.color-row__swatch input[type="color"]{position:absolute;inset:-4px;width:calc(100% + 8px);height:calc(100% + 8px);border:none;cursor:pointer;opacity:0}
+.color-row__label{font-family:var(--font-mono);font-size:9px;color:var(--text-tertiary);flex:1;text-transform:uppercase;letter-spacing:.06em}
+.color-row__value{font-family:var(--font-mono);font-size:8px;color:var(--text-disabled);width:56px;text-align:right;cursor:pointer}
+.color-row__value:hover{color:var(--text-secondary)}
+
+.font-row{display:flex;align-items:center;gap:8px;padding:4px 0}
+.font-row__label{font-family:var(--font-mono);font-size:9px;color:var(--text-tertiary);width:52px;text-transform:uppercase;letter-spacing:.06em;flex-shrink:0}
+.font-row__select{flex:1;background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:5px 24px 5px 8px;font-family:var(--font-mono);font-size:9px;color:var(--text-primary);outline:none;transition:border-color var(--dur-fast);cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='M2.5 4l2.5 2.5 2.5-2.5' fill='none' stroke='%23666' stroke-width='1.2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+.font-row__select:focus{border-color:var(--text-secondary)}
+.font-row__select option{background:var(--surface);color:var(--text-primary)}
+
+.panel-left__actions{display:flex;gap:6px;padding:12px 16px;border-top:1px solid var(--border)}
+
+.btn{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;padding:7px 16px;border-radius:var(--radius-pill);cursor:pointer;transition:all var(--dur-fast);border:1px solid var(--border-visible);background:transparent;color:var(--text-secondary)}
+.btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+.btn--primary{background:var(--text-display);color:var(--black);border-color:var(--text-display)}
+.btn--primary:hover{opacity:.9}
+.btn--danger{border-color:var(--accent);color:var(--accent)}
+.btn--danger:hover{background:var(--accent);color:var(--black)}
+.btn--small{padding:4px 10px;font-size:8px}
+
+.preview__section{margin-bottom:24px}
+.preview__label{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-disabled);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.preview__label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.preview-typo{line-height:1.5}
+.preview-typo h1{font-family:var(--font-display, var(--font-mono));font-size:24px;color:var(--text-display);margin-bottom:4px;font-weight:700}
+.preview-typo h2{font-family:var(--font-display, var(--font-mono));font-size:18px;color:var(--text-primary);margin-bottom:4px;font-weight:600}
+.preview-typo h3{font-family:var(--font-body, var(--font-mono));font-size:14px;color:var(--text-secondary);margin-bottom:4px;font-weight:500}
+.preview-typo p{font-family:var(--font-body, var(--font-mono));font-size:12px;color:var(--text-secondary);line-height:1.6}
+.preview-typo code{font-family:var(--font-mono);font-size:11px;color:var(--accent);background:var(--surface);padding:2px 6px;border-radius:4px}
+
+.preview-buttons{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.preview-buttons .btn{font-size:10px;padding:8px 18px}
+.preview-buttons .btn--sm{font-size:8px;padding:5px 12px}
+
+.preview-input{max-width:360px}
+.preview-input__field{width:100%;background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:8px 12px;font-family:var(--font-mono);font-size:11px;color:var(--text-primary);outline:none;transition:border-color var(--dur-fast)}
+.preview-input__field:focus{border-color:var(--text-secondary)}
+.preview-input__field::placeholder{color:var(--text-disabled)}
+
+.preview-badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{font-family:var(--font-mono);font-size:8px;text-transform:uppercase;letter-spacing:.08em;padding:4px 10px;border-radius:var(--radius-pill);border:1px solid var(--border-visible)}
+.badge--accent{border-color:var(--accent);color:var(--accent)}
+.badge--success{border-color:var(--success);color:var(--success)}
+.badge--warning{border-color:var(--warning);color:var(--warning)}
+.badge--interactive{border-color:var(--interactive);color:var(--interactive)}
+.badge--filled{background:var(--accent);color:var(--black);border-color:var(--accent)}
+.badge--filled.badge--success{background:var(--success);border-color:var(--success)}
+.badge--filled.badge--warning{background:var(--warning);border-color:var(--warning)}
+.badge--filled.badge--interactive{background:var(--interactive);border-color:var(--interactive)}
+
+.preview-palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px}
+.palette-swatch{border-radius:var(--radius-md);padding:8px;min-height:48px;display:flex;flex-direction:column;justify-content:flex-end;border:1px solid var(--border-visible)}
+.palette-swatch__name{font-family:var(--font-mono);font-size:7px;text-transform:uppercase;letter-spacing:.06em;opacity:.8}
+.palette-swatch__hex{font-family:var(--font-mono);font-size:8px;opacity:.6}
+
+.preview-narrative{background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-lg);padding:16px 20px;max-width:480px}
+.preview-narrative__speaker{font-family:var(--font-display, var(--font-mono));font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin-bottom:4px}
+.preview-narrative__text{font-family:var(--font-body, var(--font-mono));font-size:13px;color:var(--text-primary);line-height:1.7}
+.preview-narrative__choice{margin-top:8px;padding:6px 12px;border:1px solid var(--border-visible);border-radius:var(--radius-md);font-family:var(--font-mono);font-size:10px;color:var(--interactive);cursor:pointer;transition:all var(--dur-fast);display:inline-block}
+.preview-narrative__choice:hover{border-color:var(--interactive);background:var(--surface-hover)}
+
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 20px;border-radius:var(--radius-md);font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;z-index:100;animation:toastIn 200ms var(--ease-out)}
+.toast--ok{background:var(--success);color:var(--black)}
+.toast--err{background:var(--accent);color:var(--black)}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+@media(max-width:768px){
+  .builder{flex-direction:column}
+  .panel-left{width:100%;min-width:0;border-right:none;border-bottom:1px solid var(--border);max-height:50vh}
+  .panel-right{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar__brand"><span>TrueNeverStory</span></div>
+  <div class="topbar__sep"></div>
+  <div class="topbar__title">Theme Builder</div>
+  <div class="topbar__spacer"></div>
+  <button class="topbar__btn" onclick="importTheme()">IMPORT</button>
+  <button class="topbar__btn" onclick="exportTheme()">EXPORT</button>
+  <button class="topbar__btn btn--primary" onclick="applyTheme()" style="background:var(--text-display);color:var(--black);border-color:var(--text-display)">APPLY</button>
+  <a href="/settings" class="topbar__btn">SETTINGS</a>
+  <a href="/" class="topbar__btn">BACK TO CHAT</a>
+</div>
+
+<div class="builder">
+  <div class="panel-left">
+    <div class="panel-left__scroll">
+
+      <div class="section">
+        <div class="section__title">Presets</div>
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <div class="section">
+        <div class="section__title">Colors</div>
+        <div class="color-group">
+          <div class="color-group__title">Backgrounds</div>
+          <div id="colors-bg"></div>
+        </div>
+        <div class="color-group">
+          <div class="color-group__title">Borders</div>
+          <div id="colors-border"></div>
+        </div>
+        <div class="color-group">
+          <div class="color-group__title">Text</div>
+          <div id="colors-text"></div>
+        </div>
+        <div class="color-group">
+          <div class="color-group__title">Accents</div>
+          <div id="colors-accent"></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section__title">Fonts</div>
+        <div id="font-selectors"></div>
+      </div>
+
+    </div>
+    <div class="panel-left__actions">
+      <button class="btn btn--danger btn--small" onclick="resetColors()">Reset</button>
+      <button class="btn btn--small" onclick="clearColors()">Clear</button>
+      <div style="flex:1"></div>
+      <button class="btn btn--primary btn--small" onclick="applyTheme()">Apply</button>
+    </div>
+  </div>
+
+  <div class="panel-right" id="preview">
+
+    <div class="preview__section">
+      <div class="preview__label">Typography</div>
+      <div class="preview-typo" id="preview-typo">
+        <h1>Display Heading</h1>
+        <h2>Secondary Heading</h2>
+        <h3>Tertiary Heading</h3>
+        <p>The narrative unfolds in the space between choices. Each decision ripples through the world, shaping reality itself. <code>inline_code</code> renders in mono.</p>
+      </div>
+    </div>
+
+    <div class="preview__section">
+      <div class="preview__label">Buttons</div>
+      <div class="preview-buttons">
+        <button class="btn">Default</button>
+        <button class="btn btn--primary">Primary</button>
+        <button class="btn btn--danger">Danger</button>
+        <button class="btn btn--small">Small</button>
+      </div>
+    </div>
+
+    <div class="preview__section">
+      <div class="preview__label">Input</div>
+      <div class="preview-input">
+        <input class="preview-input__field" type="text" placeholder="Type something...">
+      </div>
+    </div>
+
+    <div class="preview__section">
+      <div class="preview__label">Badges</div>
+      <div class="preview-badges">
+        <span class="badge badge--accent">Accent</span>
+        <span class="badge badge--success">Success</span>
+        <span class="badge badge--warning">Warning</span>
+        <span class="badge badge--interactive">Interactive</span>
+        <span class="badge badge--filled">Filled</span>
+        <span class="badge badge--filled badge--success">Filled Success</span>
+      </div>
+    </div>
+
+    <div class="preview__section">
+      <div class="preview__label">Color Palette</div>
+      <div class="preview-palette" id="preview-palette"></div>
+    </div>
+
+    <div class="preview__section">
+      <div class="preview__label">Narrative Sample</div>
+      <div class="preview-narrative">
+        <div class="preview-narrative__speaker">The Narrator</div>
+        <div class="preview-narrative__text">A cold wind sweeps through the abandoned station. The flickering light above casts long shadows across cracked tiles. You hear footsteps echoing somewhere behind you.</div>
+        <div class="preview-narrative__choice">&gt; Investigate the sound</div>
+        <div class="preview-narrative__choice">&gt; Continue forward</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<input type="file" id="importInput" accept=".json" style="display:none" onchange="onImportFile(event)">
+
+<script src="/static/theme-builder.js"></script>
+</body>
+</html>

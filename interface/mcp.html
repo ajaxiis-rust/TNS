@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrueNeverStory — MCP Console</title>
+<link href="/static/fonts/fonts.css" rel="stylesheet">
+<link href="/static/theme-dark.css" rel="stylesheet">
+<link href="/static/theme-light.css" rel="stylesheet">
+<link href="/static/theme-terminal.css" rel="stylesheet">
+<link href="/static/theme-cyberpunk.css" rel="stylesheet">
+<link href="/static/theme-custom.css" rel="stylesheet">
+<link href="/static/theme.css" rel="stylesheet">
+<script src="static/server-stub.js"></script>
+  <script src="/static/theme.js"></script>
+<style>
+:root{--font-body:'Space Grotesk',system-ui,sans-serif;--font-mono:'Space Mono',monospace;--radius-md:8px;--radius-lg:12px;--radius-pill:999px;--ease-out:cubic-bezier(.22,.61,.36,1);--dur-fast:120ms;--dur-normal:200ms;--dur-slow:340ms}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;background:var(--black);overflow:hidden}
+body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:14px;color:var(--text-primary);display:flex;flex-direction:column;overflow:hidden;user-select:none}
+
+.topbar{display:flex;align-items:center;gap:12px;padding:0 20px;height:48px;border-bottom:1px solid var(--border);flex-shrink:0}
+.topbar__brand{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-disabled)}
+.topbar__brand span{color:var(--text-display);font-weight:700}
+.topbar__sep{width:1px;height:18px;background:var(--border)}
+.topbar__title{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary)}
+.topbar__spacer{flex:1}
+.topbar__btn{background:transparent;border:1px solid var(--border-visible);color:var(--text-tertiary);font-family:var(--font-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:6px 16px;cursor:pointer;border-radius:var(--radius-pill);transition:all var(--dur-fast);text-decoration:none;display:inline-flex;align-items:center}
+.topbar__btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+
+.tabs{display:flex;gap:4px;padding:8px 20px;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.tab{background:transparent;border:1px solid transparent;color:var(--text-tertiary);font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:6px 16px;cursor:pointer;border-radius:var(--radius-pill);transition:all var(--dur-fast);white-space:nowrap}
+.tab:hover{color:var(--text-secondary);border-color:var(--border)}
+.tab.active{color:var(--text-display);border-color:var(--accent);background:rgba(var(--accent-rgb),.1)}
+
+.content{flex:1;overflow-y:auto;padding:20px 24px}
+.content::-webkit-scrollbar{width:2px}
+.content::-webkit-scrollbar-track{background:transparent}
+.content::-webkit-scrollbar-thumb{background:var(--border-visible);border-radius:2px}
+
+.panel{display:none}
+.panel.active{display:block}
+
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:4px}
+.stat-card__value{font-family:var(--font-body);font-size:28px;font-weight:700;color:var(--text-display);line-height:1}
+.stat-card__label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-disabled)}
+
+.section{margin-bottom:20px}
+.section__title{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-secondary);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.section__title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.btn{background:var(--surface-raised);border:1px solid var(--border-visible);color:var(--text-primary);font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:8px 20px;cursor:pointer;border-radius:var(--radius-md);transition:all var(--dur-fast)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn--danger{border-color:var(--error);color:var(--error)}
+.btn--success{border-color:var(--success);color:var(--success)}
+
+.input{background:var(--surface);border:1px solid var(--border);color:var(--text-primary);font-family:var(--font-mono);font-size:13px;padding:8px 12px;border-radius:var(--radius-md);width:100%;outline:none;transition:border-color var(--dur-fast)}
+.input:focus{border-color:var(--accent)}
+.input::placeholder{color:var(--text-disabled)}
+
+.search-row{display:flex;gap:8px;margin-bottom:12px}
+.search-row .input{flex:1}
+
+.result-table{width:100%;border-collapse:collapse;font-size:13px}
+.result-table th{text-align:left;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text-secondary);font-size:11px;text-transform:uppercase;letter-spacing:.1em}
+.result-table td{padding:8px 12px;border-bottom:1px solid var(--border-light);color:var(--text-primary)}
+.result-table tr:hover td{background:var(--surface-raised)}
+
+.toast-container{position:fixed;top:60px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 16px;font-size:13px;color:var(--text-primary);animation:slideIn var(--dur-normal) var(--ease-out);min-width:280px;max-width:400px}
+.toast--success{border-color:var(--success)}
+.toast--error{border-color:var(--error)}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+.empty{color:var(--text-disabled);font-style:italic;padding:20px;text-align:center}
+
+.result-box{margin-top:8px;padding:12px;background:var(--surface-raised);border-radius:var(--radius-md);font-size:13px;white-space:pre-wrap;max-height:300px;overflow-y:auto}
+
+.progress-bar-container{display:none;margin:12px 0}
+.progress-bar-container.active{display:block}
+.progress-bar-track{background:var(--surface);border-radius:var(--radius-pill);height:6px;overflow:hidden}
+.progress-bar-fill{background:var(--accent);height:100%;border-radius:var(--radius-pill);transition:width 340ms var(--ease-out);width:0%}
+.progress-bar-label{font-size:11px;color:var(--text-disabled);margin-top:4px}
+
+.pipeline-grid{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:12px;align-items:center;margin:16px 0}
+.pipeline-stage{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;position:relative}
+.pipeline-stage--active{border-color:var(--success)}
+.pipeline-stage--empty{border-color:var(--border);opacity:.6}
+.pipeline-stage__name{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-secondary);margin-bottom:6px}
+.pipeline-stage__value{font-family:var(--font-body);font-size:20px;font-weight:700;color:var(--text-display);line-height:1}
+.pipeline-stage__detail{font-size:11px;color:var(--text-disabled);margin-top:4px}
+.pipeline-arrow{color:var(--text-disabled);font-size:18px;text-align:center}
+.pipeline-arrow--active{color:var(--accent)}
+.pipeline-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--text-disabled);text-align:center;margin:8px 0 4px;grid-column:1/-1}
+.pipeline-pass{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}
+.pipeline-pass__item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;text-align:center}
+.pipeline-pass__name{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-secondary)}
+.pipeline-pass__desc{font-size:11px;color:var(--text-disabled);margin-top:2px}
+.pipeline-flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
+.phase-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;min-width:170px;flex:1;max-width:220px}
+.phase-card__header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.phase-card__name{font-size:12px;font-weight:600;color:var(--text-display)}
+.phase-card__status{font-size:10px;padding:2px 6px;border-radius:var(--radius-sm);background:var(--surface);color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em}
+.phase-card__status.running{background:var(--accent);color:#fff}
+.phase-card__status.done{background:var(--success);color:#fff}
+.phase-card__status.error{background:var(--error);color:#fff}
+.phase-card__desc{font-size:11px;color:var(--text-disabled);margin-bottom:8px;line-height:1.4}
+.phase-card__data{font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;min-height:18px}
+.phase-card__btn{width:100%;font-size:12px;position:relative;overflow:hidden;background:linear-gradient(to right,var(--accent) var(--phase-progress,0%),var(--surface-raised) var(--phase-progress,0%));transition:background .3s ease}
+.phase-card__btn[disabled]{opacity:.85;cursor:wait}
+.phase-arrow{color:var(--text-disabled);font-size:16px;flex-shrink:0}
+.phase-card--wide{min-width:240px;max-width:280px}
+.phase-card__stats{font-size:11px;color:var(--text-secondary);margin-bottom:8px;line-height:1.6;min-height:0}
+.phase-card__stats div{display:flex;justify-content:space-between}
+.phase-card__stats span:last-child{color:var(--text-display);font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar__brand">TrueNeverStory &mdash; <span>MCP Console</span></div>
+  <div class="topbar__sep"></div>
+  <div class="topbar__title" data-i18n="mcp.title">Database Management</div>
+  <div class="topbar__spacer"></div>
+  <a href="/" class="topbar__btn" data-i18n="mcp.back">&larr; Back</a>
+</div>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="dashboard" data-i18n="mcp.tab.dashboard">Dashboard</button>
+  <button class="tab" data-tab="bible" data-i18n="mcp.tab.bible">Bible</button>
+  <button class="tab" data-tab="gutenberg" data-i18n="mcp.tab.gutenberg">Gutenberg</button>
+  <button class="tab" data-tab="wikipedia" data-i18n="mcp.tab.wikipedia">Wikipedia</button>
+  <button class="tab" data-tab="literary" data-i18n="mcp.tab.literary">Literary</button>
+  <button class="tab" data-tab="economics" data-i18n="mcp.tab.economics">Economics</button>
+  <button class="tab" data-tab="pipeline" data-i18n="mcp.tab.pipeline">Pipeline</button>
+  <button class="tab" data-tab="system" data-i18n="mcp.tab.system">System</button>
+</div>
+
+<div class="content">
+  <!-- Dashboard -->
+  <div class="panel active" id="panel-dashboard">
+    <div class="stats-grid" id="dashboard-stats"></div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.quickActions">Quick Actions</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="compactAll()" data-i18n="mcp.compactAll" data-i18n-title="mcp.compactAll.title">Compact All</button>
+        <button class="btn" onclick="rebuildIndex()" data-i18n="mcp.rebuildIndex" data-i18n-title="mcp.rebuildIndex.title">Rebuild Index</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bible -->
+  <div class="panel" id="panel-bible">
+    <div class="stats-grid" id="bible-stats"></div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.bible.search">Search Verses</div>
+      <div class="search-row">
+        <input class="input" id="bible-q" placeholder="Search verses..." data-i18n-placeholder="mcp.bible.searchPlaceholder">
+        <button class="btn" onclick="searchBible()" data-i18n="mcp.search" data-i18n-title="mcp.search.title">Search</button>
+      </div>
+      <div id="bible-results"></div>
+    </div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.bible.characters">Characters</div>
+      <div class="search-row">
+        <input class="input" id="bible-char-q" placeholder="Search characters..." data-i18n-placeholder="mcp.bible.charPlaceholder">
+        <button class="btn" onclick="searchBibleChars()" data-i18n="mcp.search" data-i18n-title="mcp.search.title">Search</button>
+      </div>
+      <div id="bible-char-results"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn--success" onclick="runAction('bible/bootstrap')" data-i18n="mcp.bible.bootstrap" data-i18n-title="mcp.bible.bootstrap.title">Bootstrap</button>
+      <button class="btn" onclick="runAction('bible/compact')" data-i18n="mcp.bible.compact" data-i18n-title="mcp.bible.compact.title">Compact</button>
+    </div>
+  </div>
+
+  <!-- Gutenberg (merged with Catalog) -->
+  <div class="panel" id="panel-gutenberg">
+    <div class="stats-grid" id="gutenberg-stats"></div>
+    <div class="stats-grid" id="catalog-stats"></div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.catalog.build">Build Catalog</div>
+      <div class="search-row">
+        <input class="input" id="catalog-authors" data-i18n-placeholder="mcp.catalog.authorsPlaceholder" placeholder="Authors (comma-separated): Mark Twain, Jack London...">
+        <input class="input" id="catalog-topic" data-i18n-placeholder="mcp.catalog.topicPlaceholder" placeholder="Topic (optional): adventure, romance..." style="max-width:200px">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn btn--success" onclick="buildCatalog()" data-i18n="mcp.catalog.build" data-i18n-title="mcp.catalog.build.title">Build Catalog</button>
+        <button class="btn" onclick="buildCatalogPopular()" data-i18n="mcp.catalog.popular500" data-i18n-title="mcp.catalog.popular500.title">Popular 500</button>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.catalog.filter">Search & Filter</div>
+      <div class="search-row">
+        <input class="input" id="catalog-q" data-i18n-placeholder="mcp.catalog.searchPlaceholder" placeholder="Search by title, author, subjects...">
+        <button class="btn" onclick="searchCatalog()" data-i18n="mcp.catalog.searchBtn" data-i18n-title="mcp.catalog.searchBtn.title">Search</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <input class="input" id="catalog-filter-author" data-i18n-placeholder="mcp.catalog.authorPlaceholder" placeholder="Author" style="max-width:200px">
+        <input class="input" id="catalog-filter-year-from" data-i18n-placeholder="mcp.catalog.yearFromPlaceholder" placeholder="Year from" style="max-width:120px" type="number">
+        <input class="input" id="catalog-filter-year-to" data-i18n-placeholder="mcp.catalog.yearToPlaceholder" placeholder="Year to" style="max-width:120px" type="number">
+        <input class="input" id="catalog-filter-min-dl" data-i18n-placeholder="mcp.catalog.minDlPlaceholder" placeholder="Min downloads" style="max-width:140px" type="number">
+        <button class="btn" onclick="filterCatalog()" data-i18n="mcp.catalog.apply" data-i18n-title="mcp.catalog.apply.title">Apply</button>
+        <button class="btn" onclick="clearCatalogFilter()" data-i18n="mcp.catalog.clear" data-i18n-title="mcp.catalog.clear.title">Clear</button>
+      </div>
+    </div>
+    <div class="section">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button class="btn" onclick="selectAllCatalog()" data-i18n="mcp.catalog.selectAll" data-i18n-title="mcp.catalog.selectAll.title">Select All</button>
+        <button class="btn" onclick="deselectAllCatalog()" data-i18n="mcp.catalog.deselectAll" data-i18n-title="mcp.catalog.deselectAll.title">Deselect All</button>
+        <button class="btn btn--success" onclick="downloadSelectedCatalog()" data-i18n="mcp.catalog.downloadSelected" data-i18n-title="mcp.catalog.downloadSelected.title">Download Selected</button>
+        <span id="catalog-selected-count" style="color:var(--text-secondary);font-size:12px;display:flex;align-items:center"></span>
+      </div>
+      <div id="catalog-results"></div>
+      <div id="catalog-pagination" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:12px"></div>
+    </div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.gutenberg.search">Search Styles</div>
+      <div class="search-row">
+        <input class="input" id="gutenberg-q" placeholder="Search styles..." data-i18n-placeholder="mcp.gutenberg.searchPlaceholder">
+        <button class="btn" onclick="searchGutenberg()" data-i18n="mcp.search" data-i18n-title="mcp.search.title">Search</button>
+      </div>
+      <div id="gutenberg-results"></div>
+    </div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.gutenberg.delexify">Delexify Text</div>
+      <textarea class="input" id="gutenberg-delex" rows="4" placeholder="Paste text to delexify..." data-i18n-placeholder="mcp.gutenberg.delexifyPlaceholder" style="resize:vertical"></textarea>
+      <button class="btn" onclick="delexifyGutenberg()" style="margin-top:8px" data-i18n="mcp.gutenberg.delexifyBtn" data-i18n-title="mcp.gutenberg.delexifyBtn.title">Delexify</button>
+      <div id="gutenberg-delex-result"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="runAction('gutenberg/download')" data-i18n="mcp.gutenberg.download" data-i18n-title="mcp.gutenberg.download.title">Download Corpus</button>
+      <button class="btn btn--success" onclick="runAction('gutenberg/import')" data-i18n="mcp.gutenberg.import" data-i18n-title="mcp.gutenberg.import.title">Import to DB</button>
+      <button class="btn" onclick="runAction('gutenberg/compact')" data-i18n="mcp.gutenberg.compact" data-i18n-title="mcp.gutenberg.compact.title">Compact</button>
+    </div>
+  </div>
+
+  <!-- Wikipedia -->
+  <div class="panel" id="panel-wikipedia">
+    <div class="stats-grid" id="wikipedia-stats"></div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.wikipedia.search">Search Articles</div>
+      <div class="search-row">
+        <input class="input" id="wikipedia-q" placeholder="Search Wikipedia..." data-i18n-placeholder="mcp.wikipedia.searchPlaceholder">
+        <button class="btn" onclick="searchWikipedia()" data-i18n="mcp.search" data-i18n-title="mcp.search.title">Search</button>
+      </div>
+      <div id="wikipedia-results"></div>
+    </div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.wikipedia.verify">Fact Verification</div>
+      <div class="search-row">
+        <input class="input" id="wikipedia-claim" placeholder="Enter a claim to verify..." data-i18n-placeholder="mcp.wikipedia.claimPlaceholder">
+        <button class="btn" onclick="verifyWikipedia()" data-i18n="mcp.wikipedia.verifyBtn" data-i18n-title="mcp.wikipedia.verifyBtn.title">Verify</button>
+      </div>
+      <div id="wikipedia-verify-result"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="runAction('wikipedia/download')" data-i18n="mcp.wikipedia.download" data-i18n-title="mcp.wikipedia.download.title">Download</button>
+      <button class="btn" onclick="runAction('wikipedia/convert')" data-i18n="mcp.wikipedia.convert" data-i18n-title="mcp.wikipedia.convert.title">Convert</button>
+      <button class="btn" onclick="runAction('wikipedia/compact')" data-i18n="mcp.wikipedia.compact" data-i18n-title="mcp.wikipedia.compact.title">Compact</button>
+    </div>
+  </div>
+
+  <!-- Literary -->
+  <div class="panel" id="panel-literary">
+    <div class="stats-grid" id="literary-stats"></div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.literary.scenes">Scene Templates</div>
+      <div class="search-row">
+        <input class="input" id="literary-scenes-q" placeholder="Search scene templates..." data-i18n-placeholder="mcp.literary.scenesPlaceholder">
+        <button class="btn" onclick="searchLiteraryScenes()" data-i18n="mcp.search" data-i18n-title="mcp.search.title">Search</button>
+      </div>
+      <div id="literary-scenes-results"></div>
+    </div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.literary.styles">Style Patterns</div>
+      <div class="search-row">
+        <input class="input" id="literary-styles-q" placeholder="Search style patterns..." data-i18n-placeholder="mcp.literary.stylesPlaceholder">
+        <button class="btn" onclick="searchLiteraryStyles()" data-i18n="mcp.search" data-i18n-title="mcp.search.title">Search</button>
+      </div>
+      <div id="literary-styles-results"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="runAction('literary/compact')" data-i18n="mcp.literary.compact" data-i18n-title="mcp.literary.compact.title">Compact</button>
+    </div>
+  </div>
+
+  <!-- Economics -->
+  <div class="panel" id="panel-economics">
+    <div class="stats-grid" id="economics-stats"></div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.economics.phase">Current Phase</div>
+      <div id="economics-phase" class="empty">Loading...</div>
+    </div>
+    <div class="section">
+      <div class="section__title">Jubilee</div>
+      <div id="economics-jubilee" class="empty">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Pipeline -->
+  <div class="panel" id="panel-pipeline">
+    <!-- Gutenberg Pipeline -->
+    <div class="section">
+      <div class="section__title">Gutenberg Pipeline</div>
+      <div class="pipeline-flow" id="pipeline-gutenberg">
+        <div class="phase-card" id="phase-download">
+          <div class="phase-card__header">
+            <span class="phase-card__name">1. Download</span>
+            <span class="phase-card__status" id="phase-download-status">idle</span>
+          </div>
+          <div class="phase-card__desc">Download texts from Project Gutenberg</div>
+          <div class="phase-card__data" id="phase-download-data">—</div>
+          <button class="btn phase-card__btn" id="phase-download-btn" onclick="runPhase('gutenberg/download','download')">Run</button>
+        </div>
+        <div class="phase-arrow" id="arrow-download">▶</div>
+        <div class="phase-card" id="phase-import">
+          <div class="phase-card__header">
+            <span class="phase-card__name">2. Import</span>
+            <span class="phase-card__status" id="phase-import-status">idle</span>
+          </div>
+          <div class="phase-card__desc">Import texts → classics.db</div>
+          <div class="phase-card__data" id="phase-import-data">—</div>
+          <button class="btn phase-card__btn" id="phase-import-btn" onclick="runPhase('gutenberg/import','import')">Run</button>
+        </div>
+        <div class="phase-arrow" id="arrow-import">▶</div>
+        <div class="phase-card" id="phase-v1">
+          <div class="phase-card__header">
+            <span class="phase-card__name">3. v1 Compile</span>
+            <span class="phase-card__status" id="phase-v1-status">idle</span>
+          </div>
+          <div class="phase-card__desc">4-pass compiler → classics-compiled.db</div>
+          <div class="phase-card__data" id="phase-v1-data">—</div>
+          <button class="btn phase-card__btn" id="phase-v1-btn" onclick="runPhase('gutenberg/compile-v1','v1')">Run</button>
+        </div>
+        <div class="phase-arrow" id="arrow-v1">▶</div>
+        <div class="phase-card phase-card--wide" id="phase-v2">
+          <div class="phase-card__header">
+            <span class="phase-card__name">4. v2 LLM</span>
+            <span class="phase-card__status" id="phase-v2-status">idle</span>
+          </div>
+          <div class="phase-card__desc">LLM extraction → literary.db</div>
+          <div class="phase-card__data" id="phase-v2-data">—</div>
+          <div class="phase-card__stats" id="phase-v2-stats"></div>
+          <button class="btn phase-card__btn" id="phase-v2-btn" onclick="runPhase('gutenberg/compile-v2','v2')">Run</button>
+        </div>
+        <div class="phase-arrow" id="arrow-v2">▶</div>
+        <div class="phase-card" id="phase-calibrate">
+          <div class="phase-card__header">
+            <span class="phase-card__name">5. Calibrate</span>
+            <span class="phase-card__status" id="phase-calibrate-status">idle</span>
+          </div>
+          <div class="phase-card__desc">Quality score calibration</div>
+          <div class="phase-card__data" id="phase-calibrate-data">—</div>
+          <button class="btn phase-card__btn" id="phase-calibrate-btn" onclick="runPhase('gutenberg/calibrate','calibrate')">Run</button>
+        </div>
+      </div>
+    </div>
+    <!-- Bible (standalone) -->
+    <div class="section">
+      <div class="section__title">Bible</div>
+      <div class="pipeline-flow">
+        <div class="phase-card" id="phase-bible">
+          <div class="phase-card__header">
+            <span class="phase-card__name">Bootstrap</span>
+            <span class="phase-card__status" id="phase-bible-status">idle</span>
+          </div>
+          <div class="phase-card__desc">Parse Bible → bible-normalized.db</div>
+          <div class="phase-card__data" id="phase-bible-data">—</div>
+          <button class="btn phase-card__btn" id="phase-bible-btn" onclick="runPhase('bible/bootstrap','bible')">Run</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System -->
+  <div class="panel" id="panel-system">
+    <div class="stats-grid" id="system-stats"></div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.system.logs">Operation Logs</div>
+      <div id="system-logs" style="max-height:300px;overflow-y:auto;font-size:12px"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" onclick="runAction('rebuild-index')" data-i18n="mcp.system.rebuildIndex" data-i18n-title="mcp.system.rebuildIndex.title">Rebuild Index</button>
+      <button class="btn btn--danger" onclick="runAction('clean-orphans')" data-i18n="mcp.system.cleanOrphans" data-i18n-title="mcp.system.cleanOrphans.title">Clean Orphans</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<div class="progress-bar-container" id="progress-bar">
+  <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-fill"></div></div>
+  <div class="progress-bar-label" id="progress-label"></div>
+</div>
+
+<script>
+// ── i18n ──────────────────────────────────────────────────────
+const I18N = {
+  en: {
+    "mcp.title": "Database Management", "mcp.back": "\u2190 Back",
+    "mcp.tab.dashboard": "Dashboard", "mcp.tab.bible": "Bible",
+    "mcp.tab.gutenberg": "Gutenberg", "mcp.tab.wikipedia": "Wikipedia",
+    "mcp.tab.literary": "Literary", "mcp.tab.economics": "Economics",
+    "mcp.tab.pipeline": "Pipeline", "mcp.tab.system": "System",
+    "mcp.pipeline.title": "Data Pipeline", "mcp.pipeline.actions": "Pipeline Actions",
+    "mcp.pipeline.import": "Import Texts", "mcp.pipeline.compile": "Compile All",
+    "mcp.pipeline.process": "Process Gutenberg",
+    "mcp.pipeline.sources": "Sources", "mcp.pipeline.importStage": "Import",
+    "mcp.pipeline.passes": "4-Pass Compiler", "mcp.pipeline.outputs": "Output Databases",
+    "mcp.pipeline.import.title": "Import downloaded texts into classics.db",
+    "mcp.pipeline.compile.title": "Run 4-pass compiler on all imported texts",
+    "mcp.pipeline.process.title": "Run full Gutenberg processing pipeline (Phase A + B)",
+    "mcp.quickActions": "Quick Actions", "mcp.compactAll": "Compact All",
+    "mcp.rebuildIndex": "Rebuild Index", "mcp.search": "Search",
+    "mcp.bible.search": "Search Verses", "mcp.bible.searchPlaceholder": "Search verses...",
+    "mcp.bible.characters": "Characters", "mcp.bible.charPlaceholder": "Search characters...",
+    "mcp.bible.bootstrap": "Bootstrap", "mcp.bible.compact": "Compact",
+    "mcp.gutenberg.search": "Search Styles", "mcp.gutenberg.searchPlaceholder": "Search styles...",
+    "mcp.gutenberg.delexify": "Delexify Text", "mcp.gutenberg.delexifyPlaceholder": "Paste text to delexify...",
+    "mcp.gutenberg.delexifyBtn": "Delexify", "mcp.gutenberg.download": "Download Corpus",
+    "mcp.gutenberg.import": "Import to DB", "mcp.gutenberg.convert": "Convert Parquet\u2192SQLite", "mcp.gutenberg.compact": "Compact",
+    "mcp.wikipedia.search": "Search Articles", "mcp.wikipedia.searchPlaceholder": "Search Wikipedia...",
+    "mcp.wikipedia.verify": "Fact Verification", "mcp.wikipedia.claimPlaceholder": "Enter a claim to verify...",
+    "mcp.wikipedia.verifyBtn": "Verify", "mcp.wikipedia.download": "Download",
+    "mcp.wikipedia.convert": "Convert", "mcp.wikipedia.compact": "Compact",
+    "mcp.literary.scenes": "Scene Templates", "mcp.literary.scenesPlaceholder": "Search scene templates...",
+    "mcp.literary.styles": "Style Patterns", "mcp.literary.stylesPlaceholder": "Search style patterns...",
+    "mcp.literary.compact": "Compact",
+    "mcp.economics.phase": "Current Phase", "mcp.economics.generateBtn": "Generate",
+    "mcp.economics.dilemma": "Generate Dilemma",
+    "mcp.system.logs": "Operation Logs", "mcp.system.rebuildIndex": "Rebuild Index",
+    "mcp.system.cleanOrphans": "Clean Orphans",
+    "mcp.catalog.build": "Build Catalog", "mcp.catalog.filter": "Search & Filter",
+    "mcp.catalog.selectAll": "Select All", "mcp.catalog.deselectAll": "Deselect All",
+    "mcp.catalog.downloadSelected": "Download Selected", "mcp.catalog.popular500": "Popular 500",
+    "mcp.catalog.apply": "Apply", "mcp.catalog.clear": "Clear",
+    "mcp.catalog.prev": "Prev", "mcp.catalog.next": "Next",
+    "mcp.catalog.empty": "No books in catalog", "mcp.catalog.page": "Page",
+    "mcp.catalog.colTitle": "Title", "mcp.catalog.colAuthor": "Author",
+    "mcp.catalog.colSubjects": "Subjects", "mcp.catalog.colDownloads": "Downloads",
+    "mcp.catalog.colWords": "Words", "mcp.catalog.colStatus": "Status",
+    "mcp.catalog.authorsPlaceholder": "Authors (comma-separated): Mark Twain, Jack London...",
+    "mcp.catalog.topicPlaceholder": "Topic (optional): adventure, romance...",
+    "mcp.catalog.searchPlaceholder": "Search by title, author, subjects...",
+    "mcp.catalog.authorPlaceholder": "Author",
+    "mcp.catalog.yearFromPlaceholder": "Year from",
+    "mcp.catalog.yearToPlaceholder": "Year to",
+    "mcp.catalog.minDlPlaceholder": "Min downloads",
+    "mcp.catalog.searchBtn": "Search",
+    "mcp.compactAll.title": "Compact all databases (Bible, Gutenberg, Wikipedia, Literary) in one click",
+    "mcp.rebuildIndex.title": "Rebuild full-text search indexes for all databases",
+    "mcp.search.title": "Search in the current section",
+    "mcp.bible.bootstrap.title": "Load Bible verses from source into the database (first-time setup)",
+    "mcp.bible.compact.title": "Shrink the Bible database by removing unused space",
+    "mcp.gutenberg.delexifyBtn.title": "Replace proper nouns (names, places) with placeholders for anonymous style analysis",
+    "mcp.gutenberg.download.title": "Download Project Gutenberg texts to data/gutenberg/texts/ (skips already downloaded)",
+    "mcp.gutenberg.import.title": "Import downloaded text files into classics.db for processing (idempotent, skips already imported)",
+    "mcp.gutenberg.convert.title": "Convert Gutenberg Parquet files to SQLite format",
+    "mcp.gutenberg.compact.title": "Shrink the Gutenberg database by removing unused space",
+    "mcp.catalog.popular500.title": "Fetch metadata for top 500 most-downloaded books from Gutendex API (idempotent)",
+    "mcp.catalog.build.title": "Fetch book metadata by author or topic from Gutendex API into local catalog",
+    "mcp.catalog.searchBtn.title": "Search catalog by title, author, or subjects",
+    "mcp.catalog.apply.title": "Apply filters (author, year range, min downloads) to the catalog view",
+    "mcp.catalog.clear.title": "Clear all active filters and show all books",
+    "mcp.catalog.selectAll.title": "Select all books on the current page for download",
+    "mcp.catalog.deselectAll.title": "Deselect all books on the current page",
+    "mcp.catalog.downloadSelected.title": "Download plain text of all selected books from Project Gutenberg (idempotent, skips already downloaded)",
+    "mcp.wikipedia.download.title": "Download Wikipedia dump to local storage",
+    "mcp.wikipedia.convert.title": "Convert Wikipedia dump to SQLite for fast search",
+    "mcp.wikipedia.compact.title": "Shrink the Wikipedia database by removing unused space",
+    "mcp.wikipedia.verifyBtn.title": "Verify a factual claim against Wikipedia articles",
+    "mcp.literary.compile.title": "Run 4-pass compiler (Dramaturgic, Stylistic, Emotional, Metadata) on classics (idempotent, skips already compiled)",
+    "mcp.literary.compact.title": "Shrink the Literary compiler database by removing unused space",
+    "mcp.system.rebuildIndex.title": "Rebuild all full-text search indexes from scratch",
+    "mcp.system.cleanOrphans.title": "Remove database records that reference deleted files",
+  },
+  ru: {
+    "mcp.title": "\u0423\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0431\u0430\u0437\u0430\u043c\u0438 \u0434\u0430\u043d\u043d\u044b\u0445", "mcp.back": "\u2190 \u041d\u0430\u0437\u0430\u0434",
+    "mcp.tab.dashboard": "\u041e\u0431\u0437\u043e\u0440", "mcp.tab.bible": "\u0411\u0438\u0431\u043b\u0438\u044f",
+    "mcp.tab.gutenberg": "\u0413\u0443\u0442\u0435\u043d\u0431\u0435\u0440\u0433", "mcp.tab.wikipedia": "\u0412\u0438\u043a\u0438\u043f\u0435\u0434\u0438\u044f",
+    "mcp.tab.literary": "\u041b\u0438\u0442\u0435\u0440\u0430\u0442\u0443\u0440\u0430", "mcp.tab.economics": "\u042d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430",
+    "mcp.tab.pipeline": "\u041a\u043e\u043d\u0432\u0435\u0439\u0435\u0440", "mcp.tab.system": "\u0421\u0438\u0441\u0442\u0435\u043c\u0430",
+    "mcp.pipeline.title": "\u041a\u043e\u043d\u0432\u0435\u0439\u0435\u0440 \u0434\u0430\u043d\u043d\u044b\u0445", "mcp.pipeline.actions": "\u0414\u0435\u0439\u0441\u0442\u0432\u0438\u044f",
+    "mcp.pipeline.import": "\u0418\u043c\u043f\u043e\u0440\u0442 \u0442\u0435\u043a\u0441\u0442\u043e\u0432", "mcp.pipeline.compile": "\u041a\u043e\u043c\u043f\u0438\u043b\u044f\u0446\u0438\u044f",
+    "mcp.pipeline.process": "\u041e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0430",
+    "mcp.pipeline.sources": "\u0418\u0441\u0442\u043e\u0447\u043d\u0438\u043a\u0438", "mcp.pipeline.importStage": "\u0418\u043c\u043f\u043e\u0440\u0442",
+    "mcp.pipeline.passes": "4-\u0445\u043e\u0434\u043e\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0442\u043e\u0440", "mcp.pipeline.outputs": "\u0412\u044b\u0445\u043e\u0434\u043d\u044b\u0435 \u0411\u0414",
+    "mcp.pipeline.import.title": "\u0418\u043c\u043f\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u043a\u0430\u0447\u0430\u043d\u043d\u044b\u0435 \u0442\u0435\u043a\u0441\u0442\u044b \u0432 classics.db",
+    "mcp.pipeline.compile.title": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c 4-\u0445\u043e\u0434\u043e\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0442\u043e\u0440",
+    "mcp.pipeline.process.title": "\u041f\u043e\u043b\u043d\u0430\u044f \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0430 Gutenberg (Phase A + B)",
+    "mcp.quickActions": "\u0411\u044b\u0441\u0442\u0440\u044b\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044f", "mcp.compactAll": "\u041a\u043e\u043c\u043f\u0430\u043a\u0442\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0432\u0441\u0451",
+    "mcp.rebuildIndex": "\u041f\u0435\u0440\u0435\u0438\u043d\u0434\u0435\u043a\u0441\u0430\u0446\u0438\u044f", "mcp.search": "\u041f\u043e\u0438\u0441\u043a",
+    "mcp.bible.search": "\u041f\u043e\u0438\u0441\u043a \u0441\u0442\u0438\u0445\u043e\u0432", "mcp.bible.searchPlaceholder": "\u041f\u043e\u0438\u0441\u043a \u0441\u0442\u0438\u0445\u043e\u0432...",
+    "mcp.bible.characters": "\u041f\u0435\u0440\u0441\u043e\u043d\u0430\u0436\u0438", "mcp.bible.charPlaceholder": "\u041f\u043e\u0438\u0441\u043a \u043f\u0435\u0440\u0441\u043e\u043d\u0430\u0436\u0435\u0439...",
+    "mcp.bible.bootstrap": "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c", "mcp.bible.compact": "\u041a\u043e\u043c\u043f\u0430\u043a\u0442\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u0442\u044c",
+    "mcp.gutenberg.search": "\u041f\u043e\u0438\u0441\u043a \u0441\u0442\u0438\u043b\u0435\u0439", "mcp.gutenberg.searchPlaceholder": "\u041f\u043e\u0438\u0441\u043a \u0441\u0442\u0438\u043b\u0435\u0439...",
+    "mcp.gutenberg.delexify": "\u0414\u0435\u043b\u0435\u043a\u0441\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u044f", "mcp.gutenberg.delexifyPlaceholder": "\u0412\u0441\u0442\u0430\u0432\u044c\u0442\u0435 \u0442\u0435\u043a\u0441\u0442...",
+    "mcp.gutenberg.delexifyBtn": "\u0414\u0435\u043b\u0435\u043a\u0441\u0438\u0444\u0438\u0446\u0438\u0440\u043e\u0432\u0430\u0442\u044c", "mcp.gutenberg.download": "\u0421\u043a\u0430\u0447\u0430\u0442\u044c \u043a\u043e\u0440\u043f\u0443\u0441",
+    "mcp.gutenberg.import": "\u0418\u043c\u043f\u043e\u0440\u0442 \u0432 \u0411\u0414", "mcp.gutenberg.convert": "\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c", "mcp.gutenberg.compact": "\u041a\u043e\u043c\u043f\u0430\u043a\u0442\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u0442\u044c",
+    "mcp.wikipedia.search": "\u041f\u043e\u0438\u0441\u043a \u0441\u0442\u0430\u0442\u0435\u0439", "mcp.wikipedia.searchPlaceholder": "\u041f\u043e\u0438\u0441\u043a \u043f\u043e \u0412\u0438\u043a\u0438\u043f\u0435\u0434\u0438\u0438...",
+    "mcp.wikipedia.verify": "\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430 \u0444\u0430\u043a\u0442\u043e\u0432", "mcp.wikipedia.claimPlaceholder": "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0443\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043d\u0438\u0435...",
+    "mcp.wikipedia.verifyBtn": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c", "mcp.wikipedia.download": "\u0421\u043a\u0430\u0447\u0430\u0442\u044c",
+    "mcp.wikipedia.convert": "\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c", "mcp.wikipedia.compact": "\u041a\u043e\u043c\u043f\u0430\u043a\u0442\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u0442\u044c",
+    "mcp.literary.scenes": "\u0421\u0446\u0435\u043d\u044b-\u0448\u0430\u0431\u043b\u043e\u043d\u044b", "mcp.literary.scenesPlaceholder": "\u041f\u043e\u0438\u0441\u043a \u0441\u0446\u0435\u043d-\u0448\u0430\u0431\u043b\u043e\u043d\u043e\u0432...",
+    "mcp.literary.styles": "\u0421\u0442\u0438\u043b\u0435\u0432\u044b\u0435 \u043f\u0430\u0442\u0442\u0435\u0440\u043d\u044b", "mcp.literary.stylesPlaceholder": "\u041f\u043e\u0438\u0441\u043a \u0441\u0442\u0438\u043b\u0435\u0432\u044b\u0445 \u043f\u0430\u0442\u0442\u0435\u0440\u043d\u043e\u0432...",
+    "mcp.literary.compact": "\u041a\u043e\u043c\u043f\u0430\u043a\u0442\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u0442\u044c",
+    "mcp.economics.phase": "\u0422\u0435\u043a\u0443\u0449\u0430\u044f \u0444\u0430\u0437\u0430", "mcp.economics.generateBtn": "\u0421\u0433\u0435\u043d\u0435\u0440\u0438\u0440\u043e\u0432\u0430\u0442\u044c",
+    "mcp.economics.dilemma": "\u0413\u0435\u043d\u0435\u0440\u0430\u0446\u0438\u044f \u0434\u0438\u043b\u0435\u043c\u043c\u044b",
+    "mcp.system.logs": "\u041b\u043e\u0433\u0438 \u043e\u043f\u0435\u0440\u0430\u0446\u0438\u0439", "mcp.system.rebuildIndex": "\u041f\u0435\u0440\u0435\u0438\u043d\u0434\u0435\u043a\u0441\u0430\u0446\u0438\u044f",
+    "mcp.system.cleanOrphans": "\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u044c \u043e\u0441\u0438\u0440\u043e\u0442\u0435\u0432\u0448\u0438\u0435",
+    "mcp.catalog.build": "\u0421\u043e\u0431\u0440\u0430\u0442\u044c \u043a\u0430\u0442\u0430\u043b\u043e\u0433", "mcp.catalog.filter": "\u041f\u043e\u0438\u0441\u043a \u0438 \u0444\u0438\u043b\u044c\u0442\u0440",
+    "mcp.catalog.selectAll": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0432\u0441\u0451", "mcp.catalog.deselectAll": "\u0421\u043d\u044f\u0442\u044c \u0432\u0441\u0451",
+    "mcp.catalog.downloadSelected": "\u0421\u043a\u0430\u0447\u0430\u0442\u044c \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0435", "mcp.catalog.popular500": "\u0422\u043e\u043f-500",
+    "mcp.catalog.apply": "\u041f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c", "mcp.catalog.clear": "\u0421\u0431\u0440\u043e\u0441",
+    "mcp.catalog.prev": "\u041d\u0430\u0437\u0430\u0434", "mcp.catalog.next": "\u0412\u043f\u0435\u0440\u0451\u0434",
+    "mcp.catalog.empty": "\u041a\u043d\u0438\u0433 \u0432 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0435 \u043d\u0435\u0442", "mcp.catalog.page": "\u0421\u0442\u0440.",
+    "mcp.catalog.colTitle": "\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435", "mcp.catalog.colAuthor": "\u0410\u0432\u0442\u043e\u0440",
+    "mcp.catalog.colSubjects": "\u0422\u0435\u043c\u044b", "mcp.catalog.colDownloads": "\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0438",
+    "mcp.catalog.colWords": "\u0421\u043b\u043e\u0432", "mcp.catalog.colStatus": "\u0421\u0442\u0430\u0442\u0443\u0441",
+    "mcp.catalog.authorsPlaceholder": "\u0410\u0432\u0442\u043e\u0440\u044b (\u0447\u0435\u0440\u0435\u0437 \u0437\u0430\u043f\u044f\u0442\u0443\u044e): \u041c\u0430\u0440\u043a \u0422\u0432\u0435\u043d, \u0414\u0436\u0435\u043a \u041b\u043e\u043d\u0434\u043e\u043d...",
+    "mcp.catalog.topicPlaceholder": "\u0422\u0435\u043c\u0430 (\u043e\u043f\u0446\u0438\u043e\u043d\u0430\u043b\u044c\u043d\u043e): \u043f\u0440\u0438\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f, \u0440\u043e\u043c\u0430\u043d\u0442\u0438\u043a\u0430...",
+    "mcp.catalog.searchPlaceholder": "\u041f\u043e\u0438\u0441\u043a \u043f\u043e \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044e, \u0430\u0432\u0442\u043e\u0440\u0443, \u0442\u0435\u043c\u0430\u043c...",
+    "mcp.catalog.authorPlaceholder": "\u0410\u0432\u0442\u043e\u0440",
+    "mcp.catalog.yearFromPlaceholder": "\u0413\u043e\u0434 \u043e\u0442",
+    "mcp.catalog.yearToPlaceholder": "\u0413\u043e\u0434 \u0434\u043e",
+    "mcp.catalog.minDlPlaceholder": "\u041c\u0438\u043d. \u0437\u0430\u0433\u0440\u0443\u0437\u043e\u043a",
+    "mcp.catalog.searchBtn": "\u041f\u043e\u0438\u0441\u043a",
+    "mcp.compactAll.title": "\u041a\u043e\u043c\u043f\u0430\u043a\u0442\u0438\u0437\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0432\u0441\u0435 \u0411\u0414 (\u0411\u0438\u0431\u043b\u0438\u044f, \u0413\u0443\u0442\u0435\u043d\u0431\u0435\u0440\u0433, \u0412\u0438\u043a\u0438\u043f\u0435\u0434\u0438\u044f, \u041b\u0438\u0442\u0435\u0440\u0430\u0442\u0443\u0440\u0430) \u043e\u0434\u043d\u0438\u043c \u043a\u043b\u0438\u043a\u043e\u043c",
+    "mcp.rebuildIndex.title": "\u041f\u0435\u0440\u0435\u0441\u0442\u0440\u043e\u0438\u0442\u044c \u043f\u043e\u043b\u043d\u043e\u0442\u0435\u043a\u0441\u0442\u043e\u0432\u044b\u0435 \u0438\u043d\u0434\u0435\u043a\u0441\u044b \u0432\u0441\u0435\u0445 \u0411\u0414",
+    "mcp.search.title": "\u041f\u043e\u0438\u0441\u043a \u0432 \u0442\u0435\u043a\u0443\u0449\u0435\u043c \u0440\u0430\u0437\u0434\u0435\u043b\u0435",
+    "mcp.bible.bootstrap.title": "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0441\u0442\u0438\u0445\u0438 \u0411\u0438\u0431\u043b\u0438\u0438 \u0432 \u0411\u0414 (\u043f\u0435\u0440\u0432\u0438\u0447\u043d\u0430\u044f \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430)",
+    "mcp.bible.compact.title": "\u0423\u043c\u0435\u043d\u044c\u0448\u0438\u0442\u044c \u0440\u0430\u0437\u043c\u0435\u0440 \u0411\u0414 \u0411\u0438\u0431\u043b\u0438\u0438",
+    "mcp.gutenberg.delexifyBtn.title": "\u0417\u0430\u043c\u0435\u043d\u0438\u0442\u044c \u0438\u043c\u0435\u043d\u0430 \u0438 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044f \u043d\u0430 \u043f\u043b\u0435\u0439\u0441\u0445\u043e\u043b\u0434\u0435\u0440\u044b \u0434\u043b\u044f \u0430\u043d\u043e\u043d\u0438\u043c\u043d\u043e\u0433\u043e \u0441\u0442\u0438\u043b\u0435\u0432\u043e\u0433\u043e \u0430\u043d\u0430\u043b\u0438\u0437\u0430",
+    "mcp.gutenberg.download.title": "\u0421\u043a\u0430\u0447\u0430\u0442\u044c \u0442\u0435\u043a\u0441\u0442\u044b Project Gutenberg (\u043f\u0440\u043e\u043f\u0443\u0441\u043a\u0430\u0435\u0442 \u0443\u0436\u0435 \u0441\u043a\u0430\u0447\u0430\u043d\u043d\u044b\u0435)",
+    "mcp.gutenberg.import.title": "\u0418\u043c\u043f\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u043a\u0430\u0447\u0430\u043d\u043d\u044b\u0435 \u0442\u0435\u043a\u0441\u0442\u044b \u0432 classics.db (\u0438\u0434\u0435\u043c\u043f\u043e\u0442\u0435\u043d\u0442\u043d\u043e)",
+    "mcp.gutenberg.convert.title": "\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0444\u0430\u0439\u043b\u044b Parquet \u0432 SQLite",
+    "mcp.gutenberg.compact.title": "\u0423\u043c\u0435\u043d\u044c\u0448\u0438\u0442\u044c \u0440\u0430\u0437\u043c\u0435\u0440 \u0411\u0414 \u0413\u0443\u0442\u0435\u043d\u0431\u0435\u0440\u0433\u0430",
+    "mcp.catalog.popular500.title": "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043c\u0435\u0442\u0430\u0434\u0430\u043d\u043d\u044b\u0435 \u0442\u043e\u043f-500 \u043a\u043d\u0438\u0433 \u0438\u0437 Gutendex API (\u0438\u0434\u0435\u043c\u043f\u043e\u0442\u0435\u043d\u0442\u043d\u043e)",
+    "mcp.catalog.build.title": "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u043c\u0435\u0442\u0430\u0434\u0430\u043d\u043d\u044b\u0435 \u043f\u043e \u0430\u0432\u0442\u043e\u0440\u0443 \u0438\u043b\u0438 \u0442\u0435\u043c\u0435 \u0438\u0437 Gutendex API",
+    "mcp.catalog.searchBtn.title": "\u041f\u043e\u0438\u0441\u043a \u043f\u043e \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044e, \u0430\u0432\u0442\u043e\u0440\u0443 \u0438\u043b\u0438 \u0442\u0435\u043c\u0430\u043c",
+    "mcp.catalog.apply.title": "\u041f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c \u0444\u0438\u043b\u044c\u0442\u0440\u044b (\u0430\u0432\u0442\u043e\u0440, \u0433\u043e\u0434\u044b, \u043c\u0438\u043d. \u0437\u0430\u0433\u0440\u0443\u0437\u043e\u043a)",
+    "mcp.catalog.clear.title": "\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u0432\u0441\u0435 \u0444\u0438\u043b\u044c\u0442\u0440\u044b",
+    "mcp.catalog.selectAll.title": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0432\u0441\u0435 \u043a\u043d\u0438\u0433\u0438 \u043d\u0430 \u0442\u0435\u043a\u0443\u0449\u0435\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435",
+    "mcp.catalog.deselectAll.title": "\u0421\u043d\u044f\u0442\u044c \u0432\u044b\u0434\u0435\u043b\u0435\u043d\u0438\u0435 \u0441\u043e \u0432\u0441\u0435\u0445 \u043a\u043d\u0438\u0433 \u043d\u0430 \u0442\u0435\u043a\u0443\u0449\u0435\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435",
+    "mcp.catalog.downloadSelected.title": "\u0421\u043a\u0430\u0447\u0430\u0442\u044c \u0442\u0435\u043a\u0441\u0442\u044b \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0445 \u043a\u043d\u0438\u0433 (\u0438\u0434\u0435\u043c\u043f\u043e\u0442\u0435\u043d\u0442\u043d\u043e, \u043f\u0440\u043e\u043f\u0443\u0441\u043a\u0430\u0435\u0442 \u0443\u0436\u0435 \u0441\u043a\u0430\u0447\u0430\u043d\u043d\u044b\u0435)",
+    "mcp.wikipedia.download.title": "\u0421\u043a\u0430\u0447\u0430\u0442\u044c \u0434\u0430\u043c\u043f \u0412\u0438\u043a\u0438\u043f\u0435\u0434\u0438\u0438",
+    "mcp.wikipedia.convert.title": "\u041a\u043e\u043d\u0432\u0435\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0434\u0430\u043c\u043f \u0412\u0438\u043a\u0438\u043f\u0435\u0434\u0438\u0438 \u0432 SQLite",
+    "mcp.wikipedia.compact.title": "\u0423\u043c\u0435\u043d\u044c\u0448\u0438\u0442\u044c \u0440\u0430\u0437\u043c\u0435\u0440 \u0411\u0414 \u0412\u0438\u043a\u0438\u043f\u0435\u0434\u0438\u0438",
+    "mcp.wikipedia.verifyBtn.title": "\u041f\u0440\u043e\u0432\u0435\u0440\u0438\u0442\u044c \u0444\u0430\u043a\u0442 \u043f\u043e \u0441\u0442\u0430\u0442\u044c\u044f\u043c \u0412\u0438\u043a\u0438\u043f\u0435\u0434\u0438\u0438",
+    "mcp.literary.compile.title": "\u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u044c 4-\u0445\u043e\u0434\u043e\u0432\u043e\u0439 \u043a\u043e\u043c\u043f\u0438\u043b\u044f\u0442\u043e\u0440 (\u0414\u0440\u0430\u043c\u0430\u0442\u0443\u0440\u0433, \u0421\u0442\u0438\u043b\u0438\u0441\u0442, \u042d\u043c\u043e\u0446\u0438\u0438, \u041c\u0435\u0442\u0430\u0434\u0430\u043d\u043d\u044b\u0435) \u2014 \u0438\u0434\u0435\u043c\u043f\u043e\u0442\u0435\u043d\u0442\u043d\u043e",
+    "mcp.literary.compact.title": "\u0423\u043c\u0435\u043d\u044c\u0448\u0438\u0442\u044c \u0440\u0430\u0437\u043c\u0435\u0440 \u0411\u0414 \u041b\u0438\u0442\u0435\u0440\u0430\u0442\u0443\u0440\u044b",
+    "mcp.system.rebuildIndex.title": "\u041f\u0435\u0440\u0435\u0441\u0442\u0440\u043e\u0438\u0442\u044c \u0432\u0441\u0435 FTS-\u0438\u043d\u0434\u0435\u043a\u0441\u044b \u0441 \u043d\u0443\u043b\u044f",
+    "mcp.system.cleanOrphans.title": "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0437\u0430\u043f\u0438\u0441\u0438 \u0411\u0414, \u0441\u0441\u044b\u043b\u0430\u044e\u0449\u0438\u0435\u0441\u044f \u043d\u0430 \u0443\u0434\u0430\u043b\u0451\u043d\u043d\u044b\u0435 \u0444\u0430\u0439\u043b\u044b",
+  },
+  de: {
+    "mcp.title": "Datenbankverwaltung", "mcp.back": "\u2190 Zur\u00fcck",
+    "mcp.tab.dashboard": "\u00dcbersicht", "mcp.tab.bible": "Bibel",
+    "mcp.tab.gutenberg": "Gutenberg", "mcp.tab.wikipedia": "Wikipedia",
+    "mcp.tab.literary": "Literatur", "mcp.tab.economics": "Wirtschaft",
+    "mcp.tab.pipeline": "Pipeline", "mcp.tab.system": "System",
+    "mcp.pipeline.title": "Daten-Pipeline", "mcp.pipeline.actions": "Aktionen",
+    "mcp.pipeline.import": "Texte importieren", "mcp.pipeline.compile": "Kompilieren",
+    "mcp.pipeline.process": "Verarbeiten",
+    "mcp.pipeline.sources": "Quellen", "mcp.pipeline.importStage": "Import",
+    "mcp.pipeline.passes": "4-Pass-Kompilierer", "mcp.pipeline.outputs": "Ausgabe-Datenbanken",
+    "mcp.quickActions": "Schnellaktionen", "mcp.compactAll": "Alle komprimieren",
+    "mcp.rebuildIndex": "Index neu aufbauen", "mcp.search": "Suchen",
+    "mcp.bible.search": "Verse suchen", "mcp.bible.searchPlaceholder": "Verse suchen...",
+    "mcp.bible.characters": "Personen", "mcp.bible.charPlaceholder": "Personen suchen...",
+    "mcp.bible.bootstrap": "Bootstrap", "mcp.bible.compact": "Komprimieren",
+    "mcp.gutenberg.search": "Stile suchen", "mcp.gutenberg.searchPlaceholder": "Stile suchen...",
+    "mcp.gutenberg.delexify": "Delexifizieren", "mcp.gutenberg.delexifyPlaceholder": "Text einf\u00fcgen...",
+    "mcp.gutenberg.delexifyBtn": "Delexifizieren", "mcp.gutenberg.download": "Korpus herunterladen",
+    "mcp.gutenberg.convert": "Konvertieren", "mcp.gutenberg.compact": "Komprimieren",
+    "mcp.wikipedia.search": "Artikel suchen", "mcp.wikipedia.searchPlaceholder": "Wikipedia durchsuchen...",
+    "mcp.wikipedia.verify": "Faktenpr\u00fcfung", "mcp.wikipedia.claimPlaceholder": "Behauptung pr\u00fcfen...",
+    "mcp.wikipedia.verifyBtn": "Pr\u00fcfen", "mcp.wikipedia.download": "Herunterladen",
+    "mcp.wikipedia.convert": "Konvertieren", "mcp.wikipedia.compact": "Komprimieren",
+    "mcp.literary.templates": "Quest-Vorlagen", "mcp.literary.searchPlaceholder": "Vorlagen suchen...",
+    "mcp.literary.compile": "Kompilieren", "mcp.literary.compact": "Komprimieren",
+    "mcp.economics.phase": "Aktuelle Phase", "mcp.economics.generateBtn": "Generieren",
+    "mcp.economics.dilemma": "Dilemma generieren",
+    "mcp.system.logs": "Betriebsprotokolle", "mcp.system.rebuildIndex": "Index neu aufbauen",
+    "mcp.system.cleanOrphans": "Verwaiste bereinigen",
+    "mcp.catalog.build": "Katalog erstellen", "mcp.catalog.filter": "Suche & Filter",
+    "mcp.catalog.selectAll": "Alle ausw\u00e4hlen", "mcp.catalog.deselectAll": "Auswahl aufheben",
+    "mcp.catalog.downloadSelected": "Auswahl herunterladen", "mcp.catalog.popular500": "Top 500",
+    "mcp.catalog.apply": "Anwenden", "mcp.catalog.clear": "Zur\u00fccksetzen",
+    "mcp.catalog.prev": "Zur\u00fcck", "mcp.catalog.next": "Weiter",
+    "mcp.catalog.empty": "Keine B\u00fccher im Katalog", "mcp.catalog.page": "Seite",
+    "mcp.catalog.colTitle": "Titel", "mcp.catalog.colAuthor": "Autor",
+    "mcp.catalog.colSubjects": "Themen", "mcp.catalog.colDownloads": "Downloads",
+    "mcp.catalog.colWords": "W\u00f6rter", "mcp.catalog.colStatus": "Status",
+    "mcp.catalog.authorsPlaceholder": "Autoren (Komma-getrennt): Mark Twain, Jack London...",
+    "mcp.catalog.topicPlaceholder": "Thema (optional): Abenteuer, Romanze...",
+    "mcp.catalog.searchPlaceholder": "Suche nach Titel, Autor, Themen...",
+    "mcp.catalog.authorPlaceholder": "Autor",
+    "mcp.catalog.yearFromPlaceholder": "Jahr von",
+    "mcp.catalog.yearToPlaceholder": "Jahr bis",
+    "mcp.catalog.minDlPlaceholder": "Min. Downloads",
+    "mcp.catalog.searchBtn": "Suchen",
+  },
+  fr: {
+    "mcp.title": "Gestion de bases", "mcp.back": "\u2190 Retour",
+    "mcp.tab.dashboard": "Tableau de bord", "mcp.tab.bible": "Bible",
+    "mcp.tab.gutenberg": "Gutenberg", "mcp.tab.wikipedia": "Wikip\u00e9dia",
+    "mcp.tab.literary": "Litt\u00e9rature", "mcp.tab.economics": "\u00c9conomie",
+    "mcp.tab.pipeline": "Pipeline", "mcp.tab.system": "Syst\u00e8me",
+    "mcp.pipeline.title": "Pipeline de donn\u00e9es", "mcp.pipeline.actions": "Actions",
+    "mcp.pipeline.import": "Importer", "mcp.pipeline.compile": "Compiler",
+    "mcp.pipeline.process": "Traiter",
+    "mcp.pipeline.sources": "Sources", "mcp.pipeline.importStage": "Import",
+    "mcp.pipeline.passes": "Compilateur 4 passes", "mcp.pipeline.outputs": "Bases de sortie",
+    "mcp.tab.system": "Syst\u00e8me",
+    "mcp.quickActions": "Actions rapides", "mcp.compactAll": "Tout compacter",
+    "mcp.rebuildIndex": "Reconstruire l'index", "mcp.search": "Rechercher",
+    "mcp.bible.search": "Rechercher des versets", "mcp.bible.searchPlaceholder": "Rechercher des versets...",
+    "mcp.bible.characters": "Personnages", "mcp.bible.charPlaceholder": "Rechercher des personnages...",
+    "mcp.bible.bootstrap": "Bootstrap", "mcp.bible.compact": "Compacter",
+    "mcp.gutenberg.search": "Rechercher des styles", "mcp.gutenberg.searchPlaceholder": "Rechercher des styles...",
+    "mcp.gutenberg.delexify": "D\u00e9lexifier", "mcp.gutenberg.delexifyPlaceholder": "Coller le texte \u00e0 d\u00e9lexifier...",
+    "mcp.gutenberg.delexifyBtn": "D\u00e9lexifier", "mcp.gutenberg.download": "T\u00e9l\u00e9charger le corpus",
+    "mcp.gutenberg.convert": "Convertir", "mcp.gutenberg.compact": "Compacter",
+    "mcp.wikipedia.search": "Rechercher des articles", "mcp.wikipedia.searchPlaceholder": "Rechercher sur Wikip\u00e9dia...",
+    "mcp.wikipedia.verify": "V\u00e9rification", "mcp.wikipedia.claimPlaceholder": "Entrez une affirmation...",
+    "mcp.wikipedia.verifyBtn": "V\u00e9rifier", "mcp.wikipedia.download": "T\u00e9l\u00e9charger",
+    "mcp.wikipedia.convert": "Convertir", "mcp.wikipedia.compact": "Compacter",
+    "mcp.literary.templates": "Mod\u00e8les de qu\u00eates", "mcp.literary.searchPlaceholder": "Rechercher des mod\u00e8les...",
+    "mcp.literary.compile": "Compiler", "mcp.literary.compact": "Compacter",
+    "mcp.economics.phase": "Phase actuelle", "mcp.economics.generateBtn": "G\u00e9n\u00e9rer",
+    "mcp.economics.dilemma": "G\u00e9n\u00e9rer un dilemme",
+    "mcp.system.logs": "Journaux", "mcp.system.rebuildIndex": "Reconstruire l'index",
+    "mcp.system.cleanOrphans": "Nettoyer les orphelins",
+    "mcp.catalog.build": "Construire le catalogue", "mcp.catalog.filter": "Recherche & Filtre",
+    "mcp.catalog.selectAll": "Tout s\u00e9lectionner", "mcp.catalog.deselectAll": "Tout d\u00e9s\u00e9lectionner",
+    "mcp.catalog.downloadSelected": "T\u00e9l\u00e9charger la s\u00e9lection", "mcp.catalog.popular500": "Top 500",
+    "mcp.catalog.apply": "Appliquer", "mcp.catalog.clear": "Effacer",
+    "mcp.catalog.prev": "Pr\u00e9c.", "mcp.catalog.next": "Suiv.",
+    "mcp.catalog.empty": "Aucun livre dans le catalogue", "mcp.catalog.page": "Page",
+    "mcp.catalog.colTitle": "Titre", "mcp.catalog.colAuthor": "Auteur",
+    "mcp.catalog.colSubjects": "Sujets", "mcp.catalog.colDownloads": "T\u00e9l\u00e9chargements",
+    "mcp.catalog.colWords": "Mots", "mcp.catalog.colStatus": "Statut",
+    "mcp.catalog.authorsPlaceholder": "Auteurs (s\u00e9par\u00e9s par des virgules): Mark Twain, Jack London...",
+    "mcp.catalog.topicPlaceholder": "Sujet (optionnel): aventure, romance...",
+    "mcp.catalog.searchPlaceholder": "Rechercher par titre, auteur, sujets...",
+    "mcp.catalog.authorPlaceholder": "Auteur",
+    "mcp.catalog.yearFromPlaceholder": "Ann\u00e9e de",
+    "mcp.catalog.yearToPlaceholder": "Ann\u00e9e \u00e0",
+    "mcp.catalog.minDlPlaceholder": "T\u00e9l\u00e9ch. min.",
+    "mcp.catalog.searchBtn": "Rechercher",
+  },
+  es: {
+    "mcp.title": "Gesti\u00f3n de bases", "mcp.back": "\u2190 Volver",
+    "mcp.tab.dashboard": "Panel", "mcp.tab.bible": "Biblia",
+    "mcp.tab.gutenberg": "Gutenberg", "mcp.tab.wikipedia": "Wikipedia",
+    "mcp.tab.literary": "Literatura", "mcp.tab.economics": "Econom\u00eda",
+    "mcp.tab.pipeline": "Pipeline", "mcp.tab.system": "Sistema",
+    "mcp.pipeline.title": "Pipeline de datos", "mcp.pipeline.actions": "Acciones",
+    "mcp.pipeline.import": "Importar", "mcp.pipeline.compile": "Compilar",
+    "mcp.pipeline.process": "Procesar",
+    "mcp.pipeline.sources": "Fuentes", "mcp.pipeline.importStage": "Importar",
+    "mcp.pipeline.passes": "Compilador 4 pasos", "mcp.pipeline.outputs": "Bases de salida",
+    "mcp.quickActions": "Acciones r\u00e1pidas", "mcp.compactAll": "Compactar todo",
+    "mcp.rebuildIndex": "Reconstruir \u00edndice", "mcp.search": "Buscar",
+    "mcp.bible.search": "Buscar vers\u00edculos", "mcp.bible.searchPlaceholder": "Buscar vers\u00edculos...",
+    "mcp.bible.characters": "Personajes", "mcp.bible.charPlaceholder": "Buscar personajes...",
+    "mcp.bible.bootstrap": "Inicializar", "mcp.bible.compact": "Compactar",
+    "mcp.gutenberg.search": "Buscar estilos", "mcp.gutenberg.searchPlaceholder": "Buscar estilos...",
+    "mcp.gutenberg.delexify": "Deslexificar", "mcp.gutenberg.delexifyPlaceholder": "Pegar texto...",
+    "mcp.gutenberg.delexifyBtn": "Deslexificar", "mcp.gutenberg.download": "Descargar corpus",
+    "mcp.gutenberg.convert": "Convertir", "mcp.gutenberg.compact": "Compactar",
+    "mcp.wikipedia.search": "Buscar art\u00edculos", "mcp.wikipedia.searchPlaceholder": "Buscar en Wikipedia...",
+    "mcp.wikipedia.verify": "Verificaci\u00f3n", "mcp.wikipedia.claimPlaceholder": "Ingrese una afirmaci\u00f3n...",
+    "mcp.wikipedia.verifyBtn": "Verificar", "mcp.wikipedia.download": "Descargar",
+    "mcp.wikipedia.convert": "Convertir", "mcp.wikipedia.compact": "Compactar",
+    "mcp.literary.templates": "Plantillas de misiones", "mcp.literary.searchPlaceholder": "Buscar plantillas...",
+    "mcp.literary.compile": "Compilar", "mcp.literary.compact": "Compactar",
+    "mcp.economics.phase": "Fase actual", "mcp.economics.generateBtn": "Generar",
+    "mcp.economics.dilemma": "Generar dilema",
+    "mcp.system.logs": "Registros", "mcp.system.rebuildIndex": "Reconstruir \u00edndice",
+    "mcp.system.cleanOrphans": "Limpiar hu\u00e9rfanos",
+    "mcp.catalog.build": "Construir cat\u00e1logo", "mcp.catalog.filter": "B\u00fasqueda y filtro",
+    "mcp.catalog.selectAll": "Seleccionar todo", "mcp.catalog.deselectAll": "Deseleccionar todo",
+    "mcp.catalog.downloadSelected": "Descargar selecci\u00f3n", "mcp.catalog.popular500": "Top 500",
+    "mcp.catalog.apply": "Aplicar", "mcp.catalog.clear": "Limpiar",
+    "mcp.catalog.prev": "Ant.", "mcp.catalog.next": "Sig.",
+    "mcp.catalog.empty": "Sin libros en el cat\u00e1logo", "mcp.catalog.page": "P\u00e1g.",
+    "mcp.catalog.colTitle": "T\u00edtulo", "mcp.catalog.colAuthor": "Autor",
+    "mcp.catalog.colSubjects": "Temas", "mcp.catalog.colDownloads": "Descargas",
+    "mcp.catalog.colWords": "Palabras", "mcp.catalog.colStatus": "Estado",
+    "mcp.catalog.authorsPlaceholder": "Autores (separados por comas): Mark Twain, Jack London...",
+    "mcp.catalog.topicPlaceholder": "Tema (opcional): aventura, romance...",
+    "mcp.catalog.searchPlaceholder": "Buscar por t\u00edtulo, autor, temas...",
+    "mcp.catalog.authorPlaceholder": "Autor",
+    "mcp.catalog.yearFromPlaceholder": "A\u00f1o desde",
+    "mcp.catalog.yearToPlaceholder": "A\u00f1o hasta",
+    "mcp.catalog.minDlPlaceholder": "Descargas m\u00edn.",
+    "mcp.catalog.searchBtn": "Buscar",
+  },
+  ja: {
+    "mcp.title": "\u30c7\u30fc\u30bf\u30d9\u30fc\u30b9\u7ba1\u7406", "mcp.back": "\u2190 \u623b\u308b",
+    "mcp.tab.dashboard": "\u30c0\u30c3\u30b7\u30e5\u30dc\u30fc\u30c9", "mcp.tab.bible": "\u8056\u66f8",
+    "mcp.tab.gutenberg": "\u30b0\u30fc\u30c6\u30f3\u30d9\u30eb\u30b0", "mcp.tab.wikipedia": "Wikipedia",
+    "mcp.tab.literary": "\u6587\u5b66", "mcp.tab.economics": "\u7d4c\u6e08",
+    "mcp.tab.pipeline": "\u30d1\u30a4\u30d7\u30e9\u30a4\u30f3", "mcp.tab.system": "\u30b7\u30b9\u30c6\u30e0",
+    "mcp.pipeline.title": "\u30c7\u30fc\u30bf\u30d1\u30a4\u30d7\u30e9\u30a4\u30f3", "mcp.pipeline.actions": "\u30a2\u30af\u30b7\u30e7\u30f3",
+    "mcp.pipeline.import": "\u30a4\u30f3\u30dd\u30fc\u30c8", "mcp.pipeline.compile": "\u30b3\u30f3\u30d1\u30a4\u30eb",
+    "mcp.pipeline.process": "\u51e6\u7406",
+    "mcp.pipeline.sources": "\u30bd\u30fc\u30b9", "mcp.pipeline.importStage": "\u30a4\u30f3\u30dd\u30fc\u30c8",
+    "mcp.pipeline.passes": "4\u30d1\u30b9\u30b3\u30f3\u30d1\u30a4\u30e9", "mcp.pipeline.outputs": "\u51fa\u529bDB",
+    "mcp.quickActions": "\u30af\u30a4\u30c3\u30af\u30a2\u30af\u30b7\u30e7\u30f3", "mcp.compactAll": "\u3059\u3079\u3066\u5727\u7e2e",
+    "mcp.rebuildIndex": "\u30a4\u30f3\u30c7\u30c3\u30af\u30b9\u518d\u69cb\u7bc9", "mcp.search": "\u691c\u7d22",
+    "mcp.bible.search": "\u8056\u53e5\u691c\u7d22", "mcp.bible.searchPlaceholder": "\u8056\u53e5\u3092\u691c\u7d22...",
+    "mcp.bible.characters": "\u767b\u5834\u4eba\u7269", "mcp.bible.charPlaceholder": "\u767b\u5834\u4eba\u7269\u3092\u691c\u7d22...",
+    "mcp.bible.bootstrap": "\u30d6\u30fc\u30c8\u30b9\u30c8\u30e9\u30c3\u30d7", "mcp.bible.compact": "\u5727\u7e2e",
+    "mcp.gutenberg.search": "\u30b9\u30bf\u30a4\u30eb\u691c\u7d22", "mcp.gutenberg.searchPlaceholder": "\u30b9\u30bf\u30a4\u30eb\u3092\u691c\u7d22...",
+    "mcp.gutenberg.delexify": "\u8131\u30ec\u30ad\u30b7\u30d5\u30a1\u30a4", "mcp.gutenberg.delexifyPlaceholder": "\u30c6\u30ad\u30b9\u30c8\u3092\u8cbc\u308a\u4ed8\u3051...",
+    "mcp.gutenberg.delexifyBtn": "\u8131\u30ec\u30ad\u30b7\u30d5\u30a1\u30a4", "mcp.gutenberg.download": "\u30b3\u30fc\u30d1\u30b9\u3092\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9",
+    "mcp.gutenberg.convert": "\u5909\u63db", "mcp.gutenberg.compact": "\u5727\u7e2e",
+    "mcp.wikipedia.search": "\u8a18\u4e8b\u691c\u7d22", "mcp.wikipedia.searchPlaceholder": "Wikipedia\u3092\u691c\u7d22...",
+    "mcp.wikipedia.verify": "\u4e8b\u5b9f\u78ba\u8a8d", "mcp.wikipedia.claimPlaceholder": "\u4e3b\u5f35\u3092\u5165\u529b...",
+    "mcp.wikipedia.verifyBtn": "\u78ba\u8a8d", "mcp.wikipedia.download": "\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9",
+    "mcp.wikipedia.convert": "\u5909\u63db", "mcp.wikipedia.compact": "\u5727\u7e2e",
+    "mcp.literary.templates": "\u30af\u30a8\u30b9\u30c8\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8", "mcp.literary.searchPlaceholder": "\u30c6\u30f3\u30d7\u30ec\u30fc\u30c8\u3092\u691c\u7d22...",
+    "mcp.literary.compile": "\u30b3\u30f3\u30d1\u30a4\u30eb", "mcp.literary.compact": "\u5727\u7e2e",
+    "mcp.economics.phase": "\u73fe\u5728\u306e\u30d5\u30a7\u30fc\u30ba", "mcp.economics.generateBtn": "\u751f\u6210",
+    "mcp.economics.dilemma": "\u30b8\u30ec\u30f3\u30de\u751f\u6210",
+    "mcp.system.logs": "\u64cd\u4f5c\u30ed\u30b0", "mcp.system.rebuildIndex": "\u30a4\u30f3\u30c7\u30c3\u30af\u30b9\u518d\u69cb\u7bc9",
+    "mcp.system.cleanOrphans": "\u5b64\u5150\u30af\u30ea\u30fc\u30f3\u30a2\u30c3\u30d7",
+    "mcp.catalog.build": "\u30ab\u30bf\u30ed\u30b0\u69cb\u7bc9", "mcp.catalog.filter": "\u691c\u7d22\u3068\u30d5\u30a3\u30eb\u30bf\u30fc",
+    "mcp.catalog.selectAll": "\u3059\u3079\u3066\u9078\u629e", "mcp.catalog.deselectAll": "\u3059\u3079\u3066\u89e3\u9664",
+    "mcp.catalog.downloadSelected": "\u9078\u629e\u3092\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9", "mcp.catalog.popular500": "\u30c8\u30c3\u30d7500",
+    "mcp.catalog.apply": "\u9069\u7528", "mcp.catalog.clear": "\u30af\u30ea\u30a2",
+    "mcp.catalog.prev": "\u524d\u3078", "mcp.catalog.next": "\u6b21\u3078",
+    "mcp.catalog.empty": "\u30ab\u30bf\u30ed\u30b0\u306b\u66f8\u7c4d\u306a\u3057", "mcp.catalog.page": "\u30da\u30fc\u30b8",
+    "mcp.catalog.colTitle": "\u30bf\u30a4\u30c8\u30eb", "mcp.catalog.colAuthor": "\u8457\u8005",
+    "mcp.catalog.colSubjects": "\u30c8\u30d4\u30c3\u30af", "mcp.catalog.colDownloads": "\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9",
+    "mcp.catalog.colWords": "\u5358\u8a9e\u6570", "mcp.catalog.colStatus": "\u30b9\u30c6\u30fc\u30bf\u30b9",
+    "mcp.catalog.authorsPlaceholder": "\u8457\u8005\uff08\u30ab\u30f3\u30de\u533a\u5207\u308a\uff09: \u30de\u30fc\u30af\u30fb\u30c8\u30a6\u30a7\u30a4\u30f3, \u30b8\u30e3\u30c3\u30af\u30fb\u30ed\u30f3\u30c9\u30f3...",
+    "mcp.catalog.topicPlaceholder": "\u30c8\u30d4\u30c3\u30af\uff08\u4efb\u610f\uff09: \u5192\u967a, \u30ed\u30de\u30f3\u30b9...",
+    "mcp.catalog.searchPlaceholder": "\u30bf\u30a4\u30c8\u30eb, \u8457\u8005, \u30c8\u30d4\u30c3\u30af\u3067\u691c\u7d22...",
+    "mcp.catalog.authorPlaceholder": "\u8457\u8005",
+    "mcp.catalog.yearFromPlaceholder": "\u5e74\uff08\u4ee5\u964d\uff09",
+    "mcp.catalog.yearToPlaceholder": "\u5e74\uff08\u4ee5\u524d\uff09",
+    "mcp.catalog.minDlPlaceholder": "\u6700\u4f4e\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9",
+    "mcp.catalog.searchBtn": "\u691c\u7d22",
+  },
+  zh: {
+    "mcp.title": "\u6570\u636e\u5e93\u7ba1\u7406", "mcp.back": "\u2190 \u8fd4\u56de",
+    "mcp.tab.dashboard": "\u4eea\u8868\u76d8", "mcp.tab.bible": "\u5723\u7ecf",
+    "mcp.tab.gutenberg": "\u53e4\u767b\u5821", "mcp.tab.wikipedia": "\u7ef4\u57fa\u767e\u79d1",
+    "mcp.tab.literary": "\u6587\u5b66", "mcp.tab.economics": "\u7ecf\u6d4e",
+    "mcp.tab.pipeline": "\u6d41\u6c34\u7ebf", "mcp.tab.system": "\u7cfb\u7edf",
+    "mcp.pipeline.title": "\u6570\u636e\u6d41\u6c34\u7ebf", "mcp.pipeline.actions": "\u64cd\u4f5c",
+    "mcp.pipeline.import": "\u5bfc\u5165", "mcp.pipeline.compile": "\u7f16\u8bd1",
+    "mcp.pipeline.process": "\u5904\u7406",
+    "mcp.pipeline.sources": "\u6570\u636e\u6e90", "mcp.pipeline.importStage": "\u5bfc\u5165",
+    "mcp.pipeline.passes": "4\u901a\u7f16\u8bd1\u5668", "mcp.pipeline.outputs": "\u8f93\u51fa\u6570\u636e\u5e93",
+    "mcp.tab.system": "\u7cfb\u7edf",
+    "mcp.quickActions": "\u5feb\u6377\u64cd\u4f5c", "mcp.compactAll": "\u5168\u90e8\u538b\u7f29",
+    "mcp.rebuildIndex": "\u91cd\u5efa\u7d22\u5f15", "mcp.search": "\u641c\u7d22",
+    "mcp.bible.search": "\u641c\u7d22\u7ecf\u8282", "mcp.bible.searchPlaceholder": "\u641c\u7d22\u7ecf\u8282...",
+    "mcp.bible.characters": "\u4eba\u7269", "mcp.bible.charPlaceholder": "\u641c\u7d22\u4eba\u7269...",
+    "mcp.bible.bootstrap": "\u521d\u59cb\u5316", "mcp.bible.compact": "\u538b\u7f29",
+    "mcp.gutenberg.search": "\u641c\u7d22\u98ce\u683c", "mcp.gutenberg.searchPlaceholder": "\u641c\u7d22\u98ce\u683c...",
+    "mcp.gutenberg.delexify": "\u53bb\u8bcd\u6c47\u5316", "mcp.gutenberg.delexifyPlaceholder": "\u7c98\u8d34\u6587\u672c...",
+    "mcp.gutenberg.delexifyBtn": "\u53bb\u8bcd\u6c47\u5316", "mcp.gutenberg.download": "\u4e0b\u8f7d\u8bed\u6599\u5e93",
+    "mcp.gutenberg.convert": "\u8f6c\u6362", "mcp.gutenberg.compact": "\u538b\u7f29",
+    "mcp.wikipedia.search": "\u641c\u7d22\u6587\u7ae0", "mcp.wikipedia.searchPlaceholder": "\u641c\u7d22\u7ef4\u57fa\u767e\u79d1...",
+    "mcp.wikipedia.verify": "\u4e8b\u5b9e\u6838\u67e5", "mcp.wikipedia.claimPlaceholder": "\u8f93\u5165\u8981\u9a8c\u8bc1\u7684\u58f0\u660e...",
+    "mcp.wikipedia.verifyBtn": "\u9a8c\u8bc1", "mcp.wikipedia.download": "\u4e0b\u8f7d",
+    "mcp.wikipedia.convert": "\u8f6c\u6362", "mcp.wikipedia.compact": "\u538b\u7f29",
+    "mcp.literary.templates": "\u4efb\u52a1\u6a21\u677f", "mcp.literary.searchPlaceholder": "\u641c\u7d22\u6a21\u677f...",
+    "mcp.literary.compile": "\u7f16\u8bd1", "mcp.literary.compact": "\u538b\u7f29",
+    "mcp.economics.phase": "\u5f53\u524d\u9636\u6bb5", "mcp.economics.generateBtn": "\u751f\u6210",
+    "mcp.economics.dilemma": "\u751f\u6210\u56f0\u5883",
+    "mcp.system.logs": "\u64cd\u4f5c\u65e5\u5fd7", "mcp.system.rebuildIndex": "\u91cd\u5efa\u7d22\u5f15",
+    "mcp.system.cleanOrphans": "\u6e05\u7406\u5b64\u7acb\u8bb0\u5f55",
+    "mcp.catalog.build": "\u6784\u5efa\u76ee\u5f55", "mcp.catalog.filter": "\u641c\u7d22\u4e0e\u7b5b\u9009",
+    "mcp.catalog.selectAll": "\u5168\u9009", "mcp.catalog.deselectAll": "\u5168\u90e8\u53d6\u6d88",
+    "mcp.catalog.downloadSelected": "\u4e0b\u8f7d\u5df2\u9009", "mcp.catalog.popular500": "\u70ed\u95e8500",
+    "mcp.catalog.apply": "\u5e94\u7528", "mcp.catalog.clear": "\u6e05\u9664",
+    "mcp.catalog.prev": "\u4e0a\u4e00\u9875", "mcp.catalog.next": "\u4e0b\u4e00\u9875",
+    "mcp.catalog.empty": "\u76ee\u5f55\u4e2d\u65e0\u4e66\u7c4d", "mcp.catalog.page": "\u9875",
+    "mcp.catalog.colTitle": "\u6807\u9898", "mcp.catalog.colAuthor": "\u4f5c\u8005",
+    "mcp.catalog.colSubjects": "\u4e3b\u9898", "mcp.catalog.colDownloads": "\u4e0b\u8f7d\u91cf",
+    "mcp.catalog.colWords": "\u5355\u8bcd\u6570", "mcp.catalog.colStatus": "\u72b6\u6001",
+    "mcp.catalog.authorsPlaceholder": "\u4f5c\u8005\uff08\u9017\u53f7\u5206\u9694\uff09: \u9a6c\u514b\u00b7\u5410\u6e29, \u6770\u514b\u00b7\u4f26\u6566...",
+    "mcp.catalog.topicPlaceholder": "\u4e3b\u9898\uff08\u53ef\u9009\uff09: \u5192\u9669, \u6d6a\u6f2b...",
+    "mcp.catalog.searchPlaceholder": "\u6309\u6807\u9898\u3001\u4f5c\u8005\u3001\u4e3b\u9898\u641c\u7d22...",
+    "mcp.catalog.authorPlaceholder": "\u4f5c\u8005",
+    "mcp.catalog.yearFromPlaceholder": "\u5e74\u4efd\u4ece",
+    "mcp.catalog.yearToPlaceholder": "\u5e74\u4efd\u81f3",
+    "mcp.catalog.minDlPlaceholder": "\u6700\u4f4e\u4e0b\u8f7d",
+    "mcp.catalog.searchBtn": "\u641c\u7d22",
+  },
+};
+
+let currentLang = localStorage.getItem("tns-lang") || "en";
+function t(k) { return I18N[currentLang]?.[k] || I18N.en[k] || k; }
+function applyI18n() {
+  document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = t(el.dataset.i18n));
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => el.placeholder = t(el.dataset.i18nPlaceholder));
+  document.querySelectorAll("[data-i18n-title]").forEach(el => el.title = t(el.dataset.i18nTitle));
+}
+
+// ── Tabs ──────────────────────────────────────────────────────
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById("panel-" + tab.dataset.tab).classList.add("active");
+    loadTab(tab.dataset.tab);
+  });
+});
+
+// ── Toast ─────────────────────────────────────────────────────
+function toast(msg, type) {
+  const el = document.createElement("div");
+  el.className = "toast" + (type ? " toast--" + type : "");
+  el.textContent = msg;
+  document.getElementById("toasts").appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ── API ───────────────────────────────────────────────────────
+async function api(path, options = {}) {
+  try {
+    const res = await tnsStubFetch();
+    return await res.json();
+  } catch (err) { toast("API error: " + err.message, "error"); return null; }
+}
+
+function fmtBytes(b) {
+  if (!b) return "0 B";
+  const k = 1024, s = ["B","KB","MB","GB"];
+  const i = Math.floor(Math.log(b) / Math.log(k));
+  return (b / Math.pow(k, i)).toFixed(1) + " " + s[i];
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
+}
+
+// ── Dashboard ─────────────────────────────────────────────────
+async function loadDashboard() {
+  const d = await api();
+  if (!d) return;
+  const g = document.getElementById("dashboard-stats");
+  g.innerHTML = "";
+  for (const db of d.databases || []) {
+    g.innerHTML += `<div class="stat-card"><div class="stat-card__value" style="color:${db.exists?"var(--success)":"var(--error)"}">${db.exists?"\u25cf":"\u25cb"}</div><div class="stat-card__label">${escapeHtml(db.name)}</div><div style="font-size:11px;color:var(--text-disabled)">${db.exists?fmtBytes(db.size):"not found"}</div></div>`;
+  }
+}
+
+// ── Bible ─────────────────────────────────────────────────────
+async function loadBibleStats() {
+  const d = await api();
+  const el = document.getElementById("bible-stats");
+  if (!d?.exists) { el.innerHTML = '<div class="empty">Bible DB not found</div>'; return; }
+  el.innerHTML = `<div class="stat-card"><div class="stat-card__value">${d.verses}</div><div class="stat-card__label">Verses</div></div><div class="stat-card"><div class="stat-card__value">${d.books}</div><div class="stat-card__label">Books</div></div><div class="stat-card"><div class="stat-card__value">${d.characters}</div><div class="stat-card__label">Characters</div></div>`;
+}
+async function searchBible() {
+  const q = document.getElementById("bible-q").value;
+  if (!q) return;
+  const d = await api();
+  const el = document.getElementById("bible-results");
+  if (!d?.results?.length) { el.innerHTML = '<div class="empty">No results</div>'; return; }
+  el.innerHTML = '<table class="result-table"><tr><th>Ref</th><th>Text</th></tr>' + d.results.map(r => `<tr><td>${escapeHtml(r.book)} ${r.chapter}:${r.verse}</td><td>${escapeHtml(r.text)}</td></tr>`).join("") + '</table>';
+}
+async function searchBibleChars() {
+  const q = document.getElementById("bible-char-q").value;
+  if (!q) return;
+  const d = await api();
+  const el = document.getElementById("bible-char-results");
+  if (!d?.results?.length) { el.innerHTML = '<div class="empty">No results</div>'; return; }
+  el.innerHTML = '<table class="result-table"><tr><th>Name</th><th>Role</th></tr>' + d.results.map(r => `<tr><td>${escapeHtml(r.canonical_name||r.name)}</td><td>${escapeHtml(r.role||"-")}</td></tr>`).join("") + '</table>';
+}
+
+// ── Gutenberg ─────────────────────────────────────────────────
+async function loadGutenbergStats() {
+  const d = await api();
+  const el = document.getElementById("gutenberg-stats");
+  if (!d?.exists && !d?.textFiles) { el.innerHTML = '<div class="empty">No data. Use Catalog to download books first.</div>'; return; }
+  el.innerHTML = `<div class="stat-card"><div class="stat-card__value">${d.textFiles||0}</div><div class="stat-card__label">Downloaded</div></div><div class="stat-card"><div class="stat-card__value">${d.imported||0}</div><div class="stat-card__label">Imported</div></div><div class="stat-card"><div class="stat-card__value">${fmtBytes(d.size||0)}</div><div class="stat-card__label">DB Size</div></div>`;
+}
+async function searchGutenberg() {
+  const q = document.getElementById("gutenberg-q").value;
+  if (!q) return;
+  const d = await api();
+  const el = document.getElementById("gutenberg-results");
+  if (!d?.results?.length) { el.innerHTML = '<div class="empty">No results</div>'; return; }
+  el.innerHTML = '<table class="result-table"><tr><th>Style</th><th>Mood</th><th>Description</th></tr>' + d.results.map(r => `<tr><td>${escapeHtml(r.name||"-")}</td><td>${escapeHtml(r.mood||r.mood_tags||"-")}</td><td>${escapeHtml((r.description||"").slice(0,100))}</td></tr>`).join("") + '</table>';
+}
+async function delexifyGutenberg() {
+  const text = document.getElementById("gutenberg-delex").value;
+  if (!text) return;
+  const d = await api();
+  if (!d) return;
+  document.getElementById("gutenberg-delex-result").innerHTML = '<div class="result-box">' + escapeHtml(d.delexified || d.error || JSON.stringify(d)) + '</div>';
+}
+
+// ── Catalog (Selective Download) ───────────────────────────────
+let catalogPage = 1;
+let catalogSort = 'download_count';
+let catalogOrder = 'desc';
+
+async function loadCatalogStats() {
+  const d = await api();
+  const el = document.getElementById("catalog-stats");
+  if (!d) { el.innerHTML = '<div class="empty">Catalog DB not found</div>'; return; }
+  el.innerHTML = `<div class="stat-card"><div class="stat-card__value">${d.total||0}</div><div class="stat-card__label">Total</div></div><div class="stat-card"><div class="stat-card__value">${d.downloaded||0}</div><div class="stat-card__label">Downloaded</div></div><div class="stat-card"><div class="stat-card__value">${d.selected||0}</div><div class="stat-card__label">Selected</div></div>`;
+}
+
+async function loadCatalogPage(page) {
+  catalogPage = page || 1;
+  const d = await api();
+  if (!d) return;
+  renderCatalogTable(d.books, d.total, d.page, d.totalPages);
+}
+
+function renderCatalogTable(books, total, page, totalPages) {
+  const el = document.getElementById("catalog-results");
+  if (!books?.length) { el.innerHTML = '<div class="empty">' + t("mcp.catalog.empty") + '</div>'; return; }
+  el.innerHTML = '<table class="result-table"><tr><th><input type="checkbox" onchange="toggleAllCatalog(this.checked)"></th><th>#</th><th>' + t("mcp.catalog.colTitle") + '</th><th>' + t("mcp.catalog.colAuthor") + '</th><th>' + t("mcp.catalog.colSubjects") + '</th><th>' + t("mcp.catalog.colDownloads") + '</th><th>' + t("mcp.catalog.colWords") + '</th><th>' + t("mcp.catalog.colStatus") + '</th></tr>' +
+    books.map(b => `<tr><td><input type="checkbox" data-etextno="${b.etextno}" ${b.selected?'checked':''} onchange="toggleCatalogBook(${b.etextno},this.checked)"></td><td>${b.etextno}</td><td>${escapeHtml(b.title)}</td><td>${escapeHtml(b.author)}</td><td>${escapeHtml((b.subjects||[]).slice(0,2).join(', '))}</td><td>${(b.download_count||0).toLocaleString()}</td><td>${(b.word_count||0).toLocaleString()}</td><td>${b.downloaded?'<span style="color:var(--success)">✓</span>':'<span style="color:var(--text-disabled)">—</span>'}</td></tr>`).join("") + '</table>';
+  const pag = document.getElementById("catalog-pagination");
+  pag.innerHTML = `<button class="btn" onclick="loadCatalogPage(${page-1})" ${page<=1?'disabled':''}>` + t("mcp.catalog.prev") + `</button><span style="color:var(--text-secondary);font-size:12px">` + t("mcp.catalog.page") + ` ${page}/${totalPages}</span><button class="btn" onclick="loadCatalogPage(${page+1})" ${page>=totalPages?'disabled':''}>` + t("mcp.catalog.next") + `</button>`;
+}
+
+async function buildCatalog() {
+  const authors = document.getElementById("catalog-authors").value;
+  const topic = document.getElementById("catalog-topic").value;
+  if (!authors && !topic) { toast("Enter authors or topic", "error"); return; }
+  const body = {};
+  if (authors) body.authors = authors.split(",").map(s => s.trim());
+  if (topic) body.topic = topic;
+  const d = await api();
+  if (d?.jobId) {
+    trackProgress(d.jobId, "catalog/build", () => {
+      loadCatalogStats();
+      loadCatalogPage(1);
+    });
+  }
+}
+
+async function buildCatalogPopular() {
+  const d = await api();
+  if (d?.jobId) {
+    trackProgress(d.jobId, "catalog/build/popular", () => {
+      loadCatalogStats();
+      loadCatalogPage(1);
+    });
+  }
+}
+
+async function searchCatalog() {
+  const q = document.getElementById("catalog-q").value;
+  if (!q) return;
+  const d = await api();
+  if (!d?.results?.length) { document.getElementById("catalog-results").innerHTML = '<div class="empty">No results</div>'; return; }
+  renderCatalogTable(d.results, d.results.length, 1, 1);
+}
+
+async function filterCatalog() {
+  const params = new URLSearchParams();
+  const author = document.getElementById("catalog-filter-author").value;
+  const yearFrom = document.getElementById("catalog-filter-year-from").value;
+  const yearTo = document.getElementById("catalog-filter-year-to").value;
+  const minDl = document.getElementById("catalog-filter-min-dl").value;
+  if (author) params.set("author", author);
+  if (yearFrom) params.set("year_from", yearFrom);
+  if (yearTo) params.set("year_to", yearTo);
+  if (minDl) params.set("min_downloads", minDl);
+  const d = await api();
+  if (!d?.results?.length) { document.getElementById("catalog-results").innerHTML = '<div class="empty">No results</div>'; return; }
+  renderCatalogTable(d.results, d.results.length, 1, 1);
+}
+
+function clearCatalogFilter() {
+  document.getElementById("catalog-filter-author").value = "";
+  document.getElementById("catalog-filter-year-from").value = "";
+  document.getElementById("catalog-filter-year-to").value = "";
+  document.getElementById("catalog-filter-min-dl").value = "";
+  loadCatalogPage(1);
+}
+
+async function toggleCatalogBook(etextno, selected) {
+  await api();
+  loadCatalogStats();
+}
+
+function toggleAllCatalog(checked) {
+  const checkboxes = document.querySelectorAll("#catalog-results input[type=checkbox][data-etextno]");
+  checkboxes.forEach(cb => cb.checked = checked);
+}
+
+async function selectAllCatalog() {
+  await api();
+  toast("All selected", "success");
+  loadCatalogPage(catalogPage);
+  loadCatalogStats();
+}
+
+async function deselectAllCatalog() {
+  await api();
+  toast("All deselected", "success");
+  loadCatalogPage(catalogPage);
+  loadCatalogStats();
+}
+
+async function downloadSelectedCatalog() {
+  const d = await api();
+  if (d?.jobId) {
+    trackProgress(d.jobId, "download-selected", () => {
+      loadCatalogStats();
+      loadCatalogPage(1);
+    });
+  } else if (d?.error) {
+    toast(d.error, "error");
+  }
+}
+
+// ── Wikipedia ─────────────────────────────────────────────────
+async function loadWikipediaStats() {
+  const d = await api();
+  const el = document.getElementById("wikipedia-stats");
+  if (!d?.exists) { el.innerHTML = '<div class="empty">Wikipedia DB not found</div>'; return; }
+  el.innerHTML = `<div class="stat-card"><div class="stat-card__value">${fmtBytes(d.size)}</div><div class="stat-card__label">Size</div></div>`;
+}
+async function searchWikipedia() {
+  const q = document.getElementById("wikipedia-q").value;
+  if (!q) return;
+  const d = await api();
+  const el = document.getElementById("wikipedia-results");
+  if (!d?.results) { el.innerHTML = '<div class="empty">No results</div>'; return; }
+  const r = d.results;
+  el.innerHTML = `<div class="result-box"><strong>${escapeHtml(r.topic)}</strong> ${r.found ? "(found)" : "(not found)"}\n${escapeHtml(r.summary || "No summary")}\n${r.url ? '<a href="' + escapeHtml(r.url) + '" target="_blank">' + escapeHtml(r.url) + '</a>' : ""}</div>`;
+}
+async function verifyWikipedia() {
+  const claim = document.getElementById("wikipedia-claim").value;
+  if (!claim) return;
+  const d = await api();
+  if (!d) return;
+  document.getElementById("wikipedia-verify-result").innerHTML = `<div class="result-box"><strong>Verified:</strong> ${d.verified ? "\u2713 Yes" : "\u2717 No"}\n<strong>Confidence:</strong> ${escapeHtml(String(d.confidence))}\n<strong>Evidence:</strong> ${escapeHtml((d.evidence||[]).join("; "))}</div>`;
+}
+
+// ── Literary ──────────────────────────────────────────────────
+async function loadLiteraryStats() {
+  const d = await api();
+  const el = document.getElementById("literary-stats");
+  if (!d?.exists) { el.innerHTML = '<div class="empty">Literary DB not found</div>'; return; }
+  el.innerHTML = `<div class="stat-card"><div class="stat-card__value">${d.sceneTemplates}</div><div class="stat-card__label">Scene Templates</div></div><div class="stat-card"><div class="stat-card__value">${d.stylePatterns}</div><div class="stat-card__label">Style Patterns</div></div><div class="stat-card"><div class="stat-card__value">${fmtBytes(d.size)}</div><div class="stat-card__label">Size</div></div><div class="stat-card"><div class="stat-card__value">${d.avgQuality ?? 0}</div><div class="stat-card__label">Avg Quality</div></div>`;
+}
+
+async function searchLiteraryScenes() {
+  const q = document.getElementById("literary-scenes-q").value;
+  const d = await api();
+  const el = document.getElementById("literary-scenes-results");
+  if (!d?.templates?.length) { el.innerHTML = '<div class="empty">No results</div>'; return; }
+  el.innerHTML = '<table class="result-table"><tr><th>Book</th><th>Archetype</th><th>Template</th><th>Mood</th><th>Quality</th></tr>' + d.templates.map(r => {
+    const rid = "scene-" + escapeHtml(String(r.id || ""));
+    return `<tr style="cursor:pointer" onclick="toggleLiteraryRow('${rid}')"><td>${escapeHtml((r.source_book||"-").split("::").pop().slice(0,30))}</td><td>${escapeHtml(r.archetype_primary||"-")}${r.archetype_secondary?' / '+escapeHtml(r.archetype_secondary):''}</td><td>${escapeHtml((r.template_text||"").slice(0,80))}…</td><td>${escapeHtml(r.mood||"-")}</td><td>${Number(r.quality_score||0).toFixed(2)}</td></tr><tr id="${rid}" style="display:none"><td colspan="5"><div class="result-box">${formatSceneFields(r)}</div></td></tr>`;
+  }).join("") + '</table>';
+}
+
+async function searchLiteraryStyles() {
+  const q = document.getElementById("literary-styles-q").value;
+  const d = await api();
+  const el = document.getElementById("literary-styles-results");
+  if (!d?.styles?.length) { el.innerHTML = '<div class="empty">No results</div>'; return; }
+  el.innerHTML = '<table class="result-table"><tr><th>Author/Era</th><th>Register</th><th>Tone</th><th>Era</th><th>Voice</th></tr>' + d.styles.map(r => {
+    const rid = "style-" + escapeHtml(String(r.id || ""));
+    return `<tr style="cursor:pointer" onclick="toggleLiteraryRow('${rid}')"><td>${escapeHtml((r.source_author_or_era||"-").slice(0,30))}</td><td>${escapeHtml(r.register||"-")}</td><td>${escapeHtml(r.tone||"-")}</td><td>${escapeHtml(r.era||"-")}</td><td>${escapeHtml(r.narrative_voice||"-")}</td></tr><tr id="${rid}" style="display:none"><td colspan="5"><div class="result-box">${formatStyleFields(r)}</div></td></tr>`;
+  }).join("") + '</table>';
+}
+
+function toggleLiteraryRow(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === "none" ? "table-row" : "none";
+}
+
+function formatSceneFields(r) {
+  const fields = [
+    ["ID", r.id], ["Source", r.source_book], ["Chapter", r.source_chapter],
+    ["Archetype (primary/secondary)", [r.archetype_primary, r.archetype_secondary].filter(Boolean).join(" / ")],
+    ["Mood", r.mood], ["Difficulty", r.difficulty], ["Domain", r.domain], ["Scale", r.scale],
+    ["Moral ambiguity", r.moral_ambiguity],
+    ["Quality score", r.quality_score != null ? Number(r.quality_score).toFixed(3) : null],
+    ["Use count", r.use_count], ["Last used at", r.last_used_at ? new Date(r.last_used_at*1000).toISOString() : null],
+    ["Tags", Array.isArray(r.tags) ? r.tags.join(", ") : r.tags],
+    ["Variables", Array.isArray(r.variables) ? r.variables.join(", ") : r.variables],
+    ["Beat sequence", Array.isArray(r.beat_sequence) ? r.beat_sequence.join(" → ") : r.beat_sequence],
+    ["Tension curve", Array.isArray(r.tension_curve) ? r.tension_curve.join(", ") : r.tension_curve],
+    ["Applicable positions", Array.isArray(r.applicable_positions) ? r.applicable_positions.join(", ") : r.applicable_positions],
+    ["Embedding id", r.embedding_id],
+    ["Created at", r.created_at ? new Date(r.created_at*1000).toISOString() : null],
+    ["Template text", r.template_text],
+  ];
+  return fields.filter(f => f[1] != null && f[1] !== "").map(f => `<div><strong>${f[0]}:</strong> ${escapeHtml(String(f[1]))}</div>`).join("");
+}
+
+function formatStyleFields(r) {
+  const fields = [
+    ["ID", r.id], ["Author/Era", r.source_author_or_era], ["Register", r.register],
+    ["Pacing", r.pacing], ["Tone", r.tone], ["Sensory ratio", r.sensory_ratio],
+    ["Avg sentence len", r.avg_sentence_len], ["Sentence len variance", r.sentence_len_variance],
+    ["Narrative voice", r.narrative_voice], ["Temporal style", r.temporal_style],
+    ["Dialogue style", r.dialogue_style], ["Metaphor density", r.metaphor_density],
+    ["Paragraph length avg", r.paragraph_length_avg], ["Exclamation ratio", r.exclamation_ratio],
+    ["Era", r.era], ["Literary period", r.literary_period],
+    ["Quality score", r.quality_score != null ? Number(r.quality_score).toFixed(3) : null],
+    ["Rhetorical devices", Array.isArray(r.rhetorical_devices) ? r.rhetorical_devices.join(", ") : r.rhetorical_devices],
+    ["Preferred constructions", Array.isArray(r.preferred_constructions) ? r.preferred_constructions.join("; ") : r.preferred_constructions],
+    ["Forbidden phrases", Array.isArray(r.forbidden_phrases) ? r.forbidden_phrases.join("; ") : r.forbidden_phrases],
+    ["Example snippets", Array.isArray(r.example_snippets) ? r.example_snippets.join(" ⏐ ") : r.example_snippets],
+    ["Created at", r.created_at ? new Date(r.created_at*1000).toISOString() : null],
+  ];
+  return fields.filter(f => f[1] != null && f[1] !== "").map(f => `<div><strong>${f[0]}:</strong> ${escapeHtml(String(f[1]))}</div>`).join("");
+}
+// ── Economics ─────────────────────────────────────────────────
+async function loadEconomicsStats() {
+  const d = await api();
+  const el = document.getElementById("economics-stats");
+  if (!d?.exists) { el.innerHTML = '<div class="empty">Economics DB not found</div>'; return; }
+  el.innerHTML = `<div class="stat-card"><div class="stat-card__value">${fmtBytes(d.size)}</div><div class="stat-card__label">Size</div></div>`;
+  const phase = await api();
+  if (phase) {
+    const phaseEl = document.getElementById("economics-phase");
+    phaseEl.textContent = phase.phase
+      ? `${phase.phase} (reserve: ${phase.reserve}, modifier: x${phase.price_modifier})`
+      : "No active cycle";
+  }
+  const jubilee = await api();
+  if (jubilee) {
+    const jubEl = document.getElementById("economics-jubilee");
+    jubEl.textContent = jubilee.years_until != null
+      ? `${jubilee.years_until} years until next Jubilee (year ${jubilee.next_year})`
+      : "No jubilee data";
+  }
+}
+
+// ── Pipeline ──────────────────────────────────────────────────
+async function loadPipeline() {
+  const d = await api();
+  if (!d) return;
+  const src = d.sources;
+  const inter = d.intermediate;
+  const out = d.outputs;
+
+  // Gutenberg pipeline phase data
+  setPhaseData("download", src.texts.count > 0, src.texts.count + " files");
+  setPhaseData("import", inter.classics.exists, inter.classics.exists ? fmtBytes(inter.classics.size) : "—");
+  setPhaseData("v1", out.compiled.exists, out.compiled.exists ? out.compiled.templates + " templates" : "—");
+  setPhaseData("v2", out.literary.exists, out.literary.exists ? out.literary.sceneTemplates + " scenes, " + out.literary.stylePatterns + " styles" : "—");
+  setPhaseData("calibrate", out.literary.exists, out.literary.exists ? "quality scores" : "—");
+
+  // Bible (standalone)
+  setPhaseData("bible", src.bible.exists, src.bible.exists ? fmtBytes(src.bible.size) : "—");
+
+  // Arrow states
+  setArrow("download", src.texts.count > 0);
+  setArrow("import", inter.classics.exists);
+  setArrow("v1", out.compiled.exists);
+  setArrow("v2", out.literary.exists);
+
+  // Reconnect to active jobs
+  try {
+    const active = await api();
+    if (active && active.jobs) {
+      for (const job of active.jobs) {
+        reconnectPhaseJob(job.phase, job.id, job.progress, job.stats, job.logs);
+      }
+    }
+  } catch {}
+}
+
+function reconnectPhaseJob(phaseId, jobId, progress, stats, logs) {
+  const statusEl = document.getElementById("phase-" + phaseId + "-status");
+  const btn = document.getElementById("phase-" + phaseId + "-btn");
+  const statsEl = document.getElementById("phase-" + phaseId + "-stats");
+
+  if (!statusEl || !btn) return;
+
+  // Set button to running state
+  statusEl.textContent = progress + "%";
+  statusEl.className = "phase-card__status running";
+  btn.disabled = true;
+  btn.textContent = "Running...";
+  btn.style.setProperty("--phase-progress", progress + "%");
+
+  // Show stats if available
+  if (stats && statsEl) {
+    updateStatsDisplay(statsEl, stats);
+  }
+
+  if (logs && logs.length) {
+    for (const l of logs) addLog(phaseId + " [stderr]: " + l);
+  }
+
+  // Reconnect SSE
+  trackPhaseProgress(phaseId, jobId, "gutenberg/" + phaseId);
+}
+
+function updateStatsDisplay(statsEl, s) {
+  let html = "";
+  if (s.book_title) html += "<div><span>Book</span><span>" + s.book_current + "/" + s.book_total + ": " + escapeHtml(s.book_title.split("::").pop() || s.book_title) + "</span></div>";
+  else if (s.book_current != null) html += "<div><span>Book</span><span>" + s.book_current + "/" + s.book_total + "</span></div>";
+  if (s.chunks_done != null) html += "<div><span>Chunks</span><span>" + s.chunks_done + "</span></div>";
+  if (s.templates != null) html += "<div><span>Templates</span><span>" + s.templates + "</span></div>";
+  if (s.scenes != null) html += "<div><span>Scenes</span><span>" + s.scenes + "</span></div>";
+  if (s.styles != null) html += "<div><span>Styles</span><span>" + s.styles + "</span></div>";
+  if (s.reps_done != null && s.reps_total != null) html += "<div><span>Reps</span><span>" + s.reps_done + "/" + s.reps_total + "</span></div>";
+  if (s.llm_calls != null) html += "<div><span>LLM</span><span>" + s.llm_calls + " calls" + (s.llm_avg_s ? ", avg " + s.llm_avg_s + "s" : "") + (s.llm_elapsed_s != null ? ", current " + s.llm_elapsed_s + "s" : "") + "</span></div>";
+  if (s.errors != null && s.errors > 0) html += "<div><span>Errors</span><span>" + s.errors + "</span></div>";
+  if (s.eta_min != null && s.eta_min > 0) html += "<div><span>ETA</span><span>~" + s.eta_min + "m</span></div>";
+  if (s.elapsed_s != null) {
+    const m = Math.floor(s.elapsed_s / 60);
+    const sec = s.elapsed_s % 60;
+    html += "<div><span>Elapsed</span><span>" + m + "m " + sec + "s</span></div>";
+  }
+  if (html) statsEl.innerHTML = html;
+}
+
+function setPhaseData(id, active, text) {
+  const el = document.getElementById("phase-" + id + "-data");
+  if (el) el.textContent = text;
+  const card = document.getElementById("phase-" + id);
+  if (card) card.style.borderColor = active ? "var(--success)" : "";
+}
+
+function setArrow(id, active) {
+  const el = document.getElementById("arrow-" + id);
+  if (el) el.style.color = active ? "var(--accent)" : "";
+}
+
+// ── System ────────────────────────────────────────────────────
+const LOGS = [];
+async function loadSystemStats() {
+  const d = await api();
+  if (!d) return;
+  document.getElementById("system-stats").innerHTML = `<div class="stat-card"><div class="stat-card__value">${Math.floor(d.uptime)}s</div><div class="stat-card__label">Uptime</div></div><div class="stat-card"><div class="stat-card__value">${fmtBytes(d.memory?.rss)}</div><div class="stat-card__label">RSS</div></div><div class="stat-card"><div class="stat-card__value">${d.mcpMode?"MCP":"Game"}</div><div class="stat-card__label">Mode</div></div>`;
+}
+function addLog(msg) {
+  LOGS.unshift({ time: new Date().toLocaleTimeString(), msg });
+  if (LOGS.length > 50) LOGS.pop();
+  const el = document.getElementById("system-logs");
+  if (el) el.innerHTML = LOGS.map(l => `<div style="padding:4px 0;border-bottom:1px solid var(--border-light)"><span style="color:var(--text-disabled)">${escapeHtml(l.time)}</span> ${escapeHtml(l.msg)}</div>`).join("");
+}
+
+// ── Actions ───────────────────────────────────────────────────
+function runAction(path) {
+  return new Promise((resolve, reject) => {
+    toast("Starting: " + path);
+    addLog("Starting: " + path);
+    tnsStubFetch()
+      .then(r => r.json())
+      .then(data => {
+        if (data.jobId) {
+          trackProgress(data.jobId, path, () => {
+            loadTab(document.querySelector(".tab.active").dataset.tab);
+            resolve();
+          }, reject);
+        } else {
+          toast("Done: " + path, "success");
+          addLog("Completed: " + path);
+          loadTab(document.querySelector(".tab.active").dataset.tab);
+          resolve();
+        }
+      })
+      .catch(err => {
+        toast("Error: " + err.message, "error");
+        addLog("Error: " + path + " \u2014 " + err.message);
+        reject(err);
+      });
+  });
+}
+
+function trackProgress(jobId, path, onDone, onError) {
+  const bar = document.getElementById("progress-bar");
+  const fill = document.getElementById("progress-fill");
+  const label = document.getElementById("progress-label");
+  bar.classList.add("active");
+  fill.style.width = "0%";
+  label.textContent = "Starting...";
+
+  const es = tnsStubEventSource();
+  es.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    addLog(path + ": " + d.message + " (" + d.progress + "%)");
+    fill.style.width = d.progress + "%";
+    label.textContent = d.message + " (" + d.progress + "%)";
+    if (d.logs) {
+      for (const l of d.logs) addLog(path + " [stderr]: " + l);
+    }
+    if (d.status === "done" || d.status === "error") {
+      es.close();
+      if (d.status === "done") {
+        fill.style.width = "100%";
+        label.textContent = "Done";
+        setTimeout(() => bar.classList.remove("active"), 1000);
+        toast("Completed: " + path, "success");
+        onDone?.();
+      } else {
+        bar.classList.remove("active");
+        toast("Error: " + path, "error");
+        onError?.(new Error(d.message));
+      }
+    }
+  };
+  es.onerror = () => { es.close(); bar.classList.remove("active"); toast("Connection lost", "error"); onError?.(new Error("Connection lost")); };
+}
+
+async function compactAll() {
+  for (const p of ["bible/compact","gutenberg/compact","wikipedia/compact","literary/compact"]) await runAction(p);
+}
+async function rebuildIndex() { await runAction("rebuild-index"); }
+
+// ── Phase Pipeline ─────────────────────────────────────────────
+function runPhase(path, phaseId) {
+  const statusEl = document.getElementById("phase-" + phaseId + "-status");
+  const btn = document.getElementById("phase-" + phaseId + "-btn");
+  if (!statusEl || !btn) return;
+
+  statusEl.textContent = "running";
+  statusEl.className = "phase-card__status running";
+  btn.disabled = true;
+  btn.textContent = "Running...";
+  btn.style.setProperty("--phase-progress", "0%");
+  const statsEl = document.getElementById("phase-" + phaseId + "-stats");
+  if (statsEl) statsEl.innerHTML = "<div><span>Status</span><span>Initializing...</span></div>";
+  toast("Starting: " + path);
+  addLog("Phase start: " + path);
+
+  tnsStubFetch()
+    .then(r => r.json())
+    .then(data => {
+      const jobId = data.jobId;
+      if (jobId) {
+        trackPhaseProgress(phaseId, jobId, path);
+      } else {
+        setPhaseDone(phaseId, path);
+      }
+    })
+    .catch(err => {
+      setPhaseError(phaseId, path, err.message);
+    });
+}
+
+function setPhaseDone(phaseId, path) {
+  const statusEl = document.getElementById("phase-" + phaseId + "-status");
+  const btn = document.getElementById("phase-" + phaseId + "-btn");
+  if (statusEl) { statusEl.textContent = "done"; statusEl.className = "phase-card__status done"; }
+  if (btn) { btn.textContent = "Done"; btn.style.setProperty("--phase-progress", "100%"); btn.disabled = false; }
+  toast("Completed: " + path, "success");
+  addLog("Phase done: " + path);
+  loadPipeline();
+  setTimeout(() => { if (btn) btn.textContent = "Run"; }, 3000);
+}
+
+function setPhaseError(phaseId, path, msg) {
+  const statusEl = document.getElementById("phase-" + phaseId + "-status");
+  const btn = document.getElementById("phase-" + phaseId + "-btn");
+  if (statusEl) { statusEl.textContent = "error"; statusEl.className = "phase-card__status error"; }
+  if (btn) { btn.textContent = "Error"; btn.style.setProperty("--phase-progress", "0%"); btn.disabled = false; }
+  toast("Error: " + msg, "error");
+  addLog("Phase error: " + path + " — " + msg);
+  setTimeout(() => { if (btn) btn.textContent = "Run"; }, 3000);
+}
+
+function trackPhaseProgress(phaseId, jobId, path) {
+  const statusEl = document.getElementById("phase-" + phaseId + "-status");
+  const btn = document.getElementById("phase-" + phaseId + "-btn");
+  const statsEl = document.getElementById("phase-" + phaseId + "-stats");
+
+  const es = tnsStubEventSource();
+  es.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    if (btn) btn.style.setProperty("--phase-progress", d.progress + "%");
+    if (statusEl) statusEl.textContent = d.progress + "%";
+    addLog(path + ": " + d.message + " (" + d.progress + "%)");
+
+    if (d.stats && statsEl) {
+      updateStatsDisplay(statsEl, d.stats);
+    }
+    if (d.logs) {
+      for (const l of d.logs) addLog(path + " [stderr]: " + l);
+    }
+
+    if (d.status === "done" || d.status === "error") {
+      es.close();
+      if (d.status === "done") {
+        setPhaseDone(phaseId, path);
+      } else {
+        setPhaseError(phaseId, path, d.message);
+      }
+    }
+  };
+  es.onerror = () => {
+    es.close();
+    setPhaseError(phaseId, path, "Connection lost");
+  };
+}
+
+// ── Tab loader ────────────────────────────────────────────────
+const loaders = { dashboard: loadDashboard, bible: loadBibleStats, gutenberg: () => { loadGutenbergStats(); loadCatalogStats(); loadCatalogPage(1); }, wikipedia: loadWikipediaStats, literary: loadLiteraryStats, economics: loadEconomicsStats, pipeline: loadPipeline, system: loadSystemStats };
+function loadTab(tab) { loaders[tab]?.(); }
+
+// ── Init ──────────────────────────────────────────────────────
+applyI18n();
+loadDashboard();
+// Auto-refresh only Dashboard and System tabs (not interactive tabs)
+const POLL_TABS = new Set(["dashboard", "system"]);
+setInterval(() => { const a = document.querySelector(".tab.active")?.dataset.tab; if (a && POLL_TABS.has(a)) loadTab(a); }, 10000);
+</script>
+</body>
+</html>

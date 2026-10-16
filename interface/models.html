@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrueNeverStory — Models</title>
+
+
+<link href="/static/fonts/fonts.css" rel="stylesheet">
+<link href="/static/theme-dark.css" rel="stylesheet">
+<link href="/static/theme-light.css" rel="stylesheet">
+<link href="/static/theme-terminal.css" rel="stylesheet">
+<link href="/static/theme-cyberpunk.css" rel="stylesheet">
+<link href="/static/theme-custom.css" rel="stylesheet">
+<link href="/static/theme.css" rel="stylesheet">
+<script src="static/server-stub.js"></script>
+  <script src="/static/theme.js"></script>
+<style>
+:root{--font-body:'Space Grotesk',system-ui,sans-serif;--font-mono:'Space Mono',monospace;--radius-md:8px;--radius-lg:12px;--radius-pill:999px;--ease-out:cubic-bezier(.22,.61,.36,1);--dur-fast:120ms;--dur-normal:200ms;--dur-slow:340ms}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;background:var(--black);overflow:hidden}
+body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:14px;color:var(--text-primary);display:flex;flex-direction:column;overflow:hidden;user-select:none}
+
+.topbar{display:flex;align-items:center;gap:12px;padding:0 20px;height:48px;border-bottom:1px solid var(--border);flex-shrink:0}
+.topbar__brand{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-disabled)}
+.topbar__brand span{color:var(--text-display);font-weight:700}
+.topbar__sep{width:1px;height:18px;background:var(--border)}
+.topbar__title{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary)}
+.topbar__spacer{flex:1}
+.topbar__status{display:flex;align-items:center;gap:5px;font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+.topbar__dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.topbar__dot--on{background:var(--success)}
+.topbar__dot--off{background:var(--accent)}
+.topbar__btn{background:transparent;border:1px solid var(--border-visible);color:var(--text-tertiary);font-family:var(--font-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:6px 16px;cursor:pointer;border-radius:var(--radius-pill);transition:all var(--dur-fast);text-decoration:none}
+.topbar__btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+
+/* Dropdown menu */
+.menu-wrap{position:relative}
+.menu{display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:180px;background:var(--surface-raised);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:6px 0;z-index:100;box-shadow:0 8px 32px rgba(0,0,0,.6)}
+.menu-wrap.open .menu{display:block}
+.menu__item{display:block;width:100%;text-align:left;background:none;border:none;color:var(--text-secondary);font-family:var(--font-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:8px 16px;cursor:pointer;transition:all var(--dur-fast);text-decoration:none}
+.menu__item:hover{background:var(--surface-hover);color:var(--text-display)}
+.menu__sep{height:1px;background:var(--border);margin:4px 0}
+
+.content{flex:1;overflow-y:auto;padding:20px 24px}
+.content::-webkit-scrollbar{width:2px}
+.content::-webkit-scrollbar-track{background:transparent}
+.content::-webkit-scrollbar-thumb{background:var(--border-visible);border-radius:2px}
+
+.section{margin-bottom:28px}
+.section__title{font-family:var(--font-mono);font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-secondary);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.section__title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Type group */
+.type-group{margin-bottom:20px}
+.type-group__header{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.type-group__label{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:700}
+.type-group__count{font-family:var(--font-mono);font-size:10px;color:var(--text-disabled);letter-spacing:.06em}
+
+/* Model cards */
+.model-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:10px}
+.model-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;transition:border-color var(--dur-fast);display:flex;flex-direction:column;gap:8px}
+.model-card:hover{border-color:var(--border-visible)}
+.model-card__head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.model-card__name{font-family:var(--font-body);font-size:15px;color:var(--text-display);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.model-card__name.tooltip-wrap{cursor:pointer}
+.model-card__name.tooltip-wrap:hover{color:var(--interactive)}
+.model-card__badges{display:flex;gap:6px;flex-shrink:0}
+.model-card__badge{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;padding:3px 8px;border-radius:var(--radius-pill);border:1px solid var(--border);white-space:nowrap}
+.model-card__badge--installed{border-color:var(--success);color:var(--success)}
+.model-card__badge--downloading{border-color:var(--warning);color:var(--warning)}
+.model-card__badge--available{border-color:var(--text-disabled);color:var(--text-disabled)}
+.model-card__badge--type{border-color:var(--text-disabled);color:var(--text-disabled)}
+.model-card__badge--type-installed{border-color:var(--success);color:var(--success)}
+.model-card__desc{font-size:12px;color:var(--text-secondary);line-height:1.4}
+.model-card__meta{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--text-disabled);letter-spacing:.04em}
+.model-card__meta span{white-space:nowrap}
+.model-card__actions{display:flex;gap:6px;margin-top:4px}
+
+.btn{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;padding:7px 16px;border-radius:var(--radius-pill);cursor:pointer;transition:all var(--dur-fast);border:1px solid var(--border-visible);background:transparent;color:var(--text-secondary)}
+.btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+.btn--primary{background:var(--text-display);color:var(--black);border-color:var(--text-display)}
+.btn--primary:hover{opacity:.9}
+.btn--danger{border-color:var(--accent);color:var(--accent)}
+.btn--danger:hover{background:var(--accent);color:var(--black)}
+.btn--sm{padding:5px 12px;font-size:11px}
+.btn--install{border-color:var(--success);color:var(--success)}
+.btn--install:hover{background:var(--success);color:var(--black)}
+
+/* Custom install */
+.install-form{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:10px}
+.install-form__row{display:flex;gap:10px;align-items:end}
+.install-form__field{display:flex;flex-direction:column;gap:3px;flex:1}
+.install-form__label{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-disabled)}
+.install-form__input{background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text-primary);outline:none;transition:border-color var(--dur-fast)}
+.install-form__input:focus{border-color:var(--text-secondary)}
+.install-form__input::placeholder{color:var(--text-disabled)}
+.install-form__select{background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text-primary);outline:none;appearance:none;cursor:pointer}
+
+/* Progress bar */
+.progress{width:100%;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress__fill{height:100%;background:var(--interactive);border-radius:2px;transition:width .3s ease}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;padding:12px 24px;border-radius:var(--radius-md);font-family:var(--font-mono);font-size:13px;letter-spacing:.06em;z-index:100;animation:toastIn 200ms var(--ease-out)}
+.toast--ok{background:var(--success);color:var(--black)}
+.toast--err{background:var(--accent);color:var(--black)}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.empty{text-align:center;padding:40px;color:var(--text-disabled);font-size:14px;letter-spacing:.06em}
+
+/* File browser */
+.file-browser{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;display:flex;flex-direction:column;gap:10px}
+.file-browser__path{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:8px 12px}
+.file-browser__path-btn{background:transparent;border:none;color:var(--interactive);font-family:var(--font-mono);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:4px}
+.file-browser__path-btn:hover{background:var(--interactive-subtle)}
+.file-browser__path-current{font-family:var(--font-mono);font-size:13px;color:var(--text-primary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-browser__list{max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-md);background:var(--surface)}
+.file-browser__list::-webkit-scrollbar{width:2px}
+.file-browser__list::-webkit-scrollbar-thumb{background:var(--border-visible);border-radius:2px}
+.file-browser__item{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;transition:background var(--dur-fast);border-bottom:1px solid var(--border)}
+.file-browser__item:last-child{border-bottom:none}
+.file-browser__item:hover{background:var(--surface-hover)}
+.file-browser__item--selected{background:var(--interactive-subtle);border-color:var(--interactive)}
+.file-browser__item-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.file-browser__item-name{font-family:var(--font-mono);font-size:13px;color:var(--text-primary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-browser__item-name--dir{color:var(--interactive)}
+.file-browser__item-size{font-family:var(--font-mono);font-size:12px;color:var(--text-disabled);flex-shrink:0}
+.file-browser__empty{text-align:center;padding:24px;color:var(--text-disabled);font-size:13px}
+.file-browser__actions{display:flex;gap:10px;align-items:center}
+.file-browser__selected{font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Tooltip */
+.tooltip-wrap{position:relative;display:inline-block;overflow:visible}
+.tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);min-width:260px;max-width:380px;background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:12px 14px;z-index:50;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.5);opacity:0;transition:opacity var(--dur-fast)}
+.tooltip-wrap:hover .tooltip{display:block;opacity:1}
+.tooltip__title{font-family:var(--font-body);font-size:14px;color:var(--text-display);font-weight:500;margin-bottom:6px}
+.tooltip__row{display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);padding:2px 0}
+.tooltip__row span:first-child{color:var(--text-disabled);letter-spacing:.04em}
+.tooltip__desc{font-size:12px;color:var(--text-tertiary);line-height:1.4;margin-top:6px;border-top:1px solid var(--border);padding-top:6px}
+.tooltip__bar{display:flex;gap:4px;margin-top:6px}
+.tooltip__tag{font-size:10px;text-transform:uppercase;letter-spacing:.08em;padding:2px 6px;border-radius:var(--radius-pill);border:1px solid var(--border)}
+.tooltip__tag--good{border-color:var(--success);color:var(--success)}
+.tooltip__tag--mid{border-color:var(--warning);color:var(--warning)}
+.tooltip__tag--slow{border-color:var(--text-disabled);color:var(--text-disabled)}
+.tooltip__langs{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px;border-top:1px solid var(--border);padding-top:6px}
+.tooltip__lang{font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;padding:1px 5px;border-radius:var(--radius-pill);border:1px solid var(--border);color:var(--text-disabled)}
+.tooltip__lang--pri{border-color:var(--success);color:var(--success);font-weight:600}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .topbar{padding:0 12px;gap:8px;height:44px}
+  .topbar__brand{font-size:11px}
+  .topbar__title{font-size:11px}
+  .topbar__status{display:none}
+  .topbar__btn.desktop-only{display:none}
+  .content{padding:14px 12px}
+  .model-grid{grid-template-columns:1fr}
+  .install-form__row{flex-direction:column}
+  .install-form__field{max-width:none!important}
+  .file-browser__path{flex-wrap:wrap}
+}
+@media(max-width:480px){
+  .topbar{padding:0 8px;gap:6px}
+  .topbar__brand{font-size:10px;letter-spacing:.08em}
+  .topbar__title{display:none}
+  .section__title{font-size:11px}
+  .model-card{padding:12px}
+  .model-card__name{font-size:13px}
+  .btn{padding:6px 12px;font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar__brand"><span>TrueNeverStory</span></div>
+  <div class="topbar__sep"></div>
+  <div class="topbar__title" data-i18n="title">Models</div>
+  <div class="topbar__spacer"></div>
+  <div class="topbar__status">
+    <span class="topbar__dot" id="llamacppDot"></span>
+    <span id="llamacppStatus">LLAMACPP: ?</span>
+    <span style="margin:0 4px;color:var(--border-visible)">|</span>
+    <span class="topbar__dot" id="ollamaDot"></span>
+    <span id="ollamaStatus">OLLAMA: ?</span>
+  </div>
+  <a href="/providers" class="topbar__btn desktop-only" data-i18n="providers">PROVIDERS</a>
+  <a href="/worlds" class="topbar__btn desktop-only">WORLDS</a>
+  <a href="/agents" class="topbar__btn desktop-only" data-i18n="agents">AGENTS</a>
+  <a href="/settings" class="topbar__btn desktop-only" data-i18n="settings">SETTINGS</a>
+  <a href="/" class="topbar__btn desktop-only" data-i18n="back">BACK</a>
+  <div class="menu-wrap" id="navMenu">
+    <button class="topbar__btn" onclick="document.getElementById('navMenu').classList.toggle('open')">&#9776;</button>
+    <div class="menu">
+      <a href="/" class="menu__item" data-i18n="chat">Chat</a>
+      <a href="/worlds" class="menu__item">Worlds</a>
+      <a href="/providers" class="menu__item" data-i18n="providers">Providers</a>
+      <a href="/agents" class="menu__item" data-i18n="agents">Agents</a>
+      <a href="/settings" class="menu__item" data-i18n="settings">Settings</a>
+      <div class="menu__sep"></div>
+      <a href="/" class="menu__item" data-i18n="back">Back</a>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <!-- Custom install -->
+  <div class="section">
+    <div class="section__title" data-i18n="installTitle">Install Model</div>
+    <div class="install-form">
+      <div class="install-form__row">
+        <div class="install-form__field">
+          <label class="install-form__label" data-i18n="modelName">Model Name</label>
+          <input class="install-form__input" id="installName" placeholder="e.g. llama3.2:8b or model.gguf">
+        </div>
+        <div class="install-form__field" style="max-width:150px">
+          <label class="install-form__label" data-i18n="backend">Backend</label>
+          <select class="install-form__select" id="installBackend">
+            <option value="ollama">Ollama</option>
+            <option value="llamacpp">LLAMA.cpp (GGUF)</option>
+          </select>
+        </div>
+        <div class="install-form__field" style="max-width:300px" id="urlField">
+          <label class="install-form__label" data-i18n="urlForGguf">URL (for GGUF)</label>
+          <input class="install-form__input" id="installUrl" placeholder="https://huggingface.co/...">
+        </div>
+        <button class="btn btn--primary" onclick="installModel()" data-i18n="installBtn">Install</button>
+      </div>
+      <div id="installProgress" style="display:none">
+        <div class="progress"><div class="progress__fill" id="progressFill" style="width:0%"></div></div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;font-family:var(--font-mono)" id="progressText" data-i18n="downloading">Downloading...</div>
+      </div>
+      <div style="font-size:11px;color:var(--text-disabled);margin-top:2px"><span data-i18n="savedTo">Models saved to:</span> <code>world_db/models/</code></div>
+    </div>
+  </div>
+
+  <!-- Import from Filesystem -->
+  <div class="section">
+    <div class="section__title" data-i18n="importing">Import from Filesystem</div>
+    <div class="file-browser">
+      <div class="file-browser__path">
+        <button class="file-browser__path-btn" onclick="fbGoUp()">..</button>
+        <span class="file-browser__path-current" id="fbPath">/</span>
+        <button class="file-browser__path-btn" onclick="fbGoHome()" data-i18n="home">HOME</button>
+      </div>
+      <div class="file-browser__list" id="fbList">
+        <div class="file-browser__empty" data-i18n="loading">Loading...</div>
+      </div>
+      <div class="file-browser__actions">
+        <span class="file-browser__selected" id="fbSelected" data-i18n="noFile">No file selected</span>
+        <button class="btn btn--sm" id="fbImportBtn" disabled onclick="fbImport()" data-i18n="importBtn">Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Installed Models -->
+  <div class="section">
+    <div class="section__title" data-i18n="installedModels">Installed Models</div>
+    <div class="model-grid" id="installedModels">
+      <div class="empty" data-i18n="loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Catalog: grouped by type -->
+  <div id="catalogSections"></div>
+</div>
+
+<script>
+
+const LANG_EN = {
+  title:"Models", back:"BACK", providers:"PROVIDERS", settings:"SETTINGS", chat:"Chat", agents:"AGENTS",
+  installTitle:"Install Model", modelName:"Model Name", backend:"Backend", urlForGguf:"URL (for GGUF)",
+  installBtn:"Install", importing:"Import from Filesystem", home:"HOME", loading:"Loading...",
+  noFile:"No file selected", importBtn:"Import", installedModels:"Installed Models",
+  downloading:"Downloading...", savedTo:"Models saved to:", empty:"No models installed yet.",
+  installConfirm:"Install {0}? This will run a script on the server.",
+  browseFailed:"Browse failed:", noModels:"No models installed yet.",
+  starting:"Starting download...", installing:"Installing...", installed:"Installed!",
+  llamacppOn:"LLAMACPP: ON", llamacppOff:"LLAMACPP: OFF",
+  ollamaOn:"OLLAMA: ON", ollamaOff:"OLLAMA: OFF",
+  importing2:"IMPORTING...", importBtn2:"IMPORT",
+};
+const LANG_RU = {...LANG_EN,
+  title:"Модели", back:"НАЗАД", providers:"ПРОВАЙДЕРЫ", settings:"НАСТРОЙКИ", chat:"Чат", agents:"АГЕНТЫ",
+  installTitle:"Установить модель", modelName:"Имя модели", backend:"Бэкенд", urlForGguf:"URL (для GGUF)",
+  installBtn:"Установить", importing:"Импорт из файловой системы", home:"ДОМ", loading:"Загрузка...",
+  noFile:"Файл не выбран", importBtn:"Импорт", installedModels:"Установленные модели",
+  downloading:"Загрузка...", savedTo:"Модели сохранены в:", empty:"Модели не установлены.",
+  installConfirm:"Установить {0}? Будет запущен скрипт на сервере.",
+  browseFailed:"Ошибка обзора:", noModels:"Модели не установлены.",
+  starting:"Начало загрузки...", installing:"Установка...", installed:"Установлено!",
+  llamacppOn:"LLAMACPP: ВКЛ", llamacppOff:"LLAMACPP: ВЫКЛ",
+  ollamaOn:"OLLAMA: ВКЛ", ollamaOff:"OLLAMA: ВЫКЛ",
+  importing2:"ИМПОРТ...", importBtn2:"ИМПОРТ",
+};
+const LANGS = { en: LANG_EN, ru: LANG_RU, de: LANG_EN, fr: LANG_EN, es: LANG_EN, ja: LANG_EN, zh: LANG_EN };
+let L = LANG_EN;
+
+async function loadLang() {
+  try {
+    const r = await tnsStubFetch();
+    const s = await r.json();
+    L = LANGS[s.language] || LANG_EN;
+  } catch { L = LANG_EN; }
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (L[k]) el.textContent = L[k];
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const k = el.getAttribute('data-i18n-placeholder');
+    if (L[k]) el.placeholder = L[k];
+  });
+}
+
+let _backends = { ollama: false, llamacpp: false };
+let _activeModel = '';
+
+function toast(msg, ok) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (ok ? 'toast--ok' : 'toast--err');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function getModelType(m) {
+  const name = (m.name || '').toLowerCase();
+  const id = (m.id || '').toLowerCase();
+  if (name.includes('embed') || id.includes('embed') || name.includes('bge') || name.includes('rerank')) return 'embedding';
+  if (m.backend === 'ollama') return 'ollama';
+  if (m.backend === 'llamacpp' || m.url || (m.id && m.id.startsWith('local:'))) return 'llamacpp';
+  return 'other';
+}
+
+// Normalize a model id/name for catalog↔installed matching.
+// Catalog id: "bge-m3-q8_0"; installed id: "local:bge-m3-q8_0.gguf" → both normalize to "bge-m3-q8_0".
+function normalizeModelKey(v) {
+  let n = (v || '').toLowerCase();
+  if (n.startsWith('local:')) n = n.slice(6);
+  n = n.replace(/\.gguf$/i, '');
+  return n.trim();
+}
+
+function typeLabel(type) {
+  const map = { llamacpp: 'LLAMA.cpp (GGUF)', ollama: 'Ollama', embedding: 'Embedding', other: 'Other' };
+  return map[type] || type;
+}
+
+function backendStatusHtml(backend) {
+  if (_backends[backend]) return '<span style="color:var(--success)">&#9679; online</span>';
+  return '<span style="color:var(--accent)">&#9679; not installed</span>';
+}
+
+async function installBackend(backend) {
+  if (!confirm('Install ' + backend + '? This will run a script on the server.')) return;
+
+  const btn = event.target;
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = L.installing;
+
+  try {
+    const res = await tnsStubFetch();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Install failed');
+    _backends = data.backends || _backends;
+    toast(backend + ' installed! Reloading...', true);
+    loadModels();
+  } catch (e) {
+    toast('Install failed: ' + e.message, false);
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
+}
+
+function installTip(backend) {
+  const tips = {
+    ollama: 'Runs: curl -fsSL https://ollama.com/install.sh | sh\n\nOllama will start automatically after install. The server will detect it on the next check — no restart needed.',
+    llamacpp: 'Downloads pre-built llama-server binary for your OS from GitHub releases.\n\nAfter install, start a model server with:\n  llama-server -m model.gguf --port 5001\n\nThe server will detect it automatically — no restart needed.',
+  };
+  return tips[backend] || 'Install backend on the server.';
+}
+
+async function loadActiveModel() {
+  try {
+    const res = await tnsStubFetch();
+    if (res.ok) {
+      const s = await res.json();
+      _activeModel = s.llmModel || '';
+    }
+  } catch {}
+}
+
+async function loadModels() {
+  try {
+    await loadActiveModel();
+    const [modelsRes, backendsRes] = await Promise.all([
+      tnsStubFetch(),
+      tnsStubFetch(),
+    ]);
+    if (modelsRes.status === 401) { window.location = '/login'; return; }
+    const data = await modelsRes.json();
+    if (backendsRes.ok) _backends = await backendsRes.json();
+
+    const llamacppDot = document.getElementById('llamacppDot');
+    const llamacppStatus = document.getElementById('llamacppStatus');
+    if (_backends.llamacpp) {
+      llamacppDot.className = 'topbar__dot topbar__dot--on';
+      llamacppStatus.textContent = L.llamacppOn;
+    } else {
+      llamacppDot.className = 'topbar__dot topbar__dot--off';
+      llamacppStatus.textContent = L.llamacppOff;
+    }
+
+    const ollamaDot = document.getElementById('ollamaDot');
+    const ollamaStatus = document.getElementById('ollamaStatus');
+    if (data.ollama?.running) {
+      ollamaDot.className = 'topbar__dot topbar__dot--on';
+      ollamaStatus.textContent = L.ollamaOn + ' (' + data.ollama.models + ')';
+    } else {
+      ollamaDot.className = 'topbar__dot topbar__dot--off';
+      ollamaStatus.textContent = L.ollamaOff;
+    }
+
+    // Installed + Downloading
+    const installed = data.models.filter(m => m.status === 'installed' || m.status === 'downloading');
+    const hasDownloading = data.models.some(m => m.status === 'downloading');
+    if (hasDownloading) startProgressPolling();
+    const grid = document.getElementById('installedModels');
+    if (installed.length === 0) {
+      grid.innerHTML = '<div class="empty">' + L.noModels + '</div>';
+    } else {
+      grid.innerHTML = installed.map(m => {
+        const isActive = m.name === _activeModel;
+        const isDownloading = m.status === 'downloading';
+        const progress = window._downloadProgress?.[m.name] || window._downloadProgress?.[m.id];
+        const pct = progress?.percent || 0;
+        const speed = progress?.speed || '';
+        const eta = progress?.eta || '';
+        const dlKey = isDownloading ? ` data-model-key="${esc(m.name)}"` : '';
+        return `
+        <div class="model-card"${dlKey}${isActive ? ' style="border-color:var(--success)"' : ''}>
+          <div class="model-card__head">
+            <span class="model-card__name tooltip-wrap">${esc(m.name)}${makeTooltip(m)}</span>
+            <div class="model-card__badges">
+              ${isActive ? '<span class="model-card__badge model-card__badge--installed">active</span>' : ''}
+              ${isDownloading ? '<span class="model-card__badge model-card__badge--downloading">downloading</span>' : ''}
+              <span class="model-card__badge model-card__badge--type-installed">${esc(m.backend)}</span>
+            </div>
+          </div>
+          ${isDownloading ? `
+          <div class="progress" style="margin:4px 0"><div class="progress__fill" data-progress-fill style="width:${pct}%"></div></div>
+          <div data-progress-text style="font-size:11px;color:var(--text-disabled);font-family:var(--font-mono)">${pct}%${speed ? ' | ' + speed : ''}${eta ? ' | ETA: ' + eta : ''}</div>
+          ` : `
+          <div class="model-card__meta">
+            <span>${m.sizeHuman || '?'}</span>
+            <span>${m.format || ''}</span>
+            ${m.downloadedAt ? '<span>' + new Date(m.downloadedAt).toLocaleDateString() + '</span>' : ''}
+          </div>
+          <div class="model-card__actions">
+            ${isActive
+              ? '<button class="btn btn--sm" disabled>Active</button>'
+              : `<button class="btn btn--sm btn--primary" onclick="useModel('${esc(m.id)}')">Use</button>`
+            }
+            <button class="btn btn--sm btn--danger" onclick="removeModel('${esc(m.id)}')">Remove</button>
+          </div>
+          `}
+        </div>
+      `}).join('');
+    }
+
+    // Catalog grouped by type
+    window._catalogData = data.catalog || [];
+    // Build a set of normalized keys (id + name) so installed llamacpp models
+    // (id "local:foo.gguf") match their catalog entry (id "foo").
+    const installedKeys = new Set();
+    for (const m of installed) {
+      installedKeys.add(normalizeModelKey(m.id));
+      installedKeys.add(normalizeModelKey(m.name));
+    }
+    const groups = {};
+    for (const m of (data.catalog || [])) {
+      const t = getModelType(m);
+      if (!groups[t]) groups[t] = [];
+      groups[t].push(m);
+    }
+
+    const order = ['llamacpp', 'ollama', 'embedding', 'other'];
+    const container = document.getElementById('catalogSections');
+    container.innerHTML = '';
+
+    for (const type of order) {
+      const items = groups[type];
+      if (!items || items.length === 0) continue;
+
+      const backendKey = type === 'embedding' ? 'llamacpp' : type;
+      const backendReady = _backends[backendKey];
+
+      const section = document.createElement('div');
+      section.className = 'section';
+
+      // Embedding models can be downloaded without llama-server (GGUF download
+      // only needs fetch), so always show the list — only hide LLM backends.
+      if (!backendReady && type !== 'embedding') {
+        section.innerHTML = `
+          <div class="type-group">
+            <div class="type-group__header">
+              <span class="type-group__label">${typeLabel(type)}</span>
+              <span class="type-group__count">${backendStatusHtml(backendKey)}</span>
+              <span class="tooltip-wrap">
+                <button class="btn btn--sm btn--danger" onclick="installBackend('${backendKey}')">Install ${backendKey}</button>
+                <div class="tooltip" style="white-space:pre-line;min-width:300px;left:auto;right:0">${esc(installTip('${backendKey}'))}</div>
+              </span>
+            </div>
+          </div>
+        `;
+      } else {
+        section.innerHTML = `
+          <div class="type-group">
+            <div class="type-group__header">
+              <span class="type-group__label">${typeLabel(type)}</span>
+              <span class="type-group__count">${backendStatusHtml(backendKey)} &middot; ${items.length} models</span>
+            </div>
+            <div class="model-grid">
+              ${items.map(m => {
+                const isInstalled = installedKeys.has(normalizeModelKey(m.id)) || installedKeys.has(normalizeModelKey(m.name));
+                return `
+                  <div class="model-card">
+                    <div class="model-card__head">
+                      <span class="model-card__name tooltip-wrap">${esc(m.name)}${makeTooltip(m)}</span>
+                      <div class="model-card__badges">
+                        <span class="model-card__badge ${isInstalled ? 'model-card__badge--type-installed' : 'model-card__badge--type'}">${typeLabel(type)}</span>
+                        <span class="model-card__badge ${isInstalled ? 'model-card__badge--installed' : 'model-card__badge--available'}">${isInstalled ? 'installed' : 'available'}</span>
+                      </div>
+                    </div>
+                    <div class="model-card__desc">${esc(m.description)}</div>
+                    <div class="model-card__meta">
+                      <span>${m.size}</span>
+                    </div>
+                    <div class="model-card__actions">
+                      ${isInstalled
+                        ? '<button class="btn btn--sm" disabled>Installed</button>'
+                        : `<button class="btn btn--sm btn--install" onclick="installCatalog('${esc(m.id)}')">Install</button>`
+                      }
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+      container.appendChild(section);
+    }
+  } catch (e) {
+    toast('Failed to load models: ' + e.message, false);
+  }
+}
+
+async function installModel() {
+  const name = document.getElementById('installName').value.trim();
+  const backend = document.getElementById('installBackend').value;
+  const url = document.getElementById('installUrl').value.trim();
+  if (!name) { toast('Enter a model name', false); return; }
+
+  const payload = backend === 'llamacpp' && url
+    ? { source: url, name, backend: 'llamacpp' }
+    : { source: 'ollama', name, backend: 'ollama' };
+
+  try {
+    const res = await tnsStubFetch();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Install failed');
+    toast('Download started: ' + name, true);
+    startProgressPolling();
+    loadModels();
+  } catch (e) {
+    toast('Install failed: ' + e.message, false);
+  }
+}
+
+async function installCatalog(id) {
+  const catalogItem = (window._catalogData || []).find(m => m.id === id);
+  if (catalogItem && catalogItem.backend === 'llamacpp' && catalogItem.url) {
+    document.getElementById('installName').value = catalogItem.id;
+    document.getElementById('installBackend').value = 'llamacpp';
+    document.getElementById('installUrl').value = catalogItem.url;
+    document.getElementById('urlField').style.display = '';
+  } else {
+    document.getElementById('installName').value = id;
+    document.getElementById('installBackend').value = 'ollama';
+    document.getElementById('installUrl').value = '';
+    document.getElementById('urlField').style.display = 'none';
+  }
+  await installModel();
+}
+
+async function removeModel(id) {
+  if (!confirm('Remove model ' + id + '?')) return;
+  try {
+    const res = await tnsStubFetch();
+    if (!res.ok) throw new Error('Failed');
+    toast('Model removed', true);
+    loadModels();
+  } catch (e) {
+    toast('Remove failed: ' + e.message, false);
+  }
+}
+
+async function useModel(id) {
+  try {
+    const res = await tnsStubFetch();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    toast('Model applied: ' + data.model, true);
+    await loadModels();
+  } catch (e) {
+    toast('Failed: ' + e.message, false);
+  }
+}
+
+const MODEL_INFO = {
+  'gemma3-4b-q4_k_m': { quality: 'good', ram: '~4 GB', speed: '~7 tok/s', context: '128K', quant: 'Q4_K_M', notes: 'Best balance of quality and size.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'gemma3-4b-q5_k_m': { quality: 'good', ram: '~4.5 GB', speed: '~6 tok/s', context: '128K', quant: 'Q5_K_M', notes: 'Slightly better quality than Q4.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'gemma3-4b-q8_0': { quality: 'mid', ram: '~6 GB', speed: '~5 tok/s', context: '128K', quant: 'Q8_0', notes: 'Near-lossless quality.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'gemma3-1b-q4_k_m': { quality: 'good', ram: '~1.5 GB', speed: '~20 tok/s', context: '32K', quant: 'Q4_K_M', notes: 'Tiny, 140+ languages, great for CPU.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'qwen2.5-3b-q4_k_m': { quality: 'good', ram: '~2.5 GB', speed: '~12 tok/s', context: '32K', quant: 'Q4_K_M', notes: 'Small multilingual, 29+ languages.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'qwen2.5-7b-q4_k_m': { quality: 'mid', ram: '~5 GB', speed: '~7 tok/s', context: '128K', quant: 'Q4_K_M', notes: 'Strong multilingual, code & reasoning.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'minicpm3-4b-q4_k_m': { quality: 'good', ram: '~3 GB', speed: '~8 tok/s', context: '32K', quant: 'Q4_K_M', notes: 'Compact, strong reasoning.', lang: ['zh','en'] },
+  'smollm2-1.7b-q4_k_m': { quality: 'good', ram: '~1.5 GB', speed: '~22 tok/s', context: '8K', quant: 'Q4_K_M', notes: 'Tiny HuggingFace model.', lang: ['en'] },
+  'yandexgpt-5-lite-8b-q4_k_m': { quality: 'mid', ram: '~5 GB', speed: '~6 tok/s', context: '32K', quant: 'Q4_K_M', notes: 'Yandex RU/EN instruct, great for Russian.', lang: ['ru','en'] },
+  'gigachat3.1-10b-a1.8b-q4_k_m': { quality: 'good', ram: '~4 GB', speed: '~15 tok/s', context: '128K', quant: 'Q4_K_M', notes: 'Sber MoE, 1.8B active, fast & smart.', lang: ['ru','en'] },
+  'gigachat-20b-a3b-q4_k_m': { quality: 'mid', ram: '~10 GB', speed: '~5 tok/s', context: '32K', quant: 'Q4_K_M', notes: 'Sber MoE, 3B active, strong quality.', lang: ['ru','en'] },
+  'Gemma 3 4B (Q4_K_M)': { quality: 'good', ram: '~4 GB', speed: '~7 tok/s', context: '128K', quant: 'Q4_K_M', notes: 'Best balance.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'Gemma 3 4B (Q5_K_M)': { quality: 'good', ram: '~4.5 GB', speed: '~6 tok/s', context: '128K', quant: 'Q5_K_M', notes: 'Better quality than Q4.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'Gemma 3 4B (Q8_0)': { quality: 'mid', ram: '~6 GB', speed: '~5 tok/s', context: '128K', quant: 'Q8_0', notes: 'Near-lossless.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'llama3.2:3b': { quality: 'good', ram: '~3 GB', speed: '~10 tok/s', context: '128K', quant: 'Q4_K_M', notes: 'Small, fast, good for roleplay.', lang: ['en','de','fr','it','pt','es','hi','th'] },
+  'llama3.2:8b': { quality: 'mid', ram: '~6 GB', speed: '~5 tok/s', context: '128K', quant: 'Q4_K_M', notes: 'Balanced quality and speed.', lang: ['en','de','fr','it','pt','es','hi','th'] },
+  'llama3.1:8b': { quality: 'mid', ram: '~6 GB', speed: '~5 tok/s', context: '128K', quant: 'Q4_K_M', notes: 'Excellent for narrative.', lang: ['en','de','fr','it','pt','es','hi','th'] },
+  'mistral:7b': { quality: 'mid', ram: '~5 GB', speed: '~6 tok/s', context: '32K', quant: 'Q4_K_M', notes: 'Fast, creative dialogue.', lang: ['en'] },
+  'mixtral:8x7b': { quality: 'slow', ram: '~26 GB', speed: '~2 tok/s', context: '32K', quant: 'Q4_K_M', notes: 'High quality MoE. Very large.', lang: ['en'] },
+  'phi3:3.8b': { quality: 'good', ram: '~3 GB', speed: '~10 tok/s', context: '128K', quant: 'Q4_K_M', notes: 'Small but capable.', lang: ['en','fr'] },
+  'gemma2:9b': { quality: 'mid', ram: '~7 GB', speed: '~4 tok/s', context: '8K', quant: 'Q4_K_M', notes: 'High-quality, 8K context.', lang: ['en'] },
+  'qwen2.5:7b': { quality: 'mid', ram: '~5 GB', speed: '~6 tok/s', context: '128K', quant: 'Q4_K_M', notes: 'Strong multilingual.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'codellama:7b': { quality: 'mid', ram: '~5 GB', speed: '~6 tok/s', context: '16K', quant: 'Q4_K_M', notes: 'Code generation.', lang: ['en'] },
+  'nous-hermes2:7b': { quality: 'mid', ram: '~5 GB', speed: '~6 tok/s', context: '32K', quant: 'Q4_K_M', notes: 'Instruction following.', lang: ['en'] },
+  // ── Small / Creative LLMs ──
+  'creativewriter-llama3.2-3b-q4_k_m': { quality: 'good', ram: '~3 GB', speed: '~10 tok/s', context: '128K', quant: 'Q4_K_M', notes: 'Creative-writing fine-tune of Llama 3.2 3B, prose & narrative.', lang: ['en'] },
+  'llama3.2-3b-instruct-q4_k_m': { quality: 'good', ram: '~3 GB', speed: '~10 tok/s', context: '128K', quant: 'Q4_K_M', notes: 'Meta compact instruct, balanced quality and speed.', lang: ['en','de','fr','it','pt','es','hi','th'] },
+  'gemma-2-2b-it-q4_k_m': { quality: 'good', ram: '~2 GB', speed: '~15 tok/s', context: '8K', quant: 'Q4_K_M', notes: 'Google 2B instruct, strong quality for its size.', lang: ['en'] },
+  'qwen2.5-1.5b-instruct-q4_k_m': { quality: 'good', ram: '~1.5 GB', speed: '~18 tok/s', context: '32K', quant: 'Q4_K_M', notes: 'Tiny multilingual, 29+ languages, low VRAM.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'phi-3.5-mini-instruct-q4_k_m': { quality: 'good', ram: '~3 GB', speed: '~9 tok/s', context: '128K', quant: 'Q4_K_M', notes: 'Microsoft 3.8B mini, strong reasoning, 128k ctx.', lang: ['en'] },
+  // ── Embedding Models ──
+  'bge-m3-f16': { quality: 'good', notes: 'BAAI flagship: 100+ languages, dense+sparse+reranker.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'bge-m3-q8_0': { quality: 'good', notes: 'BAAI multilingual embedding, near-lossless.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'bge-m3-q4_k_m': { quality: 'good', notes: 'BAAI multilingual embedding, best size/quality.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'embedding-gemma-300m-q8_0': { quality: 'good', notes: 'Google Gemma-based embedding, compact.', lang: ['en'] },
+  'kalm-embedding-gemma3-12b-q4_k_m': { quality: 'mid', notes: 'Tencent KaLM on Gemma3, multilingual, top-tier.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'kalm-embedding-gemma3-12b-q8_0': { quality: 'mid', notes: 'Near-lossless KaLM Gemma3, best quality.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'qwen3-embedding-0.6b-q8_0': { quality: 'good', notes: 'Best size/quality, 100+ languages.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  // ── Translation Models ──
+  'nllb-200-distilled-600m-q8_0': { quality: 'good', notes: 'Meta 200-language translation, fast & accurate.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'nllb-200-distilled-600m-q4_k_m': { quality: 'good', notes: 'Meta translation, compact, 200 languages.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+  'madlad400-3b-q4_k_m': { quality: 'good', notes: 'Google 400+ language translation, great for rare langs.', lang: ['ru','en','de','fr','es','it','ja','zh','ko','pt','ar','hi','th','vi'] },
+};
+
+function fmtSize(v) {
+  if (!v && v !== 0) return '';
+  if (typeof v === 'string') return v;
+  return (v / 1048576).toFixed(0) + ' MB';
+}
+
+const PRIORITY_LANGS = ['ru','en','de','fr','es','it','ja'];
+const LANG_LABELS = { ru:'RU', en:'EN', de:'DE', fr:'FR', es:'ES', it:'IT', ja:'JA', zh:'ZH', ko:'KO', pt:'PT', ar:'AR', hi:'HI', th:'TH', vi:'VI' };
+
+function makeTooltip(m) {
+  const info = MODEL_INFO[m.id] ?? MODEL_INFO[m.name];
+  const desc = info?.notes || m.description || '';
+  const size = m.sizeHuman || fmtSize(m.size) || '';
+  if (!info && !desc && !size) return '';
+  const qClass = info ? (info.quality === 'good' ? 'tooltip__tag--good' : info.quality === 'mid' ? 'tooltip__tag--mid' : 'tooltip__tag--slow') : '';
+  let rows = '';
+  if (size) rows += `<div class="tooltip__row"><span>Size</span><span>${esc(size)}</span></div>`;
+  if (info) {
+    if (info.ram) rows += `<div class="tooltip__row"><span>RAM</span><span>${info.ram}</span></div>`;
+    if (info.speed) rows += `<div class="tooltip__row"><span>Speed</span><span>${info.speed}</span></div>`;
+    if (info.context) rows += `<div class="tooltip__row"><span>Context</span><span>${info.context}</span></div>`;
+    if (info.quant) rows += `<div class="tooltip__row"><span>Quant</span><span>${info.quant}</span></div>`;
+  }
+  if (m.backend) rows += `<div class="tooltip__row"><span>Backend</span><span>${esc(m.backend)}</span></div>`;
+  const tag = info ? `<div class="tooltip__bar"><span class="tooltip__tag ${qClass}">${info.quality === 'good' ? 'Recommended' : info.quality === 'mid' ? 'Balanced' : 'Heavy'}</span></div>` : '';
+  const descHtml = desc ? `<div class="tooltip__desc">${esc(desc)}</div>` : '';
+  let langsHtml = '';
+  if (info?.lang?.length) {
+    const tags = info.lang.map(l => {
+      const pri = PRIORITY_LANGS.includes(l);
+      const label = LANG_LABELS[l] || l.toUpperCase();
+      return `<span class="tooltip__lang${pri ? ' tooltip__lang--pri' : ''}">${label}</span>`;
+    }).join('');
+    langsHtml = `<div class="tooltip__langs">${tags}</div>`;
+  }
+  return `<div class="tooltip">
+    <div class="tooltip__title">${esc(m.name)}</div>
+    ${rows}
+    ${tag}
+    ${descHtml}
+    ${langsHtml}
+  </div>`;
+}
+
+document.getElementById('installBackend').addEventListener('change', function() {
+  document.getElementById('urlField').style.display = this.value === 'llamacpp' ? '' : 'none';
+});
+
+// Close menu on outside click
+document.addEventListener('click', function(e) {
+  const menu = document.getElementById('navMenu');
+  if (!menu.contains(e.target)) menu.classList.remove('open');
+});
+
+// ── File Browser ──
+let fbCurrentPath = '/';
+let fbSelectedFile = null;
+const fbItemPaths = new Map();
+
+async function fbBrowse(path) {
+  const list = document.getElementById('fbList');
+  list.innerHTML = '<div class="file-browser__empty">' + L.loading + '</div>';
+  try {
+    const res = await tnsStubFetch();
+    if (res.status === 401) { window.location = '/login'; return; }
+    if (!res.ok) throw new Error('Server error ' + res.status);
+    const data = await res.json();
+    fbCurrentPath = data.path;
+    fbSelectedFile = null;
+    document.getElementById('fbPath').textContent = data.path;
+      document.getElementById('fbSelected').textContent = L.noFile;
+    document.getElementById('fbImportBtn').disabled = true;
+    fbItemPaths.clear();
+    if (!data.entries || data.entries.length === 0) {
+      list.innerHTML = '<div class="file-browser__empty">' + L.empty + '</div>';
+      return;
+    }
+    list.innerHTML = '';
+    data.entries.forEach(e => {
+      const itemPath = (fbCurrentPath === '/' ? '/' : fbCurrentPath + '/') + e.name;
+      const icon = e.isDir ? '\u{1F4C2}' : '\u{1F4C4}';
+      const nameClass = e.isDir ? 'file-browser__item-name file-browser__item-name--dir' : 'file-browser__item-name';
+      const div = document.createElement('div');
+      div.className = 'file-browser__item';
+      div.innerHTML = '<span class="file-browser__item-icon">' + icon + '</span>' +
+        '<span class="' + nameClass + '"></span>' +
+        '<span class="file-browser__item-size">' + (e.isDir ? '' : e.sizeHuman) + '</span>';
+      div.querySelector('span.' + nameClass.replace(/ /g, '.')).textContent = e.name;
+      fbItemPaths.set(div, { path: itemPath, isDir: e.isDir });
+      list.appendChild(div);
+    });
+    list.querySelectorAll('.file-browser__item').forEach(item => {
+      item.addEventListener('click', function() {
+        const info = fbItemPaths.get(this);
+        if (!info) return;
+        if (info.isDir) { fbBrowse(info.path); }
+        else {
+          list.querySelectorAll('.file-browser__item--selected').forEach(i => i.classList.remove('file-browser__item--selected'));
+          this.classList.add('file-browser__item--selected');
+          fbSelectedFile = info.path;
+          document.getElementById('fbSelected').textContent = info.path;
+          document.getElementById('fbImportBtn').disabled = false;
+        }
+      });
+    });
+  } catch (e) {
+    list.innerHTML = '<div class="file-browser__empty">' + L.browseFailed + ' ' + esc(e.message) + '</div>';
+  }
+}
+
+function fbGoUp() {
+  if (fbCurrentPath === '/') return;
+  var parts = fbCurrentPath.split('/').filter(Boolean);
+  parts.pop();
+  fbBrowse(parts.length === 0 ? '/' : '/' + parts.join('/'));
+}
+
+function fbGoHome() { fbBrowse('/'); }
+
+async function fbImport() {
+  if (!fbSelectedFile) return;
+  const btn = document.getElementById('fbImportBtn');
+  btn.disabled = true;
+  btn.textContent = L.importing2;
+  try {
+    const res = await tnsStubFetch();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Import failed');
+    toast('Model imported: ' + (data.model?.name || fbSelectedFile), true);
+    loadModels();
+    fbBrowse(fbCurrentPath);
+  } catch (e) {
+    toast('Import failed: ' + e.message, false);
+    btn.disabled = false;
+    btn.textContent = L.importBtn2;
+  }
+}
+
+loadLang();
+fbBrowse(fbCurrentPath);
+loadModels();
+setInterval(loadModels, 30000);
+
+// Download progress polling — incremental: patches only progress bars of
+// existing downloading cards instead of re-rendering the whole list (which
+// caused the progress bar to flicker/jump on every poll).
+window._downloadProgress = {};
+let _progressPoller = null;
+let _lastDownloadCount = 0;
+
+function findDownloadCard(modelId) {
+  const cards = document.querySelectorAll('#installedModels [data-model-key]');
+  for (const c of cards) {
+    if (c.getAttribute('data-model-key') === modelId) return c;
+  }
+  return null;
+}
+
+function startProgressPolling() {
+  if (_progressPoller) return;
+  _progressPoller = setInterval(async () => {
+    try {
+      const res = await tnsStubFetch();
+      const data = await res.json();
+      const downloads = data.downloads || [];
+      window._downloadProgress = {};
+      for (const d of downloads) {
+        window._downloadProgress[d.modelId] = d;
+      }
+
+      if (downloads.length === 0) {
+        // All downloads finished — stop polling, refresh once to update statuses
+        if (_lastDownloadCount > 0) {
+          stopProgressPolling();
+          loadModels();
+        }
+        _lastDownloadCount = 0;
+        return;
+      }
+      _lastDownloadCount = downloads.length;
+
+      // Patch existing cards in place (no DOM re-render → no flicker)
+      let missingCard = false;
+      for (const d of downloads) {
+        const card = findDownloadCard(d.modelId);
+        if (!card) { missingCard = true; continue; }
+        const fill = card.querySelector('[data-progress-fill]');
+        const text = card.querySelector('[data-progress-text]');
+        const pct = d.percent || 0;
+        if (fill) fill.style.width = pct + '%';
+        if (text) text.textContent = pct + '%' + (d.speed ? ' | ' + d.speed : '') + (d.eta ? ' | ETA: ' + d.eta : '');
+      }
+      // A new download started but its card isn't rendered yet — render once
+      if (missingCard) loadModels();
+    } catch {}
+  }, 1500);
+}
+
+function stopProgressPolling() {
+  if (_progressPoller) {
+    clearInterval(_progressPoller);
+    _progressPoller = null;
+  }
+  window._downloadProgress = {};
+  _lastDownloadCount = 0;
+}
+</script>
+</body>
+</html>

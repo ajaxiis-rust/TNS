@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrueNeverStory — World Config</title>
+
+<link href="/static/fonts/fonts.css" rel="stylesheet">
+<link href="/static/theme-dark.css" rel="stylesheet">
+<link href="/static/theme-light.css" rel="stylesheet">
+<link href="/static/theme-terminal.css" rel="stylesheet">
+<link href="/static/theme-cyberpunk.css" rel="stylesheet">
+<link href="/static/theme-custom.css" rel="stylesheet">
+<link href="/static/theme.css" rel="stylesheet">
+<script src="static/server-stub.js"></script>
+  <script src="/static/theme.js"></script>
+<style>
+:root{--font-body:'Space Grotesk',system-ui,sans-serif;--font-mono:'Space Mono',monospace;--radius-md:8px;--radius-lg:12px;--radius-pill:999px;--ease-out:cubic-bezier(.22,.61,.36,1);--dur-fast:120ms;--dur-normal:200ms;--dur-slow:340ms}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;background:var(--black);overflow:hidden}
+body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:12px;color:var(--text-primary);display:flex;flex-direction:column;overflow:hidden;user-select:none}
+
+.topbar{display:flex;align-items:center;gap:12px;padding:0 20px;height:40px;border-bottom:1px solid var(--border);flex-shrink:0}
+.topbar__brand{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-disabled)}
+.topbar__brand span{color:var(--text-display);font-weight:700}
+.topbar__sep{width:1px;height:14px;background:var(--border)}
+.topbar__title{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary)}
+.topbar__spacer{flex:1}
+.topbar__btn{background:transparent;border:1px solid var(--border-visible);color:var(--text-tertiary);font-family:var(--font-mono);font-size:8px;letter-spacing:.12em;text-transform:uppercase;padding:4px 12px;cursor:pointer;border-radius:var(--radius-pill);transition:all var(--dur-fast);text-decoration:none;display:inline-flex;align-items:center}
+.topbar__btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+
+.content{flex:1;overflow-y:auto;padding:20px 24px}
+.content::-webkit-scrollbar{width:2px}
+.content::-webkit-scrollbar-track{background:transparent}
+.content::-webkit-scrollbar-thumb{background:var(--border-visible);border-radius:2px}
+
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;flex-shrink:0}
+.tab{padding:10px 20px;font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-disabled);cursor:pointer;border-bottom:2px solid transparent;transition:all var(--dur-fast);background:transparent;border-top:none;border-left:none;border-right:none}
+.tab:hover{color:var(--text-secondary)}
+.tab--active{color:var(--text-display);border-bottom-color:var(--accent)}
+.tab-panel{display:none}
+.tab-panel--active{display:block}
+
+.section{margin-bottom:20px}
+.section__title{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-secondary);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.section__title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.form{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:10px}
+.form__row{display:flex;gap:10px;align-items:end}
+.form__field{display:flex;flex-direction:column;gap:3px;flex:1}
+.form__field--full{flex:0 0 100%}
+.form__label{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-disabled)}
+.form__input,.form__textarea,.form__select{background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:8px 12px;font-family:var(--font-mono);font-size:12px;color:var(--text-primary);outline:none;transition:border-color var(--dur-fast);width:100%}
+.form__input:focus,.form__textarea:focus{border-color:var(--text-secondary)}
+.form__input::placeholder,.form__textarea::placeholder{color:var(--text-disabled)}
+.form__textarea{min-height:80px;resize:vertical;line-height:1.5;font-size:12px}
+.form__select{appearance:none;cursor:pointer}
+
+.btn{font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;padding:7px 16px;border-radius:var(--radius-pill);cursor:pointer;transition:all var(--dur-fast);border:1px solid var(--border-visible);background:transparent;color:var(--text-secondary)}
+.btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+.btn--primary{background:var(--text-display);color:var(--black);border-color:var(--text-display)}
+.btn--primary:hover{opacity:.9}
+.btn--danger{border-color:var(--accent);color:var(--accent)}
+.btn--danger:hover{background:var(--accent);color:var(--black)}
+.btn--sm{padding:5px 12px;font-size:11px}
+.btn--success{border-color:var(--success);color:var(--success)}
+.btn--success:hover{background:var(--success);color:var(--black)}
+
+.info-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:12px}
+.info-card__title{font-family:var(--font-body);font-size:15px;color:var(--text-display);font-weight:500;margin-bottom:4px}
+.info-card__desc{font-size:12px;color:var(--text-tertiary);line-height:1.4}
+
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));gap:10px;margin-bottom:16px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;text-align:center}
+.stat-card__value{font-size:28px;font-weight:700;color:var(--text-display);line-height:1}
+.stat-card__label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-disabled);margin-top:6px}
+
+.entity-list{list-style:none;padding:0}
+.entity-list li{padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.entity-list li:last-child{border-bottom:none}
+.entity-name{font-size:12px;color:var(--text-primary);font-weight:500}
+.entity-summary{font-size:11px;color:var(--text-tertiary);flex:1;margin:0 12px}
+
+.agent-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto;-ms-overflow-style:none;scrollbar-width:none}
+.agent-tabs::-webkit-scrollbar{display:none}
+.agent-tab{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-disabled);padding:8px 14px;cursor:pointer;border-bottom:2px solid transparent;transition:all var(--dur-fast);background:transparent;border-top:none;border-left:none;border-right:none;white-space:nowrap;flex-shrink:0}
+.agent-tab:hover{color:var(--text-secondary)}
+.agent-tab--active{color:var(--text-display);border-bottom-color:var(--text-display)}
+
+.agent-panel{display:none}
+.agent-panel--active{display:block}
+
+.graph-frame{width:100%;height:calc(100vh - 160px);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden}
+
+.coming-soon{text-align:center;padding:60px 20px;color:var(--text-disabled)}
+.coming-soon__icon{font-size:48px;margin-bottom:16px;opacity:.3}
+.coming-soon__title{font-size:16px;color:var(--text-secondary);margin-bottom:8px}
+.coming-soon__desc{font-size:12px;max-width:400px;margin:0 auto;line-height:1.6}
+
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 20px;border-radius:var(--radius-md);font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;z-index:100;animation:toastIn 200ms var(--ease-out)}
+.toast--ok{background:var(--success);color:var(--black)}
+.toast--err{background:var(--accent);color:var(--black)}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.toggle{display:flex;align-items:center;gap:10px;cursor:pointer}
+.toggle__track{width:36px;height:20px;border-radius:var(--radius-pill);background:var(--border-visible);position:relative;transition:background var(--dur-fast);flex-shrink:0}
+.toggle__track::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--text-disabled);transition:all var(--dur-fast)}
+.toggle--on .toggle__track{background:var(--text-display)}
+.toggle--on .toggle__track::after{transform:translateX(16px);background:var(--black)}
+.toggle__label{font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.08em}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar__brand"><span>TrueNeverStory</span></div>
+  <div class="topbar__sep"></div>
+  <div class="topbar__title" id="worldTitle" data-i18n="uiWorldConfig">World Config</div>
+  <div class="topbar__spacer"></div>
+  <a href="/worlds" class="topbar__btn" data-i18n="uiWorlds">WORLDS</a>
+  <a href="/" class="topbar__btn" data-i18n="uiBackToChat">BACK TO CHAT</a>
+</div>
+
+<div class="tabs" id="tabs">
+  <button class="tab tab--active" data-tab="description" data-i18n="uiTabDescription">Description</button>
+  <button class="tab" data-tab="agents" data-i18n="uiTabAgents">Agents</button>
+  <button class="tab" data-tab="statistics" data-i18n="uiTabStatistics">Statistics</button>
+  <button class="tab" data-tab="birth" data-i18n="uiTabBirth">Birth</button>
+  <button class="tab" data-tab="graph" data-i18n="uiTabGraph">Graph</button>
+  <button class="tab" data-tab="audit" data-i18n="uiTabAudit">Audit</button>
+</div>
+
+<div class="content">
+  <!-- Tab 1: Description -->
+  <div class="tab-panel tab-panel--active" id="panel-description">
+    <div class="section">
+      <div class="section__title" data-i18n="uiWorldSettings">World Settings</div>
+      <div class="form" id="descForm">
+        <div class="form__field form__field--full">
+          <label class="form__label" data-i18n="uiTitle">Title</label>
+          <input class="form__input" id="fTitle" type="text">
+        </div>
+        <div class="form__field form__field--full">
+          <label class="form__label" data-i18n="uiDescription">Description</label>
+          <textarea class="form__textarea" id="fDesc"></textarea>
+        </div>
+        <div class="form__row">
+          <div class="form__field">
+            <label class="form__label" data-i18n="uiLanguage">Language</label>
+            <select class="form__select" id="fLang">
+              <option value="en">English</option>
+              <option value="ru">Русский</option>
+              <option value="de">Deutsch</option>
+              <option value="fr">Français</option>
+              <option value="es">Español</option>
+              <option value="ja">日本語</option>
+              <option value="zh">中文</option>
+            </select>
+          </div>
+          <div class="form__field">
+            <label class="form__label" data-i18n="uiGenre">Genre</label>
+            <input class="form__input" id="fGenre" type="text" placeholder="fantasy, sci-fi...">
+          </div>
+          <div class="form__field">
+            <label class="form__label" data-i18n="uiAgeRating">Age Rating</label>
+            <select class="form__select" id="fRating">
+              <option value="16" data-i18n="uiRating16">16+</option>
+              <option value="18" data-i18n="uiRating18">18+</option>
+            </select>
+          </div>
+        </div>
+        <div class="form__field form__field--full">
+          <label class="form__label" data-i18n="uiWorldRules">World Rules (one per line)</label>
+          <textarea class="form__textarea" id="fRules" placeholder="Rule name: description"></textarea>
+        </div>
+        <div class="form__field form__field--full">
+          <label class="form__label" data-i18n="uiMagicSystem">Magic System</label>
+          <textarea class="form__textarea" id="fMagic" placeholder="Description of magic system" style="min-height:60px"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn--primary" onclick="saveDescription()" data-i18n="uiSave">Save</button>
+          <button class="btn" onclick="loadDescription()" data-i18n="uiReload">Reload</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 2: Agents -->
+  <div class="tab-panel" id="panel-agents">
+    <div id="quickAssign" style="margin-bottom:12px"></div>
+    <div class="agent-tabs" id="agentTabs"></div>
+    <div id="agentPanels"></div>
+  </div>
+
+  <!-- Tab 3: Statistics -->
+  <div class="tab-panel" id="panel-statistics">
+    <div class="stat-grid" id="statGrid"></div>
+    <div class="section">
+      <div class="section__title" data-i18n="uiCharacters">Characters</div>
+      <ul class="entity-list" id="charList"></ul>
+    </div>
+    <div class="section">
+      <div class="section__title" data-i18n="uiLocations">Locations</div>
+      <ul class="entity-list" id="locList"></ul>
+    </div>
+    <div class="section">
+      <div class="section__title" data-i18n="uiFactions">Factions</div>
+      <ul class="entity-list" id="facList"></ul>
+    </div>
+    <div class="section">
+      <div class="section__title" data-i18n="uiItems">Items</div>
+      <ul class="entity-list" id="itemList"></ul>
+    </div>
+  </div>
+
+  <!-- Tab 4: Birth -->
+  <div class="tab-panel" id="panel-birth">
+    <div class="section">
+      <div class="section__title" data-i18n="uiBirthWizard">Birth Wizard</div>
+      <div class="form" id="birthForm">
+        <div class="form__field form__field--full">
+          <label class="form__label" data-i18n="uiBirthName">Character Name (optional)</label>
+          <input class="form__input" id="birthName" type="text" placeholder="Leave empty for random generation">
+        </div>
+        <div class="form__field form__field--full">
+          <label class="form__label" data-i18n="uiBirthHints">Character Hints (optional)</label>
+          <textarea class="form__textarea" id="birthHints" placeholder="e.g. female elf, mage, noble family...&#10;Leave empty for random generation"></textarea>
+        </div>
+        <div class="form__row">
+          <div class="form__field">
+            <label class="form__label" data-i18n="uiStartingAge">Starting Age</label>
+            <input class="form__input" id="birthAge" type="number" min="0" max="100" value="5">
+          </div>
+          <div class="form__field" style="flex:0 0 auto">
+            <label class="form__label" data-i18n="uiIsekaiMode">Isekai Mode</label>
+            <div class="toggle" id="birthIsekai" onclick="this.classList.toggle('toggle--on')">
+              <div class="toggle__track"><div class="toggle__thumb"></div></div>
+              <span class="toggle__label" data-i18n="uiReincarnation">Reincarnation</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn--primary" id="birthStartBtn" onclick="startBirth()" data-i18n="uiStartNewLife">START NEW LIFE</button>
+        </div>
+      </div>
+      <div id="birthResult" style="display:none;margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- Tab 5: Graph -->
+  <div class="tab-panel" id="panel-graph">
+    <iframe class="graph-frame" id="graphFrame" src="about:blank"></iframe>
+  </div>
+
+  <!-- Tab 5: Audit -->
+  <div class="tab-panel" id="panel-audit">
+    <div class="coming-soon">
+      <div class="coming-soon__icon">&#9878;</div>
+      <div class="coming-soon__title" data-i18n="uiAuditTitle">World Audit</div>
+      <div class="coming-soon__desc" data-i18n="uiAuditDesc">
+        World consistency checking via external God agent will be available here.
+        The agent will validate world facts against external sources (Wikipedia API)
+        and provide a tuning wizard for world parameters.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const worldName = decodeURIComponent(window.location.pathname.split('/')[2] || 'default');
+
+// ── i18n ──
+const I18N = {
+  en: {
+    uiWorldConfig:"World Config",uiWorlds:"WORLDS",uiBackToChat:"BACK TO CHAT",
+    uiTabDescription:"Description",uiTabAgents:"Agents",uiTabStatistics:"Statistics",uiTabBirth:"Birth",uiTabGraph:"Graph",uiTabAudit:"Audit",
+    uiWorldSettings:"World Settings",uiTitle:"Title",uiDescription:"Description",uiLanguage:"Language",uiGenre:"Genre",uiAgeRating:"Age Rating",
+    uiWorldRules:"World Rules (one per line)",uiMagicSystem:"Magic System",
+    uiSave:"Save",uiReload:"Reload",
+    uiCharacters:"Characters",uiLocations:"Locations",uiFactions:"Factions",uiItems:"Items",
+    uiTotalEntities:"Total Entities",uiSessions:"Sessions",uiEvents:"Events",uiChapters:"Chapters",
+    uiNone:"None",uiSettings:"Settings",uiProvider:"Provider",uiModel:"Model",uiTemperature:"Temperature",
+    uiSaveSettings:"Save Settings",uiSystemPrompt:"System Prompt",uiUserTemplate:"User Template",uiOutputFormat:"Output Format",
+    uiSavePrompts:"Save Prompts",
+    uiAuditTitle:"World Audit",uiAuditDesc:"World consistency checking via external God agent will be available here. The agent will validate world facts against external sources (Wikipedia API) and provide a tuning wizard for world parameters.",
+    uiSaved:"Saved",uiFailedLoad:"Failed to load:",uiFailed:"Failed:",uiSettingsSaved:"Settings saved",uiPromptsSaved:"Prompts saved",
+    uiBirthWizard:"Birth Wizard",uiBirthName:"Character Name (optional)",uiBirthHints:"Character Hints (optional)",uiStartingAge:"Starting Age",uiIsekaiMode:"Isekai Mode",uiReincarnation:"Reincarnation",uiStartNewLife:"START NEW LIFE",uiCreating:"Creating your character...",uiGenerating:"GENERATING...",
+  },
+  ru: {
+    uiWorldConfig:"Настройки мира",uiWorlds:"МИРЫ",uiBackToChat:"К ЧАТУ",
+    uiTabDescription:"Описание",uiTabAgents:"Агенты",uiTabStatistics:"Статистика",uiTabBirth:"Рождение",uiTabGraph:"Граф",uiTabAudit:"Аудит",
+    uiWorldSettings:"Настройки мира",uiTitle:"Заголовок",uiDescription:"Описание",uiLanguage:"Язык",uiGenre:"Жанр",uiAgeRating:"Возрастной рейтинг",
+    uiWorldRules:"Правила мира (по одному на строку)",uiMagicSystem:"Система магии",
+    uiSave:"Сохранить",uiReload:"Перезагрузить",
+    uiCharacters:"Персонажи",uiLocations:"Локации",uiFactions:"Фракции",uiItems:"Предметы",
+    uiTotalEntities:"Всего сущностей",uiSessions:"Сессии",uiEvents:"События",uiChapters:"Главы",
+    uiNone:"Пусто",uiSettings:"Настройки",uiProvider:"Провайдер",uiModel:"Модель",uiTemperature:"Температура",
+    uiSaveSettings:"Сохранить настройки",uiSystemPrompt:"Системный промпт",uiUserTemplate:"Шаблон пользователя",uiOutputFormat:"Формат вывода",
+    uiSavePrompts:"Сохранить промпты",
+    uiAuditTitle:"Аудит мира",uiAuditDesc:"Проверка целостности мира через внешний God-агент будет доступна здесь. Агент будет проверять факты мира по внешним источникам (Wikipedia API) и提供ать мастер настройки параметров мира.",
+    uiSaved:"Сохранено",uiFailedLoad:"Ошибка загрузки:",uiFailed:"Ошибка:",uiSettingsSaved:"Настройки сохранены",uiPromptsSaved:"Промпты сохранены",
+    uiBirthWizard:"Мастер рождения",uiBirthName:"Имя персонажа (необязательно)",uiBirthHints:"Подсказки персонажа (необязательно)",uiStartingAge:"Начальный возраст",uiIsekaiMode:"Режим исekai",uiReincarnation:"Перерождение",uiStartNewLife:"НАЧАТЬ НОВУЮ ЖИЗНЬ",uiCreating:"Создаём вашего персонажа...",uiGenerating:"ГЕНЕРАЦИЯ...",
+  },
+  de: {
+    uiWorldConfig:"Weltenkonfiguration",uiWorlds:"WELTEN",uiBackToChat:"ZUM CHAT",
+    uiTabDescription:"Beschreibung",uiTabAgents:"Agenten",uiTabStatistics:"Statistik",uiTabBirth:"Geburt",uiTabGraph:"Graf",uiTabAudit:"Prüfung",
+    uiWorldSettings:"Welteinstellungen",uiTitle:"Titel",uiDescription:"Beschreibung",uiLanguage:"Sprache",uiGenre:"Genre",uiAgeRating:"Altersfreigabe",
+    uiWorldRules:"Weltenregeln (eine pro Zeile)",uiMagicSystem:"Magiesystem",
+    uiSave:"Speichern",uiReload:"Neu laden",
+    uiCharacters:"Charaktere",uiLocations:"Orte",uiFactions:"Fraktionen",uiItems:"Gegenstände",
+    uiTotalEntities:"Gesamte Einheiten",uiSessions:"Sitzungen",uiEvents:"Ereignisse",uiChapters:"Kapitel",
+    uiNone:"Keine",uiSettings:"Einstellungen",uiProvider:"Anbieter",uiModel:"Modell",uiTemperature:"Temperatur",
+    uiSaveSettings:"Einstellungen speichern",uiSystemPrompt:"System-Prompt",uiUserTemplate:"Benutzervorlage",uiOutputFormat:"Ausgabeformat",
+    uiSavePrompts:"Prompts speichern",
+    uiAuditTitle:"Welten-Prüfung",uiAuditDesc:"Die Prüfung der Weltenkonsistenz durch einen externen God-Agenten wird hier verfügbar sein. Der Agent wird Weltenfakten mit externen Quellen (Wikipedia API) validieren und einen Tuning-Assistenten für Weltparameter bereitstellen.",
+    uiSaved:"Gespeichert",uiFailedLoad:"Laden fehlgeschlagen:",uiFailed:"Fehler:",uiSettingsSaved:"Einstellungen gespeichert",uiPromptsSaved:"Prompts gespeichert",
+    uiBirthWizard:"Geburts-Assistent",uiBirthName:"Charaktername (optional)",uiBirthHints:"Charakter-Hinweise (optional)",uiStartingAge:"Startalter",uiIsekaiMode:"Isekai-Modus",uiReincarnation:"Reinkarnation",uiStartNewLife:"NEUES LEBEN STARTEN",uiCreating:"Charakter wird erstellt...",uiGenerating:"GENERIEREN...",
+  },
+  fr: {
+    uiWorldConfig:"Configuration du monde",uiWorlds:"MONDES",uiBackToChat:"AU CHAT",
+    uiTabDescription:"Description",uiTabAgents:"Agents",uiTabStatistics:"Statistiques",uiTabBirth:"Naissance",uiTabGraph:"Graphe",uiTabAudit:"Audit",
+    uiWorldSettings:"Paramètres du monde",uiTitle:"Titre",uiDescription:"Description",uiLanguage:"Langue",uiGenre:"Genre",uiAgeRating:"Classification d'âge",
+    uiWorldRules:"Règles du monde (une par ligne)",uiMagicSystem:"Système de magie",
+    uiSave:"Enregistrer",uiReload:"Recharger",
+    uiCharacters:"Personnages",uiLocations:"Lieux",uiFactions:"Factions",uiItems:"Objets",
+    uiTotalEntities:"Total des entités",uiSessions:"Sessions",uiEvents:"Événements",uiChapters:"Chapitres",
+    uiNone:"Aucun",uiSettings:"Paramètres",uiProvider:"Fournisseur",uiModel:"Modèle",uiTemperature:"Température",
+    uiSaveSettings:"Enregistrer les paramètres",uiSystemPrompt:"Prompt système",uiUserTemplate:"Modèle utilisateur",uiOutputFormat:"Format de sortie",
+    uiSavePrompts:"Enregistrer les prompts",
+    uiAuditTitle:"Audit du monde",uiAuditDesc:"La vérification de cohérence du monde par un agent externe God sera disponible ici. L'agent validera les faits du monde par rapport à des sources externes (WAPI) et fournira un assistant de réglage des paramètres du monde.",
+    uiSaved:"Enregistré",uiFailedLoad:"Échec du chargement:",uiFailed:"Erreur:",uiSettingsSaved:"Paramètres enregistrés",uiPromptsSaved:"Prompts enregistrés",
+    uiBirthWizard:"Assistant de naissance",uiBirthName:"Nom du personnage (optionnel)",uiBirthHints:"Indices du personnage (optionnel)",uiStartingAge:"Âge de départ",uiIsekaiMode:"Mode Isekai",uiReincarnation:"Réincarnation",uiStartNewLife:"COMMENCER UNE NOUVELLE VIE",uiCreating:"Création de votre personnage...",uiGenerating:"GÉNÉRATION...",
+  },
+  es: {
+    uiWorldConfig:"Configuración del mundo",uiWorlds:"MUNDOS",uiBackToChat:"AL CHAT",
+    uiTabDescription:"Descripción",uiTabAgents:"Agentes",uiTabStatistics:"Estadísticas",uiTabBirth:"Nacimiento",uiTabGraph:"Grafo",uiTabAudit:"Auditoría",
+    uiWorldSettings:"Configuración del mundo",uiTitle:"Título",uiDescription:"Descripción",uiLanguage:"Idioma",uiGenre:"Género",uiAgeRating:"Clasificación por edad",
+    uiWorldRules:"Reglas del mundo (una por línea)",uiMagicSystem:"Sistema de magia",
+    uiSave:"Guardar",uiReload:"Recargar",
+    uiCharacters:"Personajes",uiLocations:"Ubicaciones",uiFactions:"Facciones",uiItems:"Objetos",
+    uiTotalEntities:"Total de entidades",uiSessions:"Sesiones",uiEvents:"Eventos",uiChapters:"Capítulos",
+    uiNone:"Ninguno",uiSettings:"Configuración",uiProvider:"Proveedor",uiModel:"Modelo",uiTemperature:"Temperatura",
+    uiSaveSettings:"Guardar configuración",uiSystemPrompt:"Prompt del sistema",uiUserTemplate:"Plantilla de usuario",uiOutputFormat:"Formato de salida",
+    uiSavePrompts:"Guardar prompts",
+    uiAuditTitle:"Auditoría del mundo",uiAuditDesc:"La verificación de coherencia del mundo a través de un agente externo God estará disponible aquí. El agente validará los hechos del mundo contra fuentes externas (Wikipedia API) y proporcionará un asistente de ajuste de parámetros del mundo.",
+    uiSaved:"Guardado",uiFailedLoad:"Error al cargar:",uiFailed:"Error:",uiSettingsSaved:"Configuración guardada",uiPromptsSaved:"Prompts guardados",
+    uiBirthWizard:"Asistente de nacimiento",uiBirthName:"Nombre del personaje (opcional)",uiBirthHints:"Pistas del personaje (opcional)",uiStartingAge:"Edad inicial",uiIsekaiMode:"Modo Isekai",uiReincarnation:"Reencarnación",uiStartNewLife:"COMENZAR NUEVA VIDA",uiCreating:"Creando tu personaje...",uiGenerating:"GENERANDO...",
+  },
+  ja: {
+    uiWorldConfig:"ワールド設定",uiWorlds:"ワールド",uiBackToChat:"チャットへ",
+    uiTabDescription:"説明",uiTabAgents:"エージェント",uiTabStatistics:"統計",uiTabBirth:"誕生",uiTabGraph:"グラフ",uiTabAudit:"監査",
+    uiWorldSettings:"ワールド設定",uiTitle:"タイトル",uiDescription:"説明",uiLanguage:"言語",uiGenre:"ジャンル",uiAgeRating:"年齢制限",
+    uiWorldRules:"ワールドのルール（1行に1つ）",uiMagicSystem:"魔法システム",
+    uiSave:"保存",uiReload:"リロード",
+    uiCharacters:"キャラクター",uiLocations:"ロケーション",uiFactions:"派閥",uiItems:"アイテム",
+    uiTotalEntities:"合計エンティティ",uiSessions:"セッション",uiEvents:"イベント",uiChapters:"チャプター",
+    uiNone:"なし",uiSettings:"設定",uiProvider:"プロバイダー",uiModel:"モデル",uiTemperature:"温度",
+    uiSaveSettings:"設定を保存",uiSystemPrompt:"システムプロンプト",uiUserTemplate:"ユーザーテンプレート",uiOutputFormat:"出力形式",
+    uiSavePrompts:"プロンプトを保存",
+    uiAuditTitle:"ワールド監査",uiAuditDesc:"外部のGodエージェントによるワールド整合性チェックはここで利用可能になります。エージェントは外部ソース（Wikipedia API）に対してワールドの事実を検証し、ワールドパラメータの調整ウィザードを提供します。",
+    uiSaved:"保存しました",uiFailedLoad:"読み込み失敗:",uiFailed:"失敗:",uiSettingsSaved:"設定を保存しました",uiPromptsSaved:"プロンプトを保存しました",
+    uiBirthWizard:"出生ウィザード",uiBirthName:"キャラクター名（オプション）",uiBirthHints:"キャラクターのヒント（オプション）",uiStartingAge:"開始年齢",uiIsekaiMode:"異世界モード",uiReincarnation:"転生",uiStartNewLife:"新しい人生を始める",uiCreating:"キャラクターを作成中...",uiGenerating:"生成中...",
+  },
+  zh: {
+    uiWorldConfig:"世界配置",uiWorlds:"世界",uiBackToChat:"返回聊天",
+    uiTabDescription:"描述",uiTabAgents:"智能体",uiTabStatistics:"统计",uiTabBirth:"诞生",uiTabGraph:"图谱",uiTabAudit:"审计",
+    uiWorldSettings:"世界设置",uiTitle:"标题",uiDescription:"描述",uiLanguage:"语言",uiGenre:"类型",uiAgeRating:"年龄分级",
+    uiWorldRules:"世界规则（每行一条）",uiMagicSystem:"魔法系统",
+    uiSave:"保存",uiReload:"重新加载",
+    uiCharacters:"角色",uiLocations:"地点",uiFactions:"派系",uiItems:"物品",
+    uiTotalEntities:"总实体数",uiSessions:"会话",uiEvents:"事件",uiChapters:"章节",
+    uiNone:"无",uiSettings:"设置",uiProvider:"供应商",uiModel:"模型",uiTemperature:"温度",
+    uiSaveSettings:"保存设置",uiSystemPrompt:"系统提示词",uiUserTemplate:"用户模板",uiOutputFormat:"输出格式",
+    uiSavePrompts:"保存提示词",
+    uiAuditTitle:"世界审计",uiAuditDesc:"通过外部God智能体进行的世界一致性检查将在此处可用。该智能体将对照外部来源（Wikipedia API）验证世界事实，并提供世界参数调优向导。",
+    uiSaved:"已保存",uiFailedLoad:"加载失败:",uiFailed:"失败:",uiSettingsSaved:"设置已保存",uiPromptsSaved:"提示词已保存",
+    uiBirthWizard:"出生向导",uiBirthName:"角色名称（可选）",uiBirthHints:"角色提示（可选）",uiStartingAge:"起始年龄",uiIsekaiMode:"异世界模式",uiReincarnation:"转生",uiStartNewLife:"开始新生活",uiCreating:"正在创建角色...",uiGenerating:"生成中...",
+  },
+};
+
+let currentLang = 'en';
+function t(key) { return I18N[currentLang]?.[key] ?? I18N.en[key] ?? key; }
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+
+function toast(msg, ok) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (ok ? 'toast--ok' : 'toast--err');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+
+async function apiFetch(path, options = {}) {
+  const res = await tnsStubFetch();
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.statusText);
+  return res.json();
+}
+
+// ── i18n apply ──
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = t(key);
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {} else { el.textContent = val; }
+  });
+}
+
+async function detectLanguage() {
+  try {
+    const res = await tnsStubFetch();
+    if (res.ok) {
+      const data = await res.json();
+      currentLang = data.language || 'en';
+    }
+  } catch {}
+  applyI18n();
+}
+
+// ── Tab switching ──
+document.getElementById('tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('tab--active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('tab-panel--active'));
+  tab.classList.add('tab--active');
+  document.getElementById('panel-' + tab.dataset.tab).classList.add('tab-panel--active');
+  if (tab.dataset.tab === 'graph') loadGraph();
+});
+
+// ── Tab 1: Description ──
+let worldDetail = null;
+
+async function loadDescription() {
+  try {
+    worldDetail = await apiFetch();
+    document.getElementById('worldTitle').textContent = worldDetail.title || worldName;
+    document.getElementById('fTitle').value = worldDetail.title || '';
+    document.getElementById('fDesc').value = worldDetail.description || '';
+    document.getElementById('fLang').value = worldDetail.language || 'en';
+    document.getElementById('fGenre').value = worldDetail.genre || '';
+    document.getElementById('fRating').value = worldDetail.rating || '16';
+    const rules = (worldDetail.worldRules || []).map(r => r.description || r.name).join('\n');
+    document.getElementById('fRules').value = rules;
+    document.getElementById('fMagic').value = worldDetail.magicSystem?.rules || '';
+  } catch (e) {
+    toast(t('uiFailedLoad') + ' ' + e.message, false);
+  }
+}
+
+async function saveDescription() {
+  try {
+    const rulesText = document.getElementById('fRules').value.trim();
+    const worldRules = rulesText ? rulesText.split('\n').filter(l => l.trim()) : [];
+    const body = {
+      title: document.getElementById('fTitle').value.trim(),
+      description: document.getElementById('fDesc').value.trim(),
+      language: document.getElementById('fLang').value,
+      rating: document.getElementById('fRating')?.value || '16',
+      genre: document.getElementById('fGenre').value.trim(),
+      genres: document.getElementById('fGenre').value.split(',').map(s => s.trim()).filter(Boolean),
+      world_rules: worldRules.map(r => ({
+        name: r.split(':')[0]?.trim() || r,
+        description: r,
+        category: 'social_norm',
+      })),
+      magic_system: document.getElementById('fMagic').value.trim() ? {
+        name: 'Magic',
+        rules: document.getElementById('fMagic').value.trim(),
+        cost: 'varies',
+      } : undefined,
+    };
+    await apiFetch();
+    toast(t('uiSaved'), true);
+    loadDescription();
+  } catch (e) {
+    toast(t('uiFailed') + ' ' + e.message, false);
+  }
+}
+
+// ── Tab 2: Agents ──
+let agents = [];
+let activeAgent = null;
+let providerOptions = [];
+
+async function loadAgents() {
+  try {
+    const [agentsRes, providersRes] = await Promise.all([
+      tnsStubFetch().catch(() => ({ ok: false })),
+      tnsStubFetch().catch(() => ({ ok: false, json: () => ({ providers: [] }) })),
+    ]);
+    if (agentsRes.ok) {
+      const data = await agentsRes.json();
+      agents = data.agents || [];
+    }
+    if (providersRes.ok) {
+      const data = await providersRes.json();
+      providerOptions = data.providers || [];
+    }
+  } catch {}
+  renderAgentTabs();
+  if (agents.length > 0 && !activeAgent) selectAgent(agents[0].id);
+  else if (activeAgent) renderAgentPanel(activeAgent);
+}
+
+function renderAgentTabs() {
+  const tabs = document.getElementById('agentTabs');
+  const quickDiv = document.getElementById('quickAssign');
+  if (providerOptions.length > 0) {
+    quickDiv.innerHTML = providerOptions.map(p => {
+      const modelBtns = (p.models || []).map(m =>
+        `<button class="btn btn--sm" onclick="assignAll('${esc(p.id)}','${esc(m)}')" title="Assign all to ${esc(p.name)} / ${esc(m)}">${esc(m)}</button>`
+      ).join('');
+      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--text-secondary);min-width:80px;font-weight:500">${esc(p.name)}</span>
+        ${modelBtns || '<span style="font-size:11px;color:var(--text-disabled)">no models</span>'}
+      </div>`;
+    }).join('');
+  }
+  tabs.innerHTML = agents.map(a => `
+    <button class="agent-tab ${a.id === activeAgent ? 'agent-tab--active' : ''}" onclick="selectAgent('${esc(a.id)}')">
+      <span class="agent-tab__dot ${a.enabled ? 'agent-tab__dot--on' : 'agent-tab__dot--off'}"></span>
+      ${esc(a.name)}
+    </button>
+  `).join('');
+}
+
+function selectAgent(id) {
+  activeAgent = id;
+  renderAgentTabs();
+  renderAgentPanel(id);
+}
+
+function renderAgentPanel(id) {
+  const agent = agents.find(a => a.id === id);
+  if (!agent) return;
+  const panels = document.getElementById('agentPanels');
+  const provOpts = providerOptions.map(p =>
+    `<option value="${esc(p.id)}" ${p.id === agent.providerId ? 'selected' : ''}>${esc(p.name)}</option>`
+  ).join('');
+  const models = providerOptions.find(p => p.id === agent.providerId)?.models || [];
+  const modelOpts = models.map(m =>
+    `<option value="${esc(m)}" ${m === agent.modelId ? 'selected' : ''}>${esc(m)}</option>`
+  ).join('');
+
+  panels.innerHTML = `
+    <div class="agent-panel agent-panel--active" id="panel-${id}">
+      <div class="info-card">
+        <div class="info-card__title">${esc(agent.name)}</div>
+        <div class="info-card__desc">${esc(agent.description)}</div>
+      </div>
+      <div class="section">
+        <div class="section__title">${t('uiSettings')}</div>
+        <div class="form">
+          <div class="form__row">
+            <div class="form__field">
+              <label class="form__label">${t('uiProvider')}</label>
+              <select class="form__select" id="prov-${id}" onchange="onProviderChange('${id}')">${provOpts}</select>
+            </div>
+            <div class="form__field">
+              <label class="form__label">${t('uiModel')}</label>
+              <select class="form__select" id="model-${id}">${modelOpts}</select>
+            </div>
+            <div class="form__field form__field--sm">
+              <label class="form__label">${t('uiTemperature')}</label>
+              <input class="form__input" id="temp-${id}" type="number" step="0.1" min="0" max="2" value="${esc(String(agent.temperature))}">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="btn btn--primary btn--sm" onclick="saveAgentSettings('${id}')">${t('uiSaveSettings')}</button>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section__title">${t('uiSystemPrompt')}</div>
+        <div class="form">
+          <div class="form__field form__field--full">
+            <textarea class="form__textarea" id="sys-${id}" style="min-height:100px">${esc(agent.prompts?.systemPrompt || '')}</textarea>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section__title">${t('uiUserTemplate')}</div>
+        <div class="form">
+          <div class="form__field form__field--full">
+            <textarea class="form__textarea" id="tpl-${id}">${esc(agent.prompts?.userTemplate || '')}</textarea>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section__title">${t('uiOutputFormat')}</div>
+        <div class="form">
+          <div class="form__field form__field--full">
+            <textarea class="form__textarea" id="out-${id}">${esc(agent.prompts?.outputFormat || '')}</textarea>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn--primary" onclick="saveAgentPrompts('${id}')">${t('uiSavePrompts')}</button>
+        <button class="btn" onclick="loadAgents()">${t('uiReload')}</button>
+      </div>
+    </div>`;
+}
+
+function onProviderChange(id) {
+  const prov = document.getElementById('prov-' + id).value;
+  const models = providerOptions.find(p => p.id === prov)?.models || [];
+  const sel = document.getElementById('model-' + id);
+  sel.innerHTML = models.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+}
+
+async function assignAll(providerId, modelId) {
+  if (!confirm(`Assign ALL agents to ${providerId} / ${modelId}?`)) return;
+  const results = [];
+  for (const agent of agents) {
+    try {
+      await apiFetch();
+      results.push({ agentId: agent.id, ok: true });
+    } catch {
+      results.push({ agentId: agent.id, ok: false });
+    }
+  }
+  const success = results.filter(r => r.ok).length;
+  toast(`Assigned ${success}/${results.length} agents`, success === results.length);
+  loadAgents();
+}
+
+async function saveAgentSettings(id) {
+  try {
+    const agent = agents.find(a => a.id === id);
+    await apiFetch();
+    toast(t('uiSettingsSaved'), true);
+    loadAgents();
+  } catch (e) {
+    toast(t('uiFailed') + ' ' + e.message, false);
+  }
+}
+
+async function saveAgentPrompts(id) {
+  try {
+    await apiFetch();
+    toast(t('uiPromptsSaved'), true);
+    loadAgents();
+  } catch (e) {
+    toast(t('uiFailed') + ' ' + e.message, false);
+  }
+}
+
+// ── Tab 3: Statistics ──
+async function loadStatistics() {
+  if (!worldDetail) {
+    try {
+      worldDetail = await apiFetch();
+    } catch { return; }
+  }
+  const d = worldDetail;
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat-card"><div class="stat-card__value">${d.totalEntities || 0}</div><div class="stat-card__label">${t('uiTotalEntities')}</div></div>
+    <div class="stat-card"><div class="stat-card__value">${(d.characters || []).length}</div><div class="stat-card__label">${t('uiCharacters')}</div></div>
+    <div class="stat-card"><div class="stat-card__value">${(d.locations || []).length}</div><div class="stat-card__label">${t('uiLocations')}</div></div>
+    <div class="stat-card"><div class="stat-card__value">${(d.factions || []).length}</div><div class="stat-card__label">${t('uiFactions')}</div></div>
+    <div class="stat-card"><div class="stat-card__value">${(d.items || []).length}</div><div class="stat-card__label">${t('uiItems')}</div></div>
+    <div class="stat-card"><div class="stat-card__value">${d.sessionCount || 0}</div><div class="stat-card__label">${t('uiSessions')}</div></div>
+    <div class="stat-card"><div class="stat-card__value">${d.eventCount || 0}</div><div class="stat-card__label">${t('uiEvents')}</div></div>
+    <div class="stat-card"><div class="stat-card__value">${d.chapterCount || 0}</div><div class="stat-card__label">${t('uiChapters')}</div></div>
+  `;
+  renderEntityList('charList', d.characters || []);
+  renderEntityList('locList', d.locations || []);
+  renderEntityList('facList', d.factions || []);
+  renderEntityList('itemList', d.items || []);
+}
+
+function renderEntityList(id, items) {
+  const el = document.getElementById(id);
+  if (!items.length) { el.innerHTML = `<li style="color:var(--text-disabled);font-size:11px">${t('uiNone')}</li>`; return; }
+  el.innerHTML = items.map(e => `
+    <li>
+      <span class="entity-name">${esc(e.name)}</span>
+      <span class="entity-summary">${esc(e.summary || '')}</span>
+    </li>
+  `).join('');
+}
+
+// ── Tab 4: Birth ──
+async function startBirth() {
+  const btn = document.getElementById('birthStartBtn');
+  const result = document.getElementById('birthResult');
+  btn.disabled = true;
+  btn.textContent = t('uiGenerating');
+
+  const hints = document.getElementById('birthHints').value.trim();
+  const isekai = document.getElementById('birthIsekai').classList.contains('toggle--on');
+  const startingAge = parseInt(document.getElementById('birthAge').value) || 5;
+  const characterName = document.getElementById('birthName')?.value.trim() ?? '';
+
+  result.style.display = 'block';
+  result.innerHTML = `<div class="info-card"><div class="info-card__desc">${t('uiCreating')}</div></div>`;
+
+  try {
+    const res = await apiFetch();
+
+    if (res.status === 'error') throw new Error(res.error || 'Launch failed');
+
+    await apiFetch().catch(() => {});
+
+    result.innerHTML = `
+      <div class="info-card">
+        <div class="info-card__title">${esc(res.character_name)}</div>
+        <div class="info-card__desc">
+          <strong>${esc(res.race)}</strong> · ${esc(res.social_class)}<br>
+          ${esc(res.birthplace)} → ${esc(res.initial_location)}
+        </div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;margin-top:10px;font-size:12px;line-height:1.6;color:var(--text-secondary)">
+        ${esc(res.opening_narrative)}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <a href="/" class="btn btn--primary">${t('uiStartNewLife')}</a>
+      </div>
+    `;
+    toast(t('uiSaved'), true);
+  } catch (e) {
+    result.innerHTML = `<div class="info-card"><div class="info-card__desc" style="color:var(--accent)">${t('uiFailed')} ${esc(e.message)}</div></div>`;
+    toast(t('uiFailed') + ' ' + e.message, false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = t('uiStartNewLife');
+  }
+}
+
+// ── Tab 5: Graph ──
+function loadGraph() {
+  const frame = document.getElementById('graphFrame');
+  if (frame.src === 'about:blank' || !frame.src.includes('/graph.html')) {
+    frame.src = '/graph.html';
+  }
+}
+
+// ── Init ──
+detectLanguage().then(() => {
+  loadDescription();
+  loadAgents();
+  loadStatistics();
+});
+</script>
+</body>
+</html>

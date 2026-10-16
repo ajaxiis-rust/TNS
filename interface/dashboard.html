@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrueNeverStory — Dashboard</title>
+<link href="/static/fonts/fonts.css" rel="stylesheet">
+<link href="/static/theme-dark.css" rel="stylesheet">
+<link href="/static/theme-light.css" rel="stylesheet">
+<link href="/static/theme-terminal.css" rel="stylesheet">
+<link href="/static/theme-cyberpunk.css" rel="stylesheet">
+<link href="/static/theme-custom.css" rel="stylesheet">
+<link href="/static/theme.css" rel="stylesheet">
+<script src="static/server-stub.js"></script>
+  <script src="/static/theme.js"></script>
+<style>
+:root{--font-body:'Space Grotesk',system-ui,sans-serif;--font-mono:'Space Mono',monospace;--radius-md:8px;--radius-lg:12px;--radius-pill:999px;--ease-out:cubic-bezier(.22,.61,.36,1);--dur-fast:120ms;--dur-normal:200ms;--dur-slow:340ms}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;background:var(--black);overflow:hidden}
+body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:14px;color:var(--text-primary);display:flex;flex-direction:column;overflow:hidden;user-select:none}
+
+.topbar{display:flex;align-items:center;gap:12px;padding:0 20px;height:48px;border-bottom:1px solid var(--border);flex-shrink:0}
+.topbar__brand{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-disabled)}
+.topbar__brand span{color:var(--text-display);font-weight:700}
+.topbar__sep{width:1px;height:18px;background:var(--border)}
+.topbar__title{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary)}
+.topbar__spacer{flex:1}
+.topbar__btn{background:transparent;border:1px solid var(--border-visible);color:var(--text-tertiary);font-family:var(--font-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:6px 16px;cursor:pointer;border-radius:var(--radius-pill);transition:all var(--dur-fast);text-decoration:none;display:inline-flex;align-items:center}
+.topbar__btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+
+.content{flex:1;overflow-y:auto;padding:20px 24px}
+.content::-webkit-scrollbar{width:2px}
+.content::-webkit-scrollbar-track{background:transparent}
+.content::-webkit-scrollbar-thumb{background:var(--border-visible);border-radius:2px}
+
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:4px}
+.stat-card__value{font-family:var(--font-body);font-size:28px;font-weight:700;color:var(--text-display);line-height:1}
+.stat-card__label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-disabled)}
+.stat-card--accent .stat-card__value{color:var(--accent)}
+.stat-card--success .stat-card__value{color:var(--success)}
+.stat-card--warning .stat-card__value{color:var(--warning)}
+.stat-card--interactive .stat-card__value{color:var(--interactive)}
+
+.section{margin-bottom:20px}
+.section__title{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-secondary);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.section__title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.agent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.agent-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;transition:border-color var(--dur-fast);cursor:default}
+.agent-card:hover{border-color:var(--border-strong)}
+.agent-card__header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.agent-card__name{font-family:var(--font-body);font-size:15px;font-weight:500;color:var(--text-display)}
+.agent-card__id{font-size:11px;color:var(--text-disabled);margin-top:2px}
+.agent-card__desc{font-size:12px;color:var(--text-tertiary);line-height:1.4;margin-bottom:10px}
+.agent-card__meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.agent-card__metric{font-size:11px;color:var(--text-secondary);display:flex;align-items:center;gap:4px}
+.agent-card__metric span{color:var(--text-disabled)}
+
+.badge{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;padding:2px 8px;border-radius:var(--radius-pill);border:1px solid var(--border)}
+.badge--on{border-color:var(--success);color:var(--success)}
+.badge--off{border-color:var(--accent);color:var(--accent)}
+.badge--warn{border-color:var(--warning);color:var(--warning)}
+
+.provider-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.provider-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px}
+.provider-card__name{font-family:var(--font-body);font-size:14px;font-weight:500;color:var(--text-display);margin-bottom:6px}
+.provider-card__meta{display:flex;gap:10px;align-items:center}
+
+.empty{padding:40px;text-align:center;color:var(--text-disabled);font-size:13px}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--success);display:inline-block;margin-right:6px;animation:pulse 2s ease-in-out infinite}
+
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.toast{position:fixed;bottom:20px;right:20px;padding:12px 24px;border-radius:var(--radius-md);font-family:var(--font-mono);font-size:13px;letter-spacing:.06em;z-index:100;animation:toastIn 200ms var(--ease-out)}
+.toast--ok{background:var(--success);color:var(--black)}
+.toast--err{background:var(--accent);color:var(--black)}
+
+@media(max-width:768px){
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .agent-grid{grid-template-columns:1fr}
+  .provider-grid{grid-template-columns:1fr}
+  .content{padding:12px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar__brand"><span>TrueNeverStory</span></div>
+  <div class="topbar__sep"></div>
+  <div class="topbar__title" data-i18n="title">Agent Dashboard</div>
+  <div class="topbar__spacer"></div>
+  <a href="/agents" class="topbar__btn" data-i18n="agents">AGENTS</a>
+  <a href="/providers" class="topbar__btn" data-i18n="providers">PROVIDERS</a>
+  <a href="/" class="topbar__btn" data-i18n="back">BACK</a>
+</div>
+
+<div class="content">
+  <!-- Summary Stats -->
+  <div class="stats-grid" id="statsGrid"></div>
+
+  <!-- Providers -->
+  <div class="section">
+    <div class="section__title" data-i18n="providersSection">Providers</div>
+    <div class="provider-grid" id="providerGrid"></div>
+  </div>
+
+  <!-- Agents -->
+  <div class="section">
+    <div class="section__title" data-i18n="agentsSection">Agents</div>
+    <div class="agent-grid" id="agentGrid"></div>
+  </div>
+</div>
+
+<script>
+let lang = 'en';
+let remoteTranslations = {};
+
+const I18N = {
+  en: {
+    title: 'Agent Dashboard',
+    agents: 'AGENTS',
+    providers: 'PROVIDERS',
+    back: 'BACK',
+    totalAgents: 'Total Agents',
+    enabled: 'Enabled',
+    disabled: 'Disabled',
+    invocations: 'Invocations',
+    errors: 'Errors',
+    providersSection: 'Providers',
+    agentsSection: 'Agents',
+    model: 'Model',
+    priority: 'Priority',
+    temp: 'Temp',
+    tokens: 'Tokens',
+    calls: 'calls',
+    avg: 'avg',
+    ms: 'ms',
+    online: 'ONLINE',
+    offline: 'OFFLINE',
+    notAssigned: 'Not assigned',
+    noProviders: 'No providers configured',
+    noAgents: 'No agents configured',
+    lastUsed: 'Last used',
+    never: 'Never',
+    refreshFailed: 'Refresh failed',
+  },
+  ru: {
+    title: 'Панель агентов',
+    agents: 'АГЕНТЫ',
+    providers: 'ПРОВАЙДЕРЫ',
+    back: 'НАЗАД',
+    totalAgents: 'Всего агентов',
+    enabled: 'Активных',
+    disabled: 'Отключённых',
+    invocations: 'Вызовов',
+    errors: 'Ошибок',
+    providersSection: 'Провайдеры',
+    agentsSection: 'Агенты',
+    model: 'Модель',
+    priority: 'Приоритет',
+    temp: 'Темп',
+    tokens: 'Токены',
+    calls: 'вызовов',
+    avg: 'ср.',
+    ms: 'мс',
+    online: 'ОНЛАЙН',
+    offline: 'ОФЛАЙН',
+    notAssigned: 'Не назначен',
+    noProviders: 'Провайдеры не настроены',
+    noAgents: 'Агенты не настроены',
+    lastUsed: 'Последний вызов',
+    never: 'Никогда',
+    refreshFailed: 'Ошибка обновления',
+  },
+  de: {
+    title: 'Agenten-Dashboard',
+    agents: 'AGENTEN',
+    providers: 'ANBIETER',
+    back: 'ZURÜCK',
+    totalAgents: 'Agenten gesamt',
+    enabled: 'Aktiviert',
+    disabled: 'Deaktiviert',
+    invocations: 'Aufrufe',
+    errors: 'Fehler',
+    providersSection: 'Anbieter',
+    agentsSection: 'Agenten',
+    model: 'Modell',
+    priority: 'Priorität',
+    temp: 'Temp',
+    tokens: 'Tokens',
+    calls: 'Aufrufe',
+    avg: 'Durchschn.',
+    ms: 'ms',
+    online: 'ONLINE',
+    offline: 'OFFLINE',
+    notAssigned: 'Nicht zugewiesen',
+    noProviders: 'Keine Anbieter konfiguriert',
+    noAgents: 'Keine Agenten konfiguriert',
+    lastUsed: 'Zuletzt verwendet',
+    never: 'Nie',
+    refreshFailed: 'Aktualisierung fehlgeschlagen',
+  },
+  fr: {
+    title: 'Tableau de bord des agents',
+    agents: 'AGENTS',
+    providers: 'FOURNISSEURS',
+    back: 'RETOUR',
+    totalAgents: 'Total agents',
+    enabled: 'Activés',
+    disabled: 'Désactivés',
+    invocations: 'Invocations',
+    errors: 'Erreurs',
+    providersSection: 'Fournisseurs',
+    agentsSection: 'Agents',
+    model: 'Modèle',
+    priority: 'Priorité',
+    temp: 'Temp',
+    tokens: 'Tokens',
+    calls: 'appels',
+    avg: 'moy.',
+    ms: 'ms',
+    online: 'EN LIGNE',
+    offline: 'HORS LIGNE',
+    notAssigned: 'Non assigné',
+    noProviders: 'Aucun fournisseur configuré',
+    noAgents: 'Aucun agent configuré',
+    lastUsed: 'Dernière utilisation',
+    never: 'Jamais',
+    refreshFailed: 'Échec de la mise à jour',
+  },
+  es: {
+    title: 'Panel de agentes',
+    agents: 'AGENTES',
+    providers: 'PROVEEDORES',
+    back: 'VOLVER',
+    totalAgents: 'Total agentes',
+    enabled: 'Activados',
+    disabled: 'Desactivados',
+    invocations: 'Invocaciones',
+    errors: 'Errores',
+    providersSection: 'Proveedores',
+    agentsSection: 'Agentes',
+    model: 'Modelo',
+    priority: 'Prioridad',
+    temp: 'Temp',
+    tokens: 'Tokens',
+    calls: 'llamadas',
+    avg: 'prom.',
+    ms: 'ms',
+    online: 'EN LÍNEA',
+    offline: 'FUERA DE LÍNEA',
+    notAssigned: 'No asignado',
+    noProviders: 'Sin proveedores configurados',
+    noAgents: 'Sin agentes configurados',
+    lastUsed: 'Último uso',
+    never: 'Nunca',
+    refreshFailed: 'Error al actualizar',
+  },
+  ja: {
+    title: 'エージェントダッシュボード',
+    agents: 'エージェント',
+    providers: 'プロバイダー',
+    back: '戻る',
+    totalAgents: '合計エージェント',
+    enabled: '有効',
+    disabled: '無効',
+    invocations: '呼び出し',
+    errors: 'エラー',
+    providersSection: 'プロバイダー',
+    agentsSection: 'エージェント',
+    model: 'モデル',
+    priority: '優先度',
+    temp: '温度',
+    tokens: 'トークン',
+    calls: '件',
+    avg: '平均',
+    ms: 'ms',
+    online: 'オンライン',
+    offline: 'オフライン',
+    notAssigned: '未割り当て',
+    noProviders: 'プロバイダー未設定',
+    noAgents: 'エージェント未設定',
+    lastUsed: '最終使用',
+    never: 'なし',
+    refreshFailed: '更新失敗',
+  },
+  zh: {
+    title: '代理仪表板',
+    agents: '代理',
+    providers: '提供商',
+    back: '返回',
+    totalAgents: '代理总数',
+    enabled: '已启用',
+    disabled: '已禁用',
+    invocations: '调用次数',
+    errors: '错误',
+    providersSection: '提供商',
+    agentsSection: '代理',
+    model: '模型',
+    priority: '优先级',
+    temp: '温度',
+    tokens: '令牌',
+    calls: '次调用',
+    avg: '平均',
+    ms: '毫秒',
+    online: '在线',
+    offline: '离线',
+    notAssigned: '未分配',
+    noProviders: '未配置提供商',
+    noAgents: '未配置代理',
+    lastUsed: '最近使用',
+    never: '从未',
+    refreshFailed: '刷新失败',
+  }
+};
+
+function t(key) {
+  if (remoteTranslations[key] !== undefined) return remoteTranslations[key];
+  return I18N[lang]?.[key] ?? I18N.en[key] ?? key;
+}
+
+async function loadTranslations(langCode) {
+  try {
+    const res = await tnsStubFetch();
+    const data = await res.json();
+    remoteTranslations = data.translations || {};
+  } catch {
+    remoteTranslations = {};
+  }
+}
+
+function toast(msg, ok = true) {
+  const el = document.createElement('div');
+  el.className = `toast toast--${ok ? 'ok' : 'err'}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function renderStats(summary) {
+  const grid = document.getElementById('statsGrid');
+  grid.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-card__value">${summary.totalAgents}</div>
+      <div class="stat-card__label">${t('totalAgents')}</div>
+    </div>
+    <div class="stat-card stat-card--success">
+      <div class="stat-card__value">${summary.enabledAgents}</div>
+      <div class="stat-card__label">${t('enabled')}</div>
+    </div>
+    <div class="stat-card stat-card--accent">
+      <div class="stat-card__value">${summary.disabledAgents}</div>
+      <div class="stat-card__label">${t('disabled')}</div>
+    </div>
+    <div class="stat-card stat-card--interactive">
+      <div class="stat-card__value">${summary.totalInvocations}</div>
+      <div class="stat-card__label">${t('invocations')}</div>
+    </div>
+    <div class="stat-card stat-card--warning">
+      <div class="stat-card__value">${summary.totalErrors}</div>
+      <div class="stat-card__label">${t('errors')}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card__value">${summary.providersOnline}/${summary.providers}</div>
+      <div class="stat-card__label">${t('providersSection')}</div>
+    </div>
+  `;
+}
+
+function renderProviders(providers) {
+  const grid = document.getElementById('providerGrid');
+  if (!providers.length) {
+    grid.innerHTML = `<div class="empty">${t('noProviders')}</div>`;
+    return;
+  }
+  grid.innerHTML = providers.map(p => `
+    <div class="provider-card">
+      <div class="provider-card__name">${p.name}</div>
+      <div class="provider-card__meta">
+        <span class="badge badge--${p.isAvailable ? 'on' : 'off'}">${p.isAvailable ? t('online') : t('offline')}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderAgents(agents) {
+  const grid = document.getElementById('agentGrid');
+  if (!agents.length) {
+    grid.innerHTML = `<div class="empty">${t('noAgents')}</div>`;
+    return;
+  }
+  grid.innerHTML = agents.map(a => {
+    const model = a.modelId || a.assignment || t('notAssigned');
+    const lastUsed = a.lastUsed
+      ? new Date(a.lastUsed).toLocaleString()
+      : t('never');
+    return `
+    <div class="agent-card">
+      <div class="agent-card__header">
+        <div>
+          <div class="agent-card__name">${a.name}</div>
+          <div class="agent-card__id">${a.id}</div>
+        </div>
+        <span class="badge badge--${a.enabled ? 'on' : 'off'}">${a.enabled ? 'ON' : 'OFF'}</span>
+      </div>
+      <div class="agent-card__desc">${a.description || ''}</div>
+      <div class="agent-card__meta">
+        <div class="agent-card__metric"><span>${t('model')}:</span> ${model}</div>
+        <div class="agent-card__metric"><span>${t('priority')}:</span> ${a.priority}</div>
+        <div class="agent-card__metric"><span>${t('temp')}:</span> ${a.temperature}</div>
+        <div class="agent-card__metric"><span>${t('tokens')}:</span> ${a.maxTokens}</div>
+        <div class="agent-card__metric"><span>${t('invocations')}:</span> ${a.invocations} ${t('calls')}</div>
+        ${a.avgLatency > 0 ? `<div class="agent-card__metric"><span>${t('avg')}:</span> ${a.avgLatency}${t('ms')}</div>` : ''}
+        <div class="agent-card__metric"><span>${t('lastUsed')}:</span> ${lastUsed}</div>
+        ${a.errors > 0 ? `<div class="agent-card__metric"><span class="badge badge--off">${a.errors} ${t('errors')}</span></div>` : ''}
+      </div>
+    </div>
+  `}).join('');
+}
+
+async function refresh() {
+  try {
+    const res = await tnsStubFetch();
+    if (!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+    renderStats(data.summary);
+    renderProviders(data.providers);
+    renderAgents(data.agents);
+  } catch (err) {
+    toast(t('refreshFailed') + ': ' + err.message, false);
+  }
+}
+
+async function init() {
+  const saved = localStorage.getItem('tns_lang');
+  if (saved) lang = saved;
+  await loadTranslations(lang);
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = t(key);
+  });
+  await refresh();
+  setInterval(refresh, 10000);
+}
+
+init();
+</script>
+</body>
+</html>

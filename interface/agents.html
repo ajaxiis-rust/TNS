@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrueNeverStory — Agents</title>
+
+
+<link href="/static/fonts/fonts.css" rel="stylesheet">
+<link href="/static/theme-dark.css" rel="stylesheet">
+<link href="/static/theme-light.css" rel="stylesheet">
+<link href="/static/theme-terminal.css" rel="stylesheet">
+<link href="/static/theme-cyberpunk.css" rel="stylesheet">
+<link href="/static/theme-custom.css" rel="stylesheet">
+<link href="/static/theme.css" rel="stylesheet">
+<script src="static/server-stub.js"></script>
+  <script src="/static/theme.js"></script>
+<style>
+:root{--font-body:'Space Grotesk',system-ui,sans-serif;--font-mono:'Space Mono',monospace;--radius-md:8px;--radius-lg:12px;--radius-pill:999px;--ease-out:cubic-bezier(.22,.61,.36,1);--dur-fast:120ms;--dur-normal:200ms;--dur-slow:340ms}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;background:var(--black);overflow:hidden}
+body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:14px;color:var(--text-primary);display:flex;flex-direction:column;overflow:hidden;user-select:none}
+
+.topbar{display:flex;align-items:center;gap:12px;padding:0 20px;height:48px;border-bottom:1px solid var(--border);flex-shrink:0}
+.topbar__brand{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-disabled)}
+.topbar__brand span{color:var(--text-display);font-weight:700}
+.topbar__sep{width:1px;height:18px;background:var(--border)}
+.topbar__title{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary)}
+.topbar__spacer{flex:1}
+.topbar__btn{background:transparent;border:1px solid var(--border-visible);color:var(--text-tertiary);font-family:var(--font-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:6px 16px;cursor:pointer;border-radius:var(--radius-pill);transition:all var(--dur-fast);text-decoration:none;display:inline-flex;align-items:center}
+.topbar__btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+
+.content{flex:1;overflow-y:auto;padding:20px 24px}
+.content::-webkit-scrollbar{width:2px}
+.content::-webkit-scrollbar-track{background:transparent}
+.content::-webkit-scrollbar-thumb{background:var(--border-visible);border-radius:2px}
+
+/* Agent tabs */
+.agent-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;overflow-x:auto;-ms-overflow-style:none;scrollbar-width:none}
+.agent-tabs::-webkit-scrollbar{display:none}
+.agent-tab{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-disabled);padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;transition:all var(--dur-fast);background:transparent;border-top:none;border-left:none;border-right:none;white-space:nowrap;flex-shrink:0}
+.agent-tab:hover{color:var(--text-secondary)}
+.agent-tab--active{color:var(--text-display);border-bottom-color:var(--text-display)}
+.agent-tab__dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:6px}
+.agent-tab__dot--on{background:var(--success)}
+.agent-tab__dot--off{background:var(--accent)}
+
+/* Agent panel */
+.agent-panel{display:none}
+.agent-panel--active{display:block}
+
+/* Forms */
+.form{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:10px}
+.form__row{display:flex;gap:10px;align-items:end}
+.form__field{display:flex;flex-direction:column;gap:3px;flex:1}
+.form__field--sm{max-width:150px}
+.form__field--full{flex:0 0 100%}
+.form__label{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-disabled)}
+.form__input,.form__textarea,.form__select{background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:9px 12px;font-family:var(--font-mono);font-size:13px;color:var(--text-primary);outline:none;transition:border-color var(--dur-fast);width:100%}
+.form__input:focus,.form__textarea:focus{border-color:var(--text-secondary)}
+.form__input::placeholder,.form__textarea::placeholder{color:var(--text-disabled)}
+.form__textarea{min-height:120px;resize:vertical;line-height:1.5;font-size:12px}
+.form__select{appearance:none;cursor:pointer}
+.form__checkbox{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:12px;color:var(--text-secondary);cursor:pointer}
+.form__checkbox input{width:16px;height:16px;accent-color:var(--interactive)}
+
+/* Section */
+.section{margin-bottom:20px}
+.section__title{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--text-secondary);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.section__title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Buttons */
+.btn{font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.1em;padding:7px 16px;border-radius:var(--radius-pill);cursor:pointer;transition:all var(--dur-fast);border:1px solid var(--border-visible);background:transparent;color:var(--text-secondary)}
+.btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+.btn--primary{background:var(--text-display);color:var(--black);border-color:var(--text-display)}
+.btn--primary:hover{opacity:.9}
+.btn--danger{border-color:var(--accent);color:var(--accent)}
+.btn--danger:hover{background:var(--accent);color:var(--black)}
+.btn--sm{padding:5px 12px;font-size:11px}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;padding:12px 24px;border-radius:var(--radius-md);font-family:var(--font-mono);font-size:13px;letter-spacing:.06em;z-index:100;animation:toastIn 200ms var(--ease-out)}
+.toast--ok{background:var(--success);color:var(--black)}
+.toast--err{background:var(--accent);color:var(--black)}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* Info card */
+.info-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:12px}
+.info-card__title{font-family:var(--font-body);font-size:15px;color:var(--text-display);font-weight:500;margin-bottom:4px}
+.info-card__desc{font-size:12px;color:var(--text-tertiary);line-height:1.4}
+
+/* Status badges */
+.badge{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.1em;padding:2px 8px;border-radius:var(--radius-pill);border:1px solid var(--border)}
+.badge--on{border-color:var(--success);color:var(--success)}
+.badge--off{border-color:var(--accent);color:var(--accent)}
+
+/* Help Modal */
+.help-modal{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;animation:fadeIn 150ms var(--ease-out)}
+.help-modal__box{background:var(--surface-raised);border:1px solid var(--border-visible);border-radius:var(--radius-lg);width:680px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden}
+.help-modal__head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.help-modal__title{font-family:var(--font-mono);font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-secondary)}
+.help-modal__close{background:transparent;border:none;color:var(--text-disabled);font-size:18px;cursor:pointer;padding:4px 8px;border-radius:4px}
+.help-modal__close:hover{color:var(--text-primary)}
+.help-modal__body{flex:1;overflow-y:auto;padding:16px 20px;font-size:12px;color:var(--text-secondary);line-height:1.6}
+.help-modal__body h3{font-family:var(--font-body);font-size:14px;color:var(--text-display);font-weight:500;margin:16px 0 6px}
+.help-modal__body h3:first-child{margin-top:0}
+.help-modal__body table{width:100%;border-collapse:collapse;margin:6px 0}
+.help-modal__body th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-disabled);padding:4px 8px;border-bottom:1px solid var(--border)}
+.help-modal__body td{padding:4px 8px;border-bottom:1px solid var(--border);font-size:11px}
+.help-modal__body td:first-child{color:var(--interactive);font-family:var(--font-mono);white-space:nowrap}
+.help-modal__body code{background:var(--surface);padding:1px 5px;border-radius:3px;font-size:11px;color:var(--interactive)}
+.help-modal__body pre{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--text-tertiary);margin:6px 0;overflow-x:auto}
+.help-tag{display:inline-block;font-size:10px;padding:2px 6px;margin:2px;background:var(--interactive-subtle);border:1px solid rgba(91,155,246,.2);border-radius:4px;color:var(--interactive);font-family:var(--font-mono)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+@media(max-width:768px){
+  .page{padding:12px}
+  .page__title{font-size:18px;margin-bottom:16px}
+  .back{font-size:10px;padding:6px 12px}
+  .section{padding:14px}
+  .section__title{font-size:12px}
+  .field{flex-direction:column;align-items:stretch}
+  .field__input,.field__select,.field__textarea{width:100%;font-size:13px}
+  .field__textarea{min-height:80px}
+  .save-btn{width:100%;font-size:11px;padding:10px}
+  .agent-card{padding:12px}
+  .agent-list{gap:8px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar__brand"><span>TrueNeverStory</span></div>
+  <div class="topbar__sep"></div>
+  <div class="topbar__title">Agent Configuration</div>
+  <div class="topbar__spacer"></div>
+  <a href="/providers" class="topbar__btn">PROVIDERS</a>
+  <a href="/models" class="topbar__btn">MODELS</a>
+  <a href="/dashboard" class="topbar__btn">DASHBOARD</a>
+  <button class="topbar__btn" onclick="openHelpModal()" data-i18n="help">HELP</button>
+  <a href="/" class="topbar__btn">BACK</a>
+</div>
+
+<div class="content">
+  <!-- Quick Assign -->
+  <div id="quickAssign" style="margin-bottom:12px"></div>
+  <div class="agent-tabs" id="agentTabs"></div>
+  <div id="agentPanels"></div>
+</div>
+
+<script>
+let agents = [];
+let providerOptions = [];
+let activeAgent = null;
+let lang = 'en';
+let globalSettings = null;
+let remoteTranslations = {};
+let remoteAgentNames = {};
+let remoteAgentDescs = {};
+
+const I18N = {
+  en: {
+    title: 'Agent Configuration',
+    providers: 'PROVIDERS',
+    models: 'MODELS',
+    back: 'BACK',
+    settings: 'Settings',
+    enabled: 'Enabled',
+    provider: 'Provider',
+    model: 'Model',
+    default: '-- Default --',
+    temperature: 'Temperature',
+    maxTokens: 'Max Tokens',
+    priority: 'Priority',
+    saveSettings: 'Save Settings',
+    resetDefaults: 'Reset to Defaults',
+    systemPrompt: 'System Prompt',
+    systemPromptLabel: 'System Prompt — defines agent personality and behavior',
+    userTemplate: 'User Template',
+    userTemplateLabel: 'User Template — variables: {world_name} {time} {location} {character} {npc_name} {events} {rules} etc.',
+    outputFormat: 'Output Format',
+    outputFormatLabel: 'Output Format — instructions for response structure',
+    savePrompts: 'Save Prompts',
+    reload: 'Reload',
+    saved: 'Settings saved',
+    promptsSaved: 'Prompts saved',
+    resetDone: 'Agent reset',
+    failed: 'Failed to load: ',
+    saveFailed: 'Save failed: ',
+    resetFailed: 'Reset failed: ',
+    confirmReset: (id) => `Reset ${id} to defaults? All custom prompts will be lost.`,
+    help: 'HELP',
+    helpTitle: 'Agent Reference',
+    helpSubtitle: 'Each agent has its own LLM configuration. Templates use {variable} placeholders resolved at runtime. Agents without a provider use the global default from Settings.',
+    helpGlobalVars: 'Global Variables',
+    helpAgents: 'Agents',
+    helpTemperature: 'Temperature Guide',
+    helpAgentChat: 'Using @agent in Chat',
+    helpPriority: 'Priority',
+    globalDefault: 'Global Default',
+    changeInSettings: 'Change in Settings →',
+  },
+  ru: {
+    title: 'Настройки агентов',
+    providers: 'ПРОВАЙДЕРЫ',
+    models: 'МОДЕЛИ',
+    back: 'НАЗАД',
+    settings: 'Настройки',
+    enabled: 'Включён',
+    provider: 'Провайдер',
+    model: 'Модель',
+    default: '-- По умолчанию --',
+    temperature: 'Температура',
+    maxTokens: 'Макс. токенов',
+    priority: 'Приоритет',
+    saveSettings: 'Сохранить настройки',
+    resetDefaults: 'Сбросить настройки',
+    systemPrompt: 'Системный промпт',
+    systemPromptLabel: 'Системный промпт — определяет личность и поведение агента',
+    userTemplate: 'Шаблон запроса',
+    userTemplateLabel: 'Шаблон запроса — переменные: {world_name} {time} {location} {character} {npc_name} {events} {rules} и т.д.',
+    outputFormat: 'Формат вывода',
+    outputFormatLabel: 'Формат вывода — инструкции по структуре ответа',
+    savePrompts: 'Сохранить промпты',
+    reload: 'Обновить',
+    saved: 'Настройки сохранены',
+    promptsSaved: 'Промпты сохранены',
+    resetDone: 'Агент сброшен',
+    failed: 'Ошибка загрузки: ',
+    saveFailed: 'Ошибка сохранения: ',
+    resetFailed: 'Ошибка сброса: ',
+    confirmReset: (id) => `Сбросить ${id} к стандартным настройкам? Все пользовательские промпты будут потеряны.`,
+    help: 'СПРАВКА',
+    helpTitle: 'Справка по агентам',
+    helpSubtitle: 'Каждый агент имеет свою конфигурацию LLM. Шаблоны используют переменные {variable}, подставляемые при выполнении. Агенты без провайдера используют глобальную модель из настроек.',
+    helpGlobalVars: 'Глобальные переменные',
+    helpAgents: 'Агенты',
+    helpTemperature: 'Руководство по температуре',
+    helpAgentChat: 'Использование @agent в чате',
+    helpPriority: 'Приоритет',
+    globalDefault: 'Глобальный по умолчанию',
+    changeInSettings: 'Изменить в настройках →',
+  },
+  de: {
+    title: 'Agenten-Konfiguration',
+    providers: 'ANBIETER',
+    models: 'MODELLE',
+    back: 'ZURÜCK',
+    settings: 'Einstellungen',
+    enabled: 'Aktiviert',
+    provider: 'Anbieter',
+    model: 'Modell',
+    default: '-- Standard --',
+    temperature: 'Temperatur',
+    maxTokens: 'Max. Tokens',
+    priority: 'Priorität',
+    saveSettings: 'Einstellungen speichern',
+    resetDefaults: 'Auf Standard zurücksetzen',
+    systemPrompt: 'System-Prompt',
+    systemPromptLabel: 'System-Prompt — definiert Persönlichkeit und Verhalten des Agenten',
+    userTemplate: 'Benutzervorlage',
+    userTemplateLabel: 'Benutzervorlage — Variablen: {world_name} {time} {location} {character} {npc_name} {events} {rules} usw.',
+    outputFormat: 'Ausgabeformat',
+    outputFormatLabel: 'Ausgabeformat — Anweisungen für die Antwortstruktur',
+    savePrompts: 'Prompts speichern',
+    reload: 'Neu laden',
+    saved: 'Einstellungen gespeichert',
+    promptsSaved: 'Prompts gespeichert',
+    resetDone: 'Agent zurückgesetzt',
+    failed: 'Laden fehlgeschlagen: ',
+    saveFailed: 'Speichern fehlgeschlagen: ',
+    resetFailed: 'Zurücksetzen fehlgeschlagen: ',
+    confirmReset: (id) => `${id} auf Standard zurücksetzen? Alle benutzerdefinierten Prompts gehen verloren.`,
+    help: 'HILFE',
+    helpTitle: 'Agenten-Referenz',
+    helpSubtitle: 'Jeder Agent hat seine eigene LLM-Konfiguration. Vorlagen verwenden {variable}-Platzhalter.',
+    helpGlobalVars: 'Globale Variablen',
+    helpAgents: 'Agenten',
+    helpTemperature: 'Temperatur-Leitfaden',
+    helpAgentChat: '@agent im Chat verwenden',
+    helpPriority: 'Priorität',
+  },
+  fr: {
+    title: 'Configuration des agents',
+    providers: 'FOURNISSEURS',
+    models: 'MODÈLES',
+    back: 'RETOUR',
+    settings: 'Paramètres',
+    enabled: 'Activé',
+    provider: 'Fournisseur',
+    model: 'Modèle',
+    default: '-- Par défaut --',
+    temperature: 'Température',
+    maxTokens: 'Max. jetons',
+    priority: 'Priorité',
+    saveSettings: 'Enregistrer',
+    resetDefaults: 'Réinitialiser',
+    systemPrompt: 'Prompt système',
+    systemPromptLabel: 'Prompt système — définit la personnalité et le comportement de l\'agent',
+    userTemplate: 'Modèle utilisateur',
+    userTemplateLabel: 'Modèle utilisateur — variables : {world_name} {time} {location} {character} {npc_name} {events} {rules} etc.',
+    outputFormat: 'Format de sortie',
+    outputFormatLabel: 'Format de sortie — instructions pour la structure de la réponse',
+    savePrompts: 'Enregistrer les prompts',
+    reload: 'Recharger',
+    saved: 'Paramètres enregistrés',
+    promptsSaved: 'Prompts enregistrés',
+    resetDone: 'Agent réinitialisé',
+    failed: 'Échec du chargement : ',
+    saveFailed: 'Échec de l\'enregistrement : ',
+    resetFailed: 'Échec de la réinitialisation : ',
+    confirmReset: (id) => `Réinitialiser ${id} ? Tous les prompts personnalisés seront perdus.`,
+    help: 'AIDE',
+    helpTitle: 'Référence des agents',
+    helpSubtitle: 'Chaque agent a sa propre configuration LLM. Les modèles utilisent des variables {variable}.',
+    helpGlobalVars: 'Variables globales',
+    helpAgents: 'Agents',
+    helpTemperature: 'Guide de température',
+    helpAgentChat: 'Utiliser @agent dans le chat',
+    helpPriority: 'Priorité',
+  },
+  es: {
+    title: 'Configuración de agentes',
+    providers: 'PROVEEDORES',
+    models: 'MODELOS',
+    back: 'VOLVER',
+    settings: 'Ajustes',
+    enabled: 'Activado',
+    provider: 'Proveedor',
+    model: 'Modelo',
+    default: '-- Por defecto --',
+    temperature: 'Temperatura',
+    maxTokens: 'Máx. tokens',
+    priority: 'Prioridad',
+    saveSettings: 'Guardar ajustes',
+    resetDefaults: 'Restablecer valores',
+    systemPrompt: 'Prompt del sistema',
+    systemPromptLabel: 'Prompt del sistema — define la personalidad y comportamiento del agente',
+    userTemplate: 'Plantilla de usuario',
+    userTemplateLabel: 'Plantilla de usuario — variables: {world_name} {time} {location} {character} {npc_name} {events} {rules} etc.',
+    outputFormat: 'Formato de salida',
+    outputFormatLabel: 'Formato de salida — instrucciones para la estructura de respuesta',
+    savePrompts: 'Guardar prompts',
+    reload: 'Recargar',
+    saved: 'Ajustes guardados',
+    promptsSaved: 'Prompts guardados',
+    resetDone: 'Agente restablecido',
+    failed: 'Error al cargar: ',
+    saveFailed: 'Error al guardar: ',
+    resetFailed: 'Error al restablecer: ',
+    confirmReset: (id) => `¿Restablecer ${id}? Se perderán todos los prompts personalizados.`,
+    help: 'AYUDA',
+    helpTitle: 'Referencia de agentes',
+    helpSubtitle: 'Cada agente tiene su propia configuración LLM. Las plantillas usan variables {variable}.',
+    helpGlobalVars: 'Variables globales',
+    helpAgents: 'Agentes',
+    helpTemperature: 'Guía de temperatura',
+    helpAgentChat: 'Usar @agent en el chat',
+    helpPriority: 'Prioridad',
+  },
+  ja: {
+    title: 'エージェント設定',
+    providers: 'プロバイダー',
+    models: 'モデル',
+    back: '戻る',
+    settings: '設定',
+    enabled: '有効',
+    provider: 'プロバイダー',
+    model: 'モデル',
+    default: '-- デフォルト --',
+    temperature: '温度',
+    maxTokens: '最大トークン',
+    priority: '優先度',
+    saveSettings: '設定を保存',
+    resetDefaults: 'デフォルトに戻す',
+    systemPrompt: 'システムプロンプト',
+    systemPromptLabel: 'システムプロンプト — エージェントの個性と動作を定義',
+    userTemplate: 'ユーザーテンプレート',
+    userTemplateLabel: 'ユーザーテンプレート — 変数: {world_name} {time} {location} {character} {npc_name} {events} {rules} など',
+    outputFormat: '出力形式',
+    outputFormatLabel: '出力形式 — 応答構造の指示',
+    savePrompts: 'プロンプトを保存',
+    reload: '再読み込み',
+    saved: '設定を保存しました',
+    promptsSaved: 'プロンプトを保存しました',
+    resetDone: 'エージェントをリセットしました',
+    failed: '読み込みエラー: ',
+    saveFailed: '保存エラー: ',
+    resetFailed: 'リセットエラー: ',
+    confirmReset: (id) => `${id} をデフォルトに戻しますか？カスタムプロンプトは失われます。`,
+    help: 'ヘルプ',
+    helpTitle: 'エージェントリファレンス',
+    helpSubtitle: '各エージェントは独自のLLM設定を持ちます。テンプレートは実行時に解決される{variable}プレースホルダーを使用します。',
+    helpGlobalVars: 'グローバル変数',
+    helpAgents: 'エージェント',
+    helpTemperature: 'Temperatureガイド',
+    helpAgentChat: 'チャットで@agentを使用',
+    helpPriority: '優先度',
+  },
+  zh: {
+    title: '代理配置',
+    providers: '提供商',
+    models: '模型',
+    back: '返回',
+    settings: '设置',
+    enabled: '启用',
+    provider: '提供商',
+    model: '模型',
+    default: '-- 默认 --',
+    temperature: '温度',
+    maxTokens: '最大令牌',
+    priority: '优先级',
+    saveSettings: '保存设置',
+    resetDefaults: '恢复默认',
+    systemPrompt: '系统提示词',
+    systemPromptLabel: '系统提示词 — 定义代理的人格和行为',
+    userTemplate: '用户模板',
+    userTemplateLabel: '用户模板 — 变量: {world_name} {time} {location} {character} {npc_name} {events} {rules} 等',
+    outputFormat: '输出格式',
+    outputFormatLabel: '输出格式 — 响应结构的指令',
+    savePrompts: '保存提示词',
+    reload: '重新加载',
+    saved: '设置已保存',
+    promptsSaved: '提示词已保存',
+    resetDone: '代理已重置',
+    failed: '加载失败: ',
+    saveFailed: '保存失败: ',
+    resetFailed: '重置失败: ',
+    confirmReset: (id) => `将 ${id} 恢复默认？所有自定义提示词将丢失。`,
+    help: '帮助',
+    helpTitle: '代理参考',
+    helpSubtitle: '每个代理都有自己的LLM配置。模板使用在运行时解析的{variable}占位符。',
+    helpGlobalVars: '全局变量',
+    helpAgents: '代理',
+    helpTemperature: 'Temperature指南',
+    helpAgentChat: '在聊天中使用@agent',
+    helpPriority: '优先级',
+  },
+};
+
+const AGENT_NAMES = {
+  en: { narrator: 'Narrator', director: 'Director', scene: 'Scene', npc: 'NPC', chronicler: 'Chronicler', 'story-planner': 'Story Planner', 'social-sim': 'Social Sim', villain: 'Villain', researcher: 'Researcher', historian: 'Historian', cartographer: 'Cartographer', merchant: 'Merchant', 'quest-giver': 'Quest Giver', lorekeeper: 'Lorekeeper', translation: 'Translation' },
+  ru: { narrator: 'Рассказчик', director: 'Режиссёр', scene: 'Сцена', npc: 'NPC', chronicler: 'Летописец', 'story-planner': 'Планер', 'social-sim': 'Соц. динамика', villain: 'Злодей', researcher: 'Исследователь', historian: 'Историк', cartographer: 'Картограф', merchant: 'Торговец', 'quest-giver': 'Квестодатель', lorekeeper: 'Хранитель знаний', translation: 'Переводчик' },
+  de: { narrator: 'Erzähler', director: 'Regisseur', scene: 'Szene', npc: 'NPC', chronicler: 'Chronist', 'story-planner': 'Story-Planer', 'social-sim': 'Soz. Sim', villain: 'Schurke', researcher: 'Forscher', historian: 'Historiker', cartographer: 'Kartograph', merchant: 'Händler', 'quest-giver': 'Questgeber', lorekeeper: 'Wissenshüter', translation: 'Übersetzer' },
+  fr: { narrator: 'Narrateur', director: 'Réalisateur', scene: 'Scène', npc: 'PNJ', chronicler: 'Chroniqueur', 'story-planner': 'Planificateur', 'social-sim': 'Sim. sociale', villain: 'Méchant', researcher: 'Chercheur', historian: 'Historien', cartographer: 'Cartographe', merchant: 'Marchand', 'quest-giver': 'Donneur de quêtes', lorekeeper: 'Gardien des savoirs', translation: 'Traducteur' },
+  es: { narrator: 'Narrador', director: 'Director', scene: 'Escena', npc: 'NPC', chronicler: 'Cronista', 'story-planner': 'Planificador', 'social-sim': 'Sim. social', villain: 'Villano', researcher: 'Investigador', historian: 'Historiador', cartographer: 'Cartógrafo', merchant: 'Mercader', 'quest-giver': 'Dador de misiones', lorekeeper: 'Guardián del saber', translation: 'Traductor' },
+  ja: { narrator: 'ナレーター', director: 'ディレクター', scene: 'シーン', npc: 'NPC', chronicler: '年代記', 'story-planner': 'ストーリープランナー', 'social-sim': 'ソーシャル', villain: '悪役', researcher: 'リサーチャー', historian: '歴史家', cartographer: '地図製作者', merchant: '商人', 'quest-giver': 'クエスト依頼人', lorekeeper: '知識の守護者', translation: '翻訳者' },
+  zh: { narrator: '叙述者', director: '导演', scene: '场景', npc: 'NPC', chronicler: '编年史', 'story-planner': '故事规划', 'social-sim': '社交模拟', villain: '反派', researcher: '研究员', historian: '历史学家', cartographer: '制图师', merchant: '商人', 'quest-giver': '任务发布者', lorekeeper: '知识守护者', translation: '翻译' },
+};
+
+const AGENT_DESCS = {
+  en: { narrator: 'Generates world narrative from context', director: 'Integrates story beats into narrative', scene: 'Generates scene transition narratives', npc: 'Roleplays as NPCs', chronicler: 'Maintains world history timeline', 'story-planner': 'Plans story arcs and quests', 'social-sim': 'Simulates NPC social dynamics', villain: 'Manages antagonist actions', researcher: 'Fact-checking and realism validation', historian: 'World history and chronology', cartographer: 'Maps, locations, and geography', merchant: 'Trading, pricing, and inventory', 'quest-giver': 'Generates contextual quests', lorekeeper: 'World facts, magic rules, and canon', translation: 'Translates game narrative between languages' },
+  ru: { narrator: 'Генерирует повествование мира из контекста', director: 'Интегрирует сюжетные биты в повествование', scene: 'Генерирует описание переходов между сценами', npc: 'Ролевая игра за NPC', chronicler: 'Ведёт хронику мира', 'story-planner': 'Планирует сюжетные арки и квесты', 'social-sim': 'Моделирует социальную динамику NPC', villain: 'Управляет действиями антагонистов', researcher: 'Проверка фактов и валидация реализма', historian: 'История и хронология мира', cartographer: 'Карты, локации и география', merchant: 'Торговля, цены и инвентарь', 'quest-giver': 'Генерирует контекстные квесты', lorekeeper: 'Факты мира, правила магии и канон', translation: 'Переводит игровое повествование между языками' },
+  de: { narrator: 'Generiert Weltnarrativ aus Kontext', director: 'Integriert Handlungsbeats in die Erzählung', scene: 'Generiert Szenenübergänge', npc: 'Spielt NPCs', chronicler: 'Pflegt Weltgeschichte', 'story-planner': 'Plant Handlungsstränge', 'social-sim': 'Simuliert soziale Dynamik', villain: 'Verwaltet Antagonisten', researcher: 'Faktencheck und Realismusvalidierung', historian: 'Weltgeschichte und Chronologie', cartographer: 'Karten, Orte und Geographie', merchant: 'Handel, Preise und Inventar', 'quest-giver': 'Generiert kontextbezogene Quests', lorekeeper: 'Weltfakten, Magieregeln und Kanon', translation: 'Übersetzt Spielnarrative zwischen Sprachen' },
+  fr: { narrator: 'Génère le récit du monde', director: 'Intègre les battements narratifs', scene: 'Génère les transitions de scène', npc: 'Interprète les PNJ', chronicler: "Maintient l'historique du monde", 'story-planner': 'Planifie les arcs narratifs', 'social-sim': 'Simule la dynamique sociale', villain: 'Gère les actions antagonistes', researcher: 'Vérification des faits et validité', historian: 'Histoire et chronologie du monde', cartographer: 'Cartes, lieux et géographie', merchant: 'Commerce, prix et inventaire', 'quest-giver': 'Génère des quêtes contextuelles', lorekeeper: 'Faits du monde, règles de magie et canon', translation: 'Traduit le récit du jeu entre les langues' },
+  es: { narrator: 'Genera narrativa del mundo', director: 'Integra momentos narrativos', scene: 'Genera transiciones de escena', npc: 'Interpreta NPCs', chronicler: 'Mantiene la historia del mundo', 'story-planner': 'Planifica arcos argumentales', 'social-sim': 'Simula dinámica social', villain: 'Gestiona antagonistas', researcher: 'Verificación de hechos y realismo', historian: 'Historia y cronología del mundo', cartographer: 'Mapas, ubicaciones y geografía', merchant: 'Comercio, precios e inventario', 'quest-giver': 'Genera misiones contextuales', lorekeeper: 'Hechos del mundo, reglas de magia y canon', translation: 'Traduce la narrativa del juego entre idiomas' },
+  ja: { narrator: 'コンテキストから世界の物語を生成', director: 'ストーリービートを統合', scene: 'シーン遷移を生成', npc: 'NPCのロールプレイ', chronicler: '世界の歴史を管理', 'story-planner': 'ストーリーを計画', 'social-sim': 'ソーシャルダイナミクスをシミュレート', villain: '敵対者を管理', researcher: '事実確認とリアル検証', historian: '世界の歴史と年代記', cartographer: '地図、場所、地理', merchant: '交易、価格、在庫', 'quest-giver': 'コンテキストクエストを生成', lorekeeper: '世界の事実、魔法ルール、正典', translation: 'ゲームナラティブを言語間で翻訳' },
+  zh: { narrator: '从上下文生成世界叙事', director: '将故事节拍整合到叙事中', scene: '生成场景过渡描述', npc: '扮演NPC', chronicler: '维护世界历史时间线', 'story-planner': '规划故事弧线', 'social-sim': '模拟NPC社交动态', villain: '管理反派行为', researcher: '事实核查和真实感验证', historian: '世界历史和编年史', cartographer: '地图、位置和地理', merchant: '贸易、价格和库存', 'quest-giver': '生成上下文任务', lorekeeper: '世界事实、魔法规则和正典', translation: '在语言间翻译游戏叙事' },
+};
+
+function t(key) {
+  if (remoteTranslations[key] !== undefined) return remoteTranslations[key];
+  return I18N[lang]?.[key] ?? I18N.en[key] ?? key;
+}
+function agentName(id) {
+  if (remoteAgentNames[id] !== undefined) return remoteAgentNames[id];
+  return AGENT_NAMES[lang]?.[id] ?? AGENT_NAMES.en[id] ?? id;
+}
+function agentDesc(id) {
+  if (remoteAgentDescs[id] !== undefined) return remoteAgentDescs[id];
+  return AGENT_DESCS[lang]?.[id] ?? AGENT_DESCS.en[id] ?? '';
+}
+
+async function loadTranslations(langCode) {
+  try {
+    const [transRes, namesRes, descsRes] = await Promise.all([
+      tnsStubFetch().catch(() => null),
+      tnsStubFetch().catch(() => null),
+      tnsStubFetch().catch(() => null),
+    ]);
+    if (transRes && transRes.ok) {
+      const data = await transRes.json();
+      remoteTranslations = data.translations || {};
+    }
+    if (namesRes && namesRes.ok) {
+      const data = await namesRes.json();
+      remoteAgentNames = data.translations || {};
+    }
+    if (descsRes && descsRes.ok) {
+      const data = await descsRes.json();
+      remoteAgentDescs = data.translations || {};
+    }
+  } catch (e) {
+    console.warn('Failed to load remote translations, using inline fallback', e);
+  }
+}
+
+function toast(msg, ok) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + (ok ? 'toast--ok' : 'toast--err');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ── Load Data ──
+async function loadData() {
+  try {
+    const settingsRes = await tnsStubFetch().catch(() => null);
+    if (settingsRes && settingsRes.ok) {
+      const settingsData = await settingsRes.json();
+      lang = settingsData.language || 'en';
+      globalSettings = settingsData;
+    }
+  } catch {}
+
+  // Load remote translations for current language
+  await loadTranslations(lang);
+
+  document.title = 'TrueNeverStory — ' + t('title');
+  const titleEl = document.querySelector('.topbar__title');
+  if (titleEl) titleEl.textContent = t('title');
+  const provBtn = document.querySelector('.topbar__btn[href="/providers"]');
+  if (provBtn) provBtn.textContent = t('providers');
+  const modelBtn = document.querySelector('.topbar__btn[href="/models"]');
+  if (modelBtn) modelBtn.textContent = t('models');
+  const backBtn = document.querySelector('.topbar__btn[href="/"]');
+  if (backBtn) backBtn.textContent = t('back');
+
+  try {
+    const [agentsRes, providersRes] = await Promise.all([
+      tnsStubFetch().catch(() => ({ ok: false })),
+      tnsStubFetch().catch(() => ({ ok: false, json: () => ({ providers: [] }) })),
+    ]);
+
+    if (agentsRes.ok) {
+      const agentsData = await agentsRes.json();
+      agents = agentsData.agents || [];
+    }
+
+    if (providersRes.ok) {
+      const providersData = await providersRes.json();
+      providerOptions = providersData.providers || [];
+    }
+  } catch (e) {
+    toast(t('failed') + e.message, false);
+  }
+
+  renderTabs();
+  if (agents.length > 0 && !activeAgent) {
+    selectAgent(agents[0].id);
+  } else if (activeAgent) {
+    renderPanel(activeAgent);
+  }
+}
+
+// ── Render Tabs ──
+function renderTabs() {
+  const tabs = document.getElementById('agentTabs');
+  const defaultModel = globalSettings?.llmModel || '—';
+  const defaultUrl = globalSettings?.llmBaseUrl || '—';
+
+  // Quick assign buttons
+  const quickDiv = document.getElementById('quickAssign');
+  if (providerOptions.length > 0) {
+    quickDiv.innerHTML = providerOptions.map(p => {
+      const modelBtns = (p.models || []).map(m =>
+        `<button class="btn btn--sm" onclick="assignAll('${esc(p.id)}','${esc(m)}')" title="Assign all to ${esc(p.name)} / ${esc(m)}">${esc(m)}</button>`
+      ).join('');
+      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="font-size:11px;color:var(--text-secondary);min-width:80px;font-weight:500">${esc(p.name)}</span>
+        ${modelBtns || '<span style="font-size:11px;color:var(--text-disabled)">no models</span>'}
+      </div>`;
+    }).join('');
+  }
+
+  tabs.innerHTML = `
+    <div style="width:100%;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:8px;font-size:11px;color:var(--text-tertiary);display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <span style="color:var(--text-disabled);text-transform:uppercase;letter-spacing:.1em">Global Default</span>
+      <span style="color:var(--text-secondary)">Model: <strong style="color:var(--text-display)">${esc(defaultModel)}</strong></span>
+      <span style="color:var(--text-secondary)">URL: <span style="color:var(--text-tertiary)">${esc(defaultUrl)}</span></span>
+      <a href="/settings" style="color:var(--interactive);text-decoration:none;margin-left:auto">Change in Settings →</a>
+    </div>
+    ${agents.map(a => `
+    <button class="agent-tab ${a.id === activeAgent ? 'agent-tab--active' : ''}" onclick="selectAgent('${esc(a.id)}')">
+      <span class="agent-tab__dot ${a.enabled ? 'agent-tab__dot--on' : 'agent-tab__dot--off'}"></span>
+      ${esc(agentName(a.id))}
+    </button>
+  `).join('')}`;
+}
+
+function selectAgent(id) {
+  activeAgent = id;
+  renderTabs();
+  renderPanel(id);
+}
+
+// ── Render Agent Panel ──
+function renderPanel(id) {
+  const agent = agents.find(a => a.id === id);
+  if (!agent) return;
+
+  const panels = document.getElementById('agentPanels');
+  const provOpts = providerOptions.map(p =>
+    `<option value="${esc(p.id)}" ${p.id === agent.providerId ? 'selected' : ''}>${esc(p.name)}</option>`
+  ).join('');
+
+  const models = providerOptions.find(p => p.id === agent.providerId)?.models || [];
+  const modelOpts = models.map(m =>
+    `<option value="${esc(m)}" ${m === agent.modelId ? 'selected' : ''}>${esc(m)}</option>`
+  ).join('');
+
+  panels.innerHTML = `
+    <div class="agent-panel agent-panel--active" id="panel-${id}">
+      <!-- Info -->
+      <div class="info-card">
+        <div class="info-card__title">${esc(agentName(agent.id))}</div>
+        <div class="info-card__desc">${esc(agentDesc(agent.id))}</div>
+      </div>
+
+      <!-- Basic Settings -->
+      <div class="section">
+        <div class="section__title">${t('settings')}</div>
+        <div class="form">
+          <div class="form__row">
+            <label class="form__checkbox">
+              <input type="checkbox" id="agent-enabled" ${agent.enabled ? 'checked' : ''}> ${t('enabled')}
+            </label>
+          </div>
+          <div class="form__row">
+            <div class="form__field">
+              <label class="form__label">${t('provider')}</label>
+              <select class="form__select" id="agent-provider" onchange="onProviderChange('${id}')">
+                <option value="">${t('default')}</option>
+                ${provOpts}
+              </select>
+            </div>
+            <div class="form__field">
+              <label class="form__label">${t('model')}</label>
+              <select class="form__select" id="agent-model">
+                <option value="">${t('default')}</option>
+                ${modelOpts}
+              </select>
+            </div>
+          </div>
+          <div class="form__row">
+            <div class="form__field form__field--sm">
+              <label class="form__label">${t('temperature')}</label>
+              <input class="form__input" id="agent-temp" type="number" value="${agent.temperature ?? 0.7}" min="0" max="2" step="0.1">
+            </div>
+            <div class="form__field form__field--sm">
+              <label class="form__label">${t('maxTokens')}</label>
+              <input class="form__input" id="agent-maxTokens" type="number" value="${agent.maxTokens ?? 4096}" min="256" max="128000">
+            </div>
+            <div class="form__field form__field--sm">
+              <label class="form__label">${t('priority')}</label>
+              <input class="form__input" id="agent-priority" type="number" value="${agent.priority ?? 5}" min="1" max="10">
+            </div>
+          </div>
+          <div class="form__row">
+            <button class="btn btn--primary" onclick="saveSettings('${id}')">${t('saveSettings')}</button>
+            <button class="btn btn--danger" onclick="resetAgent('${id}')">${t('resetDefaults')}</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Prompts -->
+      <div class="section">
+        <div class="section__title">${t('systemPrompt')}</div>
+        <div class="form">
+          <div class="form__field form__field--full">
+            <label class="form__label">${t('systemPromptLabel')}</label>
+            <textarea class="form__textarea" id="prompt-system" style="min-height:100px">${esc(agent.prompts?.systemPrompt || '')}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section__title">${t('userTemplate')}</div>
+        <div class="form">
+          <div class="form__field form__field--full">
+            <label class="form__label">${t('userTemplateLabel')}</label>
+            <textarea class="form__textarea" id="prompt-template" style="min-height:160px">${esc(agent.prompts?.userTemplate || '')}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section__title">${t('outputFormat')}</div>
+        <div class="form">
+          <div class="form__field form__field--full">
+            <label class="form__label">${t('outputFormatLabel')}</label>
+            <textarea class="form__textarea" id="prompt-output" style="min-height:80px">${esc(agent.prompts?.outputFormat || '')}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="form__row" style="margin-top:8px">
+        <button class="btn btn--primary" onclick="savePrompts('${id}')">${t('savePrompts')}</button>
+        <button class="btn" onclick="loadData()">${t('reload')}</button>
+      </div>
+    </div>
+  `;
+}
+
+function onProviderChange(agentId) {
+  const provId = document.getElementById('agent-provider').value;
+  const models = providerOptions.find(p => p.id === provId)?.models || [];
+  const select = document.getElementById('agent-model');
+  select.innerHTML = `<option value="">${t('default')}</option>` +
+    models.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+}
+
+// ── Save Settings ──
+async function saveSettings(id) {
+  const agent = agents.find(a => a.id === id);
+  if (!agent) return;
+
+  const data = {
+    enabled: document.getElementById('agent-enabled').checked,
+    providerId: document.getElementById('agent-provider').value,
+    modelId: document.getElementById('agent-model').value,
+    temperature: parseFloat(document.getElementById('agent-temp').value) || 0.7,
+    maxTokens: parseInt(document.getElementById('agent-maxTokens').value) || 4096,
+    priority: parseInt(document.getElementById('agent-priority').value) || 5,
+  };
+
+  try {
+    const res = await tnsStubFetch();
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Failed');
+    toast(t('saved'), true);
+    loadData();
+  } catch (e) {
+    toast(t('saveFailed') + e.message, false);
+  }
+}
+
+// ── Save Prompts ──
+async function savePrompts(id) {
+  const data = {
+    systemPrompt: document.getElementById('prompt-system').value,
+    userTemplate: document.getElementById('prompt-template').value,
+    outputFormat: document.getElementById('prompt-output').value,
+  };
+
+  try {
+    const res = await tnsStubFetch();
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || 'Failed');
+    toast(t('promptsSaved'), true);
+  } catch (e) {
+    toast(t('saveFailed') + e.message, false);
+  }
+}
+
+async function assignAll(providerId, modelId) {
+  if (!confirm(`Assign ALL agents to ${providerId} / ${modelId}?`)) return;
+  const results = [];
+  for (const agent of agents) {
+    try {
+      const res = await tnsStubFetch();
+      results.push({ agentId: agent.id, ok: res.ok });
+    } catch {
+      results.push({ agentId: agent.id, ok: false });
+    }
+  }
+  const success = results.filter(r => r.ok).length;
+  toast(`Assigned ${success}/${results.length} agents`, success === results.length);
+  loadData();
+}
+
+// ── Reset Agent ──
+async function resetAgent(id) {
+  if (!confirm(t('confirmReset')(id))) return;
+  try {
+    const res = await tnsStubFetch();
+    if (!res.ok) throw new Error('Failed');
+    toast(t('resetDone'), true);
+    loadData();
+  } catch (e) {
+    toast(t('resetFailed') + e.message, false);
+  }
+}
+
+// ── Help Modal ──
+function openHelpModal() {
+  if (document.querySelector('.help-modal')) return;
+
+  const globalVars = [
+    ['world_name', 'Name of the world', 'Имя мира', 'Welthilfe', 'Nom du monde', 'Nombre del mundo', '世界名', '世界名称'],
+    ['time', 'Current story time', 'Текущее время', 'Aktuelle Zeit', 'Heure actuelle', 'Hora actual', '現在時刻', '当前时间'],
+    ['location', 'Current location', 'Текущая локация', 'Aktueller Ort', 'Lieu actuel', 'Ubicación actual', '現在地', '当前位置'],
+    ['character', 'Active character name', 'Имя персонажа', 'Aktiver Charakter', 'Personnage actif', 'Personaje active', 'アクティブキャラ', '当前角色'],
+    ['role', 'User role', 'Роль игрока', 'Benutzerrolle', 'Rôle', 'Rol del usuario', '役割', '角色'],
+    ['rules', 'World rules', 'Правила мира', 'Weltregeln', 'Règles du monde', 'Reglas del mundo', '世界ルール', '世界规则'],
+    ['timeline', 'Recent events', 'Недавние события', 'Letzte Ereignisse', 'Événements récents', 'Eventos recientes', '最近の出来事', '近期事件'],
+    ['memories', 'Recent memories', 'Недавние воспоминания', 'Letzte Erinnerungen', 'Souvenirs récents', 'Recuerdos recientes', '最近の記憶', '近期记忆'],
+    ['facts', 'World facts', 'Факты мира', 'Weltenfakten', 'Faits du monde', 'Hechos del mundo', '世界の事実', '世界事实'],
+    ['npcs', 'Nearby NPCs', 'Ближайшие NPC', 'Nahe NPCs', 'PNJ à proximité', 'NPCs cercanos', '近くのNPC', '附近NPC'],
+    ['history', 'Conversation history', 'История разговора', 'Gesprächsverlauf', 'Historique', 'Historial', '会話履歴', '对话历史'],
+    ['events', 'Recent events', 'Недавние события', 'Letzte Ereignisse', 'Événements récents', 'Eventos recientes', '最近の出来事', '近期事件'],
+    ['world_state', 'World state', 'Состояние мира', 'Weltzustand', 'État du monde', 'Estado del mundo', '世界状態', '世界状态'],
+    ['world_context', 'World context', 'Контекст мира', 'Welthilfe', 'Contexte du monde', 'Contexto del mundo', '世界コンテキスト', '世界上下文'],
+  ];
+
+  const agentVars = {
+    narrator: { vars: ['world_name','time','location','character','role','rules','timeline','memories','facts','npcs','history'], desc: { en:'Primary storyteller', ru:'Главный рассказчик', de:'Hauptgeschichtenerzähler', fr:'Narrateur principal', es:'Narrador principal', ja:'メインストーリーテラー', zh:'主要叙事者' }},
+    director: { vars: ['narrative','beat'], desc: { en:'Story beat injection', ru:'Инъекция сюжетных битов', de:'Handlungsbeat-Injektion', fr:'Injection de battements', es:'Inyección de momentos', ja:'ストーリービート注入', zh:'故事节拍注入' }},
+    scene: { vars: ['character','origin','destination','rules','events'], desc: { en:'Scene transitions', ru:'Переходы между сценами', de:'Szenenübergänge', fr:'Transitions de scène', es:'Transiciones de escena', ja:'シーン遷移', zh:'场景过渡' }},
+    npc: { vars: ['npc_name','npc_personality','player','location','relationship','events','line'], desc: { en:'NPC dialogue', ru:'Диалог NPC', de:'NPC-Dialog', fr:'Dialogue PNJ', es:'Diálogo NPC', ja:'NPCダイアログ', zh:'NPC对话' }},
+    chronicler: { vars: ['events','timeline'], desc: { en:'Timeline management', ru:'Управление таймлайном', de:'Zeitachsenverwaltung', fr:'Gestion de la chronologie', es:'Gestión de cronología', ja:'タイムライン管理', zh:'时间线管理' }},
+    'story-planner': { vars: ['world_state','characters','events','quests'], desc: { en:'Story arc planning', ru:'Планирование арок', de:'Handlungsplanung', fr:'Planification narrative', es:'Planificación argumental', ja:'ストーリー計画', zh:'故事弧线规划' }},
+    'social-sim': { vars: ['characters','relationships','context'], desc: { en:'Social dynamics', ru:'Социальная динамика', de:'Soziale Dynamik', fr:'Dynamique sociale', es:'Dinámica social', ja:'ソーシャルダイナミクス', zh:'社交动态' }},
+    villain: { vars: ['villain','world_state','recent_actions'], desc: { en:'Antagonist management', ru:'Управление антагонистами', de:'Antagonisten-Management', fr:'Gestion des antagonistes', es:'Gestión de antagonistas', ja:'敵対者管理', zh:'反派管理' }},
+    researcher: { vars: ['task','world_context'], desc: { en:'Fact-checking', ru:'Проверка фактов', de:'Faktencheck', fr:'Vérification', es:'Verificación', ja:'事実確認', zh:'事实核查' }},
+    historian: { vars: ['query','world_history','relevant_events','world_rules'], desc: { en:'World history', ru:'История мира', de:'Weltgeschichte', fr:'Histoire du monde', es:'Historia del mundo', ja:'世界の歴史', zh:'世界历史' }},
+    cartographer: { vars: ['query','locations','current_location'], desc: { en:'Maps and geography', ru:'Карты и география', de:'Karten und Geographie', fr:'Cartes et géographie', es:'Mapas y geografía', ja:'地図と地理', zh:'地图与地理' }},
+    merchant: { vars: ['query','inventory','world_economy'], desc: { en:'Trading and pricing', ru:'Торговля и цены', fr:'Commerce et prix', de:'Handel und Preise', es:'Comercio y precios', ja:'交易と価格', zh:'贸易与定价' }},
+    'quest-giver': { vars: ['query','world_state','active_quests','nearby_npcs','player_level'], desc: { en:'Quest generation', ru:'Генерация квестов', de:'Quest-Generierung', fr:'Génération de quêtes', es:'Generación de misiones', ja:'クエスト生成', zh:'任务生成' }},
+    lorekeeper: { vars: ['query','world_facts','magic_system','races'], desc: { en:'World lore and canon', ru:'Лор и канон мира', de:'Welten-Mythos und Kanon', fr:'Mythologie et canon', es:'Leyenda y canon', ja:'世界の伝承と正典', zh:'世界传说与正典' }},
+  };
+
+  const langIdx = { en:0, ru:1, de:2, fr:3, es:4, ja:5, zh:6 };
+  const li = langIdx[lang] ?? 0;
+
+  let html = '<h3>' + t('helpGlobalVars') + '</h3><table><thead><tr><th>Variable</th><th>' + (lang==='ru'?'Описание':lang==='de'?'Beschreibung':lang==='fr'?'Description':lang==='es'?'Descripción':lang==='ja'?'説明':lang==='zh'?'描述':'Description') + '</th></tr></thead><tbody>';
+  for (const v of globalVars) {
+    html += '<tr><td>{' + v[0] + '}</td><td>' + esc(v[li+1]) + '</td></tr>';
+  }
+  html += '</tbody></table>';
+
+  html += '<h3>' + t('helpAgents') + '</h3>';
+  for (const [id, info] of Object.entries(agentVars)) {
+    const name = agentName(id);
+    const desc = info.desc[lang] || info.desc.en;
+    html += '<div style="margin:8px 0;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px">';
+    html += '<div style="font-weight:500;color:var(--text-display);margin-bottom:4px">' + esc(name) + ' <code style="font-size:10px;color:var(--text-disabled)">' + id + '</code></div>';
+    html += '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px">' + esc(desc) + '</div>';
+    html += '<div>' + info.vars.map(v => '<span class="help-tag">' + v + '</span>').join('') + '</div>';
+    html += '</div>';
+  }
+
+  html += '<h3>' + t('helpTemperature') + '</h3><table><thead><tr><th>0.1-0.3</th><th>0.4-0.6</th><th>0.7-0.8</th></tr></thead><tbody><tr>';
+  html += '<td>' + (lang==='ru'?'Точный, детерминированный':lang==='de'?'Fokussiert':lang==='fr'?'Focalisé':lang==='es'?'Enfocado':lang==='ja'?'集中':lang==='zh'?'专注':'Focused, deterministic') + '</td>';
+  html += '<td>' + (lang==='ru'?'Балансированный':lang==='de'?'Ausgewogen':lang==='fr'?'Équilibré':lang==='es'?'Equilibrado':lang==='ja'?'バランス':lang==='zh'?'平衡':'Balanced') + '</td>';
+  html += '<td>' + (lang==='ru'?'Креативный':lang==='de'?'Kreativ':lang==='fr'?'Créatif':lang==='es'?'Creativo':lang==='ja'?'創造的':lang==='zh'?'创意':'Creative') + '</td>';
+  html += '</tr></tbody></table>';
+
+  html += '<h3>' + t('helpAgentChat') + '</h3><pre>@narrator ' + (lang==='ru'?'опиши атмосферу леса':lang==='de'?'beschreibe die Waldatmosphäre':lang==='fr'?'décris l\'atmosphère de la forêt':lang==='es'?'describe la atmósfera del bosque':lang==='ja'?'森の雰囲気を描写':lang==='zh'?'描述森林氛围':'describe the forest atmosphere') + '\n@director ' + (lang==='ru'?'предложи сюжетный поворот':lang==='de'?'schlage einen Plot-Twist vor':lang==='fr'?'suggère un rebondissement':lang==='es'?'sugiere un giro argumental':lang==='ja'?'プロットの展開を提案':lang==='zh'?'建议剧情转折':'suggest a plot twist') + '</pre>';
+
+  const modal = document.createElement('div');
+  modal.className = 'help-modal';
+  modal.innerHTML = '<div class="help-modal__box"><div class="help-modal__head"><span class="help-modal__title">' + t('helpTitle') + '</span><button class="help-modal__close" onclick="this.closest(\'.help-modal\').remove()">&times;</button></div><div class="help-modal__body">' + html + '</div></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+}
+
+// ── Init ──
+loadData();
+</script>
+</body>
+</html>

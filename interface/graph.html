@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrueNeverStory — World Graph</title>
+<link href="/static/fonts/fonts.css" rel="stylesheet">
+<link href="/static/theme-dark.css" rel="stylesheet">
+<link href="/static/theme-light.css" rel="stylesheet">
+<link href="/static/theme-terminal.css" rel="stylesheet">
+<link href="/static/theme-cyberpunk.css" rel="stylesheet">
+<link href="/static/theme-custom.css" rel="stylesheet">
+<link href="/static/theme.css" rel="stylesheet">
+<script src="static/server-stub.js"></script>
+  <script src="/static/vendor/d3.v7.min.js"></script>
+<script src="/static/theme.js"></script>
+<style>
+:root {
+  --font-body: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'Space Mono', monospace;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:12px;color:var(--text-primary);overflow:hidden}
+
+.toolbar{position:fixed;top:0;left:0;right:0;height:48px;background:var(--surface);border-bottom:1px solid var(--border-visible);display:flex;align-items:center;gap:8px;padding:0 16px;z-index:100}
+.toolbar__brand{font-family:var(--font-mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-disabled)}
+.toolbar__brand span{color:var(--text-display);font-weight:700}
+.toolbar__sep{width:1px;height:14px;background:var(--border);flex-shrink:0}
+.toolbar__mode{display:flex;gap:2px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-pill);padding:2px}
+.toolbar__mode-btn{font-family:var(--font-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;padding:4px 12px;border:none;border-radius:var(--radius-pill);background:transparent;color:var(--text-disabled);cursor:pointer;transition:all 120ms}
+.toolbar__mode-btn:hover{color:var(--text-secondary)}
+.toolbar__mode-btn--active{background:var(--text-display);color:var(--black)}
+.toolbar__spacer{flex:1}
+.toolbar__stats{font-size:9px;color:var(--text-tertiary);letter-spacing:0.08em}
+.toolbar__btn{background:transparent;border:1px solid var(--border-visible);color:var(--text-tertiary);font-family:var(--font-mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;padding:4px 10px;cursor:pointer;border-radius:var(--radius-pill);transition:all 120ms;text-decoration:none}
+.toolbar__btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+
+#graph{position:fixed;top:48px;left:0;right:0;bottom:0;background:var(--black)}
+
+.legend{position:fixed;bottom:16px;left:16px;background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-lg);padding:12px 16px;z-index:50;display:flex;flex-direction:column;gap:6px}
+.legend__title{font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-disabled);margin-bottom:4px}
+.legend__item{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--text-secondary)}
+.legend__dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+.tooltip{position:fixed;pointer-events:none;background:var(--surface-raised);border:1px solid var(--border-visible);border-radius:var(--radius-md);padding:10px 14px;z-index:200;max-width:280px;font-size:11px;color:var(--text-primary);box-shadow:0 4px 20px rgba(0,0,0,0.5);opacity:0;transition:opacity 100ms}
+.tooltip--visible{opacity:1}
+.tooltip__name{font-weight:700;margin-bottom:4px;color:var(--text-display)}
+.tooltip__type{font-size:9px;color:var(--text-tertiary);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px}
+.tooltip__detail{color:var(--text-secondary);line-height:1.5}
+
+.panel{position:fixed;top:48px;right:0;width:320px;bottom:0;background:var(--surface);border-left:1px solid var(--border-visible);z-index:50;transform:translateX(100%);transition:transform 200ms var(--ease-out);display:flex;flex-direction:column;overflow:hidden}
+.panel--open{transform:translateX(0)}
+.panel__header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border)}
+.panel__title{font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-secondary)}
+.panel__close{background:transparent;border:none;color:var(--text-disabled);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:4px}
+.panel__close:hover{color:var(--text-primary)}
+.panel__body{flex:1;overflow-y:auto;padding:12px 16px;font-size:11px;color:var(--text-secondary);line-height:1.6}
+.panel__row{margin-bottom:8px}
+.panel__label{font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-disabled);margin-bottom:2px}
+.panel__value{color:var(--text-primary)}
+.panel__connections{margin-top:12px}
+.panel__conn-item{display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);font-size:10px}
+.panel__conn-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+.search{position:fixed;top:48px;left:16px;z-index:50;margin-top:12px}
+.search__input{background:var(--surface);border:1px solid var(--border-visible);border-radius:var(--radius-pill);padding:6px 14px;font-family:var(--font-mono);font-size:10px;color:var(--text-primary);width:200px;outline:none;transition:border-color 120ms}
+.search__input:focus{border-color:var(--text-secondary)}
+.search__input::placeholder{color:var(--text-disabled)}
+
+.hamburger{display:none;background:transparent;border:none;color:var(--text-primary);font-size:18px;cursor:pointer;padding:4px;line-height:1;z-index:20}
+.hamburger:hover{color:var(--text-display)}
+.mobile-menu{display:none;position:fixed;top:42px;left:0;right:0;background:var(--surface);border-bottom:1px solid var(--border-visible);z-index:15;padding:8px 16px;flex-direction:column;gap:4px}
+.mobile-menu--open{display:flex}
+.mobile-menu a{display:flex;align-items:center;gap:8px;background:transparent;border:1px solid var(--border);color:var(--text-secondary);font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;text-transform:uppercase;padding:8px 12px;border-radius:var(--radius-md);cursor:pointer;text-decoration:none;transition:all 120ms;width:100%;text-align:left}
+.mobile-menu a:hover{border-color:var(--text-secondary);color:var(--text-primary)}
+.mobile-menu a span{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+@media(max-width:768px){
+  .hamburger{display:block;font-size:20px;padding:6px}
+  .toolbar__btn{display:none}
+  .toolbar__spacer{display:none}
+  .toolbar{height:44px;gap:6px;padding:0 12px}
+  .toolbar__brand{font-size:9px}
+  .toolbar__brand span{font-size:10px}
+  .toolbar__mode{gap:1px;padding:1px}
+  .toolbar__mode-btn{font-size:9px;padding:4px 10px}
+  .toolbar__stats{font-size:9px}
+  #graph{top:44px}
+  .legend{bottom:12px;left:12px;padding:10px 14px;gap:5px}
+  .legend__title{font-size:9px}
+  .legend__item{font-size:11px;gap:8px}
+  .legend__dot{width:8px;height:8px}
+  .tooltip{max-width:220px;font-size:12px;padding:10px 12px}
+  .panel{width:100vw;top:44px}
+  .panel__body{padding:14px;font-size:12px;line-height:1.6}
+  .panel__conn-item{font-size:11px;padding:6px 0}
+  .search{top:44px;left:12px;margin-top:10px}
+  .search__input{width:180px;font-size:11px;padding:6px 12px}
+  .mobile-menu{top:44px;padding:10px 16px;gap:6px}
+  .mobile-menu a{font-size:12px;padding:10px 14px}
+}
+@media(max-width:480px){
+  .toolbar__brand{display:none}
+  .toolbar__sep{display:none}
+  #graph{top:36px}
+  .mobile-menu{top:36px}
+  .legend{bottom:8px;left:8px;padding:8px 10px}
+  .legend__item{font-size:10px}
+  .panel__body{padding:12px;font-size:13px}
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button class="hamburger" id="hamburgerBtn">&#9776;</button>
+  <div class="toolbar__brand"><span>TrueNeverStory</span></div>
+  <div class="toolbar__sep"></div>
+  <div class="toolbar__mode" id="modeSwitch">
+    <button class="toolbar__mode-btn toolbar__mode-btn--active" data-mode="relationships" id="btnRelationships">Relationships</button>
+    <button class="toolbar__mode-btn" data-mode="crafting" id="btnCrafting">Crafting</button>
+  </div>
+  <div class="toolbar__spacer"></div>
+  <span class="toolbar__stats" id="statsText">--</span>
+  <a class="toolbar__btn" href="/" id="btnChat">Chat</a>
+</div>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="/" id="mobileChat"><span style="background:var(--interactive)"></span><span id="mobileChatLabel">Chat</span></a>
+</div>
+
+<div id="graph"></div>
+
+<div class="search">
+  <input type="text" class="search__input" id="searchInput" placeholder="Search nodes...">
+</div>
+
+<div class="legend" id="legend"></div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<div class="panel" id="detailPanel">
+  <div class="panel__header">
+    <span class="panel__title" id="panelTitle">Details</span>
+    <button class="panel__close" id="panelClose">&times;</button>
+  </div>
+  <div class="panel__body" id="panelBody"></div>
+</div>
+
+<script>
+(function() {
+  const EN = {
+    relationships: 'Relationships', crafting: 'Crafting',
+    entityTypes: 'Entity Types', itemTypes: 'Item Types',
+    Characters: 'Characters', Locations: 'Locations', Items: 'Items', Factions: 'Factions', 'World Rules': 'World Rules',
+    result: 'Crafted Items', ingredient: 'Ingredients',
+    nodes: 'nodes', edges: 'edges', connections: 'connections',
+    Type: 'Type', Category: 'Category', English: 'English',
+    Outgoing: 'Outgoing', Incoming: 'Incoming', Details: 'Details',
+    Error: 'Error loading graph', Search: 'Search nodes...', Chat: '\u2190 Chat',
+  };
+  const RU = {
+    relationships: '\u0421\u0432\u044F\u0437\u0438', crafting: '\u041A\u0440\u0430\u0444\u0442',
+    entityTypes: '\u0422\u0438\u043F\u044B \u0441\u0443\u0449\u0435\u0441\u0442\u0432', itemTypes: '\u0422\u0438\u043F\u044B \u043F\u0440\u0435\u0434\u043C\u0435\u0442\u043E\u0432',
+    Characters: '\u041F\u0435\u0440\u0441\u043E\u043D\u0430\u0436\u0438', Locations: '\u041B\u043E\u043A\u0430\u0446\u0438\u0438', Items: '\u041F\u0440\u0435\u0434\u043C\u0435\u0442\u044B', Factions: '\u0424\u0440\u0430\u043A\u0446\u0438\u0438', 'World Rules': '\u041F\u0440\u0430\u0432\u0438\u043B\u0430 \u043C\u0438\u0440\u0430',
+    result: '\u041A\u0440\u0430\u0444\u0442\u0435\u043D\u044B\u0435 \u043F\u0440\u0435\u0434\u043C\u0435\u0442\u044B', ingredient: '\u0418\u043D\u0433\u0440\u0435\u0434\u0438\u0435\u043D\u0442\u044B',
+    nodes: '\u0443\u0437\u043B\u043E\u0432', edges: '\u0441\u0432\u044F\u0437\u0435\u0439', connections: '\u0441\u0432\u044F\u0437\u0438',
+    Type: '\u0422\u0438\u043F', Category: '\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F', English: '\u0410\u043D\u0433\u043B\u0438\u0439\u0441\u043A\u0438\u0439',
+    Outgoing: '\u0418\u0441\u0445\u043E\u0434\u044F\u0449\u0438\u0435', Incoming: '\u0412\u0445\u043E\u0434\u044F\u0449\u0438\u0435', Details: '\u0414\u0435\u0442\u0430\u043B\u0438',
+    Error: '\u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 \u0433\u0440\u0430\u0444\u0430', Search: '\u041F\u043E\u0438\u0441\u043A \u0443\u0437\u043B\u043E\u0432...', Chat: '\u2190 \u0427\u0430\u0442',
+  };
+  const DE = { ...EN, relationships: 'Beziehungen', crafting: 'Handwerk', entityTypes: 'Entit\u00E4tstypen', itemTypes: 'Item-Typen', Characters: 'Charaktere', Locations: 'Orte', Items: 'Items', Factions: 'Fraktionen', 'World Rules': 'Weltregeln', result: 'Handwerksergebnisse', ingredient: 'Zutaten', nodes: 'Knoten', edges: 'Kanten', connections: 'Verbindungen', Type: 'Typ', Category: 'Kategorie', English: 'Englisch', Outgoing: 'Ausgehend', Incoming: 'Eingehend', Details: 'Details', Error: 'Fehler beim Laden', Search: 'Knoten suchen...', Chat: '\u2190 Chat' };
+  const FR = { ...EN, relationships: 'Relations', crafting: 'Artisanat', entityTypes: 'Types d\'entit\u00E9s', itemTypes: 'Types d\'objets', Characters: 'Personnages', Locations: 'Lieux', Items: 'Objets', Factions: 'Factions', 'World Rules': 'R\u00E8gles du monde', result: 'Objets fabriqu\u00E9s', ingredient: 'Ingr\u00E9dients', nodes: 'n\u0153uds', edges: 'ar\u00EAtes', connections: 'connexions', Type: 'Type', Category: 'Cat\u00E9gorie', English: 'Anglais', Outgoing: 'Sortant', Incoming: 'Entrant', Details: 'D\u00E9tails', Error: 'Erreur de chargement', Search: 'Rechercher...', Chat: '\u2190 Chat' };
+  const ES = { ...EN, relationships: 'Relaciones', crafting: 'Artesan\u00EDa', entityTypes: 'Tipos de entidad', itemTypes: 'Tipos de objeto', Characters: 'Personajes', Locations: 'Ubicaciones', Items: 'Objetos', Factions: 'Facciones', 'World Rules': 'Reglas del mundo', result: 'Objetos creados', ingredient: 'Ingredientes', nodes: 'nodos', edges: 'aristas', connections: 'conexiones', Type: 'Tipo', Category: 'Categor\u00EDa', English: 'Ingl\u00E9s', Outgoing: 'Saliente', Incoming: 'Entrante', Details: 'Detalles', Error: 'Error al cargar', Search: 'Buscar...', Chat: '\u2190 Chat' };
+  const JA = { ...EN, relationships: '\u95A2\u9023', crafting: '\u30AF\u30E9\u30D5\u30C8', entityTypes: '\u30A8\u30F3\u30C6\u30A3\u30C6\u30A3\u30BF\u30A3\u30D7', itemTypes: '\u30A2\u30A4\u30C6\u30E0\u30BF\u30A3\u30D7', Characters: '\u30AD\u30E3\u30E9\u30AF\u30BF\u30FC', Locations: '\u5834\u6240', Items: '\u30A2\u30A4\u30C6\u30E0', Factions: '\u52E2\u529B', 'World Rules': '\u4E16\u754C\u306E\u30EB\u30FC\u30EB', result: '\u8ABF\u5408\u30A2\u30A4\u30C6\u30E0', ingredient: '\u7D20\u6750', nodes: '\u30CE\u30FC\u30C9', edges: '\u30A8\u30C3\u30B8', connections: '\u63A5\u7D9A', Type: '\u30BF\u30A3\u30D7', Category: '\u30AB\u30C6\u30B4\u30EA', English: '\u82F1\u8A9E', Outgoing: '\u51FA\u53D1', Incoming: '\u53D7\u4FE1', Details: '\u8A73\u7D30', Error: '\u30ED\u30FC\u30C9\u30A8\u30E9\u30FC', Search: '\u691C\u7D22...', Chat: '\u2190 Chat' };
+  const ZH = { ...EN, relationships: '\u5173\u7CFB', crafting: '\u5236\u4F5C', entityTypes: '\u5B9E\u4F53\u7C7B\u578B', itemTypes: '\u7269\u54C1\u7C7B\u578B', Characters: '\u89D2\u8272', Locations: '\u4F4D\u7F6E', Items: '\u7269\u54C1', Factions: '\u9635\u8425', 'World Rules': '\u4E16\u754C\u89C4\u5219', result: '\u5236\u54C1', ingredient: '\u6750\u6599', nodes: '\u8282\u70B9', edges: '\u8FB9', connections: '\u8FDE\u63A5', Type: '\u7C7B\u578B', Category: '\u5206\u7C7B', English: '\u82F1\u6587', Outgoing: '\u51FA\u53D1', Incoming: '\u5165', Details: '\u8BE6\u60C5', Error: '\u52A0\u8F7D\u9519\u8BEF', Search: '\u641C\u7D22...', Chat: '\u2190 Chat' };
+
+  const ALL_LANGS = { en: EN, ru: RU, de: DE, fr: FR, es: ES, ja: JA, zh: ZH };
+
+  const graphEl = document.getElementById('graph');
+  const tooltipEl = document.getElementById('tooltip');
+  const statsEl = document.getElementById('statsText');
+  const legendEl = document.getElementById('legend');
+  const searchInput = document.getElementById('searchInput');
+  const panelEl = document.getElementById('detailPanel');
+  const panelTitle = document.getElementById('panelTitle');
+  const panelBody = document.getElementById('panelBody');
+  const panelClose = document.getElementById('panelClose');
+  const btnChat = document.getElementById('btnChat');
+  const btnRel = document.getElementById('btnRelationships');
+  const btnCraft = document.getElementById('btnCrafting');
+
+  let lang = EN;
+  let currentMode = 'relationships';
+  let simulation = null;
+  let svg = null;
+  let g = null;
+  let linkGroup = null;
+  let nodeGroup = null;
+  let labelGroup = null;
+  let graphData = { nodes: [], links: [] };
+
+  const COLORS = {
+    relationships: { Character: '#5B9BF6', Location: '#4A9E5C', Item: '#D4A843', Faction: '#D71921', WorldRule: '#8E8E8E', Unknown: '#666666' },
+    crafting: { result: '#5B9BF6', ingredient: '#4A9E5C' },
+  };
+
+  function L(key) { return lang[key] || EN[key] || key; }
+
+  async function loadLang() {
+    try {
+      const res = await tnsStubFetch();
+      const s = await res.json();
+      lang = ALL_LANGS[s.language] || EN;
+    } catch { lang = EN; }
+    applyStaticLang();
+  }
+
+  function applyStaticLang() {
+    btnRel.textContent = L('relationships');
+    btnCraft.textContent = L('crafting');
+    btnChat.textContent = L('Chat');
+    searchInput.placeholder = L('Search');
+    panelTitle.textContent = L('Details');
+    var mcl = document.getElementById('mobileChatLabel');
+    if (mcl) mcl.textContent = L('Chat');
+  }
+
+  function init() {
+    const width = window.innerWidth;
+    const height = window.innerHeight - 48;
+
+    svg = d3.select('#graph')
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height);
+
+    const defs = svg.append('defs');
+    defs.append('marker')
+      .attr('id', 'arrow')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 20)
+      .attr('refY', 0)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', '#353535');
+
+    g = svg.append('g');
+    linkGroup = g.append('g').attr('class', 'links');
+    nodeGroup = g.append('g').attr('class', 'nodes');
+    labelGroup = g.append('g').attr('class', 'labels');
+
+    svg.call(d3.zoom().scaleExtent([0.1, 4]).on('zoom', (e) => g.attr('transform', e.transform)));
+
+    window.addEventListener('resize', () => {
+      svg.attr('width', window.innerWidth).attr('height', window.innerHeight - 48);
+    });
+
+    panelClose.addEventListener('click', () => panelEl.classList.remove('panel--open'));
+
+    document.querySelectorAll('.toolbar__mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.toolbar__mode-btn').forEach(b => b.classList.remove('toolbar__mode-btn--active'));
+        btn.classList.add('toolbar__mode-btn--active');
+        currentMode = btn.dataset.mode;
+        loadGraph();
+      });
+    });
+
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      if (!q) {
+        nodeGroup.selectAll('circle').attr('opacity', 1);
+        labelGroup.selectAll('text').attr('opacity', 1);
+        linkGroup.selectAll('line').attr('opacity', 1);
+        return;
+      }
+      const matched = new Set();
+      graphData.nodes.forEach(n => { if (n.name.toLowerCase().includes(q)) matched.add(n.id); });
+      graphData.links.forEach(l => {
+        if (matched.has(l.source.id || l.source) || matched.has(l.target.id || l.target)) {
+          matched.add(l.source.id || l.source);
+          matched.add(l.target.id || l.target);
+        }
+      });
+      nodeGroup.selectAll('circle').attr('opacity', d => matched.has(d.id) ? 1 : 0.1);
+      labelGroup.selectAll('text').attr('opacity', d => matched.has(d.id) ? 1 : 0.1);
+      linkGroup.selectAll('line').attr('opacity', d => matched.has(d.source.id) && matched.has(d.target.id) ? 0.6 : 0.03);
+    });
+
+    loadGraph();
+  }
+
+  async function loadGraph() {
+    try {
+      const res = await tnsStubFetch();
+      graphData = await res.json();
+      renderLegend();
+      render(graphData);
+      statsEl.textContent = graphData.nodes.length + ' ' + L('nodes') + ' \u00B7 ' + graphData.links.length + ' ' + L('edges');
+    } catch {
+      statsEl.textContent = L('Error');
+    }
+  }
+
+  function renderLegend() {
+    const title = currentMode === 'relationships' ? L('entityTypes') : L('itemTypes');
+    const labels = currentMode === 'relationships'
+      ? { Character: L('Characters'), Location: L('Locations'), Item: L('Items'), Faction: L('Factions'), WorldRule: L('World Rules') }
+      : { result: L('result'), ingredient: L('ingredient') };
+    const colors = COLORS[currentMode] || {};
+    legendEl.innerHTML = '<div class="legend__title">' + title + '</div>';
+    for (const [type, label] of Object.entries(labels)) {
+      const c = colors[type] || '#666';
+      legendEl.innerHTML += '<div class="legend__item"><span class="legend__dot" style="background:' + c + '"></span>' + label + '</div>';
+    }
+  }
+
+  function render(data) {
+    if (simulation) simulation.stop();
+    linkGroup.selectAll('*').remove();
+    nodeGroup.selectAll('*').remove();
+    labelGroup.selectAll('*').remove();
+
+    const colors = COLORS[currentMode] || {};
+    const w = parseInt(svg.attr('width'));
+    const h = parseInt(svg.attr('height'));
+    const isCrafting = currentMode === 'crafting';
+
+    simulation = d3.forceSimulation(data.nodes)
+      .force('link', d3.forceLink(data.links).id(d => d.id).distance(isCrafting ? 80 : 120))
+      .force('charge', d3.forceManyBody().strength(isCrafting ? -200 : -300))
+      .force('center', d3.forceCenter(w / 2, h / 2))
+      .force('collision', d3.forceCollide().radius(isCrafting ? 20 : 30))
+      .force('x', d3.forceX(w / 2).strength(0.05))
+      .force('y', d3.forceY(h / 2).strength(0.05));
+
+    linkGroup.selectAll('line').data(data.links).enter().append('line')
+      .attr('stroke', '#272727')
+      .attr('stroke-width', d => Math.max(1, (d.strength || 0.5) * 2))
+      .attr('stroke-opacity', 0.6)
+      .attr('marker-end', isCrafting ? null : 'url(#arrow)');
+
+    nodeGroup.selectAll('circle').data(data.nodes).enter().append('circle')
+      .attr('r', d => isCrafting ? (d.type === 'result' ? 10 : 6) : 8)
+      .attr('fill', d => colors[d.type] || colors[d.group] || '#666')
+      .attr('stroke', '#000').attr('stroke-width', 1.5).attr('cursor', 'pointer')
+      .call(d3.drag().on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }).on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; }).on('end', (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }))
+      .on('mouseover', (e, d) => showTooltip(e, d))
+      .on('mousemove', (e) => moveTooltip(e))
+      .on('mouseout', () => hideTooltip())
+      .on('click', (e, d) => showDetail(d));
+
+    labelGroup.selectAll('text').data(data.nodes).enter().append('text')
+      .text(d => d.nameRu || d.name)
+      .attr('font-family', 'Space Mono, monospace')
+      .attr('font-size', isCrafting ? 9 : 10)
+      .attr('fill', '#8E8E8E')
+      .attr('dx', d => (isCrafting ? (d.type === 'result' ? 12 : 8) : 10) + 2)
+      .attr('dy', 3).attr('pointer-events', 'none');
+
+    simulation.on('tick', () => {
+      linkGroup.selectAll('line').attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+      nodeGroup.selectAll('circle').attr('cx', d => d.x).attr('cy', d => d.y);
+      labelGroup.selectAll('text').attr('x', d => d.x).attr('y', d => d.y);
+    });
+  }
+
+  function showTooltip(event, d) {
+    const name = d.nameRu || d.name;
+    let html = '<div class="tooltip__name">' + esc(name) + '</div>';
+    html += '<div class="tooltip__type">' + esc(d.type || '') + '</div>';
+    if (d.group) html += '<div class="tooltip__detail">' + L('Category') + ': ' + esc(String(d.group)) + '</div>';
+    const conns = graphData.links.filter(l => (l.source.id || l.source) === d.id || (l.target.id || l.target) === d.id);
+    if (conns.length > 0) html += '<div class="tooltip__detail">' + conns.length + ' ' + L('connections') + '</div>';
+    tooltipEl.innerHTML = html;
+    tooltipEl.classList.add('tooltip--visible');
+    moveTooltip(event);
+  }
+
+  function moveTooltip(event) {
+    let x = event.clientX + 12, y = event.clientY + 12;
+    if (x + 280 > window.innerWidth) x = event.clientX - 290;
+    if (y + 150 > window.innerHeight) y = event.clientY - 160;
+    tooltipEl.style.left = x + 'px';
+    tooltipEl.style.top = y + 'px';
+  }
+
+  function hideTooltip() { tooltipEl.classList.remove('tooltip--visible'); }
+
+  function showDetail(d) {
+    panelTitle.textContent = d.nameRu || d.name;
+    const colors = COLORS[currentMode] || {};
+    let html = '';
+    html += row(L('Type'), d.type);
+    if (d.group) html += row(L('Category'), d.group);
+    if (d.nameRu && d.nameRu !== d.name) html += row(L('English'), d.name);
+
+    const outgoing = graphData.links.filter(l => (l.source.id || l.source) === d.id);
+    const incoming = graphData.links.filter(l => (l.target.id || l.target) === d.id);
+
+    if (outgoing.length > 0) {
+      html += '<div class="panel__connections"><div class="panel__label">' + L('Outgoing') + '</div>';
+      for (const l of outgoing) {
+        const target = typeof l.target === 'object' ? l.target : graphData.nodes.find(n => n.id === l.target);
+        const tName = target ? (target.nameRu || target.name) : l.target;
+        const tType = target ? target.type : '';
+        const c = colors[tType] || '#666';
+        html += '<div class="panel__conn-item"><span class="panel__conn-dot" style="background:' + c + '"></span>' + esc(tName) + ' <span style="color:var(--text-disabled)">(' + esc(l.label) + ')</span></div>';
+      }
+      html += '</div>';
+    }
+
+    if (incoming.length > 0) {
+      html += '<div class="panel__connections"><div class="panel__label">' + L('Incoming') + '</div>';
+      for (const l of incoming) {
+        const source = typeof l.source === 'object' ? l.source : graphData.nodes.find(n => n.id === l.source);
+        const sName = source ? (source.nameRu || source.name) : l.source;
+        const sType = source ? source.type : '';
+        const c = colors[sType] || '#666';
+        html += '<div class="panel__conn-item"><span class="panel__conn-dot" style="background:' + c + '"></span>' + esc(sName) + ' <span style="color:var(--text-disabled)">(' + esc(l.label) + ')</span></div>';
+      }
+      html += '</div>';
+    }
+
+    panelBody.innerHTML = html;
+    panelEl.classList.add('panel--open');
+  }
+
+  function row(label, value) {
+    return '<div class="panel__row"><div class="panel__label">' + esc(label) + '</div><div class="panel__value">' + esc(String(value)) + '</div></div>';
+  }
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+  var hamburgerBtn = document.getElementById('hamburgerBtn');
+  var mobileMenu = document.getElementById('mobileMenu');
+  if (hamburgerBtn && mobileMenu) {
+    hamburgerBtn.addEventListener('click', function() {
+      mobileMenu.classList.toggle('mobile-menu--open');
+    });
+    mobileMenu.querySelectorAll('a').forEach(function(a) {
+      a.addEventListener('click', function() { mobileMenu.classList.remove('mobile-menu--open'); });
+    });
+    document.addEventListener('click', function(e) {
+      if (!mobileMenu.contains(e.target) && e.target !== hamburgerBtn) {
+        mobileMenu.classList.remove('mobile-menu--open');
+      }
+    });
+  }
+
+  loadLang().then(init);
+})();
+</script>
+</body>
+</html>
