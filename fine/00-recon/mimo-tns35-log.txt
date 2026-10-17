@@ -1,0 +1,97 @@
+  ┊ review diff
+a/mimo-tns35-search.md → b/mimo-tns35-search.md
+@@ -0,0 +1,228 @@
++# TNS35 search: estates, Jung profiler metrics, NPC trait fields
++
++RECON report. Sources: codebase-memory MCP (project `media-ajaxiis-ext3-TNS35`) + files on disk
++under `/media/ajaxiis/ext3/TNS35`. All paths below are relative to that root. Read-only; nothing
++invented; each claim carries file:line.
++
++---
++
++## Q1. ESTATES (сословия)
++
++**VERDICT: NOT FOUND — TNS35 contains NO list/enum of exactly 6 social estates.** The word
++«сословия» appears only in prose (design docs), never as an enumerated code/data structure.
++What TNS35 actually has is (a) a 10-level feudal rank ladder, (b) per-social-system hierarchy
++arrays of 0–5 levels, (c) two exactly-6-element sets that are the only plausible sources for a
++"6 estates" batch axis: `ROLE_BIAS` roles and `FactionType`. Candidates listed below in order
++of fitness for the пачка axis.
++
++### Candidate A — ROLE_BIAS: exactly 6 social roles (BEST FIT for "6 estates × 16 psychotypes")
++This is the only 6-element set of *social roles* in the code, and it is wired directly into the
++Jung profiler (role → psychotype bias), matching the пачка structure 16 × 6:
++- `app/src/services/jungian-profiler.ts:290-297` — `ROLE_BIAS` table, 6 roles, each with Jung
++  axis priors:
++  1. craftsman  (intuition 0.3, thinking 0.75, judging 0.7)  — line 291
++  2. guard      (intuition 0.3, thinking 0.6,  judging 0.75) — line 292
++  3. merchant   (intuition 0.35, thinking 0.7, judging 0.6)  — line 293
++  4. scholar    (intuition 0.8, thinking 0.8,  judging 0.55) — line 294
++  5. wanderer   (intuition 0.8, thinking 0.3,  judging 0.3)  — line 295
++  6. healer     (intuition 0.55, thinking 0.35, judging 0.6) — line 296
++- Consumed by `assignNpcPsychotype(role, faction?, worldSystem?, seed)` —
++  `app/src/services/jungian-profiler.ts:309-340` (unknown role falls back to neutral 0.5/0.5/0.5,
++  line 315; faction/world-system nudges, lines 322-328).
++
++### Candidate B — FactionType: exactly 6 values (faction kinds, includes "neutral")
++- `app/src/services/social-graph.ts:22` — `FactionType = "military" | "economic" | "religious" |
++  "criminal" | "noble" | "neutral"` (6 values). Used by `FactionDetails` (social-graph.ts:26-30).
++  Caveat: these are faction *types*, and "neutral" is not an estate.
++
++### The actual rank ladder (10 levels, not 6) — feudal promotion ladder
++- `app/src/models/rank.ts:8-19` — `enum RankType`: SLAVE, COMMONER, BARONET, BARON, VISCOUNT,
++  COUNT, MARQUIS, DUKE, KING, EMPEROR (10 values).
++- `app/src/rules/economy/ranks.json:18` — promotion order:
++  `["slave", "commoner", "baronet", "baron", "viscount", "count", "marquis", "duke", "king", "emperor"]`;
++  formula at `ranks.json:21-22` ("promotion: wealth >= next rank's wealthMin").
++- Per-rank economy config (wealthMin, guards, baseTaxRate, foodConsumption, foodCost, salary,
++  familyExpensesPct, canGiveBribes, canTakeBribes): `app/src/rules/economy/ranks.json:7-16`,
++  typed at `app/src/models/rank.ts:21-32`; promotion logic `app/src/models/rank.ts:47-58`.
++
++### Per-social-system hierarchies (rules/social/*.json, "hierarchy" at line 6 of each file)
++10 world social systems, each with its own ladder — none has 6 levels:
++- feudalism   `app/src/rules/social/feudalism.json:6`   — [king, duke, lord, knight, peasant] (5)
++- mercantilism `app/src/rules/social/mercantilism.json:6` — [merchant_prince, guildmaster, merchant, artisan, laborer] (5)
++- theocracy   `app/src/rules/social/theocracy.json:6`   — [high_priest, priest, acolyte, faithful, heathen] (5)
++- tribalism   `app/src/rules/social/tribalism.json:6`   — [elder, warrior, hunter, gatherer, youth] (5)
++- slavery     `app/src/rules/social/slavery.json:6`     — [master, overseer, freed, slave] (4)
++- capitalism  `app/src/rules/social/capitalism.json:6`  — [bourgeoisie, middle_class, working_class, poor] (4)
++- communism   `app/src/rules/social/communism.json:6`   — [party_secretary, cadre, citizen] (3)
++- socialism   `app/src/rules/social/socialism.json:6`   — [party_official, citizen] (2)
++- democracy   `app/src/rules/social/democracy.json:6`   — [citizen] (1)
++- anarchy     `app/src/rules/social/anarchy.json:6`     — [] (0)
++- plus economy variant: `app/src/rules/economy/silver-economy.json:6` — [silver_lord, merchant,
++  artisan, laborer] (4).
++
++### Other 5-element groupings (dialogue factions, not estates)
++- `app/src/services/dialogue-context.ts:5` and `app/src/services/dialogue-manager.ts:444` —
++  FACTIONS = [guards, thieves, merchants, nobles, peasants] (5).
++
++### Prose mentions of «сословия» (no enumeration)
++- `devs/PARADIGM.md:12` — world lives by its laws «(экономика, сословия, семьи, налоги, вера)».
++- `devs/PARADIGM.md:45` — «Веер реакций — сословия отвечают по своим интересам (Церковь — ересь,
++  купец — цена, цех — угроза)» — 3 example estates named (Церковь, купец, цех), no list.
++- `devs/SPEC.md:159`, `devs/SPEC.md:301` — «циклы, дилеммы сословий» (economy tables migration).
++- `app/docs/01-concepts.md:9,20,98` — «сословия» in paradigm prose (world laws; «дилеммы
++  сословий» in the economy service row).
++
++### Queries tried for a 6-estate enum (negative verification)
++- codebase-memory search_code regex `сослови|сословие|estate|caste` (72 raw matches — all prose).
++- fff grep `estate`; fff multi_grep `rank|ladder|caste|сослов|ранг`.
++- ripgrep over TNS35: `сослов|estate|Estate|страт` and `ESTATES|SOCIAL_CLASS|SocialClass|Estates\b|сослови[еяй]`
+… omitted 150 diff line(s) across 1 additional file(s)/section(s)
+Hermes (mimo-v2.6-pro)
+
+Готово. Отчёт записан: /media/ajaxiis/ext3/TNS65/fine/00-recon/mimo-tns35-search.md
+
+Короткие вердикты по трём вопросам:
+
+1. Сословия. Списка из ровно 6 сословий в TNS35 НЕТ (NOT FOUND, запросы перечислены в отчёте). Что есть: феодальная лестница из 10 рангов (slave → commoner → baronet → baron → viscount → count → marquis → duke → king → emperor, app/src/models/rank.ts:8-19), иерархии по 0–5 уровней в rules/social/*.json, и ровно два набора по 6 элементов: роли ROLE_BIAS (craftsman, guard, merchant, scholar, wanderer, healer — jungian-profiler.ts:290-297, связаны с юнгианскими осями) и FactionType (military, economic, religious, criminal, noble, neutral — social-graph.ts:22). Для оси пачки «16 × 6» лучший кандидат — ROLE_BIAS: он единственный механически связан с психотипами.
+
+2. Метрики профилировщика. Противоречие мнимое: осей Юнга 4 (E/I, N/S, T/F, J/P — jungian-profiler.ts:10-18), «14 метрик» — это 14 сохраняемых значений профиля (8 = 4 оси × preference/range, + confidence, + 4 axis-уверенности, + source — player-profile-store.ts:194-207, подтверждено комментарием create-world.sql:150 и docs/03-data.md:52), а «16 типов» — это пространство 4-буквенных кодов из deriveType (jungian-profiler.ts:33-39), но явного энума из 16 типов в коде нет (только 4 именованных подсказки: ISTP, ESFJ, ENFP, INTJ — actor.ts:193-198). Отдельно есть энум из 12 JUNGIAN_ARCHETYPES — это нарративные архетипы, не психотипы.
+
+3. Поля NPC. hunger и anger полями NPC в TNS35 не являются (встречаются только в литературных корпусах; «Big Five» отсутствует полностью — ярлык «Big Five-style» ошибочный). Реальные группы: состояние (NPCProfile: health=100, mood, 9 skills, память — npc-state.ts:29-67), экономика (stats: wealth/power/popularity/health/experience/intrigue, 8 пороков включая wrath, темперамент 4 жидкостей — npc-stats.ts:10-55), и слоёный профиль l1/l2/l3, где l3 несёт юнгианский psychotype + hiddenMotivation + secretGoals (entity.ts:28-41, roleplay-engine.ts:421). Психотип и физиология сосуществуют по дизайну как разные модели; числа hunger=30/anger=60 из MECHANICS.md #53 на поля TNS35 не对应 — ближайшие аналоги: health (0-100) и vices.wrath.
+
+Один вопрос: по Q1 — зафиксировать ли ROLE_BIAS (6 ролей) как канонические 6 сословий пачки, или ты сначала посмотришь оба кандидата-6 (роли против FactionType) и решишь сам?
+
+session_id: 20261017_110212_cf364e
