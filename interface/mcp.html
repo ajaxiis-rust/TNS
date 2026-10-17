@@ -28,18 +28,14 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
 .topbar__btn{background:transparent;border:1px solid var(--border-visible);color:var(--text-tertiary);font-family:var(--font-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;padding:6px 16px;cursor:pointer;border-radius:var(--radius-pill);transition:all var(--dur-fast);text-decoration:none;display:inline-flex;align-items:center}
 .topbar__btn:hover{border-color:var(--text-secondary);color:var(--text-primary)}
 
-.tabs{display:flex;gap:4px;padding:8px 20px;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
-.tab{background:transparent;border:1px solid transparent;color:var(--text-tertiary);font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:6px 16px;cursor:pointer;border-radius:var(--radius-pill);transition:all var(--dur-fast);white-space:nowrap}
-.tab:hover{color:var(--text-secondary);border-color:var(--border)}
-.tab.active{color:var(--text-display);border-color:var(--accent);background:rgba(var(--accent-rgb),.1)}
+.tabs{display:none}
 
 .content{flex:1;overflow-y:auto;padding:20px 24px}
 .content::-webkit-scrollbar{width:2px}
 .content::-webkit-scrollbar-track{background:transparent}
 .content::-webkit-scrollbar-thumb{background:var(--border-visible);border-radius:2px}
 
-.panel{display:none}
-.panel.active{display:block}
+.panel{display:block;margin-bottom:28px}
 
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
 .stat-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;gap:4px}
@@ -75,6 +71,14 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
 @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 
 .empty{color:var(--text-disabled);font-style:italic;padding:20px;text-align:center}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);max-width:720px;width:100%;max-height:85vh;overflow-y:auto;padding:24px}
+.modal__title{font-family:var(--font-mono);font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-display);margin-bottom:8px}
+.modal__warn{border:1px solid var(--error);color:var(--error);border-radius:var(--radius-md);padding:10px 12px;font-size:12px;margin-bottom:16px}
+.modal__actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.coeff-note{font-size:11px;color:var(--text-disabled);margin-bottom:12px}
 
 .result-box{margin-top:8px;padding:12px;background:var(--surface-raised);border-radius:var(--radius-md);font-size:13px;white-space:pre-wrap;max-height:300px;overflow-y:auto}
 
@@ -127,57 +131,78 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
   <a href="/" class="topbar__btn" data-i18n="mcp.back">&larr; Back</a>
 </div>
 
-<div class="tabs" id="tabs">
-  <button class="tab active" data-tab="dashboard" data-i18n="mcp.tab.dashboard">Dashboard</button>
-  <button class="tab" data-tab="bible" data-i18n="mcp.tab.bible">Bible</button>
-  <button class="tab" data-tab="gutenberg" data-i18n="mcp.tab.gutenberg">Gutenberg</button>
-  <button class="tab" data-tab="wikipedia" data-i18n="mcp.tab.wikipedia">Wikipedia</button>
-  <button class="tab" data-tab="literary" data-i18n="mcp.tab.literary">Literary</button>
-  <button class="tab" data-tab="economics" data-i18n="mcp.tab.economics">Economics</button>
-  <button class="tab" data-tab="pipeline" data-i18n="mcp.tab.pipeline">Pipeline</button>
-  <button class="tab" data-tab="system" data-i18n="mcp.tab.system">System</button>
-</div>
-
 <div class="content">
-  <!-- Dashboard -->
-  <div class="panel active" id="panel-dashboard">
-    <div class="stats-grid" id="dashboard-stats"></div>
+  <!-- Дашборд ковки -->
+  <div class="panel" id="panel-dashboard">
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.forge.title">Forge Dashboard</div>
+      <div class="stats-grid" id="dashboard-stats"></div>
+      <div class="pipeline-flow" id="pipeline-gutenberg">
+        <div class="phase-card" id="phase-download">
+          <div class="phase-card__header">
+            <span class="phase-card__name">1. Download</span>
+            <span class="phase-card__status" id="phase-download-status">idle</span>
+          </div>
+          <div class="phase-card__desc">Download texts from Project Gutenberg</div>
+          <div class="phase-card__data" id="phase-download-data">—</div>
+          <button class="btn phase-card__btn" id="phase-download-btn" onclick="runPhase('gutenberg/download','download')">Run</button>
+        </div>
+        <div class="phase-arrow" id="arrow-download">▶</div>
+        <div class="phase-card" id="phase-import">
+          <div class="phase-card__header">
+            <span class="phase-card__name">2. Import</span>
+            <span class="phase-card__status" id="phase-import-status">idle</span>
+          </div>
+          <div class="phase-card__desc">Import texts → classics.db</div>
+          <div class="phase-card__data" id="phase-import-data">—</div>
+          <button class="btn phase-card__btn" id="phase-import-btn" onclick="runPhase('gutenberg/import','import')">Run</button>
+        </div>
+        <div class="phase-arrow" id="arrow-import">▶</div>
+        <div class="phase-card" id="phase-v1">
+          <div class="phase-card__header">
+            <span class="phase-card__name">3. v1 Compile</span>
+            <span class="phase-card__status" id="phase-v1-status">idle</span>
+          </div>
+          <div class="phase-card__desc">4-pass compiler → classics-compiled.db</div>
+          <div class="phase-card__data" id="phase-v1-data">—</div>
+          <button class="btn phase-card__btn" id="phase-v1-btn" onclick="runPhase('gutenberg/compile-v1','v1')">Run</button>
+        </div>
+        <div class="phase-arrow" id="arrow-v1">▶</div>
+        <div class="phase-card phase-card--wide" id="phase-v2">
+          <div class="phase-card__header">
+            <span class="phase-card__name">4. v2 LLM</span>
+            <span class="phase-card__status" id="phase-v2-status">idle</span>
+          </div>
+          <div class="phase-card__desc">LLM extraction → literary.db</div>
+          <div class="phase-card__data" id="phase-v2-data">—</div>
+          <div class="phase-card__stats" id="phase-v2-stats"></div>
+          <button class="btn phase-card__btn" id="phase-v2-btn" onclick="runPhase('gutenberg/compile-v2','v2')">Run</button>
+        </div>
+        <div class="phase-arrow" id="arrow-v2">▶</div>
+        <div class="phase-card" id="phase-calibrate">
+          <div class="phase-card__header">
+            <span class="phase-card__name">5. Calibrate</span>
+            <span class="phase-card__status" id="phase-calibrate-status">idle</span>
+          </div>
+          <div class="phase-card__desc">Quality score calibration</div>
+          <div class="phase-card__data" id="phase-calibrate-data">—</div>
+          <button class="btn phase-card__btn" id="phase-calibrate-btn" onclick="runPhase('gutenberg/calibrate','calibrate')">Run</button>
+        </div>
+      </div>
+    </div>
     <div class="section">
       <div class="section__title" data-i18n="mcp.quickActions">Quick Actions</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn" onclick="compactAll()" data-i18n="mcp.compactAll" data-i18n-title="mcp.compactAll.title">Compact All</button>
         <button class="btn" onclick="rebuildIndex()" data-i18n="mcp.rebuildIndex" data-i18n-title="mcp.rebuildIndex.title">Rebuild Index</button>
+        <button class="btn btn--danger" onclick="runAction('clean-orphans')" data-i18n="mcp.system.cleanOrphans" data-i18n-title="mcp.system.cleanOrphans.title">Clean Orphans</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Bible -->
-  <div class="panel" id="panel-bible">
-    <div class="stats-grid" id="bible-stats"></div>
-    <div class="section">
-      <div class="section__title" data-i18n="mcp.bible.search">Search Verses</div>
-      <div class="search-row">
-        <input class="input" id="bible-q" placeholder="Search verses..." data-i18n-placeholder="mcp.bible.searchPlaceholder">
-        <button class="btn" onclick="searchBible()" data-i18n="mcp.search" data-i18n-title="mcp.search.title">Search</button>
-      </div>
-      <div id="bible-results"></div>
-    </div>
-    <div class="section">
-      <div class="section__title" data-i18n="mcp.bible.characters">Characters</div>
-      <div class="search-row">
-        <input class="input" id="bible-char-q" placeholder="Search characters..." data-i18n-placeholder="mcp.bible.charPlaceholder">
-        <button class="btn" onclick="searchBibleChars()" data-i18n="mcp.search" data-i18n-title="mcp.search.title">Search</button>
-      </div>
-      <div id="bible-char-results"></div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn--success" onclick="runAction('bible/bootstrap')" data-i18n="mcp.bible.bootstrap" data-i18n-title="mcp.bible.bootstrap.title">Bootstrap</button>
-      <button class="btn" onclick="runAction('bible/compact')" data-i18n="mcp.bible.compact" data-i18n-title="mcp.bible.compact.title">Compact</button>
     </div>
   </div>
 
   <!-- Gutenberg (merged with Catalog) -->
   <div class="panel" id="panel-gutenberg">
+    <div class="section__title" data-i18n="mcp.books.title">Books</div>
     <div class="stats-grid" id="gutenberg-stats"></div>
     <div class="stats-grid" id="catalog-stats"></div>
     <div class="section">
@@ -237,154 +262,61 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
     </div>
   </div>
 
-  <!-- Wikipedia -->
-  <div class="panel" id="panel-wikipedia">
-    <div class="stats-grid" id="wikipedia-stats"></div>
+  <!-- Кольца Паганеля -->
+  <div class="panel" id="panel-rings">
+    <div class="stats-grid" id="rings-stats"></div>
     <div class="section">
-      <div class="section__title" data-i18n="mcp.wikipedia.search">Search Articles</div>
-      <div class="search-row">
-        <input class="input" id="wikipedia-q" placeholder="Search Wikipedia..." data-i18n-placeholder="mcp.wikipedia.searchPlaceholder">
-        <button class="btn" onclick="searchWikipedia()" data-i18n="mcp.search" data-i18n-title="mcp.search.title">Search</button>
-      </div>
-      <div id="wikipedia-results"></div>
+      <div class="section__title" data-i18n="mcp.rings.title">Rings (Паганель)</div>
+      <div id="rings-queue" class="empty">—</div>
     </div>
     <div class="section">
-      <div class="section__title" data-i18n="mcp.wikipedia.verify">Fact Verification</div>
-      <div class="search-row">
-        <input class="input" id="wikipedia-claim" placeholder="Enter a claim to verify..." data-i18n-placeholder="mcp.wikipedia.claimPlaceholder">
-        <button class="btn" onclick="verifyWikipedia()" data-i18n="mcp.wikipedia.verifyBtn" data-i18n-title="mcp.wikipedia.verifyBtn.title">Verify</button>
-      </div>
-      <div id="wikipedia-verify-result"></div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn" onclick="runAction('wikipedia/download')" data-i18n="mcp.wikipedia.download" data-i18n-title="mcp.wikipedia.download.title">Download</button>
-      <button class="btn" onclick="runAction('wikipedia/convert')" data-i18n="mcp.wikipedia.convert" data-i18n-title="mcp.wikipedia.convert.title">Convert</button>
-      <button class="btn" onclick="runAction('wikipedia/compact')" data-i18n="mcp.wikipedia.compact" data-i18n-title="mcp.wikipedia.compact.title">Compact</button>
+      <div class="section__title" data-i18n="mcp.rings.journal">Ring Journal</div>
+      <div id="rings-journal" style="max-height:220px;overflow-y:auto;font-size:12px"></div>
     </div>
   </div>
 
-  <!-- Literary -->
-  <div class="panel" id="panel-literary">
-    <div class="stats-grid" id="literary-stats"></div>
+  <!-- Инструменты станка -->
+  <div class="panel" id="panel-tools">
     <div class="section">
-      <div class="section__title" data-i18n="mcp.literary.scenes">Scene Templates</div>
+      <div class="section__title" data-i18n="mcp.tools.title">Machine Tools</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="openCoefficients()" data-i18n="mcp.tools.coefficients">Coefficients</button>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section__title" data-i18n="mcp.tools.lemmatizer">Lemmatizer</div>
       <div class="search-row">
-        <input class="input" id="literary-scenes-q" placeholder="Search scene templates..." data-i18n-placeholder="mcp.literary.scenesPlaceholder">
-        <button class="btn" onclick="searchLiteraryScenes()" data-i18n="mcp.search" data-i18n-title="mcp.search.title">Search</button>
+        <select class="input" id="lemma-lang">
+          <option value="ru">ru — pymorphy3</option>
+          <option value="en">en — none</option>
+        </select>
+        <select class="input" id="lemma-lib">
+          <option value="pymorphy3">pymorphy3</option>
+          <option value="none">— (без лемматизатора)</option>
+        </select>
       </div>
-      <div id="literary-scenes-results"></div>
-    </div>
-    <div class="section">
-      <div class="section__title" data-i18n="mcp.literary.styles">Style Patterns</div>
-      <div class="search-row">
-        <input class="input" id="literary-styles-q" placeholder="Search style patterns..." data-i18n-placeholder="mcp.literary.stylesPlaceholder">
-        <button class="btn" onclick="searchLiteraryStyles()" data-i18n="mcp.search" data-i18n-title="mcp.search.title">Search</button>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--text-secondary)"><input type="checkbox" id="lemma-enabled" checked> <span data-i18n="mcp.tools.lemmaEnabled">enabled</span></label>
+        <button class="btn" onclick="toast('Lemmatizer saved (stub)', 'success')" data-i18n="mcp.tools.save">Save</button>
       </div>
-      <div id="literary-styles-results"></div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn" onclick="runAction('literary/compact')" data-i18n="mcp.literary.compact" data-i18n-title="mcp.literary.compact.title">Compact</button>
+      <div class="coeff-note" data-i18n="mcp.tools.lemmaNote" style="margin-top:8px">Language package layer: the library is chosen per package; English may run without a lemmatizer.</div>
     </div>
   </div>
+</div>
 
-  <!-- Economics -->
-  <div class="panel" id="panel-economics">
-    <div class="stats-grid" id="economics-stats"></div>
+<div class="modal-overlay" id="coeff-modal">
+  <div class="modal">
+    <div class="modal__title" data-i18n="mcp.coeff.title">Coefficients — turn math (no LLM)</div>
+    <div class="modal__warn" data-i18n="mcp.coeff.warn">Careful: changes recalculations and turn logic. Applies to future turns; world history is not recalculated.</div>
+    <div class="coeff-note" data-i18n="mcp.coeff.note">Machine-level coefficients only; world parameters are frozen at world birth. Full list comes from the TNS35 code at implementation.</div>
+    <div id="coeff-table"></div>
     <div class="section">
-      <div class="section__title" data-i18n="mcp.economics.phase">Current Phase</div>
-      <div id="economics-phase" class="empty">Loading...</div>
+      <div class="section__title" data-i18n="mcp.coeff.journal">Change Journal</div>
+      <div id="coeff-journal" style="max-height:160px;overflow-y:auto;font-size:12px"></div>
     </div>
-    <div class="section">
-      <div class="section__title">Jubilee</div>
-      <div id="economics-jubilee" class="empty">Loading...</div>
-    </div>
-  </div>
-
-  <!-- Pipeline -->
-  <div class="panel" id="panel-pipeline">
-    <!-- Gutenberg Pipeline -->
-    <div class="section">
-      <div class="section__title">Gutenberg Pipeline</div>
-      <div class="pipeline-flow" id="pipeline-gutenberg">
-        <div class="phase-card" id="phase-download">
-          <div class="phase-card__header">
-            <span class="phase-card__name">1. Download</span>
-            <span class="phase-card__status" id="phase-download-status">idle</span>
-          </div>
-          <div class="phase-card__desc">Download texts from Project Gutenberg</div>
-          <div class="phase-card__data" id="phase-download-data">—</div>
-          <button class="btn phase-card__btn" id="phase-download-btn" onclick="runPhase('gutenberg/download','download')">Run</button>
-        </div>
-        <div class="phase-arrow" id="arrow-download">▶</div>
-        <div class="phase-card" id="phase-import">
-          <div class="phase-card__header">
-            <span class="phase-card__name">2. Import</span>
-            <span class="phase-card__status" id="phase-import-status">idle</span>
-          </div>
-          <div class="phase-card__desc">Import texts → classics.db</div>
-          <div class="phase-card__data" id="phase-import-data">—</div>
-          <button class="btn phase-card__btn" id="phase-import-btn" onclick="runPhase('gutenberg/import','import')">Run</button>
-        </div>
-        <div class="phase-arrow" id="arrow-import">▶</div>
-        <div class="phase-card" id="phase-v1">
-          <div class="phase-card__header">
-            <span class="phase-card__name">3. v1 Compile</span>
-            <span class="phase-card__status" id="phase-v1-status">idle</span>
-          </div>
-          <div class="phase-card__desc">4-pass compiler → classics-compiled.db</div>
-          <div class="phase-card__data" id="phase-v1-data">—</div>
-          <button class="btn phase-card__btn" id="phase-v1-btn" onclick="runPhase('gutenberg/compile-v1','v1')">Run</button>
-        </div>
-        <div class="phase-arrow" id="arrow-v1">▶</div>
-        <div class="phase-card phase-card--wide" id="phase-v2">
-          <div class="phase-card__header">
-            <span class="phase-card__name">4. v2 LLM</span>
-            <span class="phase-card__status" id="phase-v2-status">idle</span>
-          </div>
-          <div class="phase-card__desc">LLM extraction → literary.db</div>
-          <div class="phase-card__data" id="phase-v2-data">—</div>
-          <div class="phase-card__stats" id="phase-v2-stats"></div>
-          <button class="btn phase-card__btn" id="phase-v2-btn" onclick="runPhase('gutenberg/compile-v2','v2')">Run</button>
-        </div>
-        <div class="phase-arrow" id="arrow-v2">▶</div>
-        <div class="phase-card" id="phase-calibrate">
-          <div class="phase-card__header">
-            <span class="phase-card__name">5. Calibrate</span>
-            <span class="phase-card__status" id="phase-calibrate-status">idle</span>
-          </div>
-          <div class="phase-card__desc">Quality score calibration</div>
-          <div class="phase-card__data" id="phase-calibrate-data">—</div>
-          <button class="btn phase-card__btn" id="phase-calibrate-btn" onclick="runPhase('gutenberg/calibrate','calibrate')">Run</button>
-        </div>
-      </div>
-    </div>
-    <!-- Bible (standalone) -->
-    <div class="section">
-      <div class="section__title">Bible</div>
-      <div class="pipeline-flow">
-        <div class="phase-card" id="phase-bible">
-          <div class="phase-card__header">
-            <span class="phase-card__name">Bootstrap</span>
-            <span class="phase-card__status" id="phase-bible-status">idle</span>
-          </div>
-          <div class="phase-card__desc">Parse Bible → bible-normalized.db</div>
-          <div class="phase-card__data" id="phase-bible-data">—</div>
-          <button class="btn phase-card__btn" id="phase-bible-btn" onclick="runPhase('bible/bootstrap','bible')">Run</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- System -->
-  <div class="panel" id="panel-system">
-    <div class="stats-grid" id="system-stats"></div>
-    <div class="section">
-      <div class="section__title" data-i18n="mcp.system.logs">Operation Logs</div>
-      <div id="system-logs" style="max-height:300px;overflow-y:auto;font-size:12px"></div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn" onclick="runAction('rebuild-index')" data-i18n="mcp.system.rebuildIndex" data-i18n-title="mcp.system.rebuildIndex.title">Rebuild Index</button>
-      <button class="btn btn--danger" onclick="runAction('clean-orphans')" data-i18n="mcp.system.cleanOrphans" data-i18n-title="mcp.system.cleanOrphans.title">Clean Orphans</button>
+    <div class="modal__actions">
+      <button class="btn" onclick="closeCoefficients()" data-i18n="mcp.coeff.close">Close</button>
+      <button class="btn btn--success" onclick="saveCoefficients()" data-i18n="mcp.coeff.save">Save</button>
     </div>
   </div>
 </div>
@@ -401,6 +333,17 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
 const I18N = {
   en: {
     "mcp.title": "Database Management", "mcp.back": "\u2190 Back",
+    "mcp.forge.title": "Forge Dashboard", "mcp.books.title": "Books",
+    "mcp.rings.title": "Rings (Паганель)", "mcp.rings.journal": "Ring Journal", "mcp.rings.nodata": "No ring data",
+    "mcp.tools.title": "Machine Tools", "mcp.tools.coefficients": "Coefficients",
+    "mcp.tools.lemmatizer": "Lemmatizer", "mcp.tools.lemmaEnabled": "enabled", "mcp.tools.save": "Save",
+    "mcp.tools.lemmaNote": "Language package layer: the library is chosen per package; English may run without a lemmatizer.",
+    "mcp.coeff.title": "Coefficients — turn math (no LLM)",
+    "mcp.coeff.warn": "Careful: changes recalculations and turn logic. Applies to future turns; world history is not recalculated.",
+    "mcp.coeff.note": "Machine-level coefficients only; world parameters are frozen at world birth. Full list comes from the TNS35 code at implementation.",
+    "mcp.coeff.confirm": "Save coefficients? This changes turn math for future calculations.",
+    "mcp.coeff.saved": "Coefficients saved", "mcp.coeff.close": "Close", "mcp.coeff.save": "Save",
+    "mcp.coeff.journal": "Change Journal",
     "mcp.tab.dashboard": "Dashboard", "mcp.tab.bible": "Bible",
     "mcp.tab.gutenberg": "Gutenberg", "mcp.tab.wikipedia": "Wikipedia",
     "mcp.tab.literary": "Literary", "mcp.tab.economics": "Economics",
@@ -479,6 +422,17 @@ const I18N = {
   },
   ru: {
     "mcp.title": "\u0423\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0431\u0430\u0437\u0430\u043c\u0438 \u0434\u0430\u043d\u043d\u044b\u0445", "mcp.back": "\u2190 \u041d\u0430\u0437\u0430\u0434",
+    "mcp.forge.title": "Дашборд ковки", "mcp.books.title": "Книги-источники",
+    "mcp.rings.title": "Кольца Паганеля", "mcp.rings.journal": "Журнал колец", "mcp.rings.nodata": "Нет данных по кольцам",
+    "mcp.tools.title": "Инструменты станка", "mcp.tools.coefficients": "Коэффициенты",
+    "mcp.tools.lemmatizer": "Лемматизатор", "mcp.tools.lemmaEnabled": "включён", "mcp.tools.save": "Сохранить",
+    "mcp.tools.lemmaNote": "Слой языкового пакета: библиотека выбирается на пакет; английский может работать без лемматизатора.",
+    "mcp.coeff.title": "Коэффициенты — математика ходов без LLM",
+    "mcp.coeff.warn": "Осторожно: меняет пересчёт и логику ходов. Применяется к будущим просчётам; история мира не пересчитывается.",
+    "mcp.coeff.note": "Только станочные коэффициенты; мировые параметры заморожены при рождении мира. Полный список — из кода TNS35 при реализации.",
+    "mcp.coeff.confirm": "Сохранить коэффициенты? Это меняет математику будущих ходов.",
+    "mcp.coeff.saved": "Коэффициенты сохранены", "mcp.coeff.close": "Закрыть", "mcp.coeff.save": "Сохранить",
+    "mcp.coeff.journal": "Журнал изменений",
     "mcp.tab.dashboard": "\u041e\u0431\u0437\u043e\u0440", "mcp.tab.bible": "\u0411\u0438\u0431\u043b\u0438\u044f",
     "mcp.tab.gutenberg": "\u0413\u0443\u0442\u0435\u043d\u0431\u0435\u0440\u0433", "mcp.tab.wikipedia": "\u0412\u0438\u043a\u0438\u043f\u0435\u0434\u0438\u044f",
     "mcp.tab.literary": "\u041b\u0438\u0442\u0435\u0440\u0430\u0442\u0443\u0440\u0430", "mcp.tab.economics": "\u042d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430",
@@ -807,17 +761,6 @@ function applyI18n() {
   document.querySelectorAll("[data-i18n-title]").forEach(el => el.title = t(el.dataset.i18nTitle));
 }
 
-// ── Tabs ──────────────────────────────────────────────────────
-document.querySelectorAll(".tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-    tab.classList.add("active");
-    document.getElementById("panel-" + tab.dataset.tab).classList.add("active");
-    loadTab(tab.dataset.tab);
-  });
-});
-
 // ── Toast ─────────────────────────────────────────────────────
 function toast(msg, type) {
   const el = document.createElement("div");
@@ -856,30 +799,6 @@ async function loadDashboard() {
   for (const db of d.databases || []) {
     g.innerHTML += `<div class="stat-card"><div class="stat-card__value" style="color:${db.exists?"var(--success)":"var(--error)"}">${db.exists?"\u25cf":"\u25cb"}</div><div class="stat-card__label">${escapeHtml(db.name)}</div><div style="font-size:11px;color:var(--text-disabled)">${db.exists?fmtBytes(db.size):"not found"}</div></div>`;
   }
-}
-
-// ── Bible ─────────────────────────────────────────────────────
-async function loadBibleStats() {
-  const d = await api();
-  const el = document.getElementById("bible-stats");
-  if (!d?.exists) { el.innerHTML = '<div class="empty">Bible DB not found</div>'; return; }
-  el.innerHTML = `<div class="stat-card"><div class="stat-card__value">${d.verses}</div><div class="stat-card__label">Verses</div></div><div class="stat-card"><div class="stat-card__value">${d.books}</div><div class="stat-card__label">Books</div></div><div class="stat-card"><div class="stat-card__value">${d.characters}</div><div class="stat-card__label">Characters</div></div>`;
-}
-async function searchBible() {
-  const q = document.getElementById("bible-q").value;
-  if (!q) return;
-  const d = await api();
-  const el = document.getElementById("bible-results");
-  if (!d?.results?.length) { el.innerHTML = '<div class="empty">No results</div>'; return; }
-  el.innerHTML = '<table class="result-table"><tr><th>Ref</th><th>Text</th></tr>' + d.results.map(r => `<tr><td>${escapeHtml(r.book)} ${r.chapter}:${r.verse}</td><td>${escapeHtml(r.text)}</td></tr>`).join("") + '</table>';
-}
-async function searchBibleChars() {
-  const q = document.getElementById("bible-char-q").value;
-  if (!q) return;
-  const d = await api();
-  const el = document.getElementById("bible-char-results");
-  if (!d?.results?.length) { el.innerHTML = '<div class="empty">No results</div>'; return; }
-  el.innerHTML = '<table class="result-table"><tr><th>Name</th><th>Role</th></tr>' + d.results.map(r => `<tr><td>${escapeHtml(r.canonical_name||r.name)}</td><td>${escapeHtml(r.role||"-")}</td></tr>`).join("") + '</table>';
 }
 
 // ── Gutenberg ─────────────────────────────────────────────────
@@ -1026,123 +945,70 @@ async function downloadSelectedCatalog() {
   }
 }
 
-// ── Wikipedia ─────────────────────────────────────────────────
-async function loadWikipediaStats() {
-  const d = await api();
-  const el = document.getElementById("wikipedia-stats");
-  if (!d?.exists) { el.innerHTML = '<div class="empty">Wikipedia DB not found</div>'; return; }
-  el.innerHTML = `<div class="stat-card"><div class="stat-card__value">${fmtBytes(d.size)}</div><div class="stat-card__label">Size</div></div>`;
-}
-async function searchWikipedia() {
-  const q = document.getElementById("wikipedia-q").value;
-  if (!q) return;
-  const d = await api();
-  const el = document.getElementById("wikipedia-results");
-  if (!d?.results) { el.innerHTML = '<div class="empty">No results</div>'; return; }
-  const r = d.results;
-  el.innerHTML = `<div class="result-box"><strong>${escapeHtml(r.topic)}</strong> ${r.found ? "(found)" : "(not found)"}\n${escapeHtml(r.summary || "No summary")}\n${r.url ? '<a href="' + escapeHtml(r.url) + '" target="_blank">' + escapeHtml(r.url) + '</a>' : ""}</div>`;
-}
-async function verifyWikipedia() {
-  const claim = document.getElementById("wikipedia-claim").value;
-  if (!claim) return;
-  const d = await api();
-  if (!d) return;
-  document.getElementById("wikipedia-verify-result").innerHTML = `<div class="result-box"><strong>Verified:</strong> ${d.verified ? "\u2713 Yes" : "\u2717 No"}\n<strong>Confidence:</strong> ${escapeHtml(String(d.confidence))}\n<strong>Evidence:</strong> ${escapeHtml((d.evidence||[]).join("; "))}</div>`;
-}
-
-// ── Literary ──────────────────────────────────────────────────
-async function loadLiteraryStats() {
-  const d = await api();
-  const el = document.getElementById("literary-stats");
-  if (!d?.exists) { el.innerHTML = '<div class="empty">Literary DB not found</div>'; return; }
-  el.innerHTML = `<div class="stat-card"><div class="stat-card__value">${d.sceneTemplates}</div><div class="stat-card__label">Scene Templates</div></div><div class="stat-card"><div class="stat-card__value">${d.stylePatterns}</div><div class="stat-card__label">Style Patterns</div></div><div class="stat-card"><div class="stat-card__value">${fmtBytes(d.size)}</div><div class="stat-card__label">Size</div></div><div class="stat-card"><div class="stat-card__value">${d.avgQuality ?? 0}</div><div class="stat-card__label">Avg Quality</div></div>`;
-}
-
-async function searchLiteraryScenes() {
-  const q = document.getElementById("literary-scenes-q").value;
-  const d = await api();
-  const el = document.getElementById("literary-scenes-results");
-  if (!d?.templates?.length) { el.innerHTML = '<div class="empty">No results</div>'; return; }
-  el.innerHTML = '<table class="result-table"><tr><th>Book</th><th>Archetype</th><th>Template</th><th>Mood</th><th>Quality</th></tr>' + d.templates.map(r => {
-    const rid = "scene-" + escapeHtml(String(r.id || ""));
-    return `<tr style="cursor:pointer" onclick="toggleLiteraryRow('${rid}')"><td>${escapeHtml((r.source_book||"-").split("::").pop().slice(0,30))}</td><td>${escapeHtml(r.archetype_primary||"-")}${r.archetype_secondary?' / '+escapeHtml(r.archetype_secondary):''}</td><td>${escapeHtml((r.template_text||"").slice(0,80))}…</td><td>${escapeHtml(r.mood||"-")}</td><td>${Number(r.quality_score||0).toFixed(2)}</td></tr><tr id="${rid}" style="display:none"><td colspan="5"><div class="result-box">${formatSceneFields(r)}</div></td></tr>`;
-  }).join("") + '</table>';
-}
-
-async function searchLiteraryStyles() {
-  const q = document.getElementById("literary-styles-q").value;
-  const d = await api();
-  const el = document.getElementById("literary-styles-results");
-  if (!d?.styles?.length) { el.innerHTML = '<div class="empty">No results</div>'; return; }
-  el.innerHTML = '<table class="result-table"><tr><th>Author/Era</th><th>Register</th><th>Tone</th><th>Era</th><th>Voice</th></tr>' + d.styles.map(r => {
-    const rid = "style-" + escapeHtml(String(r.id || ""));
-    return `<tr style="cursor:pointer" onclick="toggleLiteraryRow('${rid}')"><td>${escapeHtml((r.source_author_or_era||"-").slice(0,30))}</td><td>${escapeHtml(r.register||"-")}</td><td>${escapeHtml(r.tone||"-")}</td><td>${escapeHtml(r.era||"-")}</td><td>${escapeHtml(r.narrative_voice||"-")}</td></tr><tr id="${rid}" style="display:none"><td colspan="5"><div class="result-box">${formatStyleFields(r)}</div></td></tr>`;
-  }).join("") + '</table>';
-}
-
-function toggleLiteraryRow(id) {
-  const el = document.getElementById(id);
-  if (el) el.style.display = el.style.display === "none" ? "table-row" : "none";
-}
-
-function formatSceneFields(r) {
-  const fields = [
-    ["ID", r.id], ["Source", r.source_book], ["Chapter", r.source_chapter],
-    ["Archetype (primary/secondary)", [r.archetype_primary, r.archetype_secondary].filter(Boolean).join(" / ")],
-    ["Mood", r.mood], ["Difficulty", r.difficulty], ["Domain", r.domain], ["Scale", r.scale],
-    ["Moral ambiguity", r.moral_ambiguity],
-    ["Quality score", r.quality_score != null ? Number(r.quality_score).toFixed(3) : null],
-    ["Use count", r.use_count], ["Last used at", r.last_used_at ? new Date(r.last_used_at*1000).toISOString() : null],
-    ["Tags", Array.isArray(r.tags) ? r.tags.join(", ") : r.tags],
-    ["Variables", Array.isArray(r.variables) ? r.variables.join(", ") : r.variables],
-    ["Beat sequence", Array.isArray(r.beat_sequence) ? r.beat_sequence.join(" → ") : r.beat_sequence],
-    ["Tension curve", Array.isArray(r.tension_curve) ? r.tension_curve.join(", ") : r.tension_curve],
-    ["Applicable positions", Array.isArray(r.applicable_positions) ? r.applicable_positions.join(", ") : r.applicable_positions],
-    ["Embedding id", r.embedding_id],
-    ["Created at", r.created_at ? new Date(r.created_at*1000).toISOString() : null],
-    ["Template text", r.template_text],
-  ];
-  return fields.filter(f => f[1] != null && f[1] !== "").map(f => `<div><strong>${f[0]}:</strong> ${escapeHtml(String(f[1]))}</div>`).join("");
-}
-
-function formatStyleFields(r) {
-  const fields = [
-    ["ID", r.id], ["Author/Era", r.source_author_or_era], ["Register", r.register],
-    ["Pacing", r.pacing], ["Tone", r.tone], ["Sensory ratio", r.sensory_ratio],
-    ["Avg sentence len", r.avg_sentence_len], ["Sentence len variance", r.sentence_len_variance],
-    ["Narrative voice", r.narrative_voice], ["Temporal style", r.temporal_style],
-    ["Dialogue style", r.dialogue_style], ["Metaphor density", r.metaphor_density],
-    ["Paragraph length avg", r.paragraph_length_avg], ["Exclamation ratio", r.exclamation_ratio],
-    ["Era", r.era], ["Literary period", r.literary_period],
-    ["Quality score", r.quality_score != null ? Number(r.quality_score).toFixed(3) : null],
-    ["Rhetorical devices", Array.isArray(r.rhetorical_devices) ? r.rhetorical_devices.join(", ") : r.rhetorical_devices],
-    ["Preferred constructions", Array.isArray(r.preferred_constructions) ? r.preferred_constructions.join("; ") : r.preferred_constructions],
-    ["Forbidden phrases", Array.isArray(r.forbidden_phrases) ? r.forbidden_phrases.join("; ") : r.forbidden_phrases],
-    ["Example snippets", Array.isArray(r.example_snippets) ? r.example_snippets.join(" ⏐ ") : r.example_snippets],
-    ["Created at", r.created_at ? new Date(r.created_at*1000).toISOString() : null],
-  ];
-  return fields.filter(f => f[1] != null && f[1] !== "").map(f => `<div><strong>${f[0]}:</strong> ${escapeHtml(String(f[1]))}</div>`).join("");
-}
-// ── Economics ─────────────────────────────────────────────────
-async function loadEconomicsStats() {
-  const d = await api();
-  const el = document.getElementById("economics-stats");
-  if (!d?.exists) { el.innerHTML = '<div class="empty">Economics DB not found</div>'; return; }
-  el.innerHTML = `<div class="stat-card"><div class="stat-card__value">${fmtBytes(d.size)}</div><div class="stat-card__label">Size</div></div>`;
-  const phase = await api();
-  if (phase) {
-    const phaseEl = document.getElementById("economics-phase");
-    phaseEl.textContent = phase.phase
-      ? `${phase.phase} (reserve: ${phase.reserve}, modifier: x${phase.price_modifier})`
-      : "No active cycle";
+// ── Rings (Паганель) ──────────────────────────────────────────
+async function loadRings() {
+  const d = await api(); // endpoint stub: mcp/rings
+  const statsEl = document.getElementById("rings-stats");
+  const queueEl = document.getElementById("rings-queue");
+  const journalEl = document.getElementById("rings-journal");
+  if (!d || d.error || !d.rings) {
+    if (statsEl) statsEl.innerHTML = "";
+    if (queueEl) queueEl.innerHTML = '<div class="empty">' + t("mcp.rings.nodata") + '</div>';
+    if (journalEl) journalEl.textContent = "—";
+    return;
   }
-  const jubilee = await api();
-  if (jubilee) {
-    const jubEl = document.getElementById("economics-jubilee");
-    jubEl.textContent = jubilee.years_until != null
-      ? `${jubilee.years_until} years until next Jubilee (year ${jubilee.next_year})`
-      : "No jubilee data";
+  const r = d.rings;
+  if (statsEl) statsEl.innerHTML = `
+    <div class="stat-card"><div class="stat-card__value">${r.queue ?? 0}</div><div class="stat-card__label">Queue</div></div>
+    <div class="stat-card"><div class="stat-card__value">${escapeHtml(r.current || "—")}</div><div class="stat-card__label">Current ring</div></div>
+    <div class="stat-card"><div class="stat-card__value">${r.progress != null ? r.progress + "%" : "—"}</div><div class="stat-card__label">Progress</div></div>
+    <div class="stat-card"><div class="stat-card__value">${r.places ?? 0}</div><div class="stat-card__label">Places</div></div>
+    <div class="stat-card"><div class="stat-card__value">${r.routes ?? 0}</div><div class="stat-card__label">Routes</div></div>`;
+  if (queueEl) queueEl.innerHTML = (r.jobs || []).map(j =>
+    `<div style="padding:6px 0;border-bottom:1px solid var(--border-light)">${escapeHtml(j.name || "")} — <span style="color:var(--text-secondary)">${escapeHtml(j.status || "")}</span>${j.progress != null ? " (" + j.progress + "%)" : ""}</div>`
+  ).join("") || '<div class="empty">—</div>';
+  if (journalEl) journalEl.innerHTML = (r.journal || []).map(j =>
+    `<div style="padding:4px 0;border-bottom:1px solid var(--border-light)"><span style="color:var(--text-disabled)">${escapeHtml(j.time || "")}</span> ${escapeHtml(j.text || "")}</div>`
+  ).join("") || "—";
+}
+
+// ── Coefficients modal (математика ходов без LLM) ─────────────
+const COEFF_DEMO = [
+  { name: "weaver_silence_threshold_s", value: 60, hint: "Ткач: порог молчания, с" },
+  { name: "pause_stage_1_min", value: 10, hint: "Ступень паузы I — лёгкие работы, мин" },
+  { name: "pause_stage_2_min", value: 60, hint: "Ступень паузы II — сложная ковка, мин" },
+];
+function openCoefficients() {
+  const table = document.getElementById("coeff-table");
+  if (table && !table.children.length) {
+    table.innerHTML = '<table class="result-table"><tr><th>Coefficient</th><th>Value</th><th>Hint</th></tr>' +
+      COEFF_DEMO.map(c => `<tr class="coeff-row" data-name="${escapeHtml(c.name)}" data-value="${c.value}"><td>${escapeHtml(c.name)}</td><td><input class="input" style="max-width:120px" value="${c.value}"></td><td style="color:var(--text-secondary)">${escapeHtml(c.hint)}</td></tr>`).join("") + '</table>';
   }
+  renderCoeffJournal();
+  document.getElementById("coeff-modal").classList.add("open");
+}
+function closeCoefficients() { document.getElementById("coeff-modal").classList.remove("open"); }
+function saveCoefficients() {
+  if (!confirm(t("mcp.coeff.confirm"))) return;
+  const journal = JSON.parse(localStorage.getItem("tns-coeff-journal") || "[]");
+  document.querySelectorAll("#coeff-table .coeff-row").forEach(r => {
+    const input = r.querySelector("input");
+    if (input && input.value !== r.dataset.value) {
+      journal.unshift({ time: new Date().toLocaleString(), name: r.dataset.name, from: r.dataset.value, to: input.value });
+      r.dataset.value = input.value;
+    }
+  });
+  localStorage.setItem("tns-coeff-journal", JSON.stringify(journal.slice(0, 50)));
+  renderCoeffJournal();
+  toast(t("mcp.coeff.saved"), "success");
+}
+function renderCoeffJournal() {
+  const el = document.getElementById("coeff-journal");
+  if (!el) return;
+  const journal = JSON.parse(localStorage.getItem("tns-coeff-journal") || "[]");
+  el.innerHTML = journal.length
+    ? journal.map(j => `<div style="padding:4px 0;border-bottom:1px solid var(--border-light)"><span style="color:var(--text-disabled)">${escapeHtml(j.time)}</span> ${escapeHtml(j.name)}: ${escapeHtml(String(j.from))} → ${escapeHtml(String(j.to))}</div>`).join("")
+    : "—";
 }
 
 // ── Pipeline ──────────────────────────────────────────────────
@@ -1159,9 +1025,6 @@ async function loadPipeline() {
   setPhaseData("v1", out.compiled.exists, out.compiled.exists ? out.compiled.templates + " templates" : "—");
   setPhaseData("v2", out.literary.exists, out.literary.exists ? out.literary.sceneTemplates + " scenes, " + out.literary.stylePatterns + " styles" : "—");
   setPhaseData("calibrate", out.literary.exists, out.literary.exists ? "quality scores" : "—");
-
-  // Bible (standalone)
-  setPhaseData("bible", src.bible.exists, src.bible.exists ? fmtBytes(src.bible.size) : "—");
 
   // Arrow states
   setArrow("download", src.texts.count > 0);
@@ -1241,11 +1104,6 @@ function setArrow(id, active) {
 
 // ── System ────────────────────────────────────────────────────
 const LOGS = [];
-async function loadSystemStats() {
-  const d = await api();
-  if (!d) return;
-  document.getElementById("system-stats").innerHTML = `<div class="stat-card"><div class="stat-card__value">${Math.floor(d.uptime)}s</div><div class="stat-card__label">Uptime</div></div><div class="stat-card"><div class="stat-card__value">${fmtBytes(d.memory?.rss)}</div><div class="stat-card__label">RSS</div></div><div class="stat-card"><div class="stat-card__value">${d.mcpMode?"MCP":"Game"}</div><div class="stat-card__label">Mode</div></div>`;
-}
 function addLog(msg) {
   LOGS.unshift({ time: new Date().toLocaleTimeString(), msg });
   if (LOGS.length > 50) LOGS.pop();
@@ -1263,13 +1121,13 @@ function runAction(path) {
       .then(data => {
         if (data.jobId) {
           trackProgress(data.jobId, path, () => {
-            loadTab(document.querySelector(".tab.active").dataset.tab);
+            refreshAll();
             resolve();
           }, reject);
         } else {
           toast("Done: " + path, "success");
           addLog("Completed: " + path);
-          loadTab(document.querySelector(".tab.active").dataset.tab);
+          refreshAll();
           resolve();
         }
       })
@@ -1317,7 +1175,7 @@ function trackProgress(jobId, path, onDone, onError) {
 }
 
 async function compactAll() {
-  for (const p of ["bible/compact","gutenberg/compact","wikipedia/compact","literary/compact"]) await runAction(p);
+  for (const p of ["gutenberg/compact"]) await runAction(p);
 }
 async function rebuildIndex() { await runAction("rebuild-index"); }
 
@@ -1407,16 +1265,19 @@ function trackPhaseProgress(phaseId, jobId, path) {
   };
 }
 
-// ── Tab loader ────────────────────────────────────────────────
-const loaders = { dashboard: loadDashboard, bible: loadBibleStats, gutenberg: () => { loadGutenbergStats(); loadCatalogStats(); loadCatalogPage(1); }, wikipedia: loadWikipediaStats, literary: loadLiteraryStats, economics: loadEconomicsStats, pipeline: loadPipeline, system: loadSystemStats };
-function loadTab(tab) { loaders[tab]?.(); }
-
 // ── Init ──────────────────────────────────────────────────────
+function refreshAll() {
+  loadDashboard();
+  loadGutenbergStats();
+  loadCatalogStats();
+  loadPipeline();
+  loadRings();
+}
 applyI18n();
-loadDashboard();
-// Auto-refresh only Dashboard and System tabs (not interactive tabs)
-const POLL_TABS = new Set(["dashboard", "system"]);
-setInterval(() => { const a = document.querySelector(".tab.active")?.dataset.tab; if (a && POLL_TABS.has(a)) loadTab(a); }, 10000);
+refreshAll();
+loadCatalogPage(1);
+// Auto-refresh forge dashboard and rings
+setInterval(() => { loadDashboard(); loadPipeline(); loadRings(); }, 10000);
 </script>
 </body>
 </html>
