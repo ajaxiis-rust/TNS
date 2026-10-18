@@ -1,0 +1,10 @@
+
+INT-1: R-012, R-022, R-023, R-024, R-028, ruling-AMBIG-1, ruling-AMBIG-2, ruling-AMBIG-5, skeleton-B-09, skeleton-B-10
+INT-2: R-039, R-057, ruling-AMBIG-9, skeleton-LT-11, skeleton-LT-12, skeleton-LT-13, skeleton-W-17, skeleton-F-10
+INT-3: R-010, R-029, ruling-AMBIG-7, skeleton-MD-06, skeleton-MD-07, skeleton-LT-14, skeleton-F-09, design-02-monitoring
+INT-4: R-034, ruling-AMBIG-4, skeleton-D-16, skeleton-D-17
+INT-5: R-029, R-031, skeleton-LT-05, skeleton-LT-08
+INT-6: R-060, R-062, R-063, skeleton-CB-06, skeleton-W-15, design-03-my-book
+INT-7: R-061, skeleton-CB-05
+INT-8: R-024, skeleton-CB-08, design-03-my-book
+INT-9: R-065, R-066, skeleton-CB-01, skeleton-CB-02

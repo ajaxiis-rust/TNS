@@ -1,0 +1,22 @@
+
+W-01: R-038, canon-p7
+W-02: R-038, canon-p7
+W-03: R-055, R-134, canon-p10
+W-04: R-055, R-052, canon-p10, canon-p16
+W-05: R-041, R-042, R-043, R-044, R-046, R-050, R-053, canon-p16
+W-06: R-046, R-047, R-165, canon-p16
+W-07: R-024, R-044, R-047, R-165, canon-p16
+W-08: R-047, R-048, R-165, canon-p16
+W-09: R-050, R-051, design-01-mcp, canon-p16
+W-10: R-042, R-051, R-052, canon-p16
+W-11: R-051, ruling-default
+W-12: R-022, R-054, canon-p17
+W-13: R-035, R-054, canon-p17
+W-14: R-026, R-040, R-134, canon-p18
+W-15: R-060, R-061, R-063, canon-p13
+W-16: R-061, ruling-default
+W-17: R-014, R-043, ruling-default
+W-18: R-015, R-154, canon-p15
+W-19: R-045, canon-p16
+W-20: R-049, canon-p16
+W-21: R-059

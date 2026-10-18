@@ -1,0 +1,18 @@
+
+LT-01: R-029, R-032, R-035, R-037, canon-p1, canon-p9, canon-p11
+LT-02: R-032, R-034, canon-p9
+LT-03: R-032, R-087, R-131, R-136, canon-p9
+LT-04: R-032, R-034, R-055, canon-p8, canon-p9
+LT-05: R-029, R-033, canon-p1, canon-p6
+LT-06: R-035, R-037, canon-p11
+LT-07: R-032, R-035, canon-p9, canon-p11
+LT-08: R-029, R-030, R-031, canon-p1, canon-p2, canon-p3
+LT-09: R-033, R-032, canon-p6
+LT-10: R-056, R-057, R-039, canon-p13
+LT-11: ruling-AMBIG-9
+LT-12: R-039, R-057, ruling-AMBIG-9, canon-p7
+LT-13: R-057, ruling-AMBIG-9, canon-p13
+LT-14: R-010, R-029, ruling-AMBIG-7
+LT-15: R-018, canon-admin-commands
+LT-16: R-036, canon-p12
+LT-17: R-048, canon-p16

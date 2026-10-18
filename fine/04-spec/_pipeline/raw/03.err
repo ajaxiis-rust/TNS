@@ -1,0 +1,29 @@
+[0m
+> build · mimo-v2.6-pro
+[0m
+[0m→ [0mRead TNS65/fine/00-recon/mimo-mechanics-registry.md[90m [offset=74, limit=200][0m
+[0m
+[0m$ [0mls /media/ajaxiis/ext3/TNS65/fine/00-recon/ /media/ajaxiis/ext3/TNS65/fine/ 2>/dev/null
+/media/ajaxiis/ext3/TNS65/fine/:
+00-recon
+03-design
+04-spec
+
+/media/ajaxiis/ext3/TNS65/fine/00-recon/:
+mimo-mechanics-registry.md
+mimo-recon-brief.md
+mimo-recon-log.txt
+mimo-tns35-brief.md
+mimo-tns35-log.txt
+mimo-tns35-search.md
+owner-rulings.md
+verify-registry.py
+[0m
+[0m✱ [0mGrep "Q1|Q2|Q3|поиск|psychotype|14 metric|Big Five|сослов|estate|9 навык|8 порок|гумор|здоровье 0"[90m in TNS65/fine/00-recon · 113 matches[0m
+[0m→ [0mRead TNS65/fine/00-recon/mimo-mechanics-registry.md[90m [offset=165, limit=200][0m
+[0m✱ [0mGrep "R-022|R-023|R-024|R-025|R-026|R-027|R-028|Б-0|B-0|пачк|доковк|доукомплект|якорь|isekai|Isekai|переигровк"[90m in TNS65/fine/00-recon/mimo-mechanics-registry.md · 36 matches[0m
+[0m→ [0mRead TNS65/fine/00-recon/mimo-tns35-search.md[90m [offset=85, limit=120][0m
+[0m
+[0m← [0mWrite TNS65/fine/04-spec/03-birth.md
+Wrote file successfully.
+[0m

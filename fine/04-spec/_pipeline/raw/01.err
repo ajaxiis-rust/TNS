@@ -1,0 +1,8 @@
+[0m
+> build · mimo-v2.6-pro
+[0m
+[0m→ [0mRead TNS65/TNS65-PARADIGM.md[90m [offset=228, limit=120][0m
+[0m→ [0mRead TNS65/fine/00-recon/mimo-mechanics-registry.md[90m [offset=74, limit=120][0m
+[0m✗ [0mread failed
+[91m[1mError: [0mFile not found: /home/ajaxiis/.local/share/mimocode/memory/sessions/ses_-ffe5ff0a2ec43ffe4jBV3pF62/notes.md
+[0m→ [0mRead TNS65/fine/00-recon/mimo-mechanics-registry.md[90m [offset=165, limit=120][0m

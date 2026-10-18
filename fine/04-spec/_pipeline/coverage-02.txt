@@ -1,0 +1,12 @@
+
+MD-01: R-008, canon-p14
+MD-02: R-008, canon-p14
+MD-03: R-008, R-080, R-102, canon-p14
+MD-04: R-008, R-010, canon-p14
+MD-05: R-010, canon-p14
+MD-06: R-010, R-029, canon-p14
+MD-07: R-010, R-080
+MD-08: R-011, R-159, ruling-UI-tabs
+MD-09: R-011, R-159, canon-p14
+MD-10: R-011
+MD-11: R-010, canon-p14

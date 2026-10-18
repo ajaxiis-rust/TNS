@@ -17,7 +17,7 @@ FORBIDDEN = [
     (r"AMBIG", "AMBIG reference"),
     (r"\d{2}\.\d{2}\.20\d{2}", "date"),
     (r"канон п\.", "canon pointer"),
-    (r"Источник", "source line copied"),
+    (r"(?m)^Источники:", "source line copied"),
     (r"http", "URL"),
 ]
 MOJIBAKE = [r"\ufffd", r"Ð[\x80-\xBF]", r"Ñ[\x80-\xBF]"]

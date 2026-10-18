@@ -1,0 +1,9 @@
+[0m
+> build · mimo-v2.6-pro
+[0m
+[0m✱ [0mGrep "R-143|R-144|R-145|R-162"[90m in TNS65/fine/00-recon/mimo-mechanics-registry.md · 6 matches[0m
+[0m✱ [0mGrep "«бой»|словоупотреблен|глоссар|GLO-|написание.*рол|заглавной|строчными|interface-банк|приоритет.*источник"[90m in TNS65/fine/00-recon/mimo-mechanics-registry.md · 4 matches[0m
+[0m✱ [0mGrep "interface-банк|приоритет.*источник|priority.*source|канон.*спецификация.*план|R-117|common-errors|варка.*синоним|Толмач.*историч|текстовый редактор|режим редактора"[90m in TNS65/fine/00-recon/mimo-mechanics-registry.md · 5 matches[0m
+[0m✱ [0mGrep "interface-банк|приоритет|source.*priority|канон.*>.*спецификац|спецификация.*>.*план"[90m in TNS65/fine · 6 matches[0m
+[0m✱ [0mGrep "varка|варка.*синоним|запекание.*синоним|Толмач.*историч|историческая роль|историческая"[90m in TNS65/fine/00-recon/mimo-mechanics-registry.md · 0 matches[0m
+[0m→ [0mRead TNS65/fine/04-spec/_pipeline/brief-00.md

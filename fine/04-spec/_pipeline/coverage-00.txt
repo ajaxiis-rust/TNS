@@ -6,3 +6,5 @@ GLO-3: R-003, R-040, R-117, R-143, R-145
 GLO-4: skeleton
 GLO-5: R-006, canon-p_executor
 GLO-6: R-005, canon-p_success
+GLO-7: R-004, canon-p_mission
+GLO-8: R-016, canon-p15

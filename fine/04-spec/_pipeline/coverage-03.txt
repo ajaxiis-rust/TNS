@@ -1,0 +1,15 @@
+
+B-01: R-022, R-024, R-026, AMBIG-5, ruling-AMBIG-5
+B-02: R-022, R-023, R-024, R-025, R-027
+B-03: R-012, R-022, R-028, R-096, R-111, R-138
+B-04: R-022, R-096
+B-05: R-012, R-024, R-097, R-108, R-139, ruling-AMBIG-1
+B-06: R-033, AMBIG-2, ruling-AMBIG-2, search-Q2
+B-07: AMBIG-8, ruling-AMBIG-8, search-Q3
+B-08: R-028, R-096
+B-09: ruling-18.10
+B-10: ruling-18.10
+B-11: R-023, R-024, R-069
+B-12: R-012, R-040, R-097, R-139
+B-13: R-038, R-097, R-139
+B-14: R-010, R-096

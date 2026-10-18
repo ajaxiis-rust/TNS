@@ -2,3 +2,22 @@
 [10:35:32] 01 START
 [10:35:32] 03 START
 [10:35:32] 02 START
+[10:39:14] 02 RETRY reason: FAIL (02-models.md):   - line 77: forbidden (source line copied): ...ому запросу. Правила: 1. Источник загрузок — HF напрямую. ... 
+[10:39:26] 02 FAIL attempts=2 last: FAIL: no ===COVERAGE=== separator 
+[10:39:26] 05 START
+[10:42:43] 01 DONE gate=PASS attempt=1
+[10:42:43] 04 START
+[10:50:22] 03 RETRY reason: FAIL: no ===COVERAGE=== separator 
+[10:50:35] 05 DONE gate=PASS attempt=1
+[10:50:35] 08 START
+[10:52:49] 04 DONE gate=PASS attempt=1
+[10:52:49] 07 START
+[10:54:49] 03 DONE gate=PASS attempt=2
+[10:54:49] 06 START
+[10:55:22] 08 DONE gate=PASS attempt=1
+[10:57:41] 07 DONE gate=PASS attempt=1
+[10:59:58] 06 DONE gate=PASS attempt=1
+[10:59:58] 09 START
+[11:05:56] 09 DONE gate=PASS attempt=1
+[11:05:56] BATCH-FINISHED completeness_exit=0
+[11:52] HOLES-CLOSED by orchestrator (owner order): 7 atoms added manually - GLO-7 (R-004), GLO-8 (R-016), W-18 (R-015), W-19 (R-045), W-20 (R-049), W-21 (R-059), CB-13 (R-070); R-002/R-007 EXEMPT as document-meta in completeness.py; earlier completeness_exit=0 line was WRONG (real exit was 1, $? clobbered by $(date) substitution in run_all.sh - fixed RC= capture); completeness rerun: 82/82 live, missing 0, exit=0

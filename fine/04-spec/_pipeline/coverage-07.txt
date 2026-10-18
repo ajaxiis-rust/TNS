@@ -1,0 +1,11 @@
+
+F-01: R-021, R-001, canon-p85, ruling-16.10-portal
+F-02: R-021, R-026, R-140, R-040, ruling-18.10-import, design-01-mcp
+F-03: R-042, R-051, R-052, R-010, canon-p350
+F-04: R-032, R-011, R-052
+F-05: R-010, R-011, R-032
+F-06: R-032
+F-07: R-010, R-008, R-071
+F-08: R-051, R-022, R-024, R-042, R-153
+F-09: R-006, R-010, design-02-monitoring
+F-10: R-056, R-072, ruling-AMBIG-9

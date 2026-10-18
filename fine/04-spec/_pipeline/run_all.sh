@@ -9,4 +9,5 @@ lane 02 05 08 &
 lane 03 06 09 &
 wait
 python3 completeness.py
-echo "[$(date +%H:%M:%S)] BATCH-FINISHED completeness_exit=$?" >> "$W/progress.log"
+RC=$?
+echo "[$(date +%H:%M:%S)] BATCH-FINISHED completeness_exit=$RC" >> "$W/progress.log"

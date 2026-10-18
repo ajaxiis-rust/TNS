@@ -14,9 +14,15 @@ for m in re.finditer(r"- \*\*(R-\d{3}) \| ([^*]+)\*\* ([^\n]*)", reg):
     st = re.search(r"Status:\s*(\w+)", rest)
     entries[rid] = {"name": name.strip(), "status": st.group(1) if st else "?", "text": rest}
 CANCELLED_BY_OWNER = {"R-149", "R-150"}  # owner 17.10: world-config cancelled
+# EXEMPT (18.10, owner "close the holes yourself"): document-meta mechanics, no product norms.
+EXEMPT_META = {
+    "R-002": "history of migration 55->65 - about the paradigm document, not the product",
+    "R-007": "logic of the paradigm document (six parts, stable numbering) - not the product",
+}
 
 live = {r for r, e in entries.items() if e["status"] in ("CANON", "UI")
         and "CANCELLED" not in e["text"] and r not in CANCELLED_BY_OWNER}
+live -= set(EXEMPT_META)
 plan = {r for r, e in entries.items() if e["status"] == "PLAN"}
 
 cov = {}   # atom -> refs
@@ -36,7 +42,9 @@ missing = sorted(live - covered)
 plan_uncovered = sorted(plan - covered)
 
 lines = ["# Покрытие реестра атомами спецификации (генерируется completeness.py, не пишется руками)", "",
-         f"Покрыто: {len(covered & live)}/{len(live)} живых (CANON/UI). Отменено владельцем: {len(CANCELLED_BY_OWNER)}.", ""]
+         f"Покрыто: {len(covered & live)}/{len(live)} живых (CANON/UI). Отменено владельцем: {len(CANCELLED_BY_OWNER)}. Вне продукта (EXEMPT): {len(EXEMPT_META)}.", ""]
+for r, why in EXEMPT_META.items():
+    lines.append(f"- {r} EXEMPT — {entries[r]['name']}: {why}")
 for r in sorted(live & covered):
     e = entries[r]
     lines.append(f"- {r} ({e['status']}) {e['name']} → {', '.join(sorted(r2a[r]))}")

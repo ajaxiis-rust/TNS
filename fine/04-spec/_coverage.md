@@ -1,0 +1,90 @@
+# Покрытие реестра атомами спецификации (генерируется completeness.py, не пишется руками)
+
+Покрыто: 82/82 живых (CANON/UI). Отменено владельцем: 2. Вне продукта (EXEMPT): 2.
+
+- R-002 EXEMPT — Predecessors and migration 55→65: history of migration 55->65 - about the paradigm document, not the product
+- R-007 EXEMPT — Document logic: logic of the paradigm document (six parts, stable numbering) - not the product
+- R-001 (CANON) Canon status and merge → F-01
+- R-003 (CANON) Fixed terminology → GLO-1, GLO-2, GLO-3
+- R-004 (CANON) Project task → GLO-7
+- R-005 (CANON) Success criterion for any feature → GLO-6
+- R-006 (CANON) Executor rule → F-09, GLO-5, UI-03
+- R-008 (CANON) p.14 roles, not model names → D-13, F-07, MD-01, MD-02, MD-03, MD-04
+- R-009 (CANON) Language pack composition → D-11, D-14, D-15
+- R-010 (CANON) Model slots and presets → B-14, F-03, F-05, F-07, F-09, INT-3, LT-14, MD-04, MD-05, MD-06, MD-07, MD-11, UI-08
+- R-011 (CANON) Model manager (admin UI) → F-04, F-05, MD-08, MD-09, MD-10, UI-08
+- R-012 (CANON) p.20 three databases → B-03, B-05, B-12, D-01, D-02, D-03, D-05, D-06, D-07, D-08, INT-1
+- R-013 (CANON) DB rights and priority → D-01, D-06, D-09
+- R-014 (CANON) p.15 full simulation heritage → W-17
+- R-015 (CANON) globalLuck (world luck) → W-18
+- R-016 (CANON) p.15 scope boundary → GLO-8
+- R-017 (CANON) Admin UI map (part I) → UI-01, UI-03, UI-05, UI-08, UI-09
+- R-018 (CANON) Service commands → LT-15
+- R-019 (CANON) Naming rule in UI (owner 16.10) → GLO-2, UI-10
+- R-020 (CANON) Player windows → UI-05
+- R-021 (CANON) Portals / world isolation excluded (owner 16.10) → F-01, F-02
+- R-022 (CANON) p.13 world birth — анкета core 4 fields → B-01, B-02, B-03, B-04, F-08, INT-1, W-12
+- R-023 (CANON) Field ownership and replay → B-02, B-11, CB-10, INT-1, UI-04
+- R-024 (CANON) UI анкета full composition (canon 16.10) → B-01, B-02, B-05, B-11, CB-10, D-12, F-08, INT-1, INT-8, UI-04, UI-05, W-07
+- R-025 (CANON) Synopsis protection → B-02
+- R-026 (CANON) Raw source book formats → B-01, F-02, W-14
+- R-027 (CANON) Заявка книги (book application) → B-02, CB-10
+- R-028 (CANON) p.21 scenario frame (base narratives) → B-03, B-08, D-02, D-03, INT-1
+- R-029 (CANON) p.1 hybrid frame — two text paths per turn → INT-3, INT-5, LT-01, LT-05, LT-08, LT-14, MD-06
+- R-030 (CANON) p.2 boundary «заранее / живьём» → LT-08
+- R-031 (CANON) p.3 routine in bank = canon stability → INT-5, LT-08
+- R-032 (CANON) p.9 conveyor with precomputation → F-04, F-05, F-06, LT-01, LT-02, LT-03, LT-04, LT-07, LT-09
+- R-033 (CANON) p.6 Пила — depth dispatcher → B-06, LT-05, LT-09
+- R-034 (CANON) p.8 meaning vector — first-class turn artifact → D-16, D-17, D-18, INT-4, LT-02, LT-04
+- R-035 (CANON) p.11 streaming underlay — player time = background time → LT-01, LT-06, LT-07, W-13
+- R-036 (CANON) p.12 Труппа — engine character machinery → LT-16
+- R-037 (CANON) p.5 honest price of the frame → LT-01, LT-06
+- R-038 (CANON) p.7 background ковка in pauses → B-13, W-01, W-02
+- R-039 (CANON) Far-circle fate vectors → INT-2, LT-10, LT-12
+- R-040 (CANON) p.18 Гефест — background assembly executor → B-12, F-02, GLO-1, GLO-3, UI-07, W-14
+- R-041 (CANON) p.16 Паганель — purpose and scope → W-05
+- R-042 (CANON) Паганель three modes → F-03, F-08, W-05, W-10
+- R-043 (CANON) Two build forms → W-05, W-17
+- R-044 (CANON) Поход modes and tool → W-05, W-07
+- R-045 (CANON) Epoch reference base → W-19
+- R-046 (CANON) Паганель output schema → W-05, W-06
+- R-047 (CANON) Coordinates and travel time → W-06, W-07, W-08
+- R-048 (CANON) Player position → LT-17, W-08
+- R-049 (CANON) Calc/viz split → W-20
+- R-050 (CANON) Паганель contract → UI-07, W-05, W-09
+- R-051 (CANON) Паганель budget and switches → F-03, F-08, UI-07, W-09, W-10, W-11
+- R-052 (CANON) Паганель place in TNS65 → F-03, F-04, W-04, W-10
+- R-053 (CANON) Паганель inheritance → UI-07, W-05
+- R-054 (CANON) p.17 Пифия — replica predictor → W-12, W-13
+- R-055 (CANON) p.10 оседание of live scenes → D-06, LT-04, W-03, W-04
+- R-056 (CANON) p.13 chapter and book → CB-03, CB-11, F-10, LT-10
+- R-057 (CANON) Jump rules → INT-2, LT-10, LT-12, LT-13
+- R-058 (CANON) Chapter = game day frame → CB-01, CB-03
+- R-059 (CANON) Prose in player's key → W-21
+- R-060 (CANON) Editing scope → CB-06, INT-6, W-15
+- R-061 (CANON) Редактор → CB-05, INT-7, UI-06, W-15, W-16
+- R-062 (CANON) Цензор правок — five code rules → CB-06, INT-6
+- R-063 (CANON) Rejected edits → CB-06, INT-6, W-15
+- R-064 (CANON) Repeat rule → CB-06
+- R-065 (CANON) Утро главы (game-day opening) → CB-01, CB-03, INT-9
+- R-066 (CANON) Deep parse of first replica → CB-02, INT-9
+- R-067 (CANON) After deep parse → CB-02
+- R-068 (CANON) «Моя книга» window → CB-04, CB-05, CB-06, CB-07, UI-06
+- R-069 (CANON) Death, finale, replay → B-11
+- R-070 (CANON) Эпилог → CB-13
+- R-071 (CANON) p.4 permanent caveats and language law → D-11, D-13, D-15, F-07
+- R-072 (CANON) p.19 world = antagonist → F-10
+- R-143 (CANON) Glossary rule → GLO-3
+- R-144 (CANON) Term set (55 terms) → GLO-1
+- R-145 (CANON) Цензор three usages + дайджест split → GLO-1, GLO-3
+- R-151 (UI) settings.html tabs + General → UI-08
+- R-152 (UI) settings LLM tab → UI-08
+- R-153 (UI) settings World tab (memory knobs + luck live in Advanced) → F-08, UI-08
+- R-154 (UI) settings Advanced tab (NPC memory + global luck) → D-18, UI-08, W-18
+- R-155 (UI) index.html chat shell → CB-08, CB-12, UI-01
+- R-156 (UI) index.html «Моя книга» modal → CB-04, CB-12, UI-06
+- R-157 (UI) worlds.html create form (world-birth анкета UI) → UI-05
+- R-158 (UI) worlds.html birth wizard + world cards → UI-05
+- R-159 (UI) models.html manager → MD-08, MD-09, UI-08
+
+PLAN вне покрытия (справочно, 45): R-073, R-074, R-075, R-076, R-078, R-079, R-083, R-084, R-086, R-088, R-089, R-090, R-091, R-092, R-094, R-098, R-101, R-105, R-106, R-107, R-109, R-110, R-112, R-113, R-114, R-116, R-118, R-119, R-120, R-121, R-122, R-123, R-124, R-126, R-127, R-129, R-130, R-135, R-141, R-161, R-164, R-166, R-167, R-168, R-169
