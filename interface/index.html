@@ -149,10 +149,12 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
 @media(max-width:768px){
   :root{--sidebar-w:100vw;--topbar-h:44px;--input-h:80px}
   .hamburger{display:block;font-size:20px;padding:6px}
-  .topbar__btn:not(#newGameBtn):not(#toggleSidebarBtn){display:none}
+  .topbar__btn:not(#newGameBtn):not(#toggleSidebarBtn):not(.topnav-tab){display:none}
   .topbar__sep{display:none}
   .topbar__spacer{display:none}
   .topbar{gap:6px;padding:0 12px;height:var(--topbar-h)}
+  .topbar__brand{display:none}
+  .topnav{margin-left:0}
   .topbar__brand{font-size:9px;letter-spacing:0.1em}
   .topbar__brand span{font-size:10px}
   .topbar__mem{display:none}
@@ -210,21 +212,20 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
       <span class="topbar__st topbar__st--off" id="wsStatusDot">WS</span>
       <span class="topbar__clock" id="headerClock">--:--:--</span>
       <button class="topbar__btn" id="newGameBtn"><span class="topbar__btn-dot" style="background:var(--interactive)"></span><span data-i18n="uiNew">NEW</span></button>
-      <a class="topbar__btn" href="/providers" style="text-decoration:none"><span class="topbar__btn-dot" style="background:var(--warning)"></span><span data-i18n="uiProviders">PROVIDERS</span></a>
-      <a class="topbar__btn" href="/worlds" style="text-decoration:none">WORLDS</a>
-      <a class="topbar__btn" href="/agents" style="text-decoration:none"><span class="topbar__btn-dot" style="background:var(--success)"></span><span data-i18n="uiAgents">AGENTS</span></a>
-      <a class="topbar__btn" href="/dashboard" style="text-decoration:none"><span class="topbar__btn-dot" style="background:var(--interactive)"></span><span>MONITOR</span></a>
-      <a class="topbar__btn" href="/models" style="text-decoration:none"><span class="topbar__btn-dot" style="background:var(--interactive)"></span><span data-i18n="uiModels">MODELS</span></a>
-      <a class="topbar__btn" href="/settings" style="text-decoration:none"><span class="topbar__btn-dot" style="background:var(--success)"></span><span data-i18n="uiConfig">CONFIG</span></a>
+      <style>.topnav{display:flex;gap:6px;flex-wrap:wrap;margin-left:6px}.topnav a{text-decoration:none}</style>
+      <nav class="topnav" aria-label="Sections">
+        <a class="topbar__btn topnav-tab" href="worlds.html" data-i18n="uiTabAtlas">ATLAS</a>
+        <a class="topbar__btn topnav-tab" href="index.html#book" data-i18n="uiTabHistory">HISTORY</a>
+        <a class="topbar__btn topnav-tab" href="mcp.html" data-i18n="uiTabMcp">MCP</a>
+        <a class="topbar__btn topnav-tab" href="settings.html" data-i18n="uiTabSettings">SETTINGS</a>
+      </nav>
       <button class="topbar__btn" id="toggleSidebarBtn"><span class="topbar__btn-dot"></span><span data-i18n="uiServer">SERVER</span></button>
     </div>
     <div class="mobile-menu" id="mobileMenu">
-      <a href="/worlds"><span style="background:var(--interactive)"></span>WORLDS</a>
-      <a href="/providers"><span style="background:var(--warning)"></span><span data-i18n="uiProviders">PROVIDERS</span></a>
-      <a href="/agents"><span style="background:var(--success)"></span><span data-i18n="uiAgents">AGENTS</span></a>
-      <a href="/models"><span style="background:var(--interactive)"></span><span data-i18n="uiModels">MODELS</span></a>
-      <a href="/settings"><span style="background:var(--success)"></span><span data-i18n="uiConfig">CONFIG</span></a>
-      <a href="/graph.html"><span style="background:var(--interactive)"></span><span data-i18n="uiGraph">GRAPH</span></a>
+      <a href="worlds.html"><span style="background:var(--interactive)"></span><span data-i18n="uiTabAtlas">ATLAS</span></a>
+      <a href="index.html#book"><span style="background:var(--warning)"></span><span data-i18n="uiTabHistory">HISTORY</span></a>
+      <a href="mcp.html"><span style="background:var(--success)"></span><span data-i18n="uiTabMcp">MCP</span></a>
+      <a href="settings.html"><span style="background:var(--interactive)"></span><span data-i18n="uiTabSettings">SETTINGS</span></a>
       <button id="mobileSidebarBtn"><span style="background:var(--text-disabled)"></span><span data-i18n="uiServer">SERVER</span></button>
     </div>
     <div class="terminal" id="terminalOutput"></div>
@@ -233,7 +234,7 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
         <button class="qcmd" data-cmd="/status" data-i18n="uiQcmdStatus">status</button>
         <button class="qcmd" data-cmd="/look" data-i18n="uiQcmdLook">look</button>
         <button class="qcmd" data-cmd="/quests" data-i18n="uiQcmdQuests">quests</button>
-        <a class="qcmd" href="/graph.html" data-i18n="uiGraph" style="text-decoration:none">graph</a>
+        <a class="qcmd" href="graph.html" data-i18n="uiGraph" style="text-decoration:none">graph</a>
         <button class="qcmd" data-cmd="/help" data-i18n="uiQcmdHelp">help</button>
       </div>
       <div class="input-area__main">
@@ -283,8 +284,8 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
 </div>
 
 <script>
-const EN={uiNew:"NEW",uiProviders:"PROVIDERS",uiAgents:"AGENTS",uiModels:"MODELS",uiConfig:"CONFIG",uiGraph:"GRAPH",uiServer:"SERVER",uiQcmdStatus:"status",uiQcmdLook:"look",uiQcmdQuests:"quests",uiQcmdHelp:"help",uiPlaceholder:"type a command or ask anything...",uiClr:"CLR",uiSaveSession:"SAVE",uiLoadSession:"LOAD",uiMyBook:"BOOK",uiTabWorld:"World",uiTabChar:"Char",uiTabSys:"Sys",uiGraphOverview:"Graph Overview",uiCurrentChar:"Current Character",uiNoChar:"No character selected",uiServiceStatus:"Service Status",uiProcessing:"PROCESSING"};
-const RU={...EN,uiNew:"НОВАЯ",uiProviders:"ПРОВАЙДЕРЫ",uiAgents:"АГЕНТЫ",uiModels:"МОДЕЛИ",uiConfig:"НАСТРОЙКИ",uiGraph:"ГРАФ",uiServer:"СЕРВЕР",uiQcmdStatus:"статус",uiQcmdLook:"осмотреть",uiQcmdQuests:"квесты",uiQcmdHelp:"помощь",uiPlaceholder:"введи команду или спроси что угодно...",uiClr:"ОЧИСТ",uiSaveSession:"СОХР",uiLoadSession:"ЗАГР",uiMyBook:"КНИГА",uiTabWorld:"Мир",uiTabChar:"Перс",uiTabSys:"Сист",uiGraphOverview:"Обзор графа",uiCurrentChar:"Текущий персонаж",uiNoChar:"Персонаж не выбран",uiServiceStatus:"Статус сервиса",uiProcessing:"ОБРАБОТКА"};
+const EN={uiNew:"NEW",uiProviders:"PROVIDERS",uiAgents:"AGENTS",uiModels:"MODELS",uiConfig:"CONFIG",uiGraph:"GRAPH",uiServer:"SERVER",uiTabAtlas:"ATLAS",uiTabHistory:"HISTORY",uiTabMcp:"MCP",uiTabSettings:"SETTINGS",uiTabChat:"CHAT",uiQcmdStatus:"status",uiQcmdLook:"look",uiQcmdQuests:"quests",uiQcmdHelp:"help",uiPlaceholder:"type a command or ask anything...",uiClr:"CLR",uiSaveSession:"SAVE",uiLoadSession:"LOAD",uiMyBook:"BOOK",uiTabWorld:"World",uiTabChar:"Char",uiTabSys:"Sys",uiGraphOverview:"Graph Overview",uiCurrentChar:"Current Character",uiNoChar:"No character selected",uiServiceStatus:"Service Status",uiProcessing:"PROCESSING"};
+const RU={...EN,uiNew:"НОВАЯ",uiProviders:"ПРОВАЙДЕРЫ",uiAgents:"АГЕНТЫ",uiModels:"МОДЕЛИ",uiConfig:"НАСТРОЙКИ",uiGraph:"ГРАФ",uiServer:"СЕРВЕР",uiTabAtlas:"АТЛАС",uiTabHistory:"ИСТОРИЯ",uiTabMcp:"MCP",uiTabSettings:"НАСТРОЙКИ",uiTabChat:"ЧАТ",uiQcmdStatus:"статус",uiQcmdLook:"осмотреть",uiQcmdQuests:"квесты",uiQcmdHelp:"помощь",uiPlaceholder:"введи команду или спроси что угодно...",uiClr:"ОЧИСТ",uiSaveSession:"СОХР",uiLoadSession:"ЗАГР",uiMyBook:"КНИГА",uiTabWorld:"Мир",uiTabChar:"Перс",uiTabSys:"Сист",uiGraphOverview:"Обзор графа",uiCurrentChar:"Текущий персонаж",uiNoChar:"Персонаж не выбран",uiServiceStatus:"Статус сервиса",uiProcessing:"ОБРАБОТКА"};
 const DE={...EN,uiNew:"NEU",uiProviders:"ANBIETER",uiAgents:"AGENTEN",uiModels:"MODELLE",uiConfig:"KONFIG",uiServer:"SERVER",uiQcmdStatus:"status",uiQcmdLook:"umschauen",uiQcmdQuests:"quests",uiQcmdHelp:"hilfe",uiPlaceholder:"Befehl eingeben oder fragen...",uiClr:"LÖSCH",uiSaveSession:"SPEICH",uiLoadSession:"LADEN",uiMyBook:"BUCH",uiTabWorld:"Welt",uiTabChar:"Char",uiTabSys:"Sys",uiGraphOverview:"Graph-Übersicht",uiCurrentChar:"Aktueller Charakter",uiNoChar:"Kein Charakter ausgewählt",uiServiceStatus:"Service-Status",uiProcessing:"VERARBEITUNG"};
 const FR={...EN,uiNew:"NOUVEAU",uiProviders:"FOURNISSEURS",uiAgents:"AGENTS",uiModels:"MODÈLES",uiConfig:"CONFIG",uiServer:"SERVEUR",uiQcmdStatus:"statut",uiQcmdLook:"regarder",uiQcmdQuests:"quêtes",uiQcmdHelp:"aide",uiPlaceholder:"entrez une commande...",uiClr:"EFFAC",uiSaveSession:"SAUV",uiLoadSession:"CHARG",uiMyBook:"LIVRE",uiTabWorld:"Monde",uiTabChar:"Pers",uiTabSys:"Sys",uiGraphOverview:"Aperçu du graphe",uiCurrentChar:"Personnage actif",uiNoChar:"Aucun personnage",uiServiceStatus:"État du service",uiProcessing:"TRAITEMENT"};
 const ES={...EN,uiNew:"NUEVO",uiProviders:"PROVEEDORES",uiAgents:"AGENTES",uiModels:"MODELOS",uiConfig:"CONFIG",uiServer:"SERVIDOR",uiQcmdStatus:"estado",uiQcmdLook:"mirar",uiQcmdQuests:"misiones",uiQcmdHelp:"ayuda",uiPlaceholder:"escribe un comando...",uiClr:"LIMPI",uiSaveSession:"GUARD",uiLoadSession:"CARGAR",uiMyBook:"LIBRO",uiTabWorld:"Mundo",uiTabChar:"Pers",uiTabSys:"Sys",uiGraphOverview:"Vista del grafo",uiCurrentChar:"Personaje actual",uiNoChar:"Sin personaje",uiServiceStatus:"Estado del servicio",uiProcessing:"PROCESANDO"};
@@ -612,6 +613,10 @@ function applyLang(lang){document.querySelectorAll('[data-i18n]').forEach(el=>{c
   });
 
   // My book modal (paradigm p.13: «Моя книга» — digest + 4 tabs, editor mode)
+  // «История» tab deep link: #book opens My book (07-ui: chat + 4 tabs, BOOK = short path)
+  function openBookByHash() { if (location.hash === '#book') document.getElementById('bookBtn').click(); }
+  window.addEventListener('hashchange', openBookByHash);
+  openBookByHash();
   document.getElementById('bookBtn').addEventListener('click', function() {
     const modal = document.createElement('div');
     modal.className = 'session-modal';

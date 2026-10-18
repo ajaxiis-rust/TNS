@@ -148,6 +148,17 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
 
 <div class="topbar">
   <div class="topbar__brand"><span>TrueNeverStory</span></div>
+<style>.topnav{display:flex;gap:6px;flex-wrap:wrap;margin-left:10px}
+.topnav a{font-family:var(--font-mono,monospace);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-tertiary,#8E8E8E);text-decoration:none;border:1px solid var(--border-visible,#272727);border-radius:var(--radius-pill,99px);padding:4px 10px;white-space:nowrap}
+.topnav a:hover{color:var(--text-primary,#E0E0E0);border-color:var(--text-secondary,#BBB)}
+.topnav a.topnav--active{color:var(--text-display,#FFF);border-color:var(--text-display,#FFF);background:var(--surface-raised,#111)}</style>
+  <nav class="topnav" aria-label="Sections">
+    <a class="topnav-tab" href="index.html">Chat</a>
+    <a class="topnav-tab" href="worlds.html">Atlas</a>
+    <a class="topnav-tab" href="index.html#book">History</a>
+    <a class="topnav-tab" href="mcp.html">MCP</a>
+    <a class="topnav-tab topnav--active" href="settings.html">Settings</a>
+  </nav>
   <div class="topbar__sep"></div>
   <div class="topbar__title" data-i18n="title">Provider Manager</div>
   <div class="topbar__spacer"></div>
