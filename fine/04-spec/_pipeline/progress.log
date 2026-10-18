@@ -21,3 +21,4 @@
 [11:05:56] 09 DONE gate=PASS attempt=1
 [11:05:56] BATCH-FINISHED completeness_exit=0
 [11:52] HOLES-CLOSED by orchestrator (owner order): 7 atoms added manually - GLO-7 (R-004), GLO-8 (R-016), W-18 (R-015), W-19 (R-045), W-20 (R-049), W-21 (R-059), CB-13 (R-070); R-002/R-007 EXEMPT as document-meta in completeness.py; earlier completeness_exit=0 line was WRONG (real exit was 1, $? clobbered by $(date) substitution in run_all.sh - fixed RC= capture); completeness rerun: 82/82 live, missing 0, exit=0
+[13:05] CRITIQUE-FOLLOWUP per owner pick 2: INT-3 rule5 + acceptance sharpened, MD-02 rule4 + link INT-3 (degraded mode = delivery not quality); _plan-risks.md added (9 plan-stage items from external critique, spec unchanged by them)
