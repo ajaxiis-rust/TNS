@@ -87,38 +87,10 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
 .progress-bar-track{background:var(--surface);border-radius:var(--radius-pill);height:6px;overflow:hidden}
 .progress-bar-fill{background:var(--accent);height:100%;border-radius:var(--radius-pill);transition:width 340ms var(--ease-out);width:0%}
 .progress-bar-label{font-size:11px;color:var(--text-disabled);margin-top:4px}
-
-.pipeline-grid{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:12px;align-items:center;margin:16px 0}
-.pipeline-stage{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;position:relative}
-.pipeline-stage--active{border-color:var(--success)}
-.pipeline-stage--empty{border-color:var(--border);opacity:.6}
-.pipeline-stage__name{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-secondary);margin-bottom:6px}
-.pipeline-stage__value{font-family:var(--font-body);font-size:20px;font-weight:700;color:var(--text-display);line-height:1}
-.pipeline-stage__detail{font-size:11px;color:var(--text-disabled);margin-top:4px}
-.pipeline-arrow{color:var(--text-disabled);font-size:18px;text-align:center}
-.pipeline-arrow--active{color:var(--accent)}
-.pipeline-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--text-disabled);text-align:center;margin:8px 0 4px;grid-column:1/-1}
-.pipeline-pass{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:8px 0}
-.pipeline-pass__item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;text-align:center}
-.pipeline-pass__name{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-secondary)}
-.pipeline-pass__desc{font-size:11px;color:var(--text-disabled);margin-top:2px}
-.pipeline-flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0}
-.phase-card{background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;min-width:170px;flex:1;max-width:220px}
-.phase-card__header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.phase-card__name{font-size:12px;font-weight:600;color:var(--text-display)}
-.phase-card__status{font-size:10px;padding:2px 6px;border-radius:var(--radius-sm);background:var(--surface);color:var(--text-secondary);text-transform:uppercase;letter-spacing:.05em}
-.phase-card__status.running{background:var(--accent);color:#fff}
-.phase-card__status.done{background:var(--success);color:#fff}
-.phase-card__status.error{background:var(--error);color:#fff}
-.phase-card__desc{font-size:11px;color:var(--text-disabled);margin-bottom:8px;line-height:1.4}
-.phase-card__data{font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:8px;min-height:18px}
-.phase-card__btn{width:100%;font-size:12px;position:relative;overflow:hidden;background:linear-gradient(to right,var(--accent) var(--phase-progress,0%),var(--surface-raised) var(--phase-progress,0%));transition:background .3s ease}
-.phase-card__btn[disabled]{opacity:.85;cursor:wait}
-.phase-arrow{color:var(--text-disabled);font-size:16px;flex-shrink:0}
-.phase-card--wide{min-width:240px;max-width:280px}
-.phase-card__stats{font-size:11px;color:var(--text-secondary);margin-bottom:8px;line-height:1.6;min-height:0}
-.phase-card__stats div{display:flex;justify-content:space-between}
-.phase-card__stats span:last-child{color:var(--text-display);font-weight:600}
+.book-card{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border-light)}
+.book-card__name{flex:1;min-width:180px;color:var(--text-primary)}
+.book-card__meta{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.book-card__status{font-size:11px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -136,129 +108,28 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
   <div class="panel" id="panel-dashboard">
     <div class="section">
       <div class="section__title" data-i18n="mcp.forge.title">Forge Dashboard</div>
-      <div class="stats-grid" id="dashboard-stats"></div>
-      <div class="pipeline-flow" id="pipeline-gutenberg">
-        <div class="phase-card" id="phase-download">
-          <div class="phase-card__header">
-            <span class="phase-card__name">1. Download</span>
-            <span class="phase-card__status" id="phase-download-status">idle</span>
-          </div>
-          <div class="phase-card__desc">Download texts from Project Gutenberg</div>
-          <div class="phase-card__data" id="phase-download-data">—</div>
-          <button class="btn phase-card__btn" id="phase-download-btn" onclick="runPhase('gutenberg/download','download')">Run</button>
-        </div>
-        <div class="phase-arrow" id="arrow-download">▶</div>
-        <div class="phase-card" id="phase-import">
-          <div class="phase-card__header">
-            <span class="phase-card__name">2. Import</span>
-            <span class="phase-card__status" id="phase-import-status">idle</span>
-          </div>
-          <div class="phase-card__desc">Import texts → classics.db</div>
-          <div class="phase-card__data" id="phase-import-data">—</div>
-          <button class="btn phase-card__btn" id="phase-import-btn" onclick="runPhase('gutenberg/import','import')">Run</button>
-        </div>
-        <div class="phase-arrow" id="arrow-import">▶</div>
-        <div class="phase-card" id="phase-v1">
-          <div class="phase-card__header">
-            <span class="phase-card__name">3. v1 Compile</span>
-            <span class="phase-card__status" id="phase-v1-status">idle</span>
-          </div>
-          <div class="phase-card__desc">4-pass compiler → classics-compiled.db</div>
-          <div class="phase-card__data" id="phase-v1-data">—</div>
-          <button class="btn phase-card__btn" id="phase-v1-btn" onclick="runPhase('gutenberg/compile-v1','v1')">Run</button>
-        </div>
-        <div class="phase-arrow" id="arrow-v1">▶</div>
-        <div class="phase-card phase-card--wide" id="phase-v2">
-          <div class="phase-card__header">
-            <span class="phase-card__name">4. v2 LLM</span>
-            <span class="phase-card__status" id="phase-v2-status">idle</span>
-          </div>
-          <div class="phase-card__desc">LLM extraction → literary.db</div>
-          <div class="phase-card__data" id="phase-v2-data">—</div>
-          <div class="phase-card__stats" id="phase-v2-stats"></div>
-          <button class="btn phase-card__btn" id="phase-v2-btn" onclick="runPhase('gutenberg/compile-v2','v2')">Run</button>
-        </div>
-        <div class="phase-arrow" id="arrow-v2">▶</div>
-        <div class="phase-card" id="phase-calibrate">
-          <div class="phase-card__header">
-            <span class="phase-card__name">5. Calibrate</span>
-            <span class="phase-card__status" id="phase-calibrate-status">idle</span>
-          </div>
-          <div class="phase-card__desc">Quality score calibration</div>
-          <div class="phase-card__data" id="phase-calibrate-data">—</div>
-          <button class="btn phase-card__btn" id="phase-calibrate-btn" onclick="runPhase('gutenberg/calibrate','calibrate')">Run</button>
-        </div>
-      </div>
-    </div>
-    <div class="section">
-      <div class="section__title" data-i18n="mcp.quickActions">Quick Actions</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn" onclick="compactAll()" data-i18n="mcp.compactAll" data-i18n-title="mcp.compactAll.title">Compact All</button>
-        <button class="btn" onclick="rebuildIndex()" data-i18n="mcp.rebuildIndex" data-i18n-title="mcp.rebuildIndex.title">Rebuild Index</button>
-        <button class="btn btn--danger" onclick="runAction('clean-orphans')" data-i18n="mcp.system.cleanOrphans" data-i18n-title="mcp.system.cleanOrphans.title">Clean Orphans</button>
-      </div>
+      <div class="stats-grid" id="forge-stats"></div>
+      <div class="stats-grid" id="forge-counters"></div>
     </div>
   </div>
 
-  <!-- Gutenberg (merged with Catalog) -->
-  <div class="panel" id="panel-gutenberg">
+  <!-- Книги-источники (файлы скачивает игрок сам, Гутенберга нет) -->
+  <div class="panel" id="panel-books">
     <div class="section__title" data-i18n="mcp.books.title">Books</div>
-    <div class="stats-grid" id="gutenberg-stats"></div>
-    <div class="stats-grid" id="catalog-stats"></div>
+    <div class="stats-grid" id="books-stats"></div>
     <div class="section">
-      <div class="section__title" data-i18n="mcp.catalog.build">Build Catalog</div>
-      <div class="search-row">
-        <input class="input" id="catalog-authors" data-i18n-placeholder="mcp.catalog.authorsPlaceholder" placeholder="Authors (comma-separated): Mark Twain, Jack London...">
-        <input class="input" id="catalog-topic" data-i18n-placeholder="mcp.catalog.topicPlaceholder" placeholder="Topic (optional): adventure, romance..." style="max-width:200px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input type="file" id="book-file" accept=".txt,.fb2,.md" style="display:none" onchange="importBook(this)">
+        <button class="btn btn--success" onclick="document.getElementById('book-file').click()" data-i18n="mcp.books.import" data-i18n-title="mcp.books.import.title">Import Book</button>
+        <span class="coeff-note" data-i18n="mcp.books.hint" style="font-size:12px">Book files are downloaded by the player; this tab imports and forges them.</span>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <button class="btn btn--success" onclick="buildCatalog()" data-i18n="mcp.catalog.build" data-i18n-title="mcp.catalog.build.title">Build Catalog</button>
-        <button class="btn" onclick="buildCatalogPopular()" data-i18n="mcp.catalog.popular500" data-i18n-title="mcp.catalog.popular500.title">Popular 500</button>
-      </div>
+      <div id="books-list" style="margin-top:12px"></div>
     </div>
     <div class="section">
-      <div class="section__title" data-i18n="mcp.catalog.filter">Search & Filter</div>
-      <div class="search-row">
-        <input class="input" id="catalog-q" data-i18n-placeholder="mcp.catalog.searchPlaceholder" placeholder="Search by title, author, subjects...">
-        <button class="btn" onclick="searchCatalog()" data-i18n="mcp.catalog.searchBtn" data-i18n-title="mcp.catalog.searchBtn.title">Search</button>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-        <input class="input" id="catalog-filter-author" data-i18n-placeholder="mcp.catalog.authorPlaceholder" placeholder="Author" style="max-width:200px">
-        <input class="input" id="catalog-filter-year-from" data-i18n-placeholder="mcp.catalog.yearFromPlaceholder" placeholder="Year from" style="max-width:120px" type="number">
-        <input class="input" id="catalog-filter-year-to" data-i18n-placeholder="mcp.catalog.yearToPlaceholder" placeholder="Year to" style="max-width:120px" type="number">
-        <input class="input" id="catalog-filter-min-dl" data-i18n-placeholder="mcp.catalog.minDlPlaceholder" placeholder="Min downloads" style="max-width:140px" type="number">
-        <button class="btn" onclick="filterCatalog()" data-i18n="mcp.catalog.apply" data-i18n-title="mcp.catalog.apply.title">Apply</button>
-        <button class="btn" onclick="clearCatalogFilter()" data-i18n="mcp.catalog.clear" data-i18n-title="mcp.catalog.clear.title">Clear</button>
-      </div>
-    </div>
-    <div class="section">
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <button class="btn" onclick="selectAllCatalog()" data-i18n="mcp.catalog.selectAll" data-i18n-title="mcp.catalog.selectAll.title">Select All</button>
-        <button class="btn" onclick="deselectAllCatalog()" data-i18n="mcp.catalog.deselectAll" data-i18n-title="mcp.catalog.deselectAll.title">Deselect All</button>
-        <button class="btn btn--success" onclick="downloadSelectedCatalog()" data-i18n="mcp.catalog.downloadSelected" data-i18n-title="mcp.catalog.downloadSelected.title">Download Selected</button>
-        <span id="catalog-selected-count" style="color:var(--text-secondary);font-size:12px;display:flex;align-items:center"></span>
-      </div>
-      <div id="catalog-results"></div>
-      <div id="catalog-pagination" style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:12px"></div>
-    </div>
-    <div class="section">
-      <div class="section__title" data-i18n="mcp.gutenberg.search">Search Styles</div>
-      <div class="search-row">
-        <input class="input" id="gutenberg-q" placeholder="Search styles..." data-i18n-placeholder="mcp.gutenberg.searchPlaceholder">
-        <button class="btn" onclick="searchGutenberg()" data-i18n="mcp.search" data-i18n-title="mcp.search.title">Search</button>
-      </div>
-      <div id="gutenberg-results"></div>
-    </div>
-    <div class="section">
-      <div class="section__title" data-i18n="mcp.gutenberg.delexify">Delexify Text</div>
-      <textarea class="input" id="gutenberg-delex" rows="4" placeholder="Paste text to delexify..." data-i18n-placeholder="mcp.gutenberg.delexifyPlaceholder" style="resize:vertical"></textarea>
-      <button class="btn" onclick="delexifyGutenberg()" style="margin-top:8px" data-i18n="mcp.gutenberg.delexifyBtn" data-i18n-title="mcp.gutenberg.delexifyBtn.title">Delexify</button>
-      <div id="gutenberg-delex-result"></div>
-    </div>
-    <div style="display:flex;gap:8px">
-      <button class="btn" onclick="runAction('gutenberg/download')" data-i18n="mcp.gutenberg.download" data-i18n-title="mcp.gutenberg.download.title">Download Corpus</button>
-      <button class="btn btn--success" onclick="runAction('gutenberg/import')" data-i18n="mcp.gutenberg.import" data-i18n-title="mcp.gutenberg.import.title">Import to DB</button>
-      <button class="btn" onclick="runAction('gutenberg/compact')" data-i18n="mcp.gutenberg.compact" data-i18n-title="mcp.gutenberg.compact.title">Compact</button>
+      <div class="section__title" data-i18n="mcp.books.delexify">Delexify Text</div>
+      <textarea class="input" id="books-delex" rows="4" data-i18n-placeholder="mcp.books.delexifyPlaceholder" placeholder="Paste text to delexify..." style="resize:vertical"></textarea>
+      <button class="btn" onclick="delexifyText()" style="margin-top:8px" data-i18n="mcp.books.delexifyBtn" data-i18n-title="mcp.books.delexifyBtn.title">Delexify</button>
+      <div id="books-delex-result"></div>
     </div>
   </div>
 
@@ -332,8 +203,27 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
 // ── i18n ──────────────────────────────────────────────────────
 const I18N = {
   en: {
-    "mcp.title": "Database Management", "mcp.back": "\u2190 Back",
+    "mcp.title": "Filling Console", "mcp.back": "\u2190 Back",
     "mcp.forge.title": "Forge Dashboard", "mcp.books.title": "Books",
+    "mcp.forge.queue": "Queue", "mcp.forge.current": "Current work", "mcp.forge.progress": "Progress",
+    "mcp.forge.booksDone": "Books done", "mcp.forge.chapters": "Chapters parsed", "mcp.forge.templates": "Templates",
+    "mcp.forge.censor": "Rejected by Censor", "mcp.forge.delex": "Delex replacements", "mcp.forge.errors": "Errors",
+    "mcp.books.import": "Import Book",
+    "mcp.books.import.title": "Choose a downloaded file: txt, md or fb2 (fb2 is converted before the chunker)",
+    "mcp.books.hint": "Book files are downloaded by the player; this tab imports and forges them.",
+    "mcp.books.empty": "No books — import a txt/fb2 file",
+    "mcp.books.raw": "Raw files", "mcp.books.baked": "Baked books", "mcp.books.statTpl": "Templates in DB",
+    "mcp.books.chapters": "chapters", "mcp.books.parsed": "parsed", "mcp.books.tpl": "templates",
+    "mcp.books.forge": "Forge",
+    "mcp.books.forge.title": "Run the chapter forge pipeline (DramaturgicPass heritage); results enter literary.db through the Censor",
+    "mcp.books.deleteRaw": "Delete raw",
+    "mcp.books.deleteRaw.title": "Delete the raw file only; baked entries stay in the base (R-140)",
+    "mcp.books.deleteConfirm": "Delete the raw file? Baked entries in the base are not touched.",
+    "mcp.books.status.queued": "queued", "mcp.books.status.forging": "forging",
+    "mcp.books.status.ready": "ready", "mcp.books.status.error": "error",
+    "mcp.books.delexify": "Delexify Text", "mcp.books.delexifyPlaceholder": "Paste text to delexify...",
+    "mcp.books.delexifyBtn": "Delexify",
+    "mcp.books.delexifyBtn.title": "Replace proper nouns (names, places) with placeholders for anonymous style analysis",
     "mcp.rings.title": "Rings (Паганель)", "mcp.rings.journal": "Ring Journal", "mcp.rings.nodata": "No ring data",
     "mcp.tools.title": "Machine Tools", "mcp.tools.coefficients": "Coefficients",
     "mcp.tools.lemmatizer": "Lemmatizer", "mcp.tools.lemmaEnabled": "enabled", "mcp.tools.save": "Save",
@@ -421,8 +311,27 @@ const I18N = {
     "mcp.system.cleanOrphans.title": "Remove database records that reference deleted files",
   },
   ru: {
-    "mcp.title": "\u0423\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u0435 \u0431\u0430\u0437\u0430\u043c\u0438 \u0434\u0430\u043d\u043d\u044b\u0445", "mcp.back": "\u2190 \u041d\u0430\u0437\u0430\u0434",
+    "mcp.title": "Консоль наполнения", "mcp.back": "\u2190 Назад",
     "mcp.forge.title": "Дашборд ковки", "mcp.books.title": "Книги-источники",
+    "mcp.forge.queue": "Очередь наполнения", "mcp.forge.current": "Текущая работа", "mcp.forge.progress": "Выполнение",
+    "mcp.forge.booksDone": "Книг обработано", "mcp.forge.chapters": "Глав разобрано", "mcp.forge.templates": "Шаблонов снято",
+    "mcp.forge.censor": "Отклонено Цензором", "mcp.forge.delex": "Замен при делексификации", "mcp.forge.errors": "Ошибок",
+    "mcp.books.import": "Импорт книги",
+    "mcp.books.import.title": "Выберите скачанный файл: txt, md или fb2 (fb2 конвертируется перед чанкером)",
+    "mcp.books.hint": "Файлы книг игрок скачивает сам; здесь — импорт и ковка скачанного.",
+    "mcp.books.empty": "Книг нет — импортируйте файл txt/fb2",
+    "mcp.books.raw": "Сырьё, файлов", "mcp.books.baked": "Выковано книг", "mcp.books.statTpl": "Шаблонов в базе",
+    "mcp.books.chapters": "глав", "mcp.books.parsed": "разобрано", "mcp.books.tpl": "шаблонов",
+    "mcp.books.forge": "Ковать",
+    "mcp.books.forge.title": "Запустить конвейер разбора глав (наследие DramaturgicPass); результат через Цензора попадает в literary.db",
+    "mcp.books.deleteRaw": "Удалить сырьё",
+    "mcp.books.deleteRaw.title": "Удалить только файл сырья; выкованное в базе остаётся (R-140)",
+    "mcp.books.deleteConfirm": "Удалить файл сырья? Выкованное в базе не трогается.",
+    "mcp.books.status.queued": "в очереди", "mcp.books.status.forging": "куется",
+    "mcp.books.status.ready": "готова", "mcp.books.status.error": "ошибка",
+    "mcp.books.delexify": "Делексификация", "mcp.books.delexifyPlaceholder": "Вставьте текст...",
+    "mcp.books.delexifyBtn": "Делексифицировать",
+    "mcp.books.delexifyBtn.title": "Заменить имена и названия на плейсхолдеры для анонимного стилевого анализа",
     "mcp.rings.title": "Кольца Паганеля", "mcp.rings.journal": "Журнал колец", "mcp.rings.nodata": "Нет данных по кольцам",
     "mcp.tools.title": "Инструменты станка", "mcp.tools.coefficients": "Коэффициенты",
     "mcp.tools.lemmatizer": "Лемматизатор", "mcp.tools.lemmaEnabled": "включён", "mcp.tools.save": "Сохранить",
@@ -790,159 +699,81 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]);
 }
 
-// ── Dashboard ─────────────────────────────────────────────────
+// ── Dashboard (дашборд ковки) ─────────────────────────────────
 async function loadDashboard() {
   const d = await api();
-  if (!d) return;
-  const g = document.getElementById("dashboard-stats");
-  g.innerHTML = "";
-  for (const db of d.databases || []) {
-    g.innerHTML += `<div class="stat-card"><div class="stat-card__value" style="color:${db.exists?"var(--success)":"var(--error)"}">${db.exists?"\u25cf":"\u25cb"}</div><div class="stat-card__label">${escapeHtml(db.name)}</div><div style="font-size:11px;color:var(--text-disabled)">${db.exists?fmtBytes(db.size):"not found"}</div></div>`;
-  }
+  const f = (d && d.forge) || {};
+  const top = document.getElementById("forge-stats");
+  const cnt = document.getElementById("forge-counters");
+  if (top) top.innerHTML = `
+    <div class="stat-card"><div class="stat-card__value">${f.queue ?? 0}</div><div class="stat-card__label">${escapeHtml(t("mcp.forge.queue"))}</div></div>
+    <div class="stat-card"><div class="stat-card__value">${escapeHtml(f.current || "—")}</div><div class="stat-card__label">${escapeHtml(t("mcp.forge.current"))}</div></div>
+    <div class="stat-card"><div class="stat-card__value">${f.progress != null ? f.progress + "%" : "—"}</div><div class="stat-card__label">${escapeHtml(t("mcp.forge.progress"))}</div></div>`;
+  if (cnt) cnt.innerHTML = [
+    [f.booksDone, "mcp.forge.booksDone"],
+    [f.chaptersParsed, "mcp.forge.chapters"],
+    [f.templates, "mcp.forge.templates"],
+    [f.censorRejected, "mcp.forge.censor"],
+    [f.delexReplacements, "mcp.forge.delex"],
+    [f.errors, "mcp.forge.errors"],
+  ].map(([v, k]) => `<div class="stat-card"><div class="stat-card__value">${v ?? 0}</div><div class="stat-card__label">${escapeHtml(t(k))}</div></div>`).join("");
 }
 
-// ── Gutenberg ─────────────────────────────────────────────────
-async function loadGutenbergStats() {
+// ── Books (книги-источники) ───────────────────────────────────
+const BOOK_STATUS_COLOR = { queued: "var(--text-secondary)", forging: "var(--accent)", ready: "var(--success)", error: "var(--error)" };
+
+async function loadBooks() {
   const d = await api();
-  const el = document.getElementById("gutenberg-stats");
-  if (!d?.exists && !d?.textFiles) { el.innerHTML = '<div class="empty">No data. Use Catalog to download books first.</div>'; return; }
-  el.innerHTML = `<div class="stat-card"><div class="stat-card__value">${d.textFiles||0}</div><div class="stat-card__label">Downloaded</div></div><div class="stat-card"><div class="stat-card__value">${d.imported||0}</div><div class="stat-card__label">Imported</div></div><div class="stat-card"><div class="stat-card__value">${fmtBytes(d.size||0)}</div><div class="stat-card__label">DB Size</div></div>`;
+  const bs = (d && d.books) || {};
+  const statsEl = document.getElementById("books-stats");
+  if (statsEl) statsEl.innerHTML = `
+    <div class="stat-card"><div class="stat-card__value">${bs.rawFiles ?? 0}</div><div class="stat-card__label">${escapeHtml(t("mcp.books.raw"))}</div></div>
+    <div class="stat-card"><div class="stat-card__value">${bs.baked ?? 0}</div><div class="stat-card__label">${escapeHtml(t("mcp.books.baked"))}</div></div>
+    <div class="stat-card"><div class="stat-card__value">${bs.templates ?? 0}</div><div class="stat-card__label">${escapeHtml(t("mcp.books.statTpl"))}</div></div>`;
+  const listEl = document.getElementById("books-list");
+  if (!listEl) return;
+  const items = bs.items || [];
+  if (!items.length) { listEl.innerHTML = '<div class="empty">' + escapeHtml(t("mcp.books.empty")) + '</div>'; return; }
+  listEl.innerHTML = items.map((b, i) => {
+    const status = b.status === "forging" && b.progress != null
+      ? t("mcp.books.status.forging") + " " + b.progress + "%"
+      : t("mcp.books.status." + (b.status || "queued"));
+    const color = BOOK_STATUS_COLOR[b.status] || BOOK_STATUS_COLOR.queued;
+    const meta = [escapeHtml(t("mcp.books.chapters")) + ": " + (b.chaptersTotal ?? 0),
+                  escapeHtml(t("mcp.books.parsed")) + ": " + (b.chaptersDone ?? 0),
+                  escapeHtml(t("mcp.books.tpl")) + ": " + (b.templates ?? 0)].join(" · ");
+    const fmt = (b.format || "").toUpperCase();
+    return `<div class="book-card">
+      <div class="book-card__name"><div>${escapeHtml(b.name || "—")} <span style="color:var(--text-disabled);font-size:11px">${fmt}${b.size ? " · " + fmtBytes(b.size) : ""}</span></div><div class="book-card__meta">${meta}</div></div>
+      <span class="book-card__status" style="color:${color}">${escapeHtml(status)}</span>
+      <button class="btn btn--success" onclick="forgeBook(${i})" title="${escapeHtml(t("mcp.books.forge.title"))}">${escapeHtml(t("mcp.books.forge"))}</button>
+      <button class="btn btn--danger" onclick="deleteRawBook(${i})" title="${escapeHtml(t("mcp.books.deleteRaw.title"))}">${escapeHtml(t("mcp.books.deleteRaw"))}</button>
+    </div>`;
+  }).join("");
 }
-async function searchGutenberg() {
-  const q = document.getElementById("gutenberg-q").value;
-  if (!q) return;
-  const d = await api();
-  const el = document.getElementById("gutenberg-results");
-  if (!d?.results?.length) { el.innerHTML = '<div class="empty">No results</div>'; return; }
-  el.innerHTML = '<table class="result-table"><tr><th>Style</th><th>Mood</th><th>Description</th></tr>' + d.results.map(r => `<tr><td>${escapeHtml(r.name||"-")}</td><td>${escapeHtml(r.mood||r.mood_tags||"-")}</td><td>${escapeHtml((r.description||"").slice(0,100))}</td></tr>`).join("") + '</table>';
+
+function importBook(input) {
+  const file = input.files && input.files[0];
+  input.value = "";
+  if (!file) return;
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  if (!["txt", "fb2", "md"].includes(ext)) { toast("Only txt, md or fb2 — convert other formats before import", "error"); return; }
+  runAction("books/import: " + file.name);
 }
-async function delexifyGutenberg() {
-  const text = document.getElementById("gutenberg-delex").value;
+
+function forgeBook(i) { runAction("books/forge: " + (i + 1)); }
+
+function deleteRawBook(i) {
+  if (!confirm(t("mcp.books.deleteConfirm"))) return;
+  runAction("books/delete-raw: " + (i + 1));
+}
+
+async function delexifyText() {
+  const text = document.getElementById("books-delex").value;
   if (!text) return;
   const d = await api();
   if (!d) return;
-  document.getElementById("gutenberg-delex-result").innerHTML = '<div class="result-box">' + escapeHtml(d.delexified || d.error || JSON.stringify(d)) + '</div>';
-}
-
-// ── Catalog (Selective Download) ───────────────────────────────
-let catalogPage = 1;
-let catalogSort = 'download_count';
-let catalogOrder = 'desc';
-
-async function loadCatalogStats() {
-  const d = await api();
-  const el = document.getElementById("catalog-stats");
-  if (!d) { el.innerHTML = '<div class="empty">Catalog DB not found</div>'; return; }
-  el.innerHTML = `<div class="stat-card"><div class="stat-card__value">${d.total||0}</div><div class="stat-card__label">Total</div></div><div class="stat-card"><div class="stat-card__value">${d.downloaded||0}</div><div class="stat-card__label">Downloaded</div></div><div class="stat-card"><div class="stat-card__value">${d.selected||0}</div><div class="stat-card__label">Selected</div></div>`;
-}
-
-async function loadCatalogPage(page) {
-  catalogPage = page || 1;
-  const d = await api();
-  if (!d) return;
-  renderCatalogTable(d.books, d.total, d.page, d.totalPages);
-}
-
-function renderCatalogTable(books, total, page, totalPages) {
-  const el = document.getElementById("catalog-results");
-  if (!books?.length) { el.innerHTML = '<div class="empty">' + t("mcp.catalog.empty") + '</div>'; return; }
-  el.innerHTML = '<table class="result-table"><tr><th><input type="checkbox" onchange="toggleAllCatalog(this.checked)"></th><th>#</th><th>' + t("mcp.catalog.colTitle") + '</th><th>' + t("mcp.catalog.colAuthor") + '</th><th>' + t("mcp.catalog.colSubjects") + '</th><th>' + t("mcp.catalog.colDownloads") + '</th><th>' + t("mcp.catalog.colWords") + '</th><th>' + t("mcp.catalog.colStatus") + '</th></tr>' +
-    books.map(b => `<tr><td><input type="checkbox" data-etextno="${b.etextno}" ${b.selected?'checked':''} onchange="toggleCatalogBook(${b.etextno},this.checked)"></td><td>${b.etextno}</td><td>${escapeHtml(b.title)}</td><td>${escapeHtml(b.author)}</td><td>${escapeHtml((b.subjects||[]).slice(0,2).join(', '))}</td><td>${(b.download_count||0).toLocaleString()}</td><td>${(b.word_count||0).toLocaleString()}</td><td>${b.downloaded?'<span style="color:var(--success)">✓</span>':'<span style="color:var(--text-disabled)">—</span>'}</td></tr>`).join("") + '</table>';
-  const pag = document.getElementById("catalog-pagination");
-  pag.innerHTML = `<button class="btn" onclick="loadCatalogPage(${page-1})" ${page<=1?'disabled':''}>` + t("mcp.catalog.prev") + `</button><span style="color:var(--text-secondary);font-size:12px">` + t("mcp.catalog.page") + ` ${page}/${totalPages}</span><button class="btn" onclick="loadCatalogPage(${page+1})" ${page>=totalPages?'disabled':''}>` + t("mcp.catalog.next") + `</button>`;
-}
-
-async function buildCatalog() {
-  const authors = document.getElementById("catalog-authors").value;
-  const topic = document.getElementById("catalog-topic").value;
-  if (!authors && !topic) { toast("Enter authors or topic", "error"); return; }
-  const body = {};
-  if (authors) body.authors = authors.split(",").map(s => s.trim());
-  if (topic) body.topic = topic;
-  const d = await api();
-  if (d?.jobId) {
-    trackProgress(d.jobId, "catalog/build", () => {
-      loadCatalogStats();
-      loadCatalogPage(1);
-    });
-  }
-}
-
-async function buildCatalogPopular() {
-  const d = await api();
-  if (d?.jobId) {
-    trackProgress(d.jobId, "catalog/build/popular", () => {
-      loadCatalogStats();
-      loadCatalogPage(1);
-    });
-  }
-}
-
-async function searchCatalog() {
-  const q = document.getElementById("catalog-q").value;
-  if (!q) return;
-  const d = await api();
-  if (!d?.results?.length) { document.getElementById("catalog-results").innerHTML = '<div class="empty">No results</div>'; return; }
-  renderCatalogTable(d.results, d.results.length, 1, 1);
-}
-
-async function filterCatalog() {
-  const params = new URLSearchParams();
-  const author = document.getElementById("catalog-filter-author").value;
-  const yearFrom = document.getElementById("catalog-filter-year-from").value;
-  const yearTo = document.getElementById("catalog-filter-year-to").value;
-  const minDl = document.getElementById("catalog-filter-min-dl").value;
-  if (author) params.set("author", author);
-  if (yearFrom) params.set("year_from", yearFrom);
-  if (yearTo) params.set("year_to", yearTo);
-  if (minDl) params.set("min_downloads", minDl);
-  const d = await api();
-  if (!d?.results?.length) { document.getElementById("catalog-results").innerHTML = '<div class="empty">No results</div>'; return; }
-  renderCatalogTable(d.results, d.results.length, 1, 1);
-}
-
-function clearCatalogFilter() {
-  document.getElementById("catalog-filter-author").value = "";
-  document.getElementById("catalog-filter-year-from").value = "";
-  document.getElementById("catalog-filter-year-to").value = "";
-  document.getElementById("catalog-filter-min-dl").value = "";
-  loadCatalogPage(1);
-}
-
-async function toggleCatalogBook(etextno, selected) {
-  await api();
-  loadCatalogStats();
-}
-
-function toggleAllCatalog(checked) {
-  const checkboxes = document.querySelectorAll("#catalog-results input[type=checkbox][data-etextno]");
-  checkboxes.forEach(cb => cb.checked = checked);
-}
-
-async function selectAllCatalog() {
-  await api();
-  toast("All selected", "success");
-  loadCatalogPage(catalogPage);
-  loadCatalogStats();
-}
-
-async function deselectAllCatalog() {
-  await api();
-  toast("All deselected", "success");
-  loadCatalogPage(catalogPage);
-  loadCatalogStats();
-}
-
-async function downloadSelectedCatalog() {
-  const d = await api();
-  if (d?.jobId) {
-    trackProgress(d.jobId, "download-selected", () => {
-      loadCatalogStats();
-      loadCatalogPage(1);
-    });
-  } else if (d?.error) {
-    toast(d.error, "error");
-  }
+  document.getElementById("books-delex-result").innerHTML = '<div class="result-box">' + escapeHtml(d.delexified || d.error || JSON.stringify(d)) + '</div>';
 }
 
 // ── Rings (Паганель) ──────────────────────────────────────────
@@ -1011,104 +842,11 @@ function renderCoeffJournal() {
     : "—";
 }
 
-// ── Pipeline ──────────────────────────────────────────────────
-async function loadPipeline() {
-  const d = await api();
-  if (!d) return;
-  const src = d.sources;
-  const inter = d.intermediate;
-  const out = d.outputs;
-
-  // Gutenberg pipeline phase data
-  setPhaseData("download", src.texts.count > 0, src.texts.count + " files");
-  setPhaseData("import", inter.classics.exists, inter.classics.exists ? fmtBytes(inter.classics.size) : "—");
-  setPhaseData("v1", out.compiled.exists, out.compiled.exists ? out.compiled.templates + " templates" : "—");
-  setPhaseData("v2", out.literary.exists, out.literary.exists ? out.literary.sceneTemplates + " scenes, " + out.literary.stylePatterns + " styles" : "—");
-  setPhaseData("calibrate", out.literary.exists, out.literary.exists ? "quality scores" : "—");
-
-  // Arrow states
-  setArrow("download", src.texts.count > 0);
-  setArrow("import", inter.classics.exists);
-  setArrow("v1", out.compiled.exists);
-  setArrow("v2", out.literary.exists);
-
-  // Reconnect to active jobs
-  try {
-    const active = await api();
-    if (active && active.jobs) {
-      for (const job of active.jobs) {
-        reconnectPhaseJob(job.phase, job.id, job.progress, job.stats, job.logs);
-      }
-    }
-  } catch {}
-}
-
-function reconnectPhaseJob(phaseId, jobId, progress, stats, logs) {
-  const statusEl = document.getElementById("phase-" + phaseId + "-status");
-  const btn = document.getElementById("phase-" + phaseId + "-btn");
-  const statsEl = document.getElementById("phase-" + phaseId + "-stats");
-
-  if (!statusEl || !btn) return;
-
-  // Set button to running state
-  statusEl.textContent = progress + "%";
-  statusEl.className = "phase-card__status running";
-  btn.disabled = true;
-  btn.textContent = "Running...";
-  btn.style.setProperty("--phase-progress", progress + "%");
-
-  // Show stats if available
-  if (stats && statsEl) {
-    updateStatsDisplay(statsEl, stats);
-  }
-
-  if (logs && logs.length) {
-    for (const l of logs) addLog(phaseId + " [stderr]: " + l);
-  }
-
-  // Reconnect SSE
-  trackPhaseProgress(phaseId, jobId, "gutenberg/" + phaseId);
-}
-
-function updateStatsDisplay(statsEl, s) {
-  let html = "";
-  if (s.book_title) html += "<div><span>Book</span><span>" + s.book_current + "/" + s.book_total + ": " + escapeHtml(s.book_title.split("::").pop() || s.book_title) + "</span></div>";
-  else if (s.book_current != null) html += "<div><span>Book</span><span>" + s.book_current + "/" + s.book_total + "</span></div>";
-  if (s.chunks_done != null) html += "<div><span>Chunks</span><span>" + s.chunks_done + "</span></div>";
-  if (s.templates != null) html += "<div><span>Templates</span><span>" + s.templates + "</span></div>";
-  if (s.scenes != null) html += "<div><span>Scenes</span><span>" + s.scenes + "</span></div>";
-  if (s.styles != null) html += "<div><span>Styles</span><span>" + s.styles + "</span></div>";
-  if (s.reps_done != null && s.reps_total != null) html += "<div><span>Reps</span><span>" + s.reps_done + "/" + s.reps_total + "</span></div>";
-  if (s.llm_calls != null) html += "<div><span>LLM</span><span>" + s.llm_calls + " calls" + (s.llm_avg_s ? ", avg " + s.llm_avg_s + "s" : "") + (s.llm_elapsed_s != null ? ", current " + s.llm_elapsed_s + "s" : "") + "</span></div>";
-  if (s.errors != null && s.errors > 0) html += "<div><span>Errors</span><span>" + s.errors + "</span></div>";
-  if (s.eta_min != null && s.eta_min > 0) html += "<div><span>ETA</span><span>~" + s.eta_min + "m</span></div>";
-  if (s.elapsed_s != null) {
-    const m = Math.floor(s.elapsed_s / 60);
-    const sec = s.elapsed_s % 60;
-    html += "<div><span>Elapsed</span><span>" + m + "m " + sec + "s</span></div>";
-  }
-  if (html) statsEl.innerHTML = html;
-}
-
-function setPhaseData(id, active, text) {
-  const el = document.getElementById("phase-" + id + "-data");
-  if (el) el.textContent = text;
-  const card = document.getElementById("phase-" + id);
-  if (card) card.style.borderColor = active ? "var(--success)" : "";
-}
-
-function setArrow(id, active) {
-  const el = document.getElementById("arrow-" + id);
-  if (el) el.style.color = active ? "var(--accent)" : "";
-}
-
-// ── System ────────────────────────────────────────────────────
+// ── System (отладка — журналом ковки, без экрана; решения 17.10) ─
 const LOGS = [];
 function addLog(msg) {
   LOGS.unshift({ time: new Date().toLocaleTimeString(), msg });
   if (LOGS.length > 50) LOGS.pop();
-  const el = document.getElementById("system-logs");
-  if (el) el.innerHTML = LOGS.map(l => `<div style="padding:4px 0;border-bottom:1px solid var(--border-light)"><span style="color:var(--text-disabled)">${escapeHtml(l.time)}</span> ${escapeHtml(l.msg)}</div>`).join("");
 }
 
 // ── Actions ───────────────────────────────────────────────────
@@ -1174,110 +912,16 @@ function trackProgress(jobId, path, onDone, onError) {
   es.onerror = () => { es.close(); bar.classList.remove("active"); toast("Connection lost", "error"); onError?.(new Error("Connection lost")); };
 }
 
-async function compactAll() {
-  for (const p of ["gutenberg/compact"]) await runAction(p);
-}
-async function rebuildIndex() { await runAction("rebuild-index"); }
-
-// ── Phase Pipeline ─────────────────────────────────────────────
-function runPhase(path, phaseId) {
-  const statusEl = document.getElementById("phase-" + phaseId + "-status");
-  const btn = document.getElementById("phase-" + phaseId + "-btn");
-  if (!statusEl || !btn) return;
-
-  statusEl.textContent = "running";
-  statusEl.className = "phase-card__status running";
-  btn.disabled = true;
-  btn.textContent = "Running...";
-  btn.style.setProperty("--phase-progress", "0%");
-  const statsEl = document.getElementById("phase-" + phaseId + "-stats");
-  if (statsEl) statsEl.innerHTML = "<div><span>Status</span><span>Initializing...</span></div>";
-  toast("Starting: " + path);
-  addLog("Phase start: " + path);
-
-  tnsStubFetch()
-    .then(r => r.json())
-    .then(data => {
-      const jobId = data.jobId;
-      if (jobId) {
-        trackPhaseProgress(phaseId, jobId, path);
-      } else {
-        setPhaseDone(phaseId, path);
-      }
-    })
-    .catch(err => {
-      setPhaseError(phaseId, path, err.message);
-    });
-}
-
-function setPhaseDone(phaseId, path) {
-  const statusEl = document.getElementById("phase-" + phaseId + "-status");
-  const btn = document.getElementById("phase-" + phaseId + "-btn");
-  if (statusEl) { statusEl.textContent = "done"; statusEl.className = "phase-card__status done"; }
-  if (btn) { btn.textContent = "Done"; btn.style.setProperty("--phase-progress", "100%"); btn.disabled = false; }
-  toast("Completed: " + path, "success");
-  addLog("Phase done: " + path);
-  loadPipeline();
-  setTimeout(() => { if (btn) btn.textContent = "Run"; }, 3000);
-}
-
-function setPhaseError(phaseId, path, msg) {
-  const statusEl = document.getElementById("phase-" + phaseId + "-status");
-  const btn = document.getElementById("phase-" + phaseId + "-btn");
-  if (statusEl) { statusEl.textContent = "error"; statusEl.className = "phase-card__status error"; }
-  if (btn) { btn.textContent = "Error"; btn.style.setProperty("--phase-progress", "0%"); btn.disabled = false; }
-  toast("Error: " + msg, "error");
-  addLog("Phase error: " + path + " — " + msg);
-  setTimeout(() => { if (btn) btn.textContent = "Run"; }, 3000);
-}
-
-function trackPhaseProgress(phaseId, jobId, path) {
-  const statusEl = document.getElementById("phase-" + phaseId + "-status");
-  const btn = document.getElementById("phase-" + phaseId + "-btn");
-  const statsEl = document.getElementById("phase-" + phaseId + "-stats");
-
-  const es = tnsStubEventSource();
-  es.onmessage = (e) => {
-    const d = JSON.parse(e.data);
-    if (btn) btn.style.setProperty("--phase-progress", d.progress + "%");
-    if (statusEl) statusEl.textContent = d.progress + "%";
-    addLog(path + ": " + d.message + " (" + d.progress + "%)");
-
-    if (d.stats && statsEl) {
-      updateStatsDisplay(statsEl, d.stats);
-    }
-    if (d.logs) {
-      for (const l of d.logs) addLog(path + " [stderr]: " + l);
-    }
-
-    if (d.status === "done" || d.status === "error") {
-      es.close();
-      if (d.status === "done") {
-        setPhaseDone(phaseId, path);
-      } else {
-        setPhaseError(phaseId, path, d.message);
-      }
-    }
-  };
-  es.onerror = () => {
-    es.close();
-    setPhaseError(phaseId, path, "Connection lost");
-  };
-}
-
 // ── Init ──────────────────────────────────────────────────────
 function refreshAll() {
   loadDashboard();
-  loadGutenbergStats();
-  loadCatalogStats();
-  loadPipeline();
+  loadBooks();
   loadRings();
 }
 applyI18n();
 refreshAll();
-loadCatalogPage(1);
-// Auto-refresh forge dashboard and rings
-setInterval(() => { loadDashboard(); loadPipeline(); loadRings(); }, 10000);
+// Auto-refresh forge dashboard, books and rings
+setInterval(refreshAll, 10000);
 </script>
 </body>
 </html>
