@@ -1,0 +1,8 @@
+
+
+GLO-1: R-003, R-040, R-117, R-144, R-145
+GLO-2: R-003, R-019, R-162
+GLO-3: R-003, R-040, R-117, R-143, R-145
+GLO-4: skeleton
+GLO-5: R-006, canon-p_executor
+GLO-6: R-005, canon-p_success
