@@ -9,3 +9,5 @@ F-07: R-010, R-008, R-071
 F-08: R-051, R-022, R-024, R-042, R-153
 F-09: R-006, R-010, design-02-monitoring
 F-10: R-056, R-072, ruling-AMBIG-9
+F-11: ruling-18.10-go
+F-12: ruling-18.10-layers
