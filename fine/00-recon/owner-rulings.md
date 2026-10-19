@@ -11,10 +11,9 @@ Source: Telegram chat with owner, 17 Oct 2026, message-by-message on the AMBIG l
 | AMBIG-9 | «Догон с рассказом» vs п.13 pace 1:1 | «2А» + rationale | RESOLVED: grain #56 CANCELLED (contradicts п.13). Owner rationale recorded: the mechanic guarded against player cheating (freezing the world by silence to dodge timed consequences). Anti-abuse guarantee to bake into spec: under 1:1 the world KEEPS LIVING during absence at the same rate — NPC обсчёты run, deferred events fire, return = summary «пока тебя не было» + delayed news; pauses must NEVER be implemented as freeze. |
 | AMBIG-4 | embeddingDimension default: UI 384 vs BGE-M3 1024 | «Ошибка — точно 1024» | RESOLVED: 1024. UI default 384 = stale. |
 | AMBIG-5 | Анкета field count drift (4 core / 13 UI / 14 with режим походов) | «Подробней» → «Да 14 со слагом» | RESOLVED: canonical count = 14 (13 semantic fields + world slug as technical field); режим походов included in the 13 |
-| AMBIG-6 | Режим походов: explicit field (canon) vs genre-derived (DOCS) | — | PENDING (canon wins by priority; DOCS fix queued) |
+| AMBIG-6 | Режим походов: explicit field (canon) vs genre-derived (DOCS) | — | RESOLVED IN SPEC: явное поле запечено в B-01 п.6 и SKELETON [В 17.10]; хвост — старые DOCS (режим всё ещё «из жанров»), задача правки DOCS не заведена (статус синхронизирован 19.10) |
 | AMBIG-7 | Ткач silence threshold ~45 s vs generation 35–55 s | «1 минута» | RESOLVED: threshold = 60 s |
 | AMBIG-8 | Big Five vs Jung for NPC | «Не понял» | SEARCH DONE (Q3): mislabel confirmed — no Big Five/OCEAN in TNS35; hunger/anger are NOT TNS35 fields (only literary corpus text); NPC = state (health/mood/skills) + economy (6 stats, 8 vices, 4 humors) + l3 Jung psychotype, coexist by design; DOCS/MECHANICS.md #53 example = invented, flag stale |
-| AMBIG-9 | «Догон с рассказом» vs п.13 pace 1:1 | — | PENDING |
 | AMBIG-10 | T3 actual progress | — | PENDING (procedural, not spec-blocking) |
 
 ## Дополнительные решения 17.10 (вне списка AMBIG)
