@@ -35,6 +35,7 @@
 - `engine/go.mod`, `engine/go.sum` — модуль `tns65`.
 - `engine/cmd/tns65/main.go` — ядро станка, единственная точка запуска.
 - `engine/cmd/tns65-bake/main.go` — внеигровое запекание сида (D-04).
+- `engine/cmd/tns65-lemmaru/main.go` — резидент лемматизатора русского пакета, протокол T-01-09 (D-13).
 - `engine/internal/<пакет>/` — пакеты ядра: `version`, `journal`, `db`, `netgate`, `portgate`, `supervisor`, `swarm`, `langpack`, `lemmarpc`, `models`, `core`, `birth`, `workshop`, `paganel`, `book`, `webapi`; позже своими задачами заводятся `bake` (T-01-16), `testkit` (T-02-15), `geo` (T-05-13), `turn` и `selector` (P2), `sediment` (P3), `bank` (P2).
 - `engine/internal/db/schema/{base,literary,world}/` — DDL по базам; `engine/internal/db/schema/shared/` — общие миграции (векторы), подключаемые в несколько баз.
 - `engine/scripts/` — `build.sh`, `gates.sh`, `runtests.sh`, `ui-lint.sh`, `ui-check.sh`, `tunnel.sh`.
