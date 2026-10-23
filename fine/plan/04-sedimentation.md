@@ -58,7 +58,7 @@
 ### T-04-04. Вектор смысла и дедуп по смыслу
 - **Атомы:** W-03.4, D-16, D-17.
 - **Выдержки атомов:** W-03.4 — смысловой дедуп отклоняет сцены, дублирующие смысл существующей записи по ключу.
-- **Зависит от:** T-04-02, T-02-07 (клиент эмбеддингов).
+- **Зависит от:** T-04-02, T-02-07 (клиент эмбеддингов), T-02-15.
 - **Создаётся:** `engine/internal/sediment/{vector.go,dedup.go,dedup_test.go}`.
 - **Правится:** `engine/config.yaml` (секция `sediment.dedup_threshold`, по умолчанию 0.85).
 - **Писатель:** `sediment` — вектор пишется строкой `vectors` литературной базы (`owner_table='sediment_scene'`, карта писателей T-01-07).
@@ -152,7 +152,7 @@
 ### T-04-10. Идемпотентность повторного оседания
 - **Атомы:** W-03.4, D-19.
 - **Выдержки атомов:** W-03.4 — дедуп по ключу смысла; повтор не создаёт вторую запись.
-- **Зависит от:** T-04-05.
+- **Зависит от:** T-04-05, T-02-15.
 - **Создаётся:** `engine/internal/db/schema/literary/0002_sediment_idempotency.sql`, `engine/internal/sediment/idempotency_test.go`.
 - **Правится:** `engine/internal/db/migrate.go` (миграция), `engine/internal/db/schema/literary/tables.txt`, `engine/internal/db/literary_test.go`, `engine/internal/sediment/write.go` (поглощение повтора).
 - **Писатель:** `sediment`.

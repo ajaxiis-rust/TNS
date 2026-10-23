@@ -221,7 +221,7 @@
 - **Шаги:**
   1. Замок на файле `engine/state/tns65.lock`: Linux — `flock`, Windows — `LockFileEx`; второй запуск — код 4 с сообщением о работающем ядре, без старта детей.
   2. Замок снимается при штатной остановке; после аварийного выхода не мешает старту.
-- **Проверка:** `cd engine && go test ./internal/supervisor -race -run TestSecondInstance -v` → PASS: два процесса, второй код 4, число запущенных детей не удвоилось.
+- **Проверка:** `cd engine && bash scripts/runtests.sh ./internal/supervisor TestSecondInstance` → PASS: два процесса, второй код 4, число запущенных детей не удвоилось.
 - **Исполнитель:** код.
 
 ---
