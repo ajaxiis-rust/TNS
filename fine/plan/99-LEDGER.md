@@ -41,7 +41,7 @@
 | ID | Задача | Файл плана | Статус | Примечание | Коммит | Дата |
 |---|---|---|---|---|---|---|
 | T-02-01 | Анкета рождения: 14 полей и валидация | 02-birth.md | done | ancketa.go — Ancketa ровно 14 полей (slug/title/description/synopsis/prologue/lang/travel_mode/genres/world_rules/social_order/economy_mods/magic/hero_birth/censorship), embed.FS data/ancketa.json (10 жанров, 11 строёв, 3 режима походов, 4 экономмодификатора, рейтинг 16+/18+), Validate: слаг [a-z0-9-] непустой, синопсис 1–3 предложения, жанры ⊂ канона, строй ровно один, world_rules «название: описание»; отказ — ValidationError с перечнем полей и причин, файлов не создаёт; режим походов задаётся только явно, из жанров не выводится; TestAncketa/TestAncketaData/TestAncketaWorldRules/TestAncketaSynopsisSentences/TestAncketaRejectNoFiles; ревью: попытка 1 — файлы ровно по «Создаётся», fine/ не тронут, тесты не ослаблены, CHECK_EXIT=0 (независимый прогон «Проверки»), gates GATES_EXIT=0 (отчёт кодера) | b186621 | 2026-10-24 |
-| T-02-02 | Потребители полей анкеты | 02-birth.md | todo | — | — | — |
+| T-02-02 | Потребители полей анкеты | 02-birth.md | done | consumers.go (LoadConsumers/CheckConsumers; WorldFrozenFields ровно 5: description/social_order/economy_mods/magic/censorship, WorldReaskedFields — synopsis/hero_birth, B-02.15), data/consumers.json (14 ключей → потребители: список миров, Паганель, Гефест, якорь, пачка, экономика, социальный граф, Пифия, слоты, цензура ковки, режим переигровки), consumers_test.go — TestConsumers (14/14 с потребителем, ключи consumers.json == Fields анкеты в обе стороны, ровно 5 замороженных, переигровка synopsis/hero_birth; отрицательные кейсы: новый ключ без потребителя и лишний ключ — падение); ревью: попытка 1 — файлы ровно по «Создаётся» (fine/ не тронут), тесты не ослаблены, CHECK_EXIT=0 (независимый прогон «Проверки»), gates GATES_EXIT=0 (отчёт кодера) | e3b3050 | 2026-10-24 |
 | T-02-03 | Рождение: папка мира и две базы | 02-birth.md | todo | — | — | — |
 | T-02-04 | Пачка из 96 карточек | 02-birth.md | todo | — | — | — |
 | T-02-05 | Психотипная модель и профиль психотипа | 02-birth.md | todo | — | — | — |
@@ -191,7 +191,7 @@
 
 ## Итог
 
-Всего задач: 129. Закрыто: 17 (T-01-01…T-01-16, T-02-01; T-01-06/07/08 — Grok Build workflow «кодер DeepSeek → ревьюер MiMo»). Заблокировано: 1 (`blocked-dep` — T-03-18, ждёт готовности движка и UI; все вилки B-1…B-5 закрыты 20.10, B-1 — выбором готовой библиотеки).
+Всего задач: 129. Закрыто: 18 (T-01-01…T-01-16, T-02-01…T-02-02; T-01-06/07/08 — Grok Build workflow «кодер DeepSeek → ревьюер MiMo»). Заблокировано: 1 (`blocked-dep` — T-03-18, ждёт готовности движка и UI; все вилки B-1…B-5 закрыты 20.10, B-1 — выбором готовой библиотеки).
 
 ## Журнал решений и вопросов
 
