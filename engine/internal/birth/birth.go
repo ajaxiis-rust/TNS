@@ -46,6 +46,9 @@ type Config struct {
 	Embed          models.Embedder // эмбеддер векторов смысла; nil — клиент :5002.
 	EmbedURL       string          // адрес эмбеддера для клиента по умолчанию; пусто — 127.0.0.1:5002.
 	MatchThreshold float64         // порог косинусной близости якоря; 0 — 0.5.
+	GazetteerPath  string          // путь к газетиру seed/gazetteer.jsonl; пусто — "seed/gazetteer.jsonl".
+	GeoRadiusDays  float64         // радиус стартового региона в днях пути; 0 — 3.
+	DayNormKm      float64         // норма дня пути в км; 0 — 25 (T-06-02).
 }
 
 // Result — созданный мир.
@@ -67,6 +70,10 @@ const stateFileName = "state"
 // defaultEmbedURL — адрес эмбеддера векторов смысла :5002 (T-02-07, «Создаётся»
 // models/embed.go); подменяется полем Config.Embed в тестах.
 const defaultEmbedURL = "http://127.0.0.1:5002"
+
+// defaultGazetteerPath — путь к газетиру сида относительно рабочего каталога
+// ядра (engine/): seed/gazetteer.jsonl (T-02-16, шаг 2).
+const defaultGazetteerPath = "seed/gazetteer.jsonl"
 
 // Birth рождает мир по анкете (B-03.1): каталог worlds/<slug>/ с оперативной
 // базой и литературной, 14 ключей анкеты и якорь сценарной рамки в world_meta.
@@ -137,6 +144,19 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 		embedder = c
 	}
 
+	gazetteerPath := cfg.GazetteerPath
+	if gazetteerPath == "" {
+		gazetteerPath = defaultGazetteerPath
+	}
+	geoRadiusDays := cfg.GeoRadiusDays
+	if geoRadiusDays <= 0 {
+		geoRadiusDays = defaultGeoRadiusDays
+	}
+	dayNormKm := cfg.DayNormKm
+	if dayNormKm <= 0 {
+		dayNormKm = defaultDayNormKm
+	}
+
 	b := &builder{
 		a:              a,
 		dir:            dir,
@@ -148,6 +168,9 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 		baseDBPath:     baseDBPath,
 		embedder:       embedder,
 		matchThreshold: cfg.MatchThreshold,
+		gazetteerPath:  gazetteerPath,
+		geoRadiusDays:  geoRadiusDays,
+		dayNormKm:      dayNormKm,
 	}
 
 	if err := b.run(cfg); err != nil {
@@ -175,6 +198,9 @@ type builder struct {
 	baseDBPath     string
 	embedder       models.Embedder
 	matchThreshold float64
+	gazetteerPath  string
+	geoRadiusDays  float64
+	dayNormKm      float64
 }
 
 type birthStep struct {
@@ -182,7 +208,8 @@ type birthStep struct {
 	fn   func(b *builder) error
 }
 
-// steps — цепочка рождения. Шов для следующей задачи: география — T-02-16.
+// steps — цепочка рождения. География (T-02-16) идёт после якоря, до готовности:
+// падение любого шага откатывает рождение (T-02-03, шаг 4).
 func (b *builder) steps() []birthStep {
 	return []birthStep{
 		{name: "world_db", fn: (*builder).createWorldDB},
@@ -192,6 +219,7 @@ func (b *builder) steps() []birthStep {
 		{name: "orders", fn: (*builder).enqueueOrders},
 		{name: "seed", fn: (*builder).seedLiteraryBase},
 		{name: "anchor", fn: (*builder).anchor},
+		{name: "geo", fn: (*builder).geoSeed},
 		{name: "ready", fn: (*builder).markReady},
 	}
 }
