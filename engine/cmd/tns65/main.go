@@ -1,12 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"tns65/internal/birth"
 	"tns65/internal/journal"
 	"tns65/internal/langpack"
 	"tns65/internal/portgate"
@@ -28,6 +32,15 @@ func main() {
 	case "lang":
 		if err := runLang(args[1:]); err != nil {
 			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	case "world":
+		if err := runWorld(args[1:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			var ee *birth.ExitError
+			if errors.As(err, &ee) {
+				os.Exit(ee.Code)
+			}
 			os.Exit(1)
 		}
 	default:
@@ -112,5 +125,48 @@ func listPacks() error {
 			fmt.Printf("%s %s\n", it.ID, it.Version)
 		}
 	}
+	return nil
+}
+
+func runWorld(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("tns65 world: missing command (birth)")
+	}
+	switch args[0] {
+	case "birth":
+		return runWorldBirth(args[1:])
+	default:
+		return fmt.Errorf("tns65 world: unknown command %q", args[0])
+	}
+}
+
+// runWorldBirth — подкоманда world birth --ancketa <файл>: рождение мира по
+// анкете без интерфейса (T-02-03). Код выхода: 2 — невалидная анкета,
+// 6 — слаг уже существует.
+func runWorldBirth(args []string) error {
+	fs := flag.NewFlagSet("world birth", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	ancketaPath := fs.String("ancketa", "", "путь к файлу анкеты (JSON)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *ancketaPath == "" {
+		return fmt.Errorf("tns65 world birth: флаг --ancketa обязателен")
+	}
+
+	data, err := os.ReadFile(*ancketaPath)
+	if err != nil {
+		return fmt.Errorf("tns65 world birth: %w", err)
+	}
+	var a birth.Ancketa
+	if err := json.Unmarshal(data, &a); err != nil {
+		return fmt.Errorf("tns65 world birth: чтение анкеты: %w", err)
+	}
+
+	res, err := birth.Birth(&a, birth.Config{})
+	if err != nil {
+		return err
+	}
+	fmt.Printf("мир %q создан: %s\n", res.Slug, res.Dir)
 	return nil
 }
