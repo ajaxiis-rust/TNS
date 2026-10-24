@@ -3,6 +3,8 @@ package db
 import (
 	"database/sql"
 
+	"tns65/internal/journal"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -38,4 +40,44 @@ func OpenReader(path string) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
+}
+
+// Handle — открытая база с тегом писателя (T-01-07). Запись — только через
+// Handle.Exec/Tx (writers.go), которые сверяют таблицу с картой писателей.
+type Handle struct {
+	db     *sql.DB
+	dbName DB
+	writer Writer
+	logger *journal.Logger
+}
+
+// OpenWriterAs открывает базу на запись и помечает хэндл тегом dbName/writer.
+func OpenWriterAs(path string, dbName DB, writer Writer, logger *journal.Logger) (*Handle, error) {
+	db, err := OpenWriter(path)
+	if err != nil {
+		return nil, err
+	}
+	return &Handle{db: db, dbName: dbName, writer: writer, logger: logger}, nil
+}
+
+// OpenReaderAs открывает базу только на чтение и помечает хэндл тегом.
+func OpenReaderAs(path string, dbName DB, writer Writer, logger *journal.Logger) (*Handle, error) {
+	db, err := OpenReader(path)
+	if err != nil {
+		return nil, err
+	}
+	return &Handle{db: db, dbName: dbName, writer: writer, logger: logger}, nil
+}
+
+// Close закрывает базу.
+func (h *Handle) Close() error { return h.db.Close() }
+
+// Query — чтение произвольным SQL (запись идёт только через Exec/Tx).
+func (h *Handle) Query(query string, args ...any) (*sql.Rows, error) {
+	return h.db.Query(query, args...)
+}
+
+// QueryRow — чтение одной строки.
+func (h *Handle) QueryRow(query string, args ...any) *sql.Row {
+	return h.db.QueryRow(query, args...)
 }
