@@ -33,6 +33,12 @@ type TurnState struct {
 	Lemmatizer Lemmatizer
 	// Cut — результат резки реплики (T-03-02) в памяти хода.
 	Cut Cut
+	// Prepath — результат предварительного пути (T-03-03): намерение, настроение,
+	// рамка сцены, предвыбор и собранный промпт без токенов-заменителей.
+	Prepath Prepath
+	// Bindings — привязки токенов биндера до подтверждения (T-03-03); на коммите
+	// хода пишутся в token_bindings (T-03-05).
+	Bindings []Binding
 }
 
 // fallbackReply — нейтральная запись fallback из банка (T-03-01, шаг 5): до путей
@@ -45,7 +51,7 @@ const fallbackReply = "Мир слушает, но пока не находит 
 func (p *Pipeline) stages() []Stage {
 	return []Stage{
 		&cutStage{logger: p.Logger},
-		&prepathStage{},
+		&prepathStage{db: p.DB},
 		&confirmStage{},
 		&selectStage{},
 		&executeStage{},
@@ -130,11 +136,72 @@ func (s *cutStage) degrade(st *TurnState, err error) {
 	}
 }
 
-// prepathStage — предварительный путь (заполняется T-03-03).
-type prepathStage struct{}
+// prepathStage — предварительный путь (T-03-03): гипотеза намерения лексиконом
+// языкового пакета без LLM, настроение реплики, рамка сцены из механики и
+// предвыбор; биндер закрывает токены-заменители, привязки живут в памяти до
+// подтверждения.
+type prepathStage struct {
+	db      *db.Handle
+	lexicon *Lexicon
+	binder  *SlotBinder
+}
 
-func (*prepathStage) Name() string                          { return "prepath" }
-func (*prepathStage) Run(context.Context, *TurnState) error { return nil }
+func (*prepathStage) Name() string { return "prepath" }
+
+func (s *prepathStage) Run(_ context.Context, st *TurnState) error {
+	lex := s.lexicon
+	if lex == nil {
+		lex = loadDefaultLexicon()
+	}
+	binder := s.binder
+	if binder == nil {
+		binder = NewSlotBinder(Roster{})
+	}
+
+	lemmas := collectLemmas(st.Cut)
+	intent := hypothesizeIntent(lemmas, lex)
+	mood := detectMood(lemmas, lex)
+	frame := s.assembleFrame(st)
+	sel := preselect(intent, mood)
+	template := promptTemplate(sel)
+
+	mentions := binder.DetectMentions(st.Input.PlayerText)
+	prompt, bindings := binder.Bind(template, mentions, 0, 0)
+
+	st.Prepath = Prepath{
+		Intent:    intent,
+		Mood:      mood,
+		Frame:     frame,
+		Preselect: sel,
+		Template:  template,
+		Prompt:    prompt,
+	}
+	st.Bindings = append(st.Bindings, bindings...)
+	return nil
+}
+
+// assembleFrame собирает рамку сцены из механики: место и настроение героя из
+// character_state, от слов реплики не зависят.
+func (s *prepathStage) assembleFrame(_ *TurnState) SceneFrame {
+	var f SceneFrame
+	if s.db == nil {
+		return f
+	}
+	_ = s.db.QueryRow(`SELECT place_id, mood FROM character_state WHERE character_id = 0`).
+		Scan(&f.HeroPlaceID, &f.HeroMood)
+	return f
+}
+
+// loadDefaultLexicon загружает лексикон языкового пакета по умолчанию из
+// packs/ru; при отсутствии пакета гипотеза намерения и настроение не считаются,
+// ход при этом не прерывается.
+func loadDefaultLexicon() *Lexicon {
+	lex, err := LoadLexicon("packs/ru")
+	if err != nil {
+		return nil
+	}
+	return lex
+}
 
 // confirmStage — подтверждение смысла (заполняется T-03-04).
 type confirmStage struct{}
