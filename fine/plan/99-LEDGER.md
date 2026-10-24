@@ -19,7 +19,7 @@
 
 | ID | Задача | Файл плана | Статус | Примечание | Коммит | Дата |
 |---|---|---|---|---|---|---|
-| T-01-01 | Модуль, сборка, статичный бинарник | 01-foundation.md | todo | — | — | — |
+| T-01-01 | Модуль, сборка, статичный бинарник | 01-foundation.md | done | Модуль tns65 (go 1.27), --version, build.sh (3 цели + tns65/tns65-bake, statically linked), gates.sh (gofmt/vet/-race/devnull), runtests.sh (защита от ложно-зелёного -run); ревью: шаг 2 и 3 — FAIL→фикс→PASS | 7c7afa1 | 2026-10-24 |
 | T-01-02 | Раскладка пакетов и направление импортов | 01-foundation.md | todo | — | — | — |
 | T-01-03 | Журнал станка | 01-foundation.md | todo | — | — | — |
 | T-01-04 | DDL base.db и мигратор | 01-foundation.md | todo | — | — | — |
