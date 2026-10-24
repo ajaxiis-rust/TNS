@@ -35,6 +35,7 @@ func (e *ExitError) Unwrap() error { return e.Err }
 // Config — параметры рождения мира.
 type Config struct {
 	WorldsRoot string          // корень каталога миров; пусто — db.WorldsRoot.
+	PacksRoot  string          // корень каталога пакетов; пусто — "packs".
 	Logger     *journal.Logger // журнал станка; может быть nil.
 	FailStep   string          // тестовый крючок: имя шага, на котором упасть.
 	ProseCalls *int            // тестовый счётчик вызовов слота прозы (гвардия B-04.1).
@@ -66,6 +67,10 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 	root := cfg.WorldsRoot
 	if root == "" {
 		root = db.WorldsRoot
+	}
+	packsRoot := cfg.PacksRoot
+	if packsRoot == "" {
+		packsRoot = "packs"
 	}
 
 	// Шаг 1: валидация до создания каталога — единственная точка входа рождения
@@ -113,6 +118,7 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 		literaryDB: filepath.Join(dir, "literary.db"),
 		logger:     cfg.Logger,
 		packCalls:  cfg.PackCalls,
+		packsRoot:  packsRoot,
 	}
 
 	if err := b.run(cfg); err != nil {
@@ -136,6 +142,7 @@ type builder struct {
 	literaryDB string
 	logger     *journal.Logger
 	packCalls  *int
+	packsRoot  string
 }
 
 type birthStep struct {
@@ -143,8 +150,8 @@ type birthStep struct {
 	fn   func(b *builder) error
 }
 
-// steps — цепочка рождения. Швы для следующих задач: pack — T-02-04, якорь —
-// T-02-07, заказы — T-02-11, сид — T-02-13, география — T-02-16.
+// steps — цепочка рождения. Швы для следующих задач: якорь — T-02-07,
+// география — T-02-16.
 func (b *builder) steps() []birthStep {
 	return []birthStep{
 		{name: "world_db", fn: (*builder).createWorldDB},
@@ -152,6 +159,7 @@ func (b *builder) steps() []birthStep {
 		{name: "world_meta", fn: (*builder).writeWorldMeta},
 		{name: "pack", fn: (*builder).pack},
 		{name: "orders", fn: (*builder).enqueueOrders},
+		{name: "seed", fn: (*builder).seedLiteraryBase},
 		{name: "ready", fn: (*builder).markReady},
 	}
 }
