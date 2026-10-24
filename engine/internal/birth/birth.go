@@ -200,10 +200,37 @@ func (b *builder) writeWorldMeta() error {
 	return nil
 }
 
-// pack — пачка из 96 карточек (T-02-04). В этой задаче шаг пуст, но присутствует
-// как шов цепочки рождения: падение здесь откатывает рождение (шаг 4).
+// pack — пачка из 96 карточек (T-02-04): 16 психотипов × 6 сословий в characters
+// оперативной базы хэндлом core (карта писателей T-01-07). Падение здесь
+// откатывает рождение (шаг 4).
 func (b *builder) pack() error {
-	return nil
+	cards, err := Pack(b.a)
+	if err != nil {
+		return err
+	}
+
+	h, err := db.OpenWriterAs(b.worldDB, db.DBWorld, db.WriterCore, b.logger)
+	if err != nil {
+		return err
+	}
+	defer h.Close()
+
+	// Имя NPC — не часть пачки (B-05.3): поле characters.name пусто, имя
+	// назначается в живом ходе.
+	return h.Tx(db.WriterCore, func(tx *db.Tx) error {
+		for _, c := range cards {
+			raw, err := json.Marshal(c)
+			if err != nil {
+				return err
+			}
+			if _, err := tx.Exec("characters",
+				`INSERT INTO characters (name, psychotype, estate, card_json) VALUES (?, ?, ?, ?)`,
+				"", c.Psychotype, c.Estate, string(raw)); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // markReady — финальное состояние ready (шаг 4).
