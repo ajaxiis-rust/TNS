@@ -132,6 +132,57 @@ func TestBirthDuplicateSlug(t *testing.T) {
 	}
 }
 
+func TestNoProseAtBirth(t *testing.T) {
+	dir := t.TempDir()
+	var proseCalls int
+	res, err := Birth(validAncketa(), Config{WorldsRoot: dir, ProseCalls: &proseCalls})
+	if err != nil {
+		t.Fatalf("Birth: %v", err)
+	}
+
+	// Шаг 2: цепочка рождения не вызывала слот прозы.
+	if proseCalls != 0 {
+		t.Fatalf("вызовов слота прозы: %d, want 0", proseCalls)
+	}
+
+	// Шаг 1: три таблицы живого хода пусты.
+	worldDB := openReader(t, res.WorldDB)
+	for _, table := range []string{"scenes", "turns", "book_text"} {
+		var n int
+		if err := worldDB.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&n); err != nil {
+			t.Fatalf("%s count: %v", table, err)
+		}
+		if n != 0 {
+			t.Fatalf("%s: %d строк, want 0", table, n)
+		}
+	}
+}
+
+func TestNoProseAtBirthRejectsSeededProse(t *testing.T) {
+	dir := t.TempDir()
+	res, err := Birth(validAncketa(), Config{WorldsRoot: dir})
+	if err != nil {
+		t.Fatalf("Birth: %v", err)
+	}
+
+	// Готовая сцена, записанная мимо цепочки, обязана быть замечена гвардией.
+	h, err := db.OpenWriterAs(res.WorldDB, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs: %v", err)
+	}
+	if _, err := h.Exec("scenes",
+		`INSERT INTO scenes (session_id, day, status, prose) VALUES (0, 1, 'open', 'готовый текст')`); err != nil {
+		t.Fatalf("INSERT scenes: %v", err)
+	}
+	if err := h.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	if err := checkNoProseAtBirth(res.WorldDB, nil); err == nil {
+		t.Fatal("гвардия не заметила готовую прозу в scenes")
+	}
+}
+
 func openReader(t *testing.T, path string) *sql.DB {
 	t.Helper()
 	d, err := db.OpenReader(path)

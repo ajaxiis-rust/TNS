@@ -36,6 +36,7 @@ type Config struct {
 	WorldsRoot string          // корень каталога миров; пусто — db.WorldsRoot.
 	Logger     *journal.Logger // журнал станка; может быть nil.
 	FailStep   string          // тестовый крючок: имя шага, на котором упасть.
+	ProseCalls *int            // тестовый счётчик вызовов слота прозы (гвардия B-04.1).
 }
 
 // Result — созданный мир.
@@ -150,7 +151,8 @@ func (b *builder) run(cfg Config) error {
 			return fmt.Errorf("birth: шаг %q: %w", s.name, err)
 		}
 	}
-	return nil
+	// Гвардия B-04.1: рождение не создаёт готовой прозы и не зовёт слот прозы.
+	return checkNoProseAtBirth(b.worldDB, cfg.ProseCalls)
 }
 
 // createWorldDB — оперативная база <slug>.db по схеме world + shared vectors.
@@ -236,6 +238,30 @@ func (b *builder) pack() error {
 // markReady — финальное состояние ready (шаг 4).
 func (b *builder) markReady() error {
 	return writeState(b.dir, stateReady)
+}
+
+// checkNoProseAtBirth — гвардия B-04.1: при рождении не создаётся ни одной
+// готовой сцены, реплики или главы живого хода. Три таблицы оперативной базы
+// пусты, а слот прозы цепочкой рождения не вызывался (счётчик 0).
+func checkNoProseAtBirth(worldDB string, proseCalls *int) error {
+	if proseCalls != nil && *proseCalls != 0 {
+		return fmt.Errorf("birth: вызовов слота прозы %d, ожидалось 0", *proseCalls)
+	}
+	d, err := db.OpenReader(worldDB)
+	if err != nil {
+		return fmt.Errorf("birth: открыть базу для гвардии прозы: %w", err)
+	}
+	defer d.Close()
+	for _, table := range []string{"scenes", "turns", "book_text"} {
+		var n int
+		if err := d.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&n); err != nil {
+			return fmt.Errorf("birth: проверить %s: %w", table, err)
+		}
+		if n != 0 {
+			return fmt.Errorf("birth: %s непуста: %d строк", table, n)
+		}
+	}
+	return nil
 }
 
 // ancketaValues — пары «ключ — JSON-значение» для 14 полей анкеты в порядке Fields.
