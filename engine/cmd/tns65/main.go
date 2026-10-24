@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -36,10 +37,21 @@ func main() {
 }
 
 // run — старт ядра. Порядок: замок одного экземпляра (T-01-14) → порт-гейт
-// (T-01-12) → надзиратель резидентов (T-01-13). Замок заводит следующая
-// задача; здесь ядро сверяет слушающие сокеты с белым списком и держит
-// резидентов до SIGTERM/SIGINT.
+// (T-01-12) → надзиратель резидентов (T-01-13). Ядро держит резидентов до
+// SIGTERM/SIGINT; замок снимается при выходе из run.
 func run() int {
+	// T-01-14: захват замка до старта детей. Второй запуск — код 4.
+	lock, err := supervisor.Acquire("state/tns65.lock")
+	if err != nil {
+		if errors.Is(err, supervisor.ErrAlreadyRunning) {
+			fmt.Fprintln(os.Stderr, "tns65: core is already running")
+			return 4
+		}
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer lock.Release()
+
 	logger, err := journal.New("state/journal/engine.log")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
