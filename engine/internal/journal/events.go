@@ -14,4 +14,5 @@ const (
 	EventWebAccess            = "web.access"
 	EventEmbedFail            = "embed.fail"
 	EventAnchorForced         = "birth.anchor_forced"
+	EventTurnStage            = "turn.stage"
 )

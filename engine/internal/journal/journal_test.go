@@ -29,6 +29,7 @@ func TestEventsUnique(t *testing.T) {
 		EventWebAccess,
 		EventEmbedFail,
 		EventAnchorForced,
+		EventTurnStage,
 	}
 
 	// Значения уникальны (нет дублей).
@@ -53,6 +54,7 @@ func TestEventsUnique(t *testing.T) {
 		"web.access",
 		"embed.fail",
 		"birth.anchor_forced",
+		"turn.stage",
 	}
 	got := append([]string(nil), events...)
 	sort.Strings(got)
