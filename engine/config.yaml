@@ -1,0 +1,9 @@
+# Единый сетевой гейт (T-01-11): белый список внешних хостов.
+# Запись — hostname (`host`) или диапазон (`host/cidr`). Проверка выполняется по
+# hostname до установки соединения; редирект за пределы списка не выполняется.
+netgate:
+  allowed_hosts:
+    - generativelanguage.googleapis.com  # внешний API слота (Gemini, B-4)
+    - huggingface.co                      # HF — менеджер моделей (MD-09.1)
+    - region1.v2.argotunnel.com           # край туннеля cloudflared (F-04.3)
+    - region2.v2.argotunnel.com           # край туннеля cloudflared (F-04.3)
