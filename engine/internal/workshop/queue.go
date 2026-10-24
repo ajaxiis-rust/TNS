@@ -1,8 +1,10 @@
 package workshop
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"tns65/internal/db"
@@ -115,7 +117,7 @@ func Presets() []Preset {
 }
 
 // GenSlot — адрес слота генерации для пресета; внешние пресеты локального адреса
-// не имеют. Выбор слота по пресету — T-02-14.
+// не имеют. Адрес пишется в model_bindings; сам генератор выбирает slotForProvider.
 func GenSlot(p Provider) string {
 	if p == ProviderLocal {
 		return localGenAddr
@@ -123,20 +125,80 @@ func GenSlot(p Provider) string {
 	return ""
 }
 
-// Enqueue ставит заказ kind в очередь мира хэндлом core (статус queued) и
-// привязывает его к слоту по пресету через model_bindings (шаг 3). Статус заказа
-// меняет только ядро; снаружи заказ создаётся только queued.
+// Slot — слот генерации (T-02-14): по роли и промпту возвращает текст ответа.
+// Для пресета local это локальный станок :5001 (адрес — GenSlot); его HTTP-клиент
+// подключается задачей T-03-08, до того генерация не выполняется.
+type Slot interface {
+	Generate(ctx context.Context, role, prompt string) (string, error)
+}
+
+// curSlot — подменяемый слот очереди: тесты ставят testkit.FakeSlot через SetSlot.
+// В производстве до исполнителя очереди (P4) слота нет — заказы только ставятся
+// (T-02-11, шаг 2), выбор ограничивается адресом в model_bindings.
+var (
+	slotMu  sync.RWMutex
+	curSlot Slot
+)
+
+// SetSlot подменяет слот очереди (тестовая точка входа T-02-14); nil — заводской.
+func SetSlot(s Slot) {
+	slotMu.Lock()
+	defer slotMu.Unlock()
+	curSlot = s
+}
+
+// slotForProvider — выбор слота по пресету (T-02-11, шаг 3; T-02-14, шаг 1).
+// Подменённый тестом слот обслуживает любой пресет; в производстве до T-03-08
+// генератор не подключён, поэтому возвращается nil.
+func slotForProvider(_ Provider) Slot {
+	slotMu.RLock()
+	defer slotMu.RUnlock()
+	return curSlot
+}
+
+// Enqueue ставит заказ kind в очередь мира хэндлом core (статус queued),
+// привязывает его к слоту по пресету через model_bindings (шаг 3) и пробует
+// выполнить через слот (T-02-14). Статус заказа меняет только ядро; снаружи заказ
+// создаётся только queued.
 func Enqueue(h *db.Handle, kind Kind, step Step, provider Provider, payload any) error {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("workshop: payload заказа %s: %w", kind, err)
 	}
-	if _, err := h.Exec("workshop_queue",
+	res, err := h.Exec("workshop_queue",
 		`INSERT INTO workshop_queue (kind, payload_json, priority, status, step, resumable, attempts, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		string(kind), string(raw), KindPriority(kind), string(StatusQueued), string(step), 0, 0, nowUTC()); err != nil {
+		string(kind), string(raw), KindPriority(kind), string(StatusQueued), string(step), 0, 0, nowUTC())
+	if err != nil {
 		return err
 	}
-	return bindSlot(h, kind, provider)
+	if err := bindSlot(h, kind, provider); err != nil {
+		return err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	attempt(h, id, kind, provider, string(raw))
+	return nil
+}
+
+// attempt пробует выполнить заказ через слот по пресету (T-02-14, шаги 1–2).
+// Отказ локального слота не отменяет рождение и не теряет заказ: attempts растёт,
+// статус остаётся queued. Успех кладёт ответ в checkpoint_json — до исполнителя
+// очереди (P4) заказ всё равно остаётся queued (T-02-11, шаг 2).
+func attempt(h *db.Handle, id int64, kind Kind, provider Provider, prompt string) {
+	slot := slotForProvider(provider)
+	if slot == nil {
+		return
+	}
+	out, err := slot.Generate(context.Background(), string(kind), prompt)
+	if err != nil {
+		_, _ = h.Exec("workshop_queue",
+			`UPDATE workshop_queue SET attempts = attempts + 1 WHERE id = ?`, id)
+		return
+	}
+	_, _ = h.Exec("workshop_queue",
+		`UPDATE workshop_queue SET checkpoint_json = ? WHERE id = ?`, out, id)
 }
 
 // EnqueueBirthOrders — постановка двух заказов рождения (шаг 2): analysis
