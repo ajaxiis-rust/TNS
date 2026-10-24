@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"tns65/internal/db"
+	"tns65/internal/journal"
+	"tns65/internal/models"
 )
 
 // Stage — одна стадия конвейера хода (T-03-01, шаг 2).
@@ -22,6 +24,15 @@ type TurnState struct {
 	Reply     string // накапливаемый ответ игроку.
 	Degraded  bool
 	LatencyMS int64
+
+	// TurnID — номер хода в памяти: связывает векторы резки (T-03-02, шаг 2).
+	TurnID int64
+	// Embedder — эмбеддер векторов смысла (T-02-07); nil — резка без векторов.
+	Embedder models.Embedder
+	// Lemmatizer — клиент лемматизации (T-01-09); nil — резка без лемм.
+	Lemmatizer Lemmatizer
+	// Cut — результат резки реплики (T-03-02) в памяти хода.
+	Cut Cut
 }
 
 // fallbackReply — нейтральная запись fallback из банка (T-03-01, шаг 5): до путей
@@ -33,7 +44,7 @@ const fallbackReply = "Мир слушает, но пока не находит 
 // добавляет свою стадию отдельным файлом и одной строкой реестра.
 func (p *Pipeline) stages() []Stage {
 	return []Stage{
-		&cutStage{},
+		&cutStage{logger: p.Logger},
 		&prepathStage{},
 		&confirmStage{},
 		&selectStage{},
@@ -43,11 +54,81 @@ func (p *Pipeline) stages() []Stage {
 	}
 }
 
-// cutStage — резка реплики (заполняется T-03-02).
-type cutStage struct{}
+// cutStage — резка реплики (T-03-02): сегменты по знакам препинания, лемматизация
+// и векторизация — вектор целой реплики, по вектору на сегмент и ранние векторы
+// по словам. Писатель отсутствует: векторы живут в st.Cut до подтверждения
+// (T-03-05).
+type cutStage struct {
+	logger *journal.Logger
+}
 
-func (*cutStage) Name() string                          { return "cut" }
-func (*cutStage) Run(context.Context, *TurnState) error { return nil }
+func (*cutStage) Name() string { return "cut" }
+
+func (s *cutStage) Run(ctx context.Context, st *TurnState) error {
+	if st.TurnID == 0 {
+		st.TurnID = nextTurnID()
+	}
+	cut := Cut{TurnID: st.TurnID}
+
+	segments := cutReplica(st.Input.PlayerText)
+	embedder := st.Embedder
+	lemmatizer := st.Lemmatizer
+
+	// Вектор целой реплики (шаг 2): контроль — по точке целой реплики (LT-02.3).
+	if embedder != nil {
+		if v, err := embedder.Embed(ctx, st.Input.PlayerText); err != nil {
+			s.degrade(st, err)
+		} else {
+			cut.Whole = v
+		}
+	}
+
+	for _, text := range segments {
+		seg := Segment{Text: text}
+		if lemmatizer != nil {
+			if toks, err := lemmatizer.Lemmatize(text); err == nil {
+				for _, tok := range toks {
+					seg.Lemmas = append(seg.Lemmas, tok.Lemma)
+				}
+			}
+			// Ошибка лемматизатора оставляет леммы пустыми; событие lemma.fail
+			// пишет клиент (T-01-09).
+		}
+		if embedder != nil {
+			if v, err := embedder.Embed(ctx, text); err != nil {
+				s.degrade(st, err)
+			} else {
+				seg.Vector = v
+			}
+		}
+		cut.Segments = append(cut.Segments, seg)
+	}
+
+	// Ранние векторы по словам (шаг 3): идут на входе без слота генерации,
+	// промежуточные векторы коммит не снимает.
+	if embedder != nil {
+		for _, w := range splitWords(st.Input.PlayerText) {
+			if v, err := embedder.Embed(ctx, w); err != nil {
+				s.degrade(st, err)
+			} else {
+				cut.Words = append(cut.Words, WordVector{Word: w, Vector: v})
+			}
+		}
+	}
+
+	st.Cut = cut
+	return nil
+}
+
+// degrade — ошибка эмбеддера: событие embed.fail в журнал и пометка деградации
+// хода (деградацию обрабатывает T-03-08).
+func (s *cutStage) degrade(st *TurnState, err error) {
+	st.Degraded = true
+	if s.logger != nil {
+		_ = s.logger.Event("turn", journal.EventEmbedFail,
+			journal.Field{Key: "err", Value: err.Error()})
+	}
+}
 
 // prepathStage — предварительный путь (заполняется T-03-03).
 type prepathStage struct{}
