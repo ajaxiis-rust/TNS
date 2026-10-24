@@ -1,0 +1,6 @@
+characters
+narratives
+patterns
+schema_migrations
+vectors
+verses
