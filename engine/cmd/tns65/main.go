@@ -3,10 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"tns65/internal/journal"
 	"tns65/internal/langpack"
 	"tns65/internal/portgate"
+	"tns65/internal/supervisor"
 	"tns65/internal/version"
 )
 
@@ -33,8 +36,9 @@ func main() {
 }
 
 // run — старт ядра. Порядок: замок одного экземпляра (T-01-14) → порт-гейт
-// (T-01-12) → надзиратель резидентов (T-01-13). Замок и надзиратель заводят
-// свои задачи; здесь ядро уже сверяет слушающие сокеты с белым списком.
+// (T-01-12) → надзиратель резидентов (T-01-13). Замок заводит следующая
+// задача; здесь ядро сверяет слушающие сокеты с белым списком и держит
+// резидентов до SIGTERM/SIGINT.
 func run() int {
 	logger, err := journal.New("state/journal/engine.log")
 	if err != nil {
@@ -51,7 +55,20 @@ func run() int {
 		return code
 	}
 
-	// T-01-13: запуск и лечение резидентов — подключается следующей задачей.
+	// T-01-13: ядро-надзиратель запускает, лечит и останавливает резидентов.
+	children, err := supervisor.Load("config.yaml")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	sup := supervisor.New(logger, children)
+	sup.Run()
+
+	// T-01-13, шаг 4: по SIGTERM и SIGINT дети гасятся в обратном порядке.
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	<-sig
+	sup.Stop()
 	return 0
 }
 
