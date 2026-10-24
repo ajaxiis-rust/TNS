@@ -8,13 +8,14 @@ import (
 
 	"tns65/internal/birth"
 	"tns65/internal/db"
+	"tns65/internal/testkit"
 	"tns65/internal/workshop"
 )
 
 func TestBirthOrders(t *testing.T) {
 	dir := t.TempDir()
 
-	res, err := birth.Birth(validAncketa(), birth.Config{WorldsRoot: dir})
+	res, err := birth.Birth(validAncketa(), birth.Config{WorldsRoot: dir, BaseDBPath: testBaseDB(t, dir), Embed: testkit.NewFakeEmbed()})
 	if err != nil {
 		t.Fatalf("Birth: %v", err)
 	}
@@ -124,6 +125,35 @@ func TestQueueKinds(t *testing.T) {
 			t.Errorf("вид %q из реестра отвергнут CHECK: %v", k, err)
 		}
 	}
+}
+
+// testBaseDB — фикстурная base.db с одним нарративом и вектором dim=1024
+// (T-02-07): рождение в юнит-тестах не зависит от запечённого сида T-01-16.
+func testBaseDB(t *testing.T, dir string) string {
+	t.Helper()
+	path := filepath.Join(dir, "base.db")
+	w, err := db.OpenWriter(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Close()
+	if err := db.Migrate(w, "base", "shared"); err != nil {
+		t.Fatal(err)
+	}
+	res, err := w.Exec(`INSERT INTO narratives (name, arc_summary, lang, created_at) VALUES (?,?,?,?)`,
+		"fixture", "arc", "ru", "2026-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.Exec(`INSERT INTO vectors (owner_table, owner_id, model, dim, lang, source_text, vec, created_at) VALUES (?,?,?,?,?,?,?,?)`,
+		"narratives", id, "bge-m3", 1024, "ru", "arc", make([]byte, 1024*4), "2026-01-01T00:00:00Z"); err != nil {
+		t.Fatal(err)
+	}
+	return path
 }
 
 func validAncketa() *birth.Ancketa {

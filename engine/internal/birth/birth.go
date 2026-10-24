@@ -10,6 +10,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/journal"
+	"tns65/internal/models"
 	"tns65/internal/workshop"
 )
 
@@ -34,13 +35,17 @@ func (e *ExitError) Unwrap() error { return e.Err }
 
 // Config — параметры рождения мира.
 type Config struct {
-	WorldsRoot string          // корень каталога миров; пусто — db.WorldsRoot.
-	PacksRoot  string          // корень каталога пакетов; пусто — "packs".
-	Logger     *journal.Logger // журнал станка; может быть nil.
-	FailStep   string          // тестовый крючок: имя шага, на котором упасть.
-	ProseCalls *int            // тестовый счётчик вызовов слота прозы (гвардия B-04.1).
-	PackCalls  *int            // тестовый счётчик вызовов генерации пачки (T-02-09).
-	Isekai     bool            // переигровка в том же мире (T-02-12).
+	WorldsRoot     string          // корень каталога миров; пусто — db.WorldsRoot.
+	PacksRoot      string          // корень каталога пакетов; пусто — "packs".
+	Logger         *journal.Logger // журнал станка; может быть nil.
+	FailStep       string          // тестовый крючок: имя шага, на котором упасть.
+	ProseCalls     *int            // тестовый счётчик вызовов слота прозы (гвардия B-04.1).
+	PackCalls      *int            // тестовый счётчик вызовов генерации пачки (T-02-09).
+	Isekai         bool            // переигровка в том же мире (T-02-12).
+	BaseDBPath     string          // путь к замороженной base.db; пусто — <root>/base/base.db.
+	Embed          models.Embedder // эмбеддер векторов смысла; nil — клиент :5002.
+	EmbedURL       string          // адрес эмбеддера для клиента по умолчанию; пусто — 127.0.0.1:5002.
+	MatchThreshold float64         // порог косинусной близости якоря; 0 — 0.5.
 }
 
 // Result — созданный мир.
@@ -59,10 +64,14 @@ const (
 
 const stateFileName = "state"
 
+// defaultEmbedURL — адрес эмбеддера векторов смысла :5002 (T-02-07, «Создаётся»
+// models/embed.go); подменяется полем Config.Embed в тестах.
+const defaultEmbedURL = "http://127.0.0.1:5002"
+
 // Birth рождает мир по анкете (B-03.1): каталог worlds/<slug>/ с оперативной
-// базой и литературной, 14 ключей анкеты в world_meta. Падение любого шага
-// удаляет частично созданный каталог; повторная попытка начинается с чистого
-// состояния.
+// базой и литературной, 14 ключей анкеты и якорь сценарной рамки в world_meta.
+// Падение любого шага удаляет частично созданный каталог; повторная попытка
+// начинается с чистого состояния.
 func Birth(a *Ancketa, cfg Config) (*Result, error) {
 	root := cfg.WorldsRoot
 	if root == "" {
@@ -111,14 +120,34 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 		return nil, fmt.Errorf("birth: метка состояния: %w", err)
 	}
 
+	baseDBPath := cfg.BaseDBPath
+	if baseDBPath == "" {
+		baseDBPath = filepath.Join(root, "base", "base.db")
+	}
+	embedder := cfg.Embed
+	if embedder == nil {
+		embedURL := cfg.EmbedURL
+		if embedURL == "" {
+			embedURL = defaultEmbedURL
+		}
+		c, err := models.NewClient(embedURL, cfg.Logger)
+		if err != nil {
+			return nil, err
+		}
+		embedder = c
+	}
+
 	b := &builder{
-		a:          a,
-		dir:        dir,
-		worldDB:    filepath.Join(dir, a.Slug+".db"),
-		literaryDB: filepath.Join(dir, "literary.db"),
-		logger:     cfg.Logger,
-		packCalls:  cfg.PackCalls,
-		packsRoot:  packsRoot,
+		a:              a,
+		dir:            dir,
+		worldDB:        filepath.Join(dir, a.Slug+".db"),
+		literaryDB:     filepath.Join(dir, "literary.db"),
+		logger:         cfg.Logger,
+		packCalls:      cfg.PackCalls,
+		packsRoot:      packsRoot,
+		baseDBPath:     baseDBPath,
+		embedder:       embedder,
+		matchThreshold: cfg.MatchThreshold,
 	}
 
 	if err := b.run(cfg); err != nil {
@@ -136,13 +165,16 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 
 // builder — состояние одного рождения.
 type builder struct {
-	a          *Ancketa
-	dir        string
-	worldDB    string
-	literaryDB string
-	logger     *journal.Logger
-	packCalls  *int
-	packsRoot  string
+	a              *Ancketa
+	dir            string
+	worldDB        string
+	literaryDB     string
+	logger         *journal.Logger
+	packCalls      *int
+	packsRoot      string
+	baseDBPath     string
+	embedder       models.Embedder
+	matchThreshold float64
 }
 
 type birthStep struct {
@@ -150,8 +182,7 @@ type birthStep struct {
 	fn   func(b *builder) error
 }
 
-// steps — цепочка рождения. Швы для следующих задач: якорь — T-02-07,
-// география — T-02-16.
+// steps — цепочка рождения. Шов для следующей задачи: география — T-02-16.
 func (b *builder) steps() []birthStep {
 	return []birthStep{
 		{name: "world_db", fn: (*builder).createWorldDB},
@@ -160,6 +191,7 @@ func (b *builder) steps() []birthStep {
 		{name: "pack", fn: (*builder).pack},
 		{name: "orders", fn: (*builder).enqueueOrders},
 		{name: "seed", fn: (*builder).seedLiteraryBase},
+		{name: "anchor", fn: (*builder).anchor},
 		{name: "ready", fn: (*builder).markReady},
 	}
 }

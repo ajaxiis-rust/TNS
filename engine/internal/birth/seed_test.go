@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"tns65/internal/testkit"
 )
 
 func TestSeedFill(t *testing.T) {
@@ -12,7 +14,7 @@ func TestSeedFill(t *testing.T) {
 	writeSeedPack(t, packRoot)
 
 	worldsRoot := t.TempDir()
-	res, err := Birth(validAncketa(), Config{WorldsRoot: worldsRoot, PacksRoot: packRoot})
+	res, err := Birth(validAncketa(), Config{WorldsRoot: worldsRoot, PacksRoot: packRoot, BaseDBPath: testBaseDB(t, worldsRoot), Embed: testkit.NewFakeEmbed()})
 	if err != nil {
 		t.Fatalf("Birth: %v", err)
 	}

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"tns65/internal/testkit"
 )
 
 func TestWorldList(t *testing.T) {
@@ -13,14 +15,14 @@ func TestWorldList(t *testing.T) {
 	first := validAncketa()
 	first.Slug = "alpha-world"
 	first.Title = "Альфа-мир"
-	if _, err := Birth(first, Config{WorldsRoot: dir}); err != nil {
+	if _, err := Birth(first, Config{WorldsRoot: dir, BaseDBPath: testBaseDB(t, dir), Embed: testkit.NewFakeEmbed()}); err != nil {
 		t.Fatalf("Birth(alpha): %v", err)
 	}
 
 	second := validAncketa()
 	second.Slug = "beta-world"
 	second.Title = "Бета-мир"
-	if _, err := Birth(second, Config{WorldsRoot: dir}); err != nil {
+	if _, err := Birth(second, Config{WorldsRoot: dir, BaseDBPath: testBaseDB(t, dir), Embed: testkit.NewFakeEmbed()}); err != nil {
 		t.Fatalf("Birth(beta): %v", err)
 	}
 

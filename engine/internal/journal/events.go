@@ -12,4 +12,6 @@ const (
 	EventLemmaFail            = "lemma.fail"
 	EventSwarmVersionMismatch = "swarm.version_mismatch"
 	EventWebAccess            = "web.access"
+	EventEmbedFail            = "embed.fail"
+	EventAnchorForced         = "birth.anchor_forced"
 )

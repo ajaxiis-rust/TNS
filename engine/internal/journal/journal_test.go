@@ -27,6 +27,8 @@ func TestEventsUnique(t *testing.T) {
 		EventLemmaFail,
 		EventSwarmVersionMismatch,
 		EventWebAccess,
+		EventEmbedFail,
+		EventAnchorForced,
 	}
 
 	// Значения уникальны (нет дублей).
@@ -49,6 +51,8 @@ func TestEventsUnique(t *testing.T) {
 		"lemma.fail",
 		"swarm.version_mismatch",
 		"web.access",
+		"embed.fail",
+		"birth.anchor_forced",
 	}
 	got := append([]string(nil), events...)
 	sort.Strings(got)

@@ -3,13 +3,15 @@ package birth
 import (
 	"database/sql"
 	"testing"
+
+	"tns65/internal/testkit"
 )
 
 func TestIsekaiReplay(t *testing.T) {
 	dir := t.TempDir()
 	first := validAncketa()
 
-	res, err := Birth(first, Config{WorldsRoot: dir})
+	res, err := Birth(first, Config{WorldsRoot: dir, BaseDBPath: testBaseDB(t, dir), Embed: testkit.NewFakeEmbed()})
 	if err != nil {
 		t.Fatalf("первое рождение: %v", err)
 	}

@@ -3,6 +3,8 @@ package birth
 import (
 	"encoding/json"
 	"testing"
+
+	"tns65/internal/testkit"
 )
 
 // forbiddenMysteryKeys — ключи тайны, которых в карточке быть не должно (B-05.4).
@@ -13,7 +15,7 @@ func TestPack96(t *testing.T) {
 
 	// Рождение пишет пачку в characters оперативной базы (шаг 5).
 	dir := t.TempDir()
-	res, err := Birth(a, Config{WorldsRoot: dir})
+	res, err := Birth(a, Config{WorldsRoot: dir, BaseDBPath: testBaseDB(t, dir), Embed: testkit.NewFakeEmbed()})
 	if err != nil {
 		t.Fatalf("Birth: %v", err)
 	}

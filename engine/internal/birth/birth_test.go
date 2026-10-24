@@ -12,11 +12,12 @@ import (
 	"testing"
 
 	"tns65/internal/db"
+	"tns65/internal/testkit"
 )
 
 func TestBirthCreatesWorld(t *testing.T) {
 	dir := t.TempDir()
-	res, err := Birth(validAncketa(), Config{WorldsRoot: dir})
+	res, err := Birth(validAncketa(), Config{WorldsRoot: dir, BaseDBPath: testBaseDB(t, dir), Embed: testkit.NewFakeEmbed()})
 	if err != nil {
 		t.Fatalf("Birth: %v", err)
 	}
@@ -33,13 +34,13 @@ func TestBirthCreatesWorld(t *testing.T) {
 	worldDB := openReader(t, res.WorldDB)
 	litDB := openReader(t, res.LiteraryDB)
 
-	// world_meta содержит ровно 14 ключей анкеты.
+	// world_meta содержит 14 ключей анкеты плюс якорь сценарной рамки (15).
 	var n int
 	if err := worldDB.QueryRow(`SELECT COUNT(*) FROM world_meta`).Scan(&n); err != nil {
 		t.Fatalf("world_meta count: %v", err)
 	}
-	if n != 14 {
-		t.Fatalf("ключей world_meta: %d, want 14", n)
+	if n != 15 {
+		t.Fatalf("ключей world_meta: %d, want 15", n)
 	}
 
 	var keys []string
@@ -57,6 +58,7 @@ func TestBirthCreatesWorld(t *testing.T) {
 	rows.Close()
 
 	want := append([]string{}, Fields...)
+	want = append(want, anchorKey)
 	sort.Strings(want)
 	sort.Strings(keys)
 	if !slices.Equal(keys, want) {
@@ -93,7 +95,7 @@ func TestBirthDuplicateSlug(t *testing.T) {
 	dir := t.TempDir()
 	a := validAncketa()
 
-	res, err := Birth(a, Config{WorldsRoot: dir})
+	res, err := Birth(a, Config{WorldsRoot: dir, BaseDBPath: testBaseDB(t, dir), Embed: testkit.NewFakeEmbed()})
 	if err != nil {
 		t.Fatalf("первое рождение: %v", err)
 	}
@@ -171,7 +173,7 @@ func TestEmptySynopsis(t *testing.T) {
 func TestNoProseAtBirth(t *testing.T) {
 	dir := t.TempDir()
 	var proseCalls int
-	res, err := Birth(validAncketa(), Config{WorldsRoot: dir, ProseCalls: &proseCalls})
+	res, err := Birth(validAncketa(), Config{WorldsRoot: dir, ProseCalls: &proseCalls, BaseDBPath: testBaseDB(t, dir), Embed: testkit.NewFakeEmbed()})
 	if err != nil {
 		t.Fatalf("Birth: %v", err)
 	}
@@ -196,7 +198,7 @@ func TestNoProseAtBirth(t *testing.T) {
 
 func TestNoProseAtBirthRejectsSeededProse(t *testing.T) {
 	dir := t.TempDir()
-	res, err := Birth(validAncketa(), Config{WorldsRoot: dir})
+	res, err := Birth(validAncketa(), Config{WorldsRoot: dir, BaseDBPath: testBaseDB(t, dir), Embed: testkit.NewFakeEmbed()})
 	if err != nil {
 		t.Fatalf("Birth: %v", err)
 	}
