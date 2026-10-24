@@ -1,0 +1,16 @@
+{
+  "id": "ru",
+  "name": "Русский",
+  "lang": "ru",
+  "version": "1.0.0",
+  "lemmatizer": {
+    "kind": "gomorphy",
+    "protocol": "stdio-json"
+  },
+  "files": {
+    "detectors_mood.json": "4170b4b32541d6a47367e7316c2eb3a270b7a729ceced02990dff5598976f0fe",
+    "detectors_time.json": "0c40320dc43cdb9121c494bc487613865b99453bf8eab52e0d79a2995543fcdb",
+    "lexicon_intents.jsonl": "9bdd4572a5432e2b7d61defc25122faf573f12fe9936ef8af238c3f61c337aa3",
+    "stoplist.txt": "8f1a0835e14d3878e867f5a6a584cb6200f50c1f3c92cfe12f60b16782cb4d41"
+  }
+}
