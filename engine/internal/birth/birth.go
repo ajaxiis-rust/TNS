@@ -37,6 +37,7 @@ type Config struct {
 	Logger     *journal.Logger // журнал станка; может быть nil.
 	FailStep   string          // тестовый крючок: имя шага, на котором упасть.
 	ProseCalls *int            // тестовый счётчик вызовов слота прозы (гвардия B-04.1).
+	PackCalls  *int            // тестовый счётчик вызовов генерации пачки (T-02-09).
 }
 
 // Result — созданный мир.
@@ -65,9 +66,11 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 		root = db.WorldsRoot
 	}
 
-	// Шаг 1: валидация до создания каталога.
+	// Шаг 1: валидация до создания каталога — единственная точка входа рождения
+	// (T-02-09): без неё не стартует ни один шаг цепочки — ни базы, ни пачка, ни
+	// якорь.
 	if err := Validate(a); err != nil {
-		return nil, &ExitError{Code: ExitInvalid, Err: err}
+		return nil, &ExitError{Code: ExitInvalid, Err: withSynopsisHint(a, err)}
 	}
 
 	dir := filepath.Join(root, "worlds", a.Slug)
@@ -101,6 +104,7 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 		worldDB:    filepath.Join(dir, a.Slug+".db"),
 		literaryDB: filepath.Join(dir, "literary.db"),
 		logger:     cfg.Logger,
+		packCalls:  cfg.PackCalls,
 	}
 
 	if err := b.run(cfg); err != nil {
@@ -123,6 +127,7 @@ type builder struct {
 	worldDB    string
 	literaryDB string
 	logger     *journal.Logger
+	packCalls  *int
 }
 
 type birthStep struct {
@@ -206,6 +211,9 @@ func (b *builder) writeWorldMeta() error {
 // оперативной базы хэндлом core (карта писателей T-01-07). Падение здесь
 // откатывает рождение (шаг 4).
 func (b *builder) pack() error {
+	if b.packCalls != nil {
+		*b.packCalls++
+	}
 	cards, err := Pack(b.a)
 	if err != nil {
 		return err
@@ -295,4 +303,14 @@ func readState(dir string) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(string(raw)), nil
+}
+
+// withSynopsisHint добавляет к отказу подсказку «заполните синопсис», когда
+// синопсис пуст (T-02-09): пользователь должен понять, как исправить анкету, а
+// не только что поле пусто.
+func withSynopsisHint(a *Ancketa, err error) error {
+	if strings.TrimSpace(a.Synopsis) == "" {
+		return fmt.Errorf("%w — заполните синопсис", err)
+	}
+	return err
 }

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 	"testing"
 
 	"tns65/internal/db"
@@ -129,6 +130,41 @@ func TestBirthDuplicateSlug(t *testing.T) {
 	}
 	if !bytes.Equal(beforeLit, afterLit) {
 		t.Fatal("литературная база изменилась при повторном рождении")
+	}
+}
+
+func TestEmptySynopsis(t *testing.T) {
+	dir := t.TempDir()
+	a := validAncketa()
+	a.Synopsis = ""
+
+	var packCalls int
+	_, err := Birth(a, Config{WorldsRoot: dir, PackCalls: &packCalls})
+
+	// Код отказа, а не рождение мира.
+	var ee *ExitError
+	if !errors.As(err, &ee) {
+		t.Fatalf("ожидался *ExitError, получен %T: %v", err, err)
+	}
+	if ee.Code != ExitInvalid {
+		t.Fatalf("код отказа: %d, want %d", ee.Code, ExitInvalid)
+	}
+
+	// Подсказка «заполните синопсис».
+	if !strings.Contains(err.Error(), "заполните синопсис") {
+		t.Fatalf("отказ не содержит подсказку «заполните синопсис»: %v", err)
+	}
+
+	// Каталог мира не создан.
+	worldDir := filepath.Join(dir, "worlds", a.Slug)
+	if _, statErr := os.Stat(worldDir); !os.IsNotExist(statErr) {
+		t.Fatalf("каталог мира создан при пустом синопсисе: %v", statErr)
+	}
+
+	// Карточек 0: генерация пачки не вызывалась — валидация единственная точка
+	// входа, до неё ни один шаг рождения не стартует.
+	if packCalls != 0 {
+		t.Fatalf("вызовов генерации пачки: %d, want 0", packCalls)
 	}
 }
 
