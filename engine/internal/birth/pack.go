@@ -21,6 +21,7 @@ type Estate struct {
 
 // Card — карточка персонажа пачки (B-05.3). Тайны нет: поля для тайны в
 // структуре не существует (B-05.4); предыстория может отсутствовать (omitempty).
+// Слои данных NPC (B-07) пишутся при создании карточки (T-02-06).
 type Card struct {
 	Psychotype string  `json:"psychotype"`
 	Estate     string  `json:"estate"`
@@ -29,6 +30,7 @@ type Card struct {
 	Appearance string  `json:"appearance"`
 	Weight     float64 `json:"weight"`
 	Backstory  string  `json:"backstory,omitempty"`
+	Layers     Layers  `json:"layers"`
 }
 
 // LoadEstates возвращает шесть сословий из data/estates.json в порядке файла.
@@ -119,6 +121,7 @@ func Pack(a *Ancketa) ([]Card, error) {
 				Voice:      voices[rng.Intn(len(voices))],
 				Appearance: appearances[rng.Intn(len(appearances))],
 				Weight:     estateWeight(e, a.SocialOrder),
+				Layers:     NewLayers(code.String(), DefaultMemoryParams()),
 			})
 		}
 	}
