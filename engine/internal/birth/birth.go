@@ -39,6 +39,7 @@ type Config struct {
 	FailStep   string          // тестовый крючок: имя шага, на котором упасть.
 	ProseCalls *int            // тестовый счётчик вызовов слота прозы (гвардия B-04.1).
 	PackCalls  *int            // тестовый счётчик вызовов генерации пачки (T-02-09).
+	Isekai     bool            // переигровка в том же мире (T-02-12).
 }
 
 // Result — созданный мир.
@@ -72,6 +73,12 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 	// якорь.
 	if err := Validate(a); err != nil {
 		return nil, &ExitError{Code: ExitInvalid, Err: withSynopsisHint(a, err)}
+	}
+
+	// Переигровка isekai (T-02-12): мир уже существует — каталог и обе базы не
+	// пересоздаются, открываются новая сессия и книга в том же мире.
+	if cfg.Isekai {
+		return replayBirth(a, root, cfg)
 	}
 
 	dir := filepath.Join(root, "worlds", a.Slug)
