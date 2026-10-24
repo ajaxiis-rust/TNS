@@ -43,3 +43,8 @@ fi
 
 cp "$src" bin/tns65
 cp "$src" bin/tns65-bake
+
+# LeMMARu resident (T-01-10): русский лемматизатор, отдельная команда.
+echo "building ${cur_os}/${cur_arch} -> bin/tns65-lemmaru"
+CGO_ENABLED=0 GOOS="$cur_os" GOARCH="$cur_arch" \
+    go build -trimpath -ldflags "${LDFLAGS}" -o bin/tns65-lemmaru ./cmd/tns65-lemmaru

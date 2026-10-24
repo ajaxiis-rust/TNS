@@ -1,3 +1,5 @@
+github.com/AlexMaxy/gomorphy v0.0.0-20260827175952-c72bdf7c48af h1:mVNVWCLpsbOdIfK0bAYcTHTotddkUAZossSliFDodB8=
+github.com/AlexMaxy/gomorphy v0.0.0-20260827175952-c72bdf7c48af/go.mod h1:BO94bSvRCV/DpNti8fEJ3fJBELRHxIKm5E67c5jDUjA=
 github.com/dustin/go-humanize v1.1.0 h1:dbKTrvD0klcbBV/h4AWJdMuZogJACoMlvWIWZ5b2xWg=
 github.com/dustin/go-humanize v1.1.0/go.mod h1:hc1CvRkJMsgxqjmjMQF3QNRAZBwY8AXBAzKYoSX9sFI=
 github.com/google/pprof v0.0.0-20261016150608-1facf8f91b50 h1:PlNWJRxu5APSV0pWqfIsZ0qt9OOGHSWfZQ4zvx+WgWs=

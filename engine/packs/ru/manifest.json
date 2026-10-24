@@ -5,7 +5,9 @@
   "version": "1.0.0",
   "lemmatizer": {
     "kind": "gomorphy",
-    "protocol": "stdio-json"
+    "protocol": "stdio-json",
+    "binary": "tns65-lemmaru",
+    "dict": "packs/ru/lemmatizer"
   },
   "files": {
     "detectors_mood.json": "4170b4b32541d6a47367e7316c2eb3a270b7a729ceced02990dff5598976f0fe",

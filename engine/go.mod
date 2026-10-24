@@ -2,7 +2,10 @@ module tns65
 
 go 1.27
 
-require modernc.org/sqlite v1.61.0
+require (
+	github.com/AlexMaxy/gomorphy v0.0.0-20260827175952-c72bdf7c48af
+	modernc.org/sqlite v1.61.0
+)
 
 require (
 	github.com/dustin/go-humanize v1.1.0 // indirect
