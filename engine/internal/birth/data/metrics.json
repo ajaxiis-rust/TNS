@@ -1,0 +1,16 @@
+[
+  {"metric": "extraversion", "axis": "E/I", "weight": 1.0},
+  {"metric": "sociability", "axis": "E/I", "weight": 0.8},
+  {"metric": "expressiveness", "axis": "E/I", "weight": 0.6},
+  {"metric": "initiative", "axis": "E/I", "weight": 0.4},
+  {"metric": "intuition", "axis": "N/S", "weight": 1.0},
+  {"metric": "abstractness", "axis": "N/S", "weight": 0.8},
+  {"metric": "foresight", "axis": "N/S", "weight": 0.6},
+  {"metric": "imagination", "axis": "N/S", "weight": 0.4},
+  {"metric": "rationality", "axis": "T/F", "weight": 1.0},
+  {"metric": "logic", "axis": "T/F", "weight": 0.8},
+  {"metric": "analysis", "axis": "T/F", "weight": 0.6},
+  {"metric": "orderliness", "axis": "J/P", "weight": 1.0},
+  {"metric": "decisiveness", "axis": "J/P", "weight": 0.8},
+  {"metric": "structure", "axis": "J/P", "weight": 0.6}
+]
