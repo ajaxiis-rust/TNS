@@ -130,14 +130,32 @@ func listPacks() error {
 
 func runWorld(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("tns65 world: missing command (birth)")
+		return fmt.Errorf("tns65 world: missing command (birth, list)")
 	}
 	switch args[0] {
 	case "birth":
 		return runWorldBirth(args[1:])
+	case "list":
+		if len(args) != 1 {
+			return fmt.Errorf("tns65 world list: no arguments expected")
+		}
+		return runWorldList()
 	default:
 		return fmt.Errorf("tns65 world: unknown command %q", args[0])
 	}
+}
+
+// runWorldList — подкоманда world list: таблица «слаг — заголовок — дата», по
+// строке на готовый мир (T-02-10).
+func runWorldList() error {
+	worlds, err := birth.List("")
+	if err != nil {
+		return err
+	}
+	for _, w := range worlds {
+		fmt.Printf("%s — %s — %s\n", w.Slug, w.Title, w.BirthDate.Format("2006-01-02"))
+	}
+	return nil
 }
 
 // runWorldBirth — подкоманда world birth --ancketa <файл>: рождение мира по
