@@ -10,6 +10,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/journal"
+	"tns65/internal/workshop"
 )
 
 // Коды выхода подкоманды world birth (шаги 1 и 5).
@@ -143,6 +144,7 @@ func (b *builder) steps() []birthStep {
 		{name: "literary_db", fn: (*builder).createLiteraryDB},
 		{name: "world_meta", fn: (*builder).writeWorldMeta},
 		{name: "pack", fn: (*builder).pack},
+		{name: "orders", fn: (*builder).enqueueOrders},
 		{name: "ready", fn: (*builder).markReady},
 	}
 }
@@ -246,6 +248,18 @@ func (b *builder) pack() error {
 // markReady — финальное состояние ready (шаг 4).
 func (b *builder) markReady() error {
 	return writeState(b.dir, stateReady)
+}
+
+// enqueueOrders — постановка двух заказов мастерской при рождении (T-02-11,
+// шаг 2): analysis и forge_plan хэндлом core. До исполнителя очереди (P4) заказы
+// живут со статусом queued.
+func (b *builder) enqueueOrders() error {
+	h, err := db.OpenWriterAs(b.worldDB, db.DBWorld, db.WriterCore, b.logger)
+	if err != nil {
+		return err
+	}
+	defer h.Close()
+	return workshop.EnqueueBirthOrders(h)
 }
 
 // checkNoProseAtBirth — гвардия B-04.1: при рождении не создаётся ни одной

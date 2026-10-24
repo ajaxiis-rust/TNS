@@ -23,4 +23,5 @@ social_graph
 token_bindings
 turns
 vectors
+workshop_queue
 world_meta

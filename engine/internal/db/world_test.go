@@ -65,13 +65,14 @@ func TestWorldSchema(t *testing.T) {
 		t.Errorf("tables = %v, want %v", got, want)
 	}
 
-	// 3. Учёт миграций: общий vectors подключён отдельным шагом (user_version == 2).
+	// 3. Учёт миграций: общий vectors подключён отдельным шагом, очередь
+	// мастерской — третьей миграцией (user_version == 3).
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 2 {
-		t.Errorf("user_version = %d, want 2", uv)
+	if uv != 3 {
+		t.Errorf("user_version = %d, want 3", uv)
 	}
 
 	type migration struct {
@@ -92,7 +93,7 @@ func TestWorldSchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
