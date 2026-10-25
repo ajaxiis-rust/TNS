@@ -106,8 +106,8 @@ func writeTurn(tx *db.Tx, st *TurnState) (int64, error) {
 		degraded = 1
 	}
 	res, err := tx.Exec("turns",
-		`INSERT INTO turns (session_id, player_text, reply_text, path, saw_recommendation, trust_level, latency_ms, degraded) VALUES (?, ?, ?, ?, 0, ?, ?, ?)`,
-		st.Input.SessionID, st.Input.PlayerText, st.Reply, st.Path, trustLevel(st.Confirm), st.LatencyMS, degraded)
+		`INSERT INTO turns (session_id, player_text, reply_text, path, saw_recommendation, selector_decision, trust_level, latency_ms, degraded) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		st.Input.SessionID, st.Input.PlayerText, st.Reply, st.Path, st.SawRecommendation, st.SelectorDecision, trustLevel(st.Confirm), st.LatencyMS, degraded)
 	if err != nil {
 		return 0, err
 	}

@@ -8,6 +8,7 @@ import (
 	"tns65/internal/db"
 	"tns65/internal/journal"
 	"tns65/internal/models"
+	"tns65/internal/selector"
 )
 
 // Stage — одна стадия конвейера хода (T-03-01, шаг 2).
@@ -45,6 +46,12 @@ type TurnState struct {
 	// Bindings — привязки токенов биндера до подтверждения (T-03-03); на коммите
 	// хода пишутся в token_bindings (T-03-05).
 	Bindings []Binding
+	// SawRecommendation — код рекомендации Пилы (T-03-06) для turns.saw_recommendation:
+	// 0 — нет, 1 — Ткач, 2 — Челнок. Заполняет Селектор (T-03-09).
+	SawRecommendation int
+	// SelectorDecision — решение Селектора (T-03-09): номер сработавшего правила
+	// и его имя, пишется в turns.selector_decision.
+	SelectorDecision string
 }
 
 // fallbackReply — нейтральная запись fallback из банка (T-03-01, шаг 5): до путей
@@ -260,19 +267,81 @@ func (s *confirmStage) Run(ctx context.Context, st *TurnState) error {
 	return nil
 }
 
-// selectStage — выбор пути (заполняется T-03-09); до него путь фиксируется
-// заглушкой: слеш-команда — "command", проза — "fallback".
-type selectStage struct{}
+// selectStage — выбор пути (T-03-09): Селектор сводит сигналы хода в единую
+// таблицу решений, первое сработавшее правило выигрывает. Рекомендация Пилы и
+// решение Селектора живут в состоянии хода и пишутся в turns на коммите (T-03-05).
+// bank и weaver опциональны: без них жёсткое ограничение уводит ход на страховку;
+// saw опционален — без Пилы рекомендации нет.
+type selectStage struct {
+	bank      *bank.Bank    // Челнок (T-03-07); nil — банк не подключён.
+	weaver    ProseSlot     // Ткач (T-03-08); nil — слот мёртв.
+	saw       *selector.Saw // Пила (T-03-06); nil — рекомендации нет.
+	sawThread int64         // нить отношений для шага Пилы (0 — дефолт).
+	sawLink   selector.MoodLink
+}
 
 func (*selectStage) Name() string { return "select" }
 
-func (*selectStage) Run(_ context.Context, st *TurnState) error {
-	if st.Command != nil {
-		st.Path = "command"
-	} else {
-		st.Path = "fallback"
+func (s *selectStage) Run(_ context.Context, st *TurnState) error {
+	rec := s.recommendation()
+	in := selector.Input{
+		Command:      s.commandName(st),
+		Stop:         st.Confirm.Decision == DecisionReask,
+		HardFallback: s.slotDead() && s.bankEmpty(),
+		Repeatable:   isRepeatable(st),
+		Emotional:    isEmotional(st),
+		Saw:          rec,
+		BankEmpty:    s.bankEmpty(),
 	}
+	dec := selector.Select(in)
+	st.Path = string(dec.Path)
+	st.SawRecommendation = selector.RecommendationCode(rec)
+	st.SelectorDecision = dec.Encode()
 	return nil
+}
+
+// recommendation — рекомендация Пилы на ход; без Пилы её нет (T-03-06, шаг 3).
+func (s *selectStage) recommendation() selector.Recommendation {
+	if s.saw == nil {
+		return selector.RecommendNone
+	}
+	rec, err := s.saw.Step(s.sawThread, s.sawLink)
+	if err != nil {
+		return selector.RecommendNone
+	}
+	return rec
+}
+
+// commandName — имя слеш-команды; пусто для прозы.
+func (*selectStage) commandName(st *TurnState) string {
+	if st.Command == nil {
+		return ""
+	}
+	return st.Command.Name
+}
+
+// slotDead — слот Ткача не подключён (жёсткое ограничение, T-03-09, шаг 1.3).
+func (s *selectStage) slotDead() bool { return s.weaver == nil }
+
+// bankEmpty — банк не подключён (пул недоступен).
+func (s *selectStage) bankEmpty() bool { return s.bank == nil }
+
+// isEmotional — эмоция или уникальность реплики (LT-05.4): настроение из лексикона
+// либо намерение, требующее уникальной генерации (речь, перемещение).
+func isEmotional(st *TurnState) bool {
+	if st.Prepath.Mood != "" {
+		return true
+	}
+	return st.Prepath.Intent.Name == "речь" || st.Prepath.Intent.Name == "перемещение"
+}
+
+// isRepeatable — сцена повторяема (T-03-07): рутинное намерение без эмоции и
+// уникальности — банк обслуживает её записью из пула.
+func isRepeatable(st *TurnState) bool {
+	if isEmotional(st) {
+		return false
+	}
+	return st.Prepath.Intent.Name != ""
 }
 
 // executeStage — исполнение выбранного пути (T-03-07/08). Путь Челнока отвечает

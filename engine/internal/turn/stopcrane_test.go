@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"tns65/internal/bank"
 	"tns65/internal/lemmarpc"
 	"tns65/internal/models"
+	"tns65/internal/selector"
 )
 
 // constEmbed — эмбеддер, возвращающий один и тот же единичный вектор: косинус
@@ -170,4 +172,62 @@ func TestStopCrane(t *testing.T) {
 			t.Fatalf("строк scenes после отката = %d, want 0", n)
 		}
 	})
+}
+
+// TestSelectorTurns — Селектор записывает решение и рекомендацию Пилы в turns
+// (T-03-09, шаг 2, «Проверка»): поля saw_recommendation и selector_decision
+// заполнены на коммите, при конфликтной рекомендации исполняется решение
+// Селектора.
+func TestSelectorTurns(t *testing.T) {
+	p, _ := newTestPipeline(t)
+	lex := stopCraneLexicon(t)
+	cfg := DefaultConfirmConfig()
+
+	// Пила с K=1 и эхом: один шаг даёт s = 0.1 < flat — рекомендация «банк».
+	saw := selector.NewSaw(
+		selector.Profile{"extraversion": 1, "rationality": 1},
+		selector.DefaultSawConfig(), 0, p.DB, p.Logger)
+
+	stages := []Stage{
+		&cutStage{logger: p.Logger},
+		&prepathStage{db: p.DB, lexicon: lex, binder: NewSlotBinder(Roster{})},
+		&confirmStage{Config: cfg},
+		// bank непуст (подключён), слот Ткача не задан — жёсткого ограничения нет.
+		&selectStage{saw: saw, sawLink: selector.MoodEcho, bank: bank.New(nil, nil, nil, nil)},
+		&executeStage{},
+		&safetyStage{},
+		&commitStage{db: p.DB},
+	}
+
+	st := &TurnState{
+		Input:      TurnInput{SessionID: 9, PlayerText: "идти ехать плыть бежать", At: time.Now()},
+		Embedder:   constEmbed{},
+		Lemmatizer: wordLemmatizer{},
+	}
+	for _, s := range stages {
+		if err := s.Run(context.Background(), st); err != nil {
+			t.Fatalf("%s: %v", s.Name(), err)
+		}
+	}
+
+	var sawRec int
+	var selDec, path string
+	if err := p.DB.QueryRow(`SELECT saw_recommendation, selector_decision, path FROM turns`).
+		Scan(&sawRec, &selDec, &path); err != nil {
+		t.Fatalf("turns query: %v", err)
+	}
+	if selDec == "" {
+		t.Fatalf("selector_decision пуст")
+	}
+	if sawRec != selector.RecommendationCode(selector.RecommendBank) {
+		t.Fatalf("saw_recommendation = %d, want %d (банк)", sawRec, selector.RecommendationCode(selector.RecommendBank))
+	}
+	// Реплика «перемещение» эмоциональна/уникальна — Селектор опережает совет
+	// Пилы (правило 5): путь Ткача, решение записано с номером и именем.
+	if path != "weaver" {
+		t.Fatalf("path = %q, want weaver", path)
+	}
+	if selDec != "5 emotion" {
+		t.Fatalf("selector_decision = %q, want %q", selDec, "5 emotion")
+	}
 }
