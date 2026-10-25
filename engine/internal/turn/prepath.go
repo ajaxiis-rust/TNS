@@ -135,14 +135,17 @@ const (
 
 // Prepath — результат предварительного пути: гипотеза намерения, настроение,
 // рамка сцены, предвыбор и собранный шаблон ответа. Template — с токенами
-// биндера, Prompt — закрытый биндером текст без заменителей.
+// биндера, Prompt — закрытый биндером текст без заменителей. До подтверждения
+// смысла предпуть только читает и готовит: всё это живёт в памяти хода, а в базу
+// попадает на коммите стоп-крана (T-03-05, LT-07.1).
 type Prepath struct {
-	Intent    Intent
-	Mood      string
-	Frame     SceneFrame
-	Preselect Preselect
-	Template  string
-	Prompt    string
+	Intent        Intent
+	Mood          string
+	Frame         SceneFrame
+	Preselect     Preselect
+	Template      string
+	Prompt        string
+	LexiconLoaded bool // лексикон загружен: стоп-крану есть что подтверждать (T-03-05).
 }
 
 // preselect выбирает заготовку пути по намерению и настроению детерминированно,

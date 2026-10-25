@@ -178,12 +178,13 @@ func (s *prepathStage) Run(_ context.Context, st *TurnState) error {
 	prompt, bindings := binder.Bind(template, mentions, 0, 0)
 
 	st.Prepath = Prepath{
-		Intent:    intent,
-		Mood:      mood,
-		Frame:     frame,
-		Preselect: sel,
-		Template:  template,
-		Prompt:    prompt,
+		Intent:        intent,
+		Mood:          mood,
+		Frame:         frame,
+		Preselect:     sel,
+		Template:      template,
+		Prompt:        prompt,
+		LexiconLoaded: lex != nil,
 	}
 	// Леммы гипотезы намерения — словарный голос подтверждения (T-03-04).
 	st.HypothesisLemmas = intentLemmas(lex, intent.Name)
@@ -300,24 +301,17 @@ type safetyStage struct{}
 func (*safetyStage) Name() string                          { return "safety" }
 func (*safetyStage) Run(context.Context, *TurnState) error { return nil }
 
-// commitStage — коммит хода (заполняется T-03-05): строка в turns после стадий.
+// commitStage — коммит хода (T-03-05): после полной подтверждённой реплики пишет
+// ход одной транзакцией (стоп-кран в stopcrane.go); неподтверждённая ветка
+// записей в мир не оставляет.
 type commitStage struct {
-	db *db.Handle
+	db        *db.Handle
+	FailTable string // тестовый крючок отката (T-03-05, «Проверка»); пусто в проде.
 }
 
 func (*commitStage) Name() string { return "commit" }
 
 func (s *commitStage) Run(_ context.Context, st *TurnState) error {
 	st.LatencyMS = time.Since(st.StartedAt).Milliseconds()
-	if s.db == nil {
-		return nil
-	}
-	degraded := 0
-	if st.Degraded {
-		degraded = 1
-	}
-	_, err := s.db.Exec("turns",
-		`INSERT INTO turns (session_id, player_text, reply_text, path, saw_recommendation, trust_level, latency_ms, degraded) VALUES (?, ?, ?, ?, 0, 0, ?, ?)`,
-		st.Input.SessionID, st.Input.PlayerText, st.Reply, st.Path, st.LatencyMS, degraded)
-	return err
+	return commitTurn(st, s.db, s.FailTable)
 }
