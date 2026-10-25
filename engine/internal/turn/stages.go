@@ -62,6 +62,9 @@ type TurnState struct {
 	// Troupe — лица мира в живом ходе (T-03-11): появление персонажа и память
 	// реакций; nil — труппа не подключена.
 	Troupe *Troupe
+	// TimeJump — декларация времени в реплике (T-03-12): детектор времени на
+	// входе и скачок; пустой Span — декларации не было.
+	TimeJump TimeJump
 }
 
 // fallbackReply — нейтральная запись fallback из банка (T-03-01, шаг 5): до путей
@@ -73,8 +76,8 @@ const fallbackReply = "Мир слушает, но пока не находит 
 const reaskReply = "Я не уверен, что верно понял тебя. Скажи иначе."
 
 // stages — упорядоченный реестр стадий (шаг 2): резка → предварительный путь →
-// подтверждение → выбор пути → исполнение → страховка → коммит. Каждая задача P2
-// добавляет свою стадию отдельным файлом и одной строкой реестра.
+// подтверждение → выбор пути → исполнение → время 1:1 → страховка → коммит.
+// Каждая задача P2 добавляет свою стадию отдельным файлом и одной строкой реестра.
 func (p *Pipeline) stages() []Stage {
 	return []Stage{
 		&cutStage{logger: p.Logger},
@@ -83,6 +86,7 @@ func (p *Pipeline) stages() []Stage {
 		&confirmStage{configPath: "config.yaml"},
 		&selectStage{},
 		&executeStage{},
+		&timejumpStage{db: p.DB},
 		&safetyStage{},
 		&commitStage{db: p.DB},
 	}
