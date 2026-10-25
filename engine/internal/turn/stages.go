@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"tns65/internal/bank"
 	"tns65/internal/db"
 	"tns65/internal/journal"
 	"tns65/internal/models"
@@ -274,14 +275,17 @@ func (*selectStage) Run(_ context.Context, st *TurnState) error {
 	return nil
 }
 
-// executeStage — исполнение выбранного пути (заполняется T-03-07/08). До путей
-// отвечает нейтральной записью fallback из банка, слеш-команда — служебным
-// текстом; reply_text непуст с первого дня.
-type executeStage struct{}
+// executeStage — исполнение выбранного пути (T-03-07/08). Путь Челнока отвечает
+// записью из банка рутины (T-03-07), путь Ткача — генерацией (T-03-08). До путей
+// и при пустом банке — нейтральная запись fallback; reply_text непуст с первого
+// дня.
+type executeStage struct {
+	bank *bank.Bank // Челнок (T-03-07); nil — банк не подключён, ответ заглушкой.
+}
 
 func (*executeStage) Name() string { return "execute" }
 
-func (*executeStage) Run(_ context.Context, st *TurnState) error {
+func (s *executeStage) Run(_ context.Context, st *TurnState) error {
 	if st.Command != nil {
 		st.Reply = commandReply(st.Command.Name)
 		return nil
@@ -291,8 +295,28 @@ func (*executeStage) Run(_ context.Context, st *TurnState) error {
 		st.Reply = reaskReply
 		return nil
 	}
+	// Путь Челнока (T-03-07): запись из банка рутины по тегам сцены.
+	if s.bank != nil {
+		if rec, err := s.bank.Pick(sceneTags(st)); err == nil {
+			st.Reply = rec.Text
+			return nil
+		}
+	}
 	st.Reply = fallbackReply
 	return nil
+}
+
+// sceneTags — теги сцены для выбора записи банка (T-03-07, шаг 1): намерение и
+// настроение реплики из предпути. Пусто — банк выберет запись по умолчанию.
+func sceneTags(st *TurnState) []string {
+	var tags []string
+	if st.Prepath.Intent.Name != "" {
+		tags = append(tags, st.Prepath.Intent.Name)
+	}
+	if st.Prepath.Mood != "" {
+		tags = append(tags, st.Prepath.Mood)
+	}
+	return tags
 }
 
 // safetyStage — страховка хода (заполняется T-03-08).
