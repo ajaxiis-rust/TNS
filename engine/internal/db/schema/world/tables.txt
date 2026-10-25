@@ -16,6 +16,8 @@ places
 player_atlas
 player_map
 rings
+saw_state
+scene_arc
 scenes
 schema_migrations
 sessions

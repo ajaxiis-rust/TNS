@@ -15,4 +15,5 @@ const (
 	EventEmbedFail            = "embed.fail"
 	EventAnchorForced         = "birth.anchor_forced"
 	EventTurnStage            = "turn.stage"
+	EventSawPhaseBreak        = "saw.phase_break"
 )

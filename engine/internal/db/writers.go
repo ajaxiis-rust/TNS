@@ -97,6 +97,8 @@ var writerMap = map[writerKey]Writer{
 	{DBWorld, "rings"}:            WriterCore,
 	{DBWorld, "corridors"}:        WriterCore,
 	{DBWorld, "workshop_queue"}:   WriterCore,
+	{DBWorld, "saw_state"}:        WriterCore,
+	{DBWorld, "scene_arc"}:        WriterCore,
 }
 
 // writerForTable возвращает допустимого писателя таблицы table базы dbName.

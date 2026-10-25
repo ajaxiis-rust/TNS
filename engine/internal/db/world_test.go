@@ -66,13 +66,13 @@ func TestWorldSchema(t *testing.T) {
 	}
 
 	// 3. Учёт миграций: общий vectors подключён отдельным шагом, очередь
-	// мастерской — третьей миграцией (user_version == 3).
+	// мастерской — третьей миграцией, Пила и арка сцены — четвёртой (user_version == 4).
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 3 {
-		t.Errorf("user_version = %d, want 3", uv)
+	if uv != 4 {
+		t.Errorf("user_version = %d, want 4", uv)
 	}
 
 	type migration struct {
@@ -93,7 +93,7 @@ func TestWorldSchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
@@ -148,4 +148,66 @@ func TestWorldSchema(t *testing.T) {
 	if !slices.Equal(cols, wantCols) {
 		t.Errorf("character_state columns = %v, want %v", cols, wantCols)
 	}
+
+	// 7. Контракт DDL Пилы и арки сцены (T-03-06): колонки обеих таблиц и
+	// индекс saw_state по (character_id, thread_id).
+	if got := colsOf(t, w, "saw_state"); !slices.Equal(got, []string{"character_id", "thread_id", "value", "updated_at"}) {
+		t.Errorf("saw_state columns = %v", got)
+	}
+	if got := colsOf(t, w, "scene_arc"); !slices.Equal(got, []string{"scene_id", "value", "updated_at"}) {
+		t.Errorf("scene_arc columns = %v", got)
+	}
+	if !indexHasCols(t, w, "saw_state_character_thread_idx", "character_id", "thread_id") {
+		t.Errorf("saw_state index on (character_id, thread_id) missing")
+	}
+}
+
+// colsOf возвращает имена колонок таблицы в порядке PRAGMA table_info.
+func colsOf(t *testing.T, w *sql.DB, table string) []string {
+	t.Helper()
+	rows, err := w.Query(`PRAGMA table_info(` + table + `)`)
+	if err != nil {
+		t.Fatalf("table_info(%s): %v", table, err)
+	}
+	defer rows.Close()
+	var cols []string
+	for rows.Next() {
+		var cid int
+		var name, typ string
+		var notnull int
+		var dflt sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
+			t.Fatalf("table_info(%s) scan: %v", table, err)
+		}
+		cols = append(cols, name)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("table_info(%s) rows: %v", table, err)
+	}
+	return cols
+}
+
+// indexHasCols проверяет, что индекс indexName покрывает ровно заданные колонки
+// в заданном порядке (по PRAGMA index_info).
+func indexHasCols(t *testing.T, w *sql.DB, indexName string, want ...string) bool {
+	t.Helper()
+	rows, err := w.Query(`PRAGMA index_info(` + indexName + `)`)
+	if err != nil {
+		t.Fatalf("index_info(%s): %v", indexName, err)
+	}
+	defer rows.Close()
+	var got []string
+	for rows.Next() {
+		var seqno, cid int
+		var name sql.NullString
+		if err := rows.Scan(&seqno, &cid, &name); err != nil {
+			t.Fatalf("index_info(%s) scan: %v", indexName, err)
+		}
+		got = append(got, name.String)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("index_info(%s) rows: %v", indexName, err)
+	}
+	return slices.Equal(got, want)
 }
