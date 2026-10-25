@@ -36,6 +36,11 @@ type TurnState struct {
 	// Prepath — результат предварительного пути (T-03-03): намерение, настроение,
 	// рамка сцены, предвыбор и собранный промпт без токенов-заменителей.
 	Prepath Prepath
+	// HypothesisLemmas — леммы гипотезы намерения (T-03-04): основа словарного
+	// голоса подтверждения. Заполняет предпуть из лексикона.
+	HypothesisLemmas []string
+	// Confirm — результат двухголосия подтверждения (T-03-04) в памяти хода.
+	Confirm Confirmation
 	// Bindings — привязки токенов биндера до подтверждения (T-03-03); на коммите
 	// хода пишутся в token_bindings (T-03-05).
 	Bindings []Binding
@@ -45,6 +50,10 @@ type TurnState struct {
 // (T-03-07/08) это заглушка, отвечающая непустым текстом с первого дня.
 const fallbackReply = "Мир слушает, но пока не находит ответа. Скажи иначе."
 
+// reaskReply — переспрос при неподтверждённом смысле (T-03-04, шаг 2):
+// dict_match ниже порога — ход уходит на переспрос нейтральной записью.
+const reaskReply = "Я не уверен, что верно понял тебя. Скажи иначе."
+
 // stages — упорядоченный реестр стадий (шаг 2): резка → предварительный путь →
 // подтверждение → выбор пути → исполнение → страховка → коммит. Каждая задача P2
 // добавляет свою стадию отдельным файлом и одной строкой реестра.
@@ -52,7 +61,7 @@ func (p *Pipeline) stages() []Stage {
 	return []Stage{
 		&cutStage{logger: p.Logger},
 		&prepathStage{db: p.DB},
-		&confirmStage{},
+		&confirmStage{configPath: "config.yaml"},
 		&selectStage{},
 		&executeStage{},
 		&safetyStage{},
@@ -176,7 +185,28 @@ func (s *prepathStage) Run(_ context.Context, st *TurnState) error {
 		Template:  template,
 		Prompt:    prompt,
 	}
+	// Леммы гипотезы намерения — словарный голос подтверждения (T-03-04).
+	st.HypothesisLemmas = intentLemmas(lex, intent.Name)
 	st.Bindings = append(st.Bindings, bindings...)
+	return nil
+}
+
+// intentLemmas возвращает леммы и глаголы намерения из лексикона — гипотезу,
+// которую подтверждает словарный голос (T-03-04, шаг 1). Пусто, если лексикона
+// нет или намерение не определено.
+func intentLemmas(lex *Lexicon, name string) []string {
+	if lex == nil || name == "" {
+		return nil
+	}
+	for _, e := range lex.Intents {
+		if e.Intent != name {
+			continue
+		}
+		out := make([]string, 0, len(e.Lemmas)+len(e.Verbs))
+		out = append(out, e.Lemmas...)
+		out = append(out, e.Verbs...)
+		return out
+	}
 	return nil
 }
 
@@ -203,11 +233,30 @@ func loadDefaultLexicon() *Lexicon {
 	return lex
 }
 
-// confirmStage — подтверждение смысла (заполняется T-03-04).
-type confirmStage struct{}
+// confirmStage — подтверждение смысла (T-03-04): словарный и векторный голоса,
+// решение по таблице с числами из config.yaml. Писатель отсутствует: результат
+// живёт в st.Confirm до подтверждения; при неподтверждении ход уходит на переспрос.
+type confirmStage struct {
+	Config     ConfirmConfig // пороги; нулевые значения заменяются дефолтами.
+	configPath string        // путь к config.yaml; пусто — не читать файл.
+}
 
-func (*confirmStage) Name() string                          { return "confirm" }
-func (*confirmStage) Run(context.Context, *TurnState) error { return nil }
+func (*confirmStage) Name() string { return "confirm" }
+
+func (s *confirmStage) Run(ctx context.Context, st *TurnState) error {
+	// Слеш-команда не имеет гипотезы смысла — подтверждать нечего.
+	if st.Command != nil {
+		return nil
+	}
+	cfg := s.Config
+	if cfg.DictThreshold <= 0 && s.configPath != "" {
+		if loaded, err := LoadConfirmConfig(s.configPath); err == nil {
+			cfg = loaded
+		}
+	}
+	st.Confirm = confirm(ctx, st, cfg)
+	return nil
+}
 
 // selectStage — выбор пути (заполняется T-03-09); до него путь фиксируется
 // заглушкой: слеш-команда — "command", проза — "fallback".
@@ -234,6 +283,11 @@ func (*executeStage) Name() string { return "execute" }
 func (*executeStage) Run(_ context.Context, st *TurnState) error {
 	if st.Command != nil {
 		st.Reply = commandReply(st.Command.Name)
+		return nil
+	}
+	// Неподтверждённый смысл — переспрос нейтральной записью (T-03-04, шаг 2).
+	if st.Confirm.Decision == DecisionReask {
+		st.Reply = reaskReply
 		return nil
 	}
 	st.Reply = fallbackReply
