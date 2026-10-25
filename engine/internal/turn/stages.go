@@ -75,11 +75,12 @@ const fallbackReply = "Мир слушает, но пока не находит 
 // dict_match ниже порога — ход уходит на переспрос нейтральной записью.
 const reaskReply = "Я не уверен, что верно понял тебя. Скажи иначе."
 
-// stages — упорядоченный реестр стадий (шаг 2): резка → предварительный путь →
-// подтверждение → выбор пути → исполнение → время 1:1 → страховка → коммит.
+// stages — упорядоченный реестр стадий (шаг 2): возврат → резка → предварительный
+// путь → подтверждение → выбор пути → исполнение → время 1:1 → страховка → коммит.
 // Каждая задача P2 добавляет свою стадию отдельным файлом и одной строкой реестра.
 func (p *Pipeline) stages() []Stage {
 	return []Stage{
+		&returnStage{db: p.DB},
 		&cutStage{logger: p.Logger},
 		&troupeStage{db: p.DB},
 		&prepathStage{db: p.DB},
@@ -90,6 +91,27 @@ func (p *Pipeline) stages() []Stage {
 		&safetyStage{},
 		&commitStage{db: p.DB},
 	}
+}
+
+// returnStage — возврат игрока (T-03-13, «Правится» stages.go): на входе нового
+// хода мир продвигается за время отсутствия той же скоростью, что и при игре
+// (пауза ≠ заморозка). Отсутствие отсчитывается от lastActive; в реестре стадий
+// lastActive пуст — проводку последней активности ведут сервер хода (T-08-15) и
+// книга (T-07-01), здесь — крючок без ложного продвижения.
+type returnStage struct {
+	db         *db.Handle
+	clock      ClockSource
+	lastActive time.Time
+}
+
+func (*returnStage) Name() string { return "return" }
+
+func (s *returnStage) Run(_ context.Context, _ *TurnState) error {
+	if s.lastActive.IsZero() {
+		return nil
+	}
+	_, err := advanceAbsence(s.db, s.clock, s.lastActive)
+	return err
 }
 
 // cutStage — резка реплики (T-03-02): сегменты по знакам препинания, лемматизация
