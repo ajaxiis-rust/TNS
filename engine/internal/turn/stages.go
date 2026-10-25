@@ -52,6 +52,10 @@ type TurnState struct {
 	// SelectorDecision — решение Селектора (T-03-09): номер сработавшего правила
 	// и его имя, пишется в turns.selector_decision.
 	SelectorDecision string
+	// Candidates — ветки, не вошедшие в ход (T-03-10, шаг 3): после закрытия
+	// сцены ставятся заказом sediment в workshop_queue, в игровые таблицы не
+	// пишутся. Заполняет стадия исполнения.
+	Candidates []SedimentCandidate
 }
 
 // fallbackReply — нейтральная запись fallback из банка (T-03-01, шаг 5): до путей
@@ -372,13 +376,24 @@ func (s *executeStage) Run(ctx context.Context, st *TurnState) error {
 		st.Reply = reply
 		if degraded {
 			st.Degraded = true
+			return nil
 		}
+		// Отрицательная ветка — готовая запись из БД — не вошла в ход и
+		// становится кандидатом в оседание (T-03-10, шаги 2–3).
+		st.Candidates = append(st.Candidates, SedimentCandidate{
+			TurnID: st.TurnID, SessionID: st.Input.SessionID, Kind: BranchBank,
+		})
 		return nil
 	}
 	// Путь Челнока (T-03-07): запись из банка рутины по тегам сцены.
 	if s.bank != nil {
 		if rec, err := s.bank.Pick(sceneTags(st)); err == nil {
 			st.Reply = rec.Text
+			// Положительная ветка — живой ответ модели — не вошла в ход и
+			// становится кандидатом в оседание (T-03-10, шаги 2–3).
+			st.Candidates = append(st.Candidates, SedimentCandidate{
+				TurnID: st.TurnID, SessionID: st.Input.SessionID, Kind: BranchWeaver,
+			})
 			return nil
 		}
 	}
@@ -387,7 +402,8 @@ func (s *executeStage) Run(ctx context.Context, st *TurnState) error {
 }
 
 // weaverReply исполняет путь Ткача: собирает промпт из фактов сцены и инструкций
-// движка без токенов-заменителей и стримит прозу с порогом тишины. Возвращает
+// движка без токенов-заменителей и доставляет сцену порциями — мгновенная
+// подкладка, затем живой поток с порогом тишины (T-03-10, шаг 1). Возвращает
 // ответ и признак деградации слота (молчание, отказ или незакрытый токен).
 func (s *executeStage) weaverReply(ctx context.Context, st *TurnState) (string, bool) {
 	clock := s.clock
@@ -398,7 +414,21 @@ func (s *executeStage) weaverReply(ctx context.Context, st *TurnState) (string, 
 	if models.HasReplacementTokens(prompt) {
 		return fallbackReply, true
 	}
-	return streamWeaver(ctx, s.weaver, prompt, clock, fallbackReply)
+	var underlay, reply string
+	degraded := false
+	for p := range streamScene(ctx, st, s.weaver, prompt, clock) {
+		switch p.Kind {
+		case portionUnderlay:
+			underlay += p.Text
+		case portionWeaver:
+			reply = p.Text
+			degraded = p.Degraded
+		}
+	}
+	if degraded {
+		return reply, true
+	}
+	return underlay + reply, false
 }
 
 // sceneTags — теги сцены для выбора записи банка (T-03-07, шаг 1): намерение и
@@ -426,5 +456,13 @@ func (*commitStage) Name() string { return "commit" }
 
 func (s *commitStage) Run(_ context.Context, st *TurnState) error {
 	st.LatencyMS = time.Since(st.StartedAt).Milliseconds()
-	return commitTurn(st, s.db, s.FailTable)
+	if err := commitTurn(st, s.db, s.FailTable); err != nil {
+		return err
+	}
+	if s.db == nil {
+		return nil
+	}
+	// После закрытия сцены невошедшие ветки уходят заказом sediment в очередь
+	// мастерской (T-03-10, шаг 3); в игровые таблицы кандидат не пишется.
+	return queueSedimentCandidates(s.db, st.Candidates)
 }
