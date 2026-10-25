@@ -276,16 +276,18 @@ func (*selectStage) Run(_ context.Context, st *TurnState) error {
 }
 
 // executeStage — исполнение выбранного пути (T-03-07/08). Путь Челнока отвечает
-// записью из банка рутины (T-03-07), путь Ткача — генерацией (T-03-08). До путей
-// и при пустом банке — нейтральная запись fallback; reply_text непуст с первого
-// дня.
+// записью из банка рутины (T-03-07), путь Ткача — генерацией прозы с порогом
+// тишины (T-03-08). До путей и при пустом банке — нейтральная запись fallback;
+// reply_text непуст с первого дня.
 type executeStage struct {
-	bank *bank.Bank // Челнок (T-03-07); nil — банк не подключён, ответ заглушкой.
+	bank   *bank.Bank // Челнок (T-03-07); nil — банк не подключён, ответ заглушкой.
+	weaver ProseSlot  // Ткач (T-03-08); nil — слот не подключён, ответ заглушкой.
+	clock  Clock      // часы порога тишины Ткача; nil — реальное время.
 }
 
 func (*executeStage) Name() string { return "execute" }
 
-func (s *executeStage) Run(_ context.Context, st *TurnState) error {
+func (s *executeStage) Run(ctx context.Context, st *TurnState) error {
 	if st.Command != nil {
 		st.Reply = commandReply(st.Command.Name)
 		return nil
@@ -293,6 +295,15 @@ func (s *executeStage) Run(_ context.Context, st *TurnState) error {
 	// Неподтверждённый смысл — переспрос нейтральной записью (T-03-04, шаг 2).
 	if st.Confirm.Decision == DecisionReask {
 		st.Reply = reaskReply
+		return nil
+	}
+	// Путь Ткача (T-03-08): генерация прозы со стримингом и порогом тишины.
+	if st.Path == pathWeaver {
+		reply, degraded := s.weaverReply(ctx, st)
+		st.Reply = reply
+		if degraded {
+			st.Degraded = true
+		}
 		return nil
 	}
 	// Путь Челнока (T-03-07): запись из банка рутины по тегам сцены.
@@ -304,6 +315,21 @@ func (s *executeStage) Run(_ context.Context, st *TurnState) error {
 	}
 	st.Reply = fallbackReply
 	return nil
+}
+
+// weaverReply исполняет путь Ткача: собирает промпт из фактов сцены и инструкций
+// движка без токенов-заменителей и стримит прозу с порогом тишины. Возвращает
+// ответ и признак деградации слота (молчание, отказ или незакрытый токен).
+func (s *executeStage) weaverReply(ctx context.Context, st *TurnState) (string, bool) {
+	clock := s.clock
+	if clock == nil {
+		clock = wallClock{}
+	}
+	prompt := models.BuildPrompt(st.Prepath.Prompt, models.WeaverInstruction)
+	if models.HasReplacementTokens(prompt) {
+		return fallbackReply, true
+	}
+	return streamWeaver(ctx, s.weaver, prompt, clock, fallbackReply)
 }
 
 // sceneTags — теги сцены для выбора записи банка (T-03-07, шаг 1): намерение и
@@ -318,12 +344,6 @@ func sceneTags(st *TurnState) []string {
 	}
 	return tags
 }
-
-// safetyStage — страховка хода (заполняется T-03-08).
-type safetyStage struct{}
-
-func (*safetyStage) Name() string                          { return "safety" }
-func (*safetyStage) Run(context.Context, *TurnState) error { return nil }
 
 // commitStage — коммит хода (T-03-05): после полной подтверждённой реплики пишет
 // ход одной транзакцией (стоп-кран в stopcrane.go); неподтверждённая ветка
