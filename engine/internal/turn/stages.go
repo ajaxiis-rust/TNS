@@ -56,6 +56,12 @@ type TurnState struct {
 	// сцены ставятся заказом sediment в workshop_queue, в игровые таблицы не
 	// пишутся. Заполняет стадия исполнения.
 	Candidates []SedimentCandidate
+	// Roster — труппа и места сцены (T-03-11): наполняет труппа до предпути,
+	// предпуть закрывает токены биндера по этим лицам.
+	Roster *Roster
+	// Troupe — лица мира в живом ходе (T-03-11): появление персонажа и память
+	// реакций; nil — труппа не подключена.
+	Troupe *Troupe
 }
 
 // fallbackReply — нейтральная запись fallback из банка (T-03-01, шаг 5): до путей
@@ -72,6 +78,7 @@ const reaskReply = "Я не уверен, что верно понял тебя.
 func (p *Pipeline) stages() []Stage {
 	return []Stage{
 		&cutStage{logger: p.Logger},
+		&troupeStage{db: p.DB},
 		&prepathStage{db: p.DB},
 		&confirmStage{configPath: "config.yaml"},
 		&selectStage{},
@@ -157,6 +164,31 @@ func (s *cutStage) degrade(st *TurnState, err error) {
 	}
 }
 
+// troupeStage — труппа (T-03-11): наполняет лиц мира из карточек characters до
+// предпути, чтобы биндер слотов видел появившихся персонажей. Реакция игрока на
+// встречу фиксируется предпутём по названным именам (память реакций — в
+// memory_topics).
+type troupeStage struct {
+	db *db.Handle
+}
+
+func (*troupeStage) Name() string { return "troupe" }
+
+func (s *troupeStage) Run(_ context.Context, st *TurnState) error {
+	if st.Troupe == nil {
+		st.Troupe = NewTroupe(s.db)
+	}
+	if s.db == nil {
+		return nil
+	}
+	roster, err := st.Troupe.LoadRoster()
+	if err != nil {
+		return err
+	}
+	st.Roster = &roster
+	return nil
+}
+
 // prepathStage — предварительный путь (T-03-03): гипотеза намерения лексиконом
 // языкового пакета без LLM, настроение реплики, рамка сцены из механики и
 // предвыбор; биндер закрывает токены-заменители, привязки живут в памяти до
@@ -176,7 +208,11 @@ func (s *prepathStage) Run(_ context.Context, st *TurnState) error {
 	}
 	binder := s.binder
 	if binder == nil {
-		binder = NewSlotBinder(Roster{})
+		roster := Roster{}
+		if st.Roster != nil {
+			roster = *st.Roster
+		}
+		binder = NewSlotBinder(roster)
 	}
 
 	lemmas := collectLemmas(st.Cut)
@@ -188,6 +224,15 @@ func (s *prepathStage) Run(_ context.Context, st *TurnState) error {
 
 	mentions := binder.DetectMentions(st.Input.PlayerText)
 	prompt, bindings := binder.Bind(template, mentions, 0, 0)
+
+	// Память реакций (T-03-11, LT-16.2): каждая встреча названного лица
+	// фиксируется как реакция «не заметил» — механика, не генерация; повторная
+	// встреча читает запись в полосе отношения.
+	if st.Troupe != nil {
+		for _, n := range detectMentions(binder.Roster(), st.Input.PlayerText) {
+			_ = st.Troupe.RecordMeeting(n.ID, ReactionIgnored)
+		}
+	}
 
 	st.Prepath = Prepath{
 		Intent:        intent,
