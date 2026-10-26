@@ -56,6 +56,15 @@ type WrittenScene struct {
 // dedup → write; дубль — dedup → dup_skip; отказ Цензора — censor_reject;
 // отсев префильтром — in → prefiltered.
 func (p *Pipeline) Run(ctx context.Context, h *db.Handle, scene Scene, bindings []Binding) (WrittenScene, error) {
+	// Идемпотентность (T-04-10, шаг 2): уже осевшая сцена возвращается без
+	// модельного вызова, векторизации и записи — дешёвый повтор.
+	if existing, ok, err := findExisting(h, scene.ID); err != nil {
+		return WrittenScene{}, fmt.Errorf("sediment: идемпотентность: %w", err)
+	} else if ok {
+		p.log(EventDupSkip, journal.Field{Key: "scene_id", Value: strconv.FormatInt(scene.ID, 10)})
+		return existing, nil
+	}
+
 	p.log(EventIn, journal.Field{Key: "scene_id", Value: strconv.FormatInt(scene.ID, 10)})
 
 	// Префильтр — первая ступень (W-04.7): отсев останавливает конвейер до очистки.

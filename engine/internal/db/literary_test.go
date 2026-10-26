@@ -66,13 +66,14 @@ func TestLiterarySchema(t *testing.T) {
 		}
 	}
 
-	// 3. Учёт миграций: user_version == 1 и schema_migrations == [{1, "0001_init"}].
+	// 3. Учёт миграций: user_version == 2 и schema_migrations ==
+	// [{1, "0001_init"}, {2, "0002_sediment_idempotency"}].
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 1 {
-		t.Errorf("user_version = %d, want 1", uv)
+	if uv != 2 {
+		t.Errorf("user_version = %d, want 2", uv)
 	}
 
 	type migration struct {
@@ -93,9 +94,35 @@ func TestLiterarySchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_sediment_idempotency"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
+	}
+
+	// 3a. UNIQUE-индекс повторного оседания (T-04-10): по source_scene_id и уникален.
+	if !indexHasCols(t, w, "sediment_scene_source_scene_id_idx", "source_scene_id") {
+		t.Errorf("индекс sediment_scene_source_scene_id_idx (source_scene_id) отсутствует или не по той колонке")
+	}
+	irows, err := w.Query(`PRAGMA index_list(sediment_scene)`)
+	if err != nil {
+		t.Fatalf("PRAGMA index_list(sediment_scene): %v", err)
+	}
+	uniqueIdx := false
+	for irows.Next() {
+		var seq int
+		var name string
+		var unique int
+		var origin, partial string
+		if err := irows.Scan(&seq, &name, &unique, &origin, &partial); err != nil {
+			t.Fatalf("index_list scan: %v", err)
+		}
+		if name == "sediment_scene_source_scene_id_idx" {
+			uniqueIdx = unique == 1
+		}
+	}
+	irows.Close()
+	if !uniqueIdx {
+		t.Errorf("индекс sediment_scene_source_scene_id_idx не UNIQUE")
 	}
 
 	// 4. CHECK bank_pool.kind: 'fallback' проходит, 'poem' отклоняется.

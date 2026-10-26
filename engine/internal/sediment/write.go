@@ -1,6 +1,7 @@
 package sediment
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -59,4 +60,24 @@ func Write(h *db.Handle, cen Censor, rec SedimentRecord, vectorID int64, now str
 		return 0, err
 	}
 	return res.LastInsertId()
+}
+
+// findExisting возвращает уже осевшую строку sediment_scene по source_scene_id
+// (T-04-10, шаг 2). Повторная сцена не переписывается: конвейер возвращает
+// существующую запись без вызова слота, эмбеддера и записи — дешёвый повтор.
+func findExisting(h *db.Handle, sourceSceneID int64) (WrittenScene, bool, error) {
+	var out WrittenScene
+	var vectorID sql.NullInt64
+	err := h.QueryRow(
+		`SELECT id, source_scene_id, vector_id, verdict, trust_level FROM sediment_scene WHERE source_scene_id = ?`,
+		sourceSceneID,
+	).Scan(&out.ID, &out.SourceSceneID, &vectorID, &out.Verdict, &out.TrustLevel)
+	if errors.Is(err, sql.ErrNoRows) {
+		return WrittenScene{}, false, nil
+	}
+	if err != nil {
+		return WrittenScene{}, false, err
+	}
+	out.VectorID = vectorID.Int64
+	return out, true, nil
 }

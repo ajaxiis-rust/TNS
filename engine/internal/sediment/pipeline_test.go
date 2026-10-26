@@ -239,6 +239,9 @@ func TestGoldenPipeline(t *testing.T) {
 		// Эталон набора T-04-09 — 3 записи sediment_scene (план, «Проверка»).
 		const wantRecords = 3
 		for i := 0; i < wantRecords; i++ {
+			// Три разные сцены одного смысла: после T-04-10 повтор одной сцены
+			// (source_scene_id) не создаёт вторую запись.
+			scene.ID = int64(42 + i)
 			if _, err := p.Run(context.Background(), h, scene, bindings); err != nil {
 				t.Fatalf("Run(%d): %v", i, err)
 			}
