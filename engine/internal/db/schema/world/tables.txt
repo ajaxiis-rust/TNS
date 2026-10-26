@@ -18,6 +18,7 @@ player_map
 rings
 saw_state
 scene_arc
+scene_signals
 scenes
 schema_migrations
 sessions

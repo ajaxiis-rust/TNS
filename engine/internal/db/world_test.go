@@ -66,13 +66,14 @@ func TestWorldSchema(t *testing.T) {
 	}
 
 	// 3. Учёт миграций: общий vectors подключён отдельным шагом, очередь
-	// мастерской — третьей миграцией, Пила и арка сцены — четвёртой (user_version == 4).
+	// мастерской — третьей миграцией, Пила и арка сцены — четвёртой, сигналы
+	// игрока — пятой (user_version == 5).
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 4 {
-		t.Errorf("user_version = %d, want 4", uv)
+	if uv != 5 {
+		t.Errorf("user_version = %d, want 5", uv)
 	}
 
 	type migration struct {
@@ -93,7 +94,7 @@ func TestWorldSchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}, {5, "0005_scene_signals"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
@@ -159,6 +160,25 @@ func TestWorldSchema(t *testing.T) {
 	}
 	if !indexHasCols(t, w, "saw_state_character_thread_idx", "character_id", "thread_id") {
 		t.Errorf("saw_state index on (character_id, thread_id) missing")
+	}
+
+	// 8. Контракт DDL сигналов игрока (T-04-06): колонки scene_signals и
+	// CHECK kind IN ('like','dislike').
+	if got := colsOf(t, w, "scene_signals"); !slices.Equal(got, []string{"scene_id", "kind", "created_at"}) {
+		t.Errorf("scene_signals columns = %v", got)
+	}
+	insertSignal := func(kind string) error {
+		_, err := w.Exec(`INSERT INTO scene_signals (scene_id, kind, created_at) VALUES (1, ?, '2026-01-01T00:00:00Z')`, kind)
+		return err
+	}
+	if err := insertSignal("like"); err != nil {
+		t.Errorf("INSERT scene_signals kind='like': %v", err)
+	}
+	if err := insertSignal("dislike"); err != nil {
+		t.Errorf("INSERT scene_signals kind='dislike': %v", err)
+	}
+	if err := insertSignal("neutral"); err == nil {
+		t.Errorf("INSERT scene_signals kind='neutral' should fail CHECK (kind)")
 	}
 }
 
