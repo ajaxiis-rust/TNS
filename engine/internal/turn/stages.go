@@ -74,6 +74,12 @@ type TurnState struct {
 	DigestSummary string
 	// DigestNews — запаздывающие вести, накопленные в отсутствие (T-03-14, шаг 2).
 	DigestNews []string
+	// PositionShift — сдвиг положения героя событием хода (T-03-15); nil — сдвига
+	// нет. Заполняет источник события, стадия position применяет его кодом.
+	PositionShift *PositionShift
+	// Position — положение героя, вычисленное стадией сдвига (T-03-15); Shifted —
+	// координаты сдвинуты событием и пишутся коммитом одной транзакцией с ответом.
+	Position HeroPosition
 }
 
 // fallbackReply — нейтральная запись fallback из банка (T-03-01, шаг 5): до путей
@@ -100,6 +106,7 @@ func (p *Pipeline) stages() []Stage {
 		&timejumpStage{db: p.DB},
 		&safetyStage{},
 		&digestStage{db: p.DB},
+		&positionStage{db: p.DB},
 		&commitStage{db: p.DB},
 	}
 }
@@ -547,7 +554,7 @@ func (*commitStage) Name() string { return "commit" }
 
 func (s *commitStage) Run(_ context.Context, st *TurnState) error {
 	st.LatencyMS = time.Since(st.StartedAt).Milliseconds()
-	if err := commitTurn(st, s.db, s.FailTable); err != nil {
+	if err := commitTurnPosition(st, s.db, s.FailTable); err != nil {
 		return err
 	}
 	if s.db == nil {
