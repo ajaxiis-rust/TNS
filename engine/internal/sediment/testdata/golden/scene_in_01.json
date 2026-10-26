@@ -1,0 +1,25 @@
+{
+  "id": 42,
+  "status": "closed",
+  "prose": "Иван купил меч за тридцать монет. Иван упомянул меч и город.",
+  "facts": [
+    {
+      "token": "{THING}",
+      "value": "меч"
+    },
+    {
+      "token": "{PRICE}",
+      "value": "тридцать монет"
+    }
+  ],
+  "bindings": [
+    {
+      "token": "[NPCname]",
+      "value": "Иван"
+    },
+    {
+      "token": "[PLACE]",
+      "value": "город"
+    }
+  ]
+}

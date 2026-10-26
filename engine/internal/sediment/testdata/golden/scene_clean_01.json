@@ -1,0 +1,9 @@
+{
+  "cleaned_text": "{NAME} купил {THING} за {PRICE}. {NAME} упомянул {THING} и {PLACE}.",
+  "slots": [
+    "{NAME}",
+    "{THING}",
+    "{PRICE}",
+    "{PLACE}"
+  ]
+}
