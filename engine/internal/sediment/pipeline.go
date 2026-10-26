@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"tns65/internal/db"
@@ -50,10 +51,16 @@ type WrittenScene struct {
 
 // Run прогоняет полную сцену через ступени и записывает строку литературной
 // базы хэндлом писателя sediment (h). Отказ любой ступени останавливает конвейер:
-// строка не создаётся, возвращается причина ступени.
+// строка не создаётся, возвращается причина ступени. События журнала следуют
+// контракту исходов (T-04-09, шаг 2): успех — in → clean → autocritic.verdict →
+// dedup → write; дубль — dedup → dup_skip; отказ Цензора — censor_reject;
+// отсев префильтром — in → prefiltered.
 func (p *Pipeline) Run(ctx context.Context, h *db.Handle, scene Scene, bindings []Binding) (WrittenScene, error) {
+	p.log(EventIn, journal.Field{Key: "scene_id", Value: strconv.FormatInt(scene.ID, 10)})
+
 	// Префильтр — первая ступень (W-04.7): отсев останавливает конвейер до очистки.
 	if p.Prefilter != nil && !p.Prefilter.Keep(scene) {
+		p.log(EventPrefiltered, journal.Field{Key: "scene_id", Value: strconv.FormatInt(scene.ID, 10)})
 		return WrittenScene{}, ErrPrefiltered
 	}
 
@@ -66,6 +73,7 @@ func (p *Pipeline) Run(ctx context.Context, h *db.Handle, scene Scene, bindings 
 	if err != nil {
 		return WrittenScene{}, fmt.Errorf("sediment: очистка: %w", err)
 	}
+	p.log(EventClean)
 
 	rec = Autocritic(ctx, p.Slot, p.Logger, rec)
 
@@ -77,21 +85,35 @@ func (p *Pipeline) Run(ctx context.Context, h *db.Handle, scene Scene, bindings 
 	if err != nil {
 		return WrittenScene{}, fmt.Errorf("sediment: дедуп: %w", err)
 	}
+	p.log(EventDedup)
 	if IsDuplicate(vec, existing, p.Dedup.Threshold) {
+		p.log(EventDupSkip)
 		return WrittenScene{}, ErrDuplicate
 	}
 
 	// Цензор стоит перед записью внутри Write (T-04-05, шаг 2).
 	id, err := Write(h, p.Censor, rec, 0, time.Now().UTC().Format(time.RFC3339))
 	if err != nil {
+		if errors.Is(err, ErrCensorReject) {
+			p.log(EventCensorReject, journal.Field{Key: "err", Value: err.Error()})
+		}
 		return WrittenScene{}, err
 	}
+	p.log(EventWrite, journal.Field{Key: "trust_level", Value: strconv.Itoa(TrustLevelUnchecked)})
 	return WrittenScene{
 		ID:            id,
 		SourceSceneID: rec.SourceSceneID,
 		Verdict:       rec.Verdict,
 		TrustLevel:    TrustLevelUnchecked,
 	}, nil
+}
+
+// log пишет событие оседания в журнал станка; nil-журнал — пропуск события.
+func (p *Pipeline) log(event string, fields ...journal.Field) {
+	if p.Logger == nil {
+		return
+	}
+	_ = p.Logger.Event(Source, event, fields...)
 }
 
 // loadExistingVectors возвращает векторы существующих записей sediment_scene для
