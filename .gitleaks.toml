@@ -1,0 +1,8 @@
+# gitleaks: базовые правила + точечный allowlist
+# Проверки: pre-commit (scripts: .githooks/pre-commit, core.hooksPath)
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Общий preview-OAuth клиент платформы grok-sandbox: публичный по замыслу, низкопривилегированный, только *.grok-sandbox.com, на брокере хранится лишь хэш секрета (см. комментарий в файле)"
+paths = ['''map/grok-workspace/src/lib/auth/preview\.ts''']

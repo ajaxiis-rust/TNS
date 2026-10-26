@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# pre-commit: gitleaks сканирует индекс (--staged); секрет в закоммиченном — коммит отменён.
+# Если gitleaks не установлен — громкое предупреждение и пропуск, чтобы не ломать рабочие коммиты.
+set -euo pipefail
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: ВНИМАНИЕ — gitleaks не найден в PATH, проверка секретов ПРОПУЩЕНА." >&2
+  echo "  установка: GOBIN=~/.local/bin go install github.com/zricethezav/gitleaks/v8@latest" >&2
+  exit 0
+fi
+exec gitleaks protect --staged --redact -v
