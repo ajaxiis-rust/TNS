@@ -26,6 +26,9 @@ type TurnState struct {
 	Reply     string // накапливаемый ответ игроку.
 	Degraded  bool
 	LatencyMS int64
+	// DegradeReason — причина деградации слота (T-03-16, шаг 2): пишется полем
+	// reason события turn.degraded.
+	DegradeReason string
 
 	// TurnID — номер хода в памяти: связывает векторы резки (T-03-02, шаг 2).
 	TurnID int64
@@ -108,6 +111,7 @@ func (p *Pipeline) stages() []Stage {
 		&digestStage{db: p.DB},
 		&positionStage{db: p.DB},
 		&commitStage{db: p.DB},
+		&auditStage{logger: p.Logger},
 	}
 }
 
@@ -211,6 +215,7 @@ func (s *cutStage) Run(ctx context.Context, st *TurnState) error {
 // хода (деградацию обрабатывает T-03-08).
 func (s *cutStage) degrade(st *TurnState, err error) {
 	st.Degraded = true
+	st.DegradeReason = err.Error()
 	if s.logger != nil {
 		_ = s.logger.Event("turn", journal.EventEmbedFail,
 			journal.Field{Key: "err", Value: err.Error()})
@@ -474,6 +479,7 @@ func (s *executeStage) Run(ctx context.Context, st *TurnState) error {
 		st.Reply = reply
 		if degraded {
 			st.Degraded = true
+			st.DegradeReason = "slot"
 			return nil
 		}
 		// Отрицательная ветка — готовая запись из БД — не вошла в ход и
