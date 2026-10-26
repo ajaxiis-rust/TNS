@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"tns65/internal/core"
 	"tns65/internal/db"
 )
 
@@ -138,6 +139,9 @@ type Slot interface {
 var (
 	slotMu  sync.RWMutex
 	curSlot Slot
+
+	schedMu  sync.RWMutex
+	curSched *core.Scheduler
 )
 
 // SetSlot подменяет слот очереди (тестовая точка входа T-02-14); nil — заводской.
@@ -145,6 +149,24 @@ func SetSlot(s Slot) {
 	slotMu.Lock()
 	defer slotMu.Unlock()
 	curSlot = s
+}
+
+// SetScheduler подменяет планировщик, которому подчиняется исполнитель мастерской
+// (тестовая точка входа T-03-17); nil — планировщик ядра.
+func SetScheduler(s *core.Scheduler) {
+	schedMu.Lock()
+	defer schedMu.Unlock()
+	curSched = s
+}
+
+// scheduler — планировщик, которому подчиняется исполнитель мастерской.
+func scheduler() *core.Scheduler {
+	schedMu.RLock()
+	defer schedMu.RUnlock()
+	if curSched != nil {
+		return curSched
+	}
+	return core.DefaultScheduler
 }
 
 // slotForProvider — выбор слота по пресету (T-02-11, шаг 3; T-02-14, шаг 1).
@@ -191,6 +213,10 @@ func attempt(h *db.Handle, id int64, kind Kind, provider Provider, prompt string
 	if slot == nil {
 		return
 	}
+	// Исполнитель мастерской подчиняется планировщику: слот ковки берётся только
+	// с разрешения ядра (T-03-17) — во время хода слотов нет.
+	release := scheduler().AcquireWorkshop()
+	defer release()
 	out, err := slot.Generate(context.Background(), string(kind), prompt)
 	if err != nil {
 		_, _ = h.Exec("workshop_queue",

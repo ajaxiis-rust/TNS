@@ -60,3 +60,18 @@ func (c *Clock) After(d time.Duration) <-chan time.Time {
 	c.timers = append(c.timers, &clockTimer{deadline: c.now.Add(d), ch: ch})
 	return ch
 }
+
+// PendingTimers — число ещё не сработавших таймеров. Тесты ждут этого счётчика
+// перед Advance, чтобы не гоняться с регистрацией After в горутине слота
+// (T-03-17): слот считает вызов до подписки на часы.
+func (c *Clock) PendingTimers() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	n := 0
+	for _, t := range c.timers {
+		if !t.fired {
+			n++
+		}
+	}
+	return n
+}
