@@ -65,6 +65,15 @@ type TurnState struct {
 	// TimeJump — декларация времени в реплике (T-03-12): детектор времени на
 	// входе и скачок; пустой Span — декларации не было.
 	TimeJump TimeJump
+	// Absence — итог прогона паузы на возврате (T-03-13): заполняет returnStage,
+	// сводку и вести из него строит T-03-14.
+	Absence AbsenceReport
+	// AbsentFor — длительность отсутствия до текущего хода (T-03-14, шаг 1).
+	AbsentFor time.Duration
+	// DigestSummary — сводка «пока тебя не было» (T-03-14); пусто — сводки нет.
+	DigestSummary string
+	// DigestNews — запаздывающие вести, накопленные в отсутствие (T-03-14, шаг 2).
+	DigestNews []string
 }
 
 // fallbackReply — нейтральная запись fallback из банка (T-03-01, шаг 5): до путей
@@ -76,8 +85,9 @@ const fallbackReply = "Мир слушает, но пока не находит 
 const reaskReply = "Я не уверен, что верно понял тебя. Скажи иначе."
 
 // stages — упорядоченный реестр стадий (шаг 2): возврат → резка → предварительный
-// путь → подтверждение → выбор пути → исполнение → время 1:1 → страховка → коммит.
-// Каждая задача P2 добавляет свою стадию отдельным файлом и одной строкой реестра.
+// путь → подтверждение → выбор пути → исполнение → время 1:1 → страховка →
+// сводка/вести → коммит. Каждая задача P2 добавляет свою стадию отдельным файлом
+// и одной строкой реестра.
 func (p *Pipeline) stages() []Stage {
 	return []Stage{
 		&returnStage{db: p.DB},
@@ -89,6 +99,7 @@ func (p *Pipeline) stages() []Stage {
 		&executeStage{},
 		&timejumpStage{db: p.DB},
 		&safetyStage{},
+		&digestStage{db: p.DB},
 		&commitStage{db: p.DB},
 	}
 }
@@ -106,12 +117,21 @@ type returnStage struct {
 
 func (*returnStage) Name() string { return "return" }
 
-func (s *returnStage) Run(_ context.Context, _ *TurnState) error {
+func (s *returnStage) Run(_ context.Context, st *TurnState) error {
 	if s.lastActive.IsZero() {
 		return nil
 	}
-	_, err := advanceAbsence(s.db, s.clock, s.lastActive)
-	return err
+	rep, err := advanceAbsence(s.db, s.clock, s.lastActive)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	if s.clock != nil {
+		now = s.clock.Now()
+	}
+	st.Absence = rep
+	st.AbsentFor = now.Sub(s.lastActive)
+	return nil
 }
 
 // cutStage — резка реплики (T-03-02): сегменты по знакам препинания, лемматизация
