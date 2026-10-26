@@ -16,23 +16,26 @@ import (
 var ErrDuplicate = errors.New("sediment: дубль по смыслу")
 
 // Pipeline — конвейер оседания (T-04-05, шаг 1). Ступени в фиксированном порядке:
-// проверка полноты → очистка → авто-критик → дедуп → Цензор → запись.
+// префильтр → проверка полноты → очистка → авто-критик → дедуп → Цензор → запись.
 type Pipeline struct {
-	Embedder models.Embedder
-	Slot     Slot
-	Censor   Censor
-	Logger   *journal.Logger
-	Dedup    DedupConfig
+	Prefilter Prefilter
+	Embedder  models.Embedder
+	Slot      Slot
+	Censor    Censor
+	Logger    *journal.Logger
+	Dedup     DedupConfig
 }
 
-// NewPipeline собирает конвейер с порогом дедупа по умолчанию (config.yaml).
+// NewPipeline собирает конвейер с порогом дедупа по умолчанию (config.yaml) и
+// дефолтным префильтром pass-through (без Паганеля конвейер работает, T-04-07).
 func NewPipeline(embedder models.Embedder, slot Slot, censor Censor, logger *journal.Logger) *Pipeline {
 	return &Pipeline{
-		Embedder: embedder,
-		Slot:     slot,
-		Censor:   censor,
-		Logger:   logger,
-		Dedup:    DefaultDedupConfig(),
+		Prefilter: passPrefilter{},
+		Embedder:  embedder,
+		Slot:      slot,
+		Censor:    censor,
+		Logger:    logger,
+		Dedup:     DefaultDedupConfig(),
 	}
 }
 
@@ -49,7 +52,12 @@ type WrittenScene struct {
 // базы хэндлом писателя sediment (h). Отказ любой ступени останавливает конвейер:
 // строка не создаётся, возвращается причина ступени.
 func (p *Pipeline) Run(ctx context.Context, h *db.Handle, scene Scene, bindings []Binding) (WrittenScene, error) {
-	// Полнота — первая ступень, отдельная причина отказа.
+	// Префильтр — первая ступень (W-04.7): отсев останавливает конвейер до очистки.
+	if p.Prefilter != nil && !p.Prefilter.Keep(scene) {
+		return WrittenScene{}, ErrPrefiltered
+	}
+
+	// Полнота — отдельная причина отказа.
 	if scene.Status != SceneStatusClosed {
 		return WrittenScene{}, fmt.Errorf("%w: status=%q", ErrNotFullScene, scene.Status)
 	}
