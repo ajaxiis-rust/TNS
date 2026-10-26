@@ -83,6 +83,12 @@ type TurnState struct {
 	// Position — положение героя, вычисленное стадией сдвига (T-03-15); Shifted —
 	// координаты сдвинуты событием и пишутся коммитом одной транзакцией с ответом.
 	Position HeroPosition
+	// Secrets — назначенные тайны лиц труппы в этом ходе (T-03-19): стадия тайны
+	// читает их в память хода, флаги при живом ходе не меняет.
+	Secrets []AssignedSecret
+	// Farewell — сцена прощания выдана: здоровье героя упало до порога смерти
+	// (T-03-19, LT-16.7). До порога — false, смерть не навязывается.
+	Farewell bool
 }
 
 // fallbackReply — нейтральная запись fallback из банка (T-03-01, шаг 5): до путей
@@ -102,6 +108,7 @@ func (p *Pipeline) stages() []Stage {
 		&returnStage{db: p.DB},
 		&cutStage{logger: p.Logger},
 		&troupeStage{db: p.DB},
+		&secretStage{db: p.DB},
 		&prepathStage{db: p.DB},
 		&confirmStage{configPath: "config.yaml"},
 		&selectStage{},
@@ -110,6 +117,7 @@ func (p *Pipeline) stages() []Stage {
 		&safetyStage{},
 		&digestStage{db: p.DB},
 		&positionStage{db: p.DB},
+		&deathStage{db: p.DB},
 		&commitStage{db: p.DB},
 		&auditStage{logger: p.Logger},
 	}
@@ -244,6 +252,38 @@ func (s *troupeStage) Run(_ context.Context, st *TurnState) error {
 		return err
 	}
 	st.Roster = &roster
+	return nil
+}
+
+// secretStage — тайны лиц труппы (T-03-19): назначенные тайны читаются в память
+// хода. Живой ход флаги не меняет — смена флагов остаётся распоряжением Селектора
+// при планировании (LT-16.5).
+type secretStage struct {
+	db      *db.Handle
+	secrets *Secrets
+}
+
+func (*secretStage) Name() string { return "secret" }
+
+func (s *secretStage) Run(_ context.Context, st *TurnState) error {
+	if s.secrets == nil {
+		s.secrets = NewSecrets(s.db)
+	}
+	if st.Roster == nil {
+		return nil
+	}
+	for _, npc := range st.Roster.NPCs {
+		if npc.ID == heroCharacterID {
+			continue
+		}
+		sec, ok, err := s.secrets.Assigned(npc.ID)
+		if err != nil {
+			return err
+		}
+		if ok {
+			st.Secrets = append(st.Secrets, AssignedSecret{CharacterID: npc.ID, Secret: sec})
+		}
+	}
 	return nil
 }
 
@@ -546,6 +586,30 @@ func sceneTags(st *TurnState) []string {
 		tags = append(tags, st.Prepath.Mood)
 	}
 	return tags
+}
+
+// deathStage — порог смерти (T-03-19, LT-16.7): при здоровье героя ≤ 2% сцена
+// прощания гарантирована — ответ хода заменяется заготовкой прощания; до порога
+// смерть не навязывается.
+type deathStage struct {
+	db *db.Handle
+}
+
+func (*deathStage) Name() string { return "death" }
+
+func (s *deathStage) Run(_ context.Context, st *TurnState) error {
+	health, ok, err := readHeroHealth(s.db)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
+	}
+	if deathThresholdHit(health) {
+		st.Farewell = true
+		st.Reply = farewellReply
+	}
+	return nil
 }
 
 // commitStage — коммит хода (T-03-05): после полной подтверждённой реплики пишет
