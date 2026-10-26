@@ -1,0 +1,14 @@
+[
+  {"arc":"ascent","archetypes":["Hero","Child","Persona"]},
+  {"arc":"descent","archetypes":["Shadow","Trickster","Animus"]},
+  {"arc":"quest","archetypes":["Hero","Wise Old Man","Anima"]},
+  {"arc":"return","archetypes":["Hero","Maiden","Great Mother"]},
+  {"arc":"rebirth","archetypes":["Self","Child","Anima"]},
+  {"arc":"tragedy","archetypes":["Shadow","Animus","Trickster"]},
+  {"arc":"comedy","archetypes":["Trickster","Persona","Maiden"]},
+  {"arc":"metamorphosis","archetypes":["Anima","Animus","Self"]},
+  {"arc":"odyssey","archetypes":["Hero","Trickster","Wise Old Man"]},
+  {"arc":"redemption","archetypes":["Shadow","Self","Wise Old Woman"]},
+  {"arc":"initiation","archetypes":["Child","Wise Old Man","Maiden"]},
+  {"arc":"homecoming","archetypes":["Hero","Great Mother","Wise Old Woman"]}
+]

@@ -11,11 +11,14 @@ import (
 	"syscall"
 
 	"tns65/internal/birth"
+	"tns65/internal/db"
 	"tns65/internal/journal"
 	"tns65/internal/langpack"
 	"tns65/internal/portgate"
 	"tns65/internal/supervisor"
+	"tns65/internal/swarm"
 	"tns65/internal/version"
+	"tns65/internal/workshop"
 )
 
 func main() {
@@ -23,6 +26,11 @@ func main() {
 	if len(args) > 0 && (args[0] == "-version" || args[0] == "--version") {
 		fmt.Printf("Version: %s\nBuildDate: %s\n", version.Version, version.BuildDate)
 		return
+	}
+	// Скрытая точка входа однозадачной задачи роя (T-01-15, T-05-02): задача
+	// выполняется тем же бинарником tns65, отдельный бинарник не заводится.
+	if len(args) > 0 && args[0] == "swarm-task" {
+		os.Exit(runSwarmTask(args[1:]))
 	}
 	if len(args) == 0 {
 		os.Exit(run())
@@ -41,6 +49,11 @@ func main() {
 			if errors.As(err, &ee) {
 				os.Exit(ee.Code)
 			}
+			os.Exit(1)
+		}
+	case "swarm":
+		if err := runSwarm(args[1:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	default:
@@ -187,4 +200,76 @@ func runWorldBirth(args []string) error {
 	}
 	fmt.Printf("мир %q создан: %s\n", res.Slug, res.Dir)
 	return nil
+}
+
+// runSwarm — точка запуска однозадачных задач роя (T-01-15, T-05-02):
+// tns65 swarm <task>. Отдельный бинарник для задач не заводится — задача
+// выполняется тем же бинарником tns65 перезапуском со скрытой подкомандой
+// swarm-task; ядро сверяет версию по рукопожатию (swarm.Launch).
+func runSwarm(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("tns65 swarm: missing task (forge-card)")
+	}
+	switch args[0] {
+	case "forge-card":
+		return launchSwarmTask(args[1:])
+	default:
+		return fmt.Errorf("tns65 swarm: unknown task %q", args[0])
+	}
+}
+
+// launchSwarmTask запускает задачу ковки карточки роя: аргументы задачи —
+// литературная база мира и payload заказа complement.
+func launchSwarmTask(args []string) error {
+	if len(args) != 2 {
+		return fmt.Errorf("tns65 swarm forge-card: expected <literary_db> <payload_json>")
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	logger, err := journal.New("state/journal/swarm.log")
+	if err != nil {
+		return err
+	}
+	res, err := swarm.Launch(logger, swarm.Spec{
+		Name: "forge-card",
+		Cmd:  exe,
+		Args: []string{"swarm-task", "forge-card", args[0], args[1]},
+	}, version.Version)
+	if err != nil {
+		return err
+	}
+	fmt.Print(string(res.Output))
+	return nil
+}
+
+// runSwarmTask — скрытая точка входа однозадачной задачи роя: первой строкой
+// stdout печатает рукопожатие, затем выполняет работу и печатает результат.
+func runSwarmTask(args []string) int {
+	hs, _ := json.Marshal(swarm.Handshake{Version: version.Version})
+	fmt.Println(string(hs))
+	if len(args) != 2 || args[0] != "forge-card" {
+		return 2
+	}
+
+	literary, err := db.OpenWriterAs(args[0], db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer literary.Close()
+
+	var payload workshop.ComplementPayload
+	if err := json.Unmarshal([]byte(args[1]), &payload); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	card, err := workshop.RunForgeCard(literary, payload)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	fmt.Print(card)
+	return 0
 }
