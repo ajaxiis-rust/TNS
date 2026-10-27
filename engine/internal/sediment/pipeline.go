@@ -27,11 +27,17 @@ type Pipeline struct {
 	Dedup     DedupConfig
 }
 
-// NewPipeline собирает конвейер с порогом дедупа по умолчанию (config.yaml) и
-// дефолтным префильтром pass-through (без Паганеля конвейер работает, T-04-07).
-func NewPipeline(embedder models.Embedder, slot Slot, censor Censor, logger *journal.Logger) *Pipeline {
+// NewPipeline собирает конвейер с порогом дедупа по умолчанию (config.yaml).
+// Префильтр по умолчанию — pass-through (без Паганеля конвейер работает,
+// T-04-07); реализацию Паганеля (T-06-14) подключает вызывающий, передав её
+// последним аргументом вместо pass-through.
+func NewPipeline(embedder models.Embedder, slot Slot, censor Censor, logger *journal.Logger, prefilters ...Prefilter) *Pipeline {
+	pf := Prefilter(passPrefilter{})
+	if len(prefilters) > 0 && prefilters[0] != nil {
+		pf = prefilters[0]
+	}
 	return &Pipeline{
-		Prefilter: passPrefilter{},
+		Prefilter: pf,
 		Embedder:  embedder,
 		Slot:      slot,
 		Censor:    censor,
