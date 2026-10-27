@@ -6,6 +6,7 @@ character_state
 characters
 collisions
 corridors
+deep_reads
 deferred_events
 economy
 events

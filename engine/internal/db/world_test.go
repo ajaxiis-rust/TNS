@@ -67,13 +67,14 @@ func TestWorldSchema(t *testing.T) {
 
 	// 3. Учёт миграций: общий vectors подключён отдельным шагом, очередь
 	// мастерской — третьей миграцией, Пила и арка сцены — четвёртой, сигналы
-	// игрока — пятой, Паганель — шестой, пробуждение — седьмой (user_version == 7).
+	// игрока — пятой, Паганель — шестой, пробуждение — седьмой, глубокий разбор —
+	// восьмой (user_version == 8).
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 7 {
-		t.Errorf("user_version = %d, want 7", uv)
+	if uv != 8 {
+		t.Errorf("user_version = %d, want 8", uv)
 	}
 
 	type migration struct {
@@ -94,7 +95,7 @@ func TestWorldSchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}, {5, "0005_scene_signals"}, {6, "0006_paganel"}, {7, "0007_book_wakeup"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}, {5, "0005_scene_signals"}, {6, "0006_paganel"}, {7, "0007_book_wakeup"}, {8, "0008_book_deepread"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
@@ -246,6 +247,22 @@ func TestWorldSchema(t *testing.T) {
 	}
 	if err := insertWakeup(1, "ready"); err == nil {
 		t.Errorf("INSERT wakeups повторного chapter_id должен упасть на UNIQUE")
+	}
+
+	// 11. Контракт DDL глубокого разбора (T-07-03): колонки deep_reads и
+	// UNIQUE по chapter_id — один разбор на главу (CB-02.1).
+	if got := colsOf(t, w, "deep_reads"); !slices.Equal(got, []string{"id", "chapter_id", "intent_json", "plan_json", "foreboding_json", "open_thread_json", "citations_json", "raw_json", "created_at"}) {
+		t.Errorf("deep_reads columns = %v", got)
+	}
+	insertDeepRead := func(chapterID int64) error {
+		_, err := w.Exec(`INSERT INTO deep_reads (chapter_id, intent_json, plan_json, foreboding_json, open_thread_json, citations_json, raw_json, created_at) VALUES (?, '{}', '{}', '{}', '{}', '[]', '{}', '2026-01-01T00:00:00Z')`, chapterID)
+		return err
+	}
+	if err := insertDeepRead(1); err != nil {
+		t.Errorf("INSERT deep_reads chapter_id=1: %v", err)
+	}
+	if err := insertDeepRead(1); err == nil {
+		t.Errorf("INSERT deep_reads повторного chapter_id должен упасть на UNIQUE")
 	}
 }
 

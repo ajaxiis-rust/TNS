@@ -47,6 +47,7 @@
 | 0005_scene_signals | world | T-04-06 |
 | 0006_paganel | world | T-06-05 |
 | 0007_book_wakeup | world | T-07-02 |
+| 0008_book_deepread | world | T-07-03 |
 
 Каждая новая миграция вписывается задачей, которая её создаёт.
 
