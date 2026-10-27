@@ -5,19 +5,43 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
+// ScoutBudgetDefault — бюджет разведки на сессию по умолчанию (W-10.4).
+const ScoutBudgetDefault = 3
+
+// ScoutTimeoutDefault — тайм-аут целевого вызова разведки по умолчанию (W-10.3).
+const ScoutTimeoutDefault = 30 * time.Second
+
 // PaganelConfig — настройки Паганеля из config.yaml (секция paganel, T-06-05,
-// шаг 3). Здесь только переключатель «включён»; поля разведки добавляются в
-// T-06-10.
+// шаг 3). Переключатель «включён» — ковка колец; поля разведки наружу (T-06-10)
+// лежат в поле Scout.
 type PaganelConfig struct {
-	Enabled bool // paganel.enabled: ковка колец включена.
+	Enabled bool        // paganel.enabled: ковка колец включена.
+	Scout   ScoutConfig // paganel: разведка наружу (W-10).
+}
+
+// ScoutConfig — настройки разведки наружу (T-06-10, W-10): переключатель
+// «походы наружу», бюджет сессии, тайм-аут целевого вызова и ссылка на ключ
+// внешней модели (сам ключ — в settings.toml, B-4).
+type ScoutConfig struct {
+	Enabled bool          // scout_enabled: разрешение «походы наружу» (F-08).
+	Budget  int           // scout_budget: вызовов разведки на сессию.
+	Timeout time.Duration // scout_timeout: тайм-аут целевого вызова.
+	KeyRef  string        // key_ref: ссылка на ключ в settings.toml.
+}
+
+// DefaultScoutConfig возвращает значения по умолчанию из config.yaml:
+// разведка выключена, бюджет 3 вызова, тайм-аут 30 с.
+func DefaultScoutConfig() ScoutConfig {
+	return ScoutConfig{Enabled: false, Budget: ScoutBudgetDefault, Timeout: ScoutTimeoutDefault}
 }
 
 // DefaultPaganelConfig возвращает настройки, совпадающие со значениями
-// config.yaml: ковка включена.
+// config.yaml: ковка включена, разведка выключена.
 func DefaultPaganelConfig() PaganelConfig {
-	return PaganelConfig{Enabled: true}
+	return PaganelConfig{Enabled: true, Scout: DefaultScoutConfig()}
 }
 
 // LoadPaganelConfig читает секцию paganel из файла конфигурации.
@@ -29,7 +53,8 @@ func LoadPaganelConfig(path string) (PaganelConfig, error) {
 	return parsePaganelSection(string(data))
 }
 
-// parsePaganelSection разбирает топ-ключ `paganel:` со скалярным полем enabled.
+// parsePaganelSection разбирает топ-ключ `paganel:` со скалярными полями:
+// enabled, build_budget, scout_enabled, scout_budget, scout_timeout, key_ref.
 func parsePaganelSection(data string) (PaganelConfig, error) {
 	cfg := DefaultPaganelConfig()
 
@@ -56,10 +81,25 @@ func parsePaganelSection(data string) (PaganelConfig, error) {
 			continue
 		}
 		value = strings.TrimSpace(strings.SplitN(value, "#", 2)[0])
-		if strings.TrimSpace(key) == "enabled" {
+		switch strings.TrimSpace(key) {
+		case "enabled":
 			if b, err := strconv.ParseBool(value); err == nil {
 				cfg.Enabled = b
 			}
+		case "scout_enabled":
+			if b, err := strconv.ParseBool(value); err == nil {
+				cfg.Scout.Enabled = b
+			}
+		case "scout_budget":
+			if n, err := strconv.Atoi(value); err == nil && n >= 0 {
+				cfg.Scout.Budget = n
+			}
+		case "scout_timeout":
+			if d, err := time.ParseDuration(value); err == nil && d > 0 {
+				cfg.Scout.Timeout = d
+			}
+		case "key_ref":
+			cfg.Scout.KeyRef = value
 		}
 	}
 	if err := sc.Err(); err != nil {

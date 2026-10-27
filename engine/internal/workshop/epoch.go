@@ -34,10 +34,20 @@ const worldDescriptionKey = "description"
 
 // ResearchSource — источник материала ковки справочника эпохи (W-19.2): по теме
 // эпохи возвращает материал реалий. Локальная реализация — LocalSource; внешняя
-// (разведка Паганеля) подключается в P5 (T-06-10), до неё внешний источник не
-// используется.
+// (разведка Паганеля) подключается через ResearchSourceFunc (T-06-10).
 type ResearchSource interface {
 	Fetch(ctx context.Context, topic string) (string, error)
+}
+
+// ResearchSourceFunc — функция-источник: внешняя разведка Паганеля подключается
+// сюда без импорта пакета paganel (T-06-10, шаг 5). Разведка идёт только через
+// сетевой гейт и с разрешения переключателя «походы наружу» — ответственность
+// внешней реализации (paganel.Scout), а не ковки справочника.
+type ResearchSourceFunc func(ctx context.Context, topic string) (string, error)
+
+// Fetch вызывает функцию-источник.
+func (f ResearchSourceFunc) Fetch(ctx context.Context, topic string) (string, error) {
+	return f(ctx, topic)
 }
 
 // LocalSource — локальная реализация ResearchSource (шаг 2): материал справочника
