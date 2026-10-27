@@ -1,6 +1,7 @@
 package censor
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -120,4 +121,118 @@ func contains(items []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// errLemmatizer — подставной лемматизатор с постоянным отказом.
+type errLemmatizer struct{}
+
+func (errLemmatizer) Lemmatize(string) ([]lemmarpc.Token, error) {
+	return nil, errors.New("лемматизатор недоступен")
+}
+
+// TestCheckErr — причина инфра-отказа наружу (E-01): CheckErr возвращает ошибку
+// лемматизатора, Check остаётся fail-closed (false, nil) с тем же контрактом.
+func TestCheckErr(t *testing.T) {
+	checker := New(errLemmatizer{}, []string{"дурак"})
+
+	if _, _, err := checker.CheckErr("любой текст"); err == nil {
+		t.Fatal("CheckErr скрыл отказ лемматизатора: err=nil")
+	}
+	ok, hits := checker.Check("любой текст")
+	if ok || hits != nil {
+		t.Fatalf("Check при отказе лемматизатора: ok=%v hits=%v, want false nil", ok, hits)
+	}
+
+	clean := New(fakeLemmatizer{forms: forbiddenForms()}, []string{"дурак"})
+	ok, hits, err := clean.CheckErr("добрый человек")
+	if err != nil {
+		t.Fatalf("CheckErr на чистом тексте: err=%v, want nil", err)
+	}
+	if !ok || len(hits) != 0 {
+		t.Fatalf("CheckErr на чистом тексте: ok=%v hits=%v", ok, hits)
+	}
+}
+
+// TestCheckerCache — чекер языка собирается один раз на процесс (E-01): повторный
+// запрос даёт тот же экземпляр; язык без словаря/бинарника кэшируется отказом
+// (nil) без пересбора.
+func TestCheckerCache(t *testing.T) {
+	defer Close()
+
+	root := t.TempDir()
+	packRU := filepath.Join(root, "packs", "ru")
+	if err := os.MkdirAll(packRU, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(packRU, stoplistFile), []byte("дурак\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `{"lemmatizer": {"binary": "несуществующий-резидент"}}`
+	if err := os.WriteFile(filepath.Join(packRU, "manifest.json"), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	first := checkerFor(root, "ru")
+	if first == nil {
+		t.Fatal("checkerFor: чекер не собран при словаре и бинарнике в манифесте")
+	}
+	if second := checkerFor(root, "ru"); second != first {
+		t.Fatal("checkerFor: повторный вызов собрал новый чекер, кэш не работает")
+	}
+
+	if c := checkerFor(root, "en"); c != nil {
+		t.Fatalf("checkerFor: язык без пакета дал чекер %v, want nil", c)
+	}
+	if c := checkerFor(root, "en"); c != nil {
+		t.Fatalf("checkerFor: повторный вызов для языка без пакета дал %v, want nil (кэш отказа)", c)
+	}
+}
+
+// TestStoplistGolden — golden-согласованность словаря и лемматизатора (E-01):
+// каждая строка packs/ru/stoplist.txt — одно слово, и реальный резидент пакета
+// лемматизирует его в ту же лемму (идемпотентность). Ловит расхождение
+// словаря с лемматизатором («ё»/«е», словоформа вместо леммы) — иначе стоп-слово
+// тихо перестаёт ловиться. Без бинарника tns65-lemmaru тест пропускается.
+func TestStoplistGolden(t *testing.T) {
+	root := findEngineRoot()
+	if root == "" {
+		t.Skip("корень движка не найден — golden пакета недоступен")
+	}
+	packDir := filepath.Join(root, "packs", "ru")
+	binary := packLemmatizerBinary(root, packDir)
+	if binary == "" {
+		t.Skip("манифест пакета не задаёт бинарник лемматизатора")
+	}
+	if _, err := os.Stat(binary); err != nil {
+		t.Skipf("бинарник лемматизатора недоступен: %v", err)
+	}
+
+	stoplist, err := LoadStoplist(packDir)
+	if err != nil {
+		t.Fatalf("LoadStoplist: %v", err)
+	}
+	if len(stoplist) == 0 {
+		t.Fatal("stoplist.txt пакета пуст")
+	}
+
+	client := lemmarpc.NewClient(binary, nil)
+	defer client.Close()
+	for _, line := range stoplist {
+		if strings.ContainsAny(line, " \t") {
+			t.Errorf("stoplist %q: строка содержит пробел — контракт «одна лемма в строке»", line)
+			continue
+		}
+		tokens, err := client.Lemmatize(line)
+		if err != nil {
+			t.Errorf("stoplist %q: лемматизатор отказал: %v", line, err)
+			continue
+		}
+		if len(tokens) == 0 {
+			t.Errorf("stoplist %q: лемматизатор вернул 0 токенов", line)
+			continue
+		}
+		if got := strings.ToLower(tokens[0].Lemma); got != line {
+			t.Errorf("stoplist %q: лемматизатор вернул лемму %q — словарь и резидент разошлись", line, got)
+		}
+	}
 }
