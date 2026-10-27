@@ -67,13 +67,13 @@ func TestWorldSchema(t *testing.T) {
 
 	// 3. Учёт миграций: общий vectors подключён отдельным шагом, очередь
 	// мастерской — третьей миграцией, Пила и арка сцены — четвёртой, сигналы
-	// игрока — пятой, Паганель — шестой (user_version == 6).
+	// игрока — пятой, Паганель — шестой, пробуждение — седьмой (user_version == 7).
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 6 {
-		t.Errorf("user_version = %d, want 6", uv)
+	if uv != 7 {
+		t.Errorf("user_version = %d, want 7", uv)
 	}
 
 	type migration struct {
@@ -94,7 +94,7 @@ func TestWorldSchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}, {5, "0005_scene_signals"}, {6, "0006_paganel"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}, {5, "0005_scene_signals"}, {6, "0006_paganel"}, {7, "0007_book_wakeup"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
@@ -224,6 +224,28 @@ func TestWorldSchema(t *testing.T) {
 	}
 	if err := insertRingStatus("bogus"); err == nil {
 		t.Errorf("INSERT rings status='bogus' should fail CHECK (status)")
+	}
+
+	// 10. Контракт DDL пробуждения (T-07-02): колонки wakeups, CHECK status
+	// IN ('forging','ready') и UNIQUE по chapter_id.
+	if got := colsOf(t, w, "wakeups"); !slices.Equal(got, []string{"id", "chapter_id", "text", "status", "forged_at", "delivered_at"}) {
+		t.Errorf("wakeups columns = %v", got)
+	}
+	insertWakeup := func(chapterID int64, status string) error {
+		_, err := w.Exec(`INSERT INTO wakeups (chapter_id, status) VALUES (?, ?)`, chapterID, status)
+		return err
+	}
+	if err := insertWakeup(1, "forging"); err != nil {
+		t.Errorf("INSERT wakeups status='forging': %v", err)
+	}
+	if err := insertWakeup(2, "ready"); err != nil {
+		t.Errorf("INSERT wakeups status='ready': %v", err)
+	}
+	if err := insertWakeup(3, "bogus"); err == nil {
+		t.Errorf("INSERT wakeups status='bogus' should fail CHECK (status)")
+	}
+	if err := insertWakeup(1, "ready"); err == nil {
+		t.Errorf("INSERT wakeups повторного chapter_id должен упасть на UNIQUE")
 	}
 }
 
