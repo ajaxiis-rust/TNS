@@ -29,4 +29,5 @@ turns
 vectors
 wakeups
 workshop_queue
+world_lexicon
 world_meta

@@ -99,6 +99,7 @@ var writerMap = map[writerKey]Writer{
 	{DBWorld, "workshop_queue"}:   WriterCore,
 	{DBWorld, "wakeups"}:          WriterCore,
 	{DBWorld, "deep_reads"}:       WriterCore,
+	{DBWorld, "world_lexicon"}:    WriterCore,
 	{DBWorld, "saw_state"}:        WriterCore,
 	{DBWorld, "scene_arc"}:        WriterCore,
 	{DBWorld, "scene_signals"}:    WriterCore,
