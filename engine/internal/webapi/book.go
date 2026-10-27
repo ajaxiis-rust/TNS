@@ -6,9 +6,12 @@ import (
 )
 
 // BookWindow — JSON-ответ окна «Моя книга» (T-07-10, шаг 6): данные четырёх
-// вкладок и полоса дайджеста. Контракт маршрута зафиксирован в ROUTES.md
-// (T-08-02); рендер вкладок — P7.
+// вкладок и полоса дайджеста. WindowID — идентификатор модального окна; оба
+// входа (кнопка BOOK в чате и вкладка «История» верхнего меню) ведут на одно
+// окно (T-07-11). Контракт маршрута зафиксирован в ROUTES.md (T-08-02);
+// рендер вкладок — P7.
 type BookWindow struct {
+	WindowID    string            `json:"window_id"`
 	Tabs        []BookTab         `json:"tabs"`
 	DigestState string            `json:"digest_state"`
 	Digest      string            `json:"digest,omitempty"`
@@ -82,6 +85,7 @@ func bookWindowDTO(w book.Window) BookWindow {
 	}
 
 	out := BookWindow{
+		WindowID:    book.BookWindowID,
 		Tabs:        tabs,
 		DigestState: string(w.DigestState),
 		Digest:      w.Digest,
