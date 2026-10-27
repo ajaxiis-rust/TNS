@@ -1,6 +1,7 @@
 book_chapters
 book_claim
 book_cuts
+book_peaks
 book_text
 character_layers
 character_state

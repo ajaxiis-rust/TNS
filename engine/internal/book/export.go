@@ -87,6 +87,41 @@ func chapterMarkdown(title, text string) string {
 	return "# " + title + "\n\n" + text
 }
 
+// exportChapters — обработанные главы книги (kind='chapter') по порядку day.
+// Эпилог сюда не входит — он добавляется последним при сборке книги (T-07-13).
+func exportChapters(h *db.Handle) ([]TocEntry, error) {
+	return queryBookChapters(h, `WHERE kind = 'chapter' AND status = 'published' ORDER BY day, id`)
+}
+
+// exportEpilogues — эпилоги книги (kind='epilogue') в порядке записи (id).
+func exportEpilogues(h *db.Handle) ([]TocEntry, error) {
+	return queryBookChapters(h, `WHERE kind = 'epilogue' ORDER BY id`)
+}
+
+func queryBookChapters(h *db.Handle, clause string) ([]TocEntry, error) {
+	if h == nil {
+		return nil, errors.New("book: нет хэндла мира")
+	}
+	rows, err := h.Query(`SELECT id, day, title FROM book_chapters ` + clause)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []TocEntry
+	for rows.Next() {
+		var e TocEntry
+		if err := rows.Scan(&e.ChapterID, &e.Day, &e.Title); err != nil {
+			return nil, err
+		}
+		out = append(out, e)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ExportChapter выгружает одну обработанную главу по порядковому номеру n
 // (1-based по day среди обработанных) в
 // <root>/worlds/<slug>/export/<slug>-chapter-<n>.md и возвращает путь к файлу.
@@ -101,7 +136,7 @@ func ExportChapter(h *db.Handle, root string, format Format, n int) (string, err
 		return "", errors.New("book: номер главы не задан")
 	}
 
-	chapters, err := List(h)
+	chapters, err := exportChapters(h)
 	if err != nil {
 		return "", err
 	}
@@ -132,8 +167,8 @@ func ExportChapter(h *db.Handle, root string, format Format, n int) (string, err
 
 // ExportBook выгружает всю книгу обработанных глав по порядку day в
 // <root>/worlds/<slug>/export/<slug>-book.md и возвращает путь к файлу. В шапке
-// книги — аннотация, дальше каждая глава заголовком. Без обработанных глав —
-// отказ, файл не создаётся.
+// книги — аннотация, дальше каждая глава заголовком, эпилог — последней главой
+// (T-07-13). Без обработанных глав и эпилога — отказ, файл не создаётся.
 func ExportBook(h *db.Handle, root string, format Format) (string, error) {
 	if err := checkFormat(format); err != nil {
 		return "", err
@@ -142,11 +177,15 @@ func ExportBook(h *db.Handle, root string, format Format) (string, error) {
 		return "", errors.New("book: нет хэндла мира")
 	}
 
-	chapters, err := List(h)
+	chapters, err := exportChapters(h)
 	if err != nil {
 		return "", err
 	}
-	if len(chapters) == 0 {
+	epilogues, err := exportEpilogues(h)
+	if err != nil {
+		return "", err
+	}
+	if len(chapters) == 0 && len(epilogues) == 0 {
 		return "", ErrExportNoChapters
 	}
 	slug, err := worldSlug(h)
@@ -167,6 +206,14 @@ func ExportBook(h *db.Handle, root string, format Format) (string, error) {
 		}
 		b.WriteString("\n\n")
 		b.WriteString(chapterMarkdown(ch.Title, text))
+	}
+	for _, ep := range epilogues {
+		text, err := OpenChapterText(h, ep.ChapterID)
+		if err != nil {
+			return "", err
+		}
+		b.WriteString("\n\n")
+		b.WriteString(chapterMarkdown(ep.Title, text))
 	}
 	b.WriteString("\n")
 

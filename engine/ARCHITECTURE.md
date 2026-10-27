@@ -49,6 +49,7 @@
 | 0007_book_wakeup | world | T-07-02 |
 | 0008_book_deepread | world | T-07-03 |
 | 0009_book_claim | world | T-07-09 |
+| 0010_book_epilogue | world | T-07-13 |
 | 0011_world_lexicon | world | T-07-05 |
 
 Каждая новая миграция вписывается задачей, которая её создаёт.

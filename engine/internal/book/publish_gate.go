@@ -45,11 +45,16 @@ func CanPublish(h *db.Handle, chapterID int64) bool {
 		return false
 	}
 
-	// Глава закрыта: статус уже не open (closed → processing → published).
-	var status string
-	if err := h.QueryRow(`SELECT status FROM book_chapters WHERE id = ?`, chapterID).Scan(&status); err != nil {
+	// Эпилог минует обработку (T-07-13): его публикует игрок, не движок.
+	var status, kind string
+	if err := h.QueryRow(`SELECT status, kind FROM book_chapters WHERE id = ?`, chapterID).Scan(&status, &kind); err != nil {
 		return false
 	}
+	if kind == string(KindEpilogue) {
+		return false
+	}
+
+	// Глава закрыта: статус уже не open (closed → processing → published).
 	if status == string(StatusOpen) {
 		return false
 	}
@@ -95,13 +100,19 @@ func Process(ctx context.Context, h *db.Handle, embedder models.Embedder, chapte
 		return errors.New("book: эмбеддер не подключён")
 	}
 
-	var status string
-	err := h.QueryRow(`SELECT status FROM book_chapters WHERE id = ?`, chapterID).Scan(&status)
+	var status, kind string
+	err := h.QueryRow(`SELECT status, kind FROM book_chapters WHERE id = ?`, chapterID).Scan(&status, &kind)
 	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New("book: глава не найдена")
 	}
 	if err != nil {
 		return err
+	}
+
+	// Эпилог минует обработку (T-07-13): игрок сохраняет его сразу
+	// опубликованным, движок его не обрабатывает.
+	if kind == string(KindEpilogue) {
+		return nil
 	}
 
 	if status == string(StatusPublished) {

@@ -93,6 +93,7 @@ var writerMap = map[writerKey]Writer{
 	{DBWorld, "book_claim"}:       WriterCore,
 	{DBWorld, "book_text"}:        WriterCore,
 	{DBWorld, "book_cuts"}:        WriterCore,
+	{DBWorld, "book_peaks"}:       WriterCore,
 	{DBWorld, "collisions"}:       WriterCore,
 	{DBWorld, "deferred_events"}:  WriterCore,
 	{DBWorld, "rings"}:            WriterCore,
