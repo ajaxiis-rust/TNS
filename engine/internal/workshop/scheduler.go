@@ -35,10 +35,11 @@ func (o *Order) RequeueAllowed() bool { return o.Resumable }
 // её переходы пишутся в журнал станка; базу очереди эта задача не пишет
 // (Писатель: нет записи).
 type Scheduler struct {
-	db     *db.Handle
-	timer  *PauseTimer
-	slot   Slot
-	logger *journal.Logger
+	db             *db.Handle
+	timer          *PauseTimer
+	slot           Slot
+	logger         *journal.Logger
+	sedimentRunner SedimentRunFunc
 
 	mu            sync.Mutex
 	chapterClosed bool
@@ -55,6 +56,14 @@ func NewScheduler(h *db.Handle, clock PauseClock, slot Slot, logger *journal.Log
 		slot:   slot,
 		logger: logger,
 	}
+}
+
+// SetSedimentRunner подменяет исполнение заказов sediment (T-05-16); nil —
+// заказ sediment проходит через слот, как прочие заказы.
+func (s *Scheduler) SetSedimentRunner(run SedimentRunFunc) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sedimentRunner = run
 }
 
 // MarkActive фиксирует активность игрока (возврат с паузы).
@@ -126,9 +135,15 @@ func (s *Scheduler) next(skip map[int64]bool) (*Order, error) {
 		if skip != nil && skip[o.ID] {
 			continue
 		}
-		if CanRun(o.Kind, o.Step, pause) {
-			return &o, nil
+		if !CanRun(o.Kind, o.Step, pause) {
+			continue
 		}
+		// Оседание — тяжёлая работа (T-05-16): разбирается только на тяжёлой
+		// ступени и в ночном окне.
+		if o.Kind == KindSediment && pause != PauseHeavy && pause != PauseNight {
+			continue
+		}
+		return &o, nil
 	}
 	return nil, rows.Err()
 }
@@ -154,8 +169,21 @@ func (s *Scheduler) Run(ctx context.Context) error {
 }
 
 // runOne исполняет один заказ через слот мастерской, подчиняясь планировщику
-// ядра (T-03-17): слот ковки берётся только с разрешения ядра.
+// ядра (T-03-17): слот ковки берётся только с разрешения ядра. Заказ sediment
+// исполняется конвейером оседания (T-05-16), если подключён его исполнитель;
+// без исполнителя заказ проходит через слот, как прочие заказы.
 func (s *Scheduler) runOne(ctx context.Context, o *Order) error {
+	if o.Kind == KindSediment {
+		s.mu.Lock()
+		run := s.sedimentRunner
+		s.mu.Unlock()
+		if run != nil {
+			release := scheduler().AcquireWorkshop()
+			defer release()
+			_, err := run(ctx, s.db, o, s.logger)
+			return err
+		}
+	}
 	if s.slot == nil {
 		return nil
 	}
