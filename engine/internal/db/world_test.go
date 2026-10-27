@@ -68,7 +68,8 @@ func TestWorldSchema(t *testing.T) {
 	// 3. Учёт миграций: общий vectors подключён отдельным шагом, очередь
 	// мастерской — третьей миграцией, Пила и арка сцены — четвёртой, сигналы
 	// игрока — пятой, Паганель — шестой, пробуждение — седьмой, глубокий разбор —
-	// восьмой, лексикон мира — одиннадцатой (user_version == 11).
+	// восьмой, заявка книги — девятой, лексикон мира — одиннадцатой
+	// (user_version == 11).
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
@@ -95,7 +96,7 @@ func TestWorldSchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}, {5, "0005_scene_signals"}, {6, "0006_paganel"}, {7, "0007_book_wakeup"}, {8, "0008_book_deepread"}, {11, "0011_world_lexicon"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}, {5, "0005_scene_signals"}, {6, "0006_paganel"}, {7, "0007_book_wakeup"}, {8, "0008_book_deepread"}, {9, "0009_book_claim"}, {11, "0011_world_lexicon"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
@@ -282,6 +283,25 @@ func TestWorldSchema(t *testing.T) {
 	}
 	if err := insertLexicon("bogus"); err == nil {
 		t.Errorf("INSERT world_lexicon status='bogus' should fail CHECK (status)")
+	}
+
+	// 13. Контракт DDL заявки книги (T-07-09): колонки book_claim и CHECK
+	// status IN ('proposed','approved').
+	if got := colsOf(t, w, "book_claim"); !slices.Equal(got, []string{"id", "text", "vector_id", "status", "created_at"}) {
+		t.Errorf("book_claim columns = %v", got)
+	}
+	insertClaim := func(status string) error {
+		_, err := w.Exec(`INSERT INTO book_claim (text, vector_id, status, created_at) VALUES ('заявка', 0, ?, '2026-01-01T00:00:00Z')`, status)
+		return err
+	}
+	if err := insertClaim("proposed"); err != nil {
+		t.Errorf("INSERT book_claim status='proposed': %v", err)
+	}
+	if err := insertClaim("approved"); err != nil {
+		t.Errorf("INSERT book_claim status='approved': %v", err)
+	}
+	if err := insertClaim("bogus"); err == nil {
+		t.Errorf("INSERT book_claim status='bogus' should fail CHECK (status)")
 	}
 }
 
