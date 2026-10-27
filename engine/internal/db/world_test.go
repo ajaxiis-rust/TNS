@@ -67,13 +67,13 @@ func TestWorldSchema(t *testing.T) {
 
 	// 3. Учёт миграций: общий vectors подключён отдельным шагом, очередь
 	// мастерской — третьей миграцией, Пила и арка сцены — четвёртой, сигналы
-	// игрока — пятой (user_version == 5).
+	// игрока — пятой, Паганель — шестой (user_version == 6).
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 5 {
-		t.Errorf("user_version = %d, want 5", uv)
+	if uv != 6 {
+		t.Errorf("user_version = %d, want 6", uv)
 	}
 
 	type migration struct {
@@ -94,7 +94,7 @@ func TestWorldSchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}, {5, "0005_scene_signals"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}, {5, "0005_scene_signals"}, {6, "0006_paganel"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
@@ -179,6 +179,51 @@ func TestWorldSchema(t *testing.T) {
 	}
 	if err := insertSignal("neutral"); err == nil {
 		t.Errorf("INSERT scene_signals kind='neutral' should fail CHECK (kind)")
+	}
+
+	// 9. Контракт DDL Паганеля (T-06-05): колонки origin/status/pinned мест и
+	// путей, расширение rings со счётчиками и CHECK статуса, расширение
+	// corridors опорными точками и обещанным сроком.
+	if got := colsOf(t, w, "places"); !slices.Equal(got, []string{"id", "name", "kind", "x", "y", "epoch_ref", "origin", "status", "pinned"}) {
+		t.Errorf("places columns = %v", got)
+	}
+	if got := colsOf(t, w, "paths"); !slices.Equal(got, []string{"id", "from_place_id", "to_place_id", "type", "length_km", "friction", "origin", "status"}) {
+		t.Errorf("paths columns = %v", got)
+	}
+	if got := colsOf(t, w, "rings"); !slices.Equal(got, []string{"id", "status", "progress", "budget_used", "started_at", "finished_at", "places_count", "paths_count", "people_count"}) {
+		t.Errorf("rings columns = %v", got)
+	}
+	if got := colsOf(t, w, "corridors"); !slices.Equal(got, []string{"id", "ring_id", "from_place_id", "to_place_id", "status", "waypoints_json", "stops_json", "promised_days"}) {
+		t.Errorf("corridors columns = %v", got)
+	}
+
+	// Дефолты origin/status/pinned на месте: место без новых колонок получает
+	// forge/baked/0.
+	if _, err := w.Exec(`INSERT INTO places (name, kind) VALUES ('дефолт', 'city')`); err != nil {
+		t.Errorf("INSERT places (defaults): %v", err)
+	}
+	var origin, status string
+	var pinned int
+	if err := w.QueryRow(`SELECT origin, status, pinned FROM places WHERE name = 'дефолт'`).
+		Scan(&origin, &status, &pinned); err != nil {
+		t.Errorf("places defaults: %v", err)
+	}
+	if origin != "forge" || status != "baked" || pinned != 0 {
+		t.Errorf("places defaults = (%q, %q, %d), want (forge, baked, 0)", origin, status, pinned)
+	}
+
+	// CHECK rings.status: queued/running/done проходят, прочее отвергается.
+	insertRingStatus := func(status string) error {
+		_, err := w.Exec(`INSERT INTO rings (status, progress, budget_used, started_at) VALUES (?, 0, 0, '2026-01-01T00:00:00Z')`, status)
+		return err
+	}
+	for _, status := range []string{"queued", "running", "done"} {
+		if err := insertRingStatus(status); err != nil {
+			t.Errorf("INSERT rings status=%q: %v", status, err)
+		}
+	}
+	if err := insertRingStatus("bogus"); err == nil {
+		t.Errorf("INSERT rings status='bogus' should fail CHECK (status)")
 	}
 }
 

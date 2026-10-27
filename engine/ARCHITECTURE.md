@@ -45,6 +45,7 @@
 | 0003_workshop_queue | world | T-02-11 |
 | 0004_saw | world | T-03-06 |
 | 0005_scene_signals | world | T-04-06 |
+| 0006_paganel | world | T-06-05 |
 
 Каждая новая миграция вписывается задачей, которая её создаёт.
 
