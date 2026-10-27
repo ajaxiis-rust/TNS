@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>Карта Средиземноморья и Ближнего Востока · Эпоха Архимеда (~250 до н.э.)</title>
+<!--
+  ============================================================================
+  Карта Средиземноморья и Ближнего Востока · Эпоха Архимеда (~250 до н.э.)
+  ============================================================================
+  Объединение 6 итераций интерактивной карты (папка Levant/) в один автономный
+  файл. Ноль внешних зависимостей: без CDN, тайл-серверов и сетевых шрифтов;
+  открывается с диска (file://) без интернета. Вся навигация (drag-пан, зум
+  колесом и кнопками) и отрисовка — собственные HTML+CSS+JS+SVG.
+
+  Исходники, вошедшие в объединение:
+    • levant2.html                — 16 городов, 4 маршрута, 3 области
+    • levant3.html                — 16 городов, 4 маршрута, 3 области (данные = levant2)
+    • levant4.html                — 22 города, 5 маршрутов, 3 области
+    • levant5.html                — 28 городов, 7 маршрутов, 3 области, 10 держав (сводная)
+    • levant_archimedes_map.html  — 14 городов, 3 маршрута (средиземноморский вариант)
+    • levant_hellenistic_map.html — 39 городов, 12 маршрутов, 5 областей
+                                    (свежая правка владельца; приоритетна при конфликтах)
+
+  Результат слияния (дедупликация городов — по названию + близости координат
+  < 0.5°; маршрутов — по имени/концам; областей — по имени):
+    Города:    135 записей → 47 (снято 88 дубелей; при конфликте полей берётся
+               самая богатая запись, при равенстве — levant_hellenistic_map,
+               затем levant5; у 39 городов данные из levant_hellenistic_map,
+               у 8 — из levant5: Самария, Иерихон, Панеада, Сиракузы, Рим,
+               Карфаген, Пелла, Пергам)
+    Маршруты:  36 записей → 13 (снято 23: повторы Via Maris, Царской и
+               внутренних путей; «Египетский тракт» и «Нил и Дельта» поглощены
+               развернутыми версиями из levant_hellenistic_map)
+    Области:   17 записей → 5 (снято 12; геометрия — из levant_hellenistic_map)
+    Державы:   10 (массив polities есть только в levant5)
+
+  Проекция: equirectangular с множителем cos(широты центра) — центр и масштаб
+  подбираются автоматически по охвату всех точек данных. География не выдумана:
+  рисуются только точки городов, полилинии маршрутов и полигоны областей из
+  данных. Тонкая схематичная береговая линия трассирована по морским краям
+  полигонов областей: западный край Селевкидской Сирии и Койлесирии + северный
+  край Птолемеевского Египта. Исходные Leaflet-версии этих карт использовали
+  CDN-библиотеку и онлайн-тайлы — здесь всё локально, тайлов нет.
+-->
+<style>
+    :root {
+        --bg: #0f1419;
+        --panel: #1a2332;
+        --panel2: #151c28;
+        --accent: #c9a227;
+        --text: #e8e6e3;
+        --muted: #8b9bb4;
+        --border: #2a3544;
+        --seleucid: #3b82f6;
+        --ptolemaic: #22c55e;
+        --nabataean: #f59e0b;
+        --independent: #a855f7;
+        --sea: #0b131f;
+        --grid: #1d2b40;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+    }
+
+    /* ---------- Карта ---------- */
+    #mapwrap {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        background: var(--sea);
+    }
+    #map {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        cursor: grab;
+        touch-action: none;
+        display: block;
+    }
+    #map.dragging { cursor: grabbing; }
+
+    .zoom-controls {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        z-index: 20;
+    }
+    .zoom-controls button {
+        width: 34px; height: 34px;
+        background: rgba(26,35,50,0.94);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 1.05rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        line-height: 1;
+    }
+    .zoom-controls button:hover { background: #2d3c52; border-color: var(--accent); color: var(--accent); }
+
+    .hud {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        display: flex;
+        gap: 6px;
+        z-index: 20;
+        flex-wrap: wrap;
+        max-width: calc(100% - 130px);
+    }
+    .hud .chip {
+        background: rgba(26,35,50,0.92);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 0.68rem;
+        color: var(--muted);
+        white-space: nowrap;
+    }
+    .hud .chip b { color: var(--text); font-weight: 600; }
+
+    .info-bar {
+        position: absolute;
+        bottom: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(26,35,50,0.93);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 7px 14px;
+        font-size: 0.72rem;
+        color: var(--muted);
+        z-index: 20;
+        pointer-events: none;
+        white-space: nowrap;
+    }
+
+    /* ---------- SVG-слои ---------- */
+    .city .lbl {
+        fill: #c5cdd8;
+        font-size: 11px;
+        text-anchor: middle;
+        pointer-events: none;
+        paint-order: stroke;
+        stroke: #0b131f;
+        stroke-width: 2.5px;
+        font-weight: 600;
+    }
+    .city .dot { cursor: pointer; }
+    .city .hit { cursor: pointer; }
+    .route { cursor: pointer; }
+    .gridlbl text {
+        fill: #55688a;
+        font-size: 10px;
+        text-anchor: middle;
+        paint-order: stroke;
+        stroke: #0b131f;
+        stroke-width: 2px;
+    }
+    .statelbl text {
+        font-size: 13px;
+        font-weight: 700;
+        text-anchor: middle;
+        letter-spacing: 2.5px;
+        opacity: 0.75;
+        paint-order: stroke;
+        stroke: #0b131f;
+        stroke-width: 3px;
+        pointer-events: none;
+    }
+    .stateflash { animation: stateflash 1.2s ease; }
+    @keyframes stateflash {
+        0%, 100% { fill-opacity: 0.10; }
+        40% { fill-opacity: 0.38; }
+    }
+
+    /* ---------- Тултип и попап ---------- */
+    #tooltip {
+        position: absolute;
+        z-index: 40;
+        background: #1a2332;
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 7px 10px;
+        font-size: 0.78rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        pointer-events: none;
+        display: none;
+        max-width: 260px;
+        line-height: 1.4;
+    }
+    #tooltip .tt-sub { color: var(--muted); font-size: 0.72rem; }
+
+    #popup {
+        position: absolute;
+        z-index: 50;
+        background: #1a2332;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px 10px;
+        font-size: 0.8rem;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+        width: 262px;
+        max-height: 300px;
+        overflow-y: auto;
+        display: none;
+        line-height: 1.45;
+    }
+    #popup .pp-close {
+        position: absolute;
+        top: 4px; right: 7px;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 1rem;
+        line-height: 1;
+    }
+    #popup .pp-close:hover { color: var(--accent); }
+    #popup .pp-title { color: var(--accent); font-weight: 700; font-size: 0.95rem; padding-right: 14px; }
+    #popup .pp-anc { color: var(--muted); font-style: italic; font-size: 0.72rem; margin: 2px 0 6px; }
+    #popup .pp-desc { color: #c5cdd8; font-size: 0.76rem; margin: 7px 0; }
+    #popup .pp-coords { color: var(--muted); font-size: 0.7rem; border-top: 1px solid var(--border); padding-top: 6px; }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .badge.seleucid { background: rgba(59,130,246,0.2); color: #60a5fa; }
+    .badge.ptolemaic { background: rgba(34,197,94,0.2); color: #4ade80; }
+    .badge.nabataean { background: rgba(245,158,11,0.2); color: #fbbf24; }
+    .badge.independent { background: rgba(168,85,247,0.2); color: #c084fc; }
+
+    /* ---------- Боковая панель ---------- */
+    .sidebar {
+        width: 380px;
+        background: var(--panel);
+        border-left: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        z-index: 30;
+        box-shadow: -4px 0 20px rgba(0,0,0,0.4);
+    }
+    .sidebar-header {
+        padding: 16px 18px 12px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(135deg, #1a2332 0%, #243044 100%);
+    }
+    .sidebar-header h1 { font-size: 1.05rem; font-weight: 600; color: var(--accent); letter-spacing: 0.3px; margin-bottom: 4px; }
+    .sidebar-header p { font-size: 0.74rem; color: var(--muted); line-height: 1.4; }
+
+    .block { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .block > label, .block h3 {
+        display: block;
+        font-size: 0.68rem;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--muted);
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
+
+    .search-row { display: flex; gap: 6px; }
+    #search {
+        flex: 1;
+        background: #243044;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        padding: 7px 10px;
+        font-size: 0.8rem;
+        outline: none;
+    }
+    #search:focus { border-color: var(--accent); }
+    #stateFilter {
+        background: #243044;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        padding: 7px 6px;
+        font-size: 0.78rem;
+        outline: none;
+        cursor: pointer;
+    }
+    .counter { margin-top: 8px; font-size: 0.7rem; color: var(--muted); }
+    .counter b { color: var(--accent); font-weight: 600; }
+
+    .layer-list { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; }
+    .layer-item {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 0.76rem;
+        color: var(--text);
+        cursor: pointer;
+        user-select: none;
+    }
+    .layer-item input { accent-color: var(--accent); cursor: pointer; }
+
+    .metric-switcher { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+    .metric-btn {
+        background: #243044;
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 6px 2px;
+        border-radius: 5px;
+        font-size: 0.62rem;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        text-align: center;
+    }
+    .metric-btn:hover { background: #2d3c52; border-color: #3d4f68; }
+    .metric-btn.active { background: var(--accent); color: #0f1419; border-color: var(--accent); font-weight: 600; }
+
+    .legend-scale { display: flex; height: 10px; border-radius: 3px; overflow: hidden; margin-bottom: 5px; }
+    .legend-scale span { flex: 1; }
+    .legend-labels { display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--muted); }
+    .state-legend { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
+    .state-item { display: flex; align-items: center; gap: 5px; font-size: 0.7rem; color: var(--muted); cursor: pointer; }
+    .state-item:hover { color: var(--text); }
+    .state-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+    .list-wrap { flex: 1; overflow-y: auto; min-height: 120px; }
+    .city-item {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 7px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid rgba(42,53,68,0.45);
+        transition: background 0.12s ease;
+    }
+    .city-item:hover { background: #22304a; }
+    .city-item.selected { background: #2a3a58; box-shadow: inset 3px 0 0 var(--accent); }
+    .city-item .ci-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; border: 1px solid rgba(0,0,0,0.4); }
+    .city-item .ci-name { font-size: 0.8rem; }
+    .city-item .ci-sub { font-size: 0.66rem; color: var(--muted); }
+    .list-empty { padding: 18px 14px; color: var(--muted); font-size: 0.78rem; text-align: center; line-height: 1.5; }
+
+    .polity-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 9px;
+        background: #243044;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        cursor: pointer;
+        font-size: 0.74rem;
+        text-align: left;
+        width: 100%;
+        transition: all 0.15s ease;
+    }
+    .polity-btn:hover { background: #2d3c52; border-color: var(--accent); }
+    .polity-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+    .polity-btn .sub { color: var(--muted); font-size: 0.66rem; }
+
+    .details {
+        max-height: 42%;
+        overflow-y: auto;
+        padding: 14px;
+        border-top: 1px solid var(--border);
+        background: var(--panel2);
+    }
+    .details-empty { color: var(--muted); font-size: 0.8rem; text-align: center; margin-top: 18px; line-height: 1.55; }
+    .details-empty strong { color: var(--accent); display: block; margin-bottom: 6px; font-size: 0.9rem; }
+    .city-card h2 { font-size: 1.15rem; color: var(--accent); margin-bottom: 3px; }
+    .city-card .ancient-name { font-size: 0.75rem; color: var(--muted); font-style: italic; margin-bottom: 9px; }
+    .city-card .badge { margin-bottom: 10px; }
+    .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 11px 0; }
+    .metric-box { background: #243044; border-radius: 5px; padding: 8px; text-align: center; }
+    .metric-box .val { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .metric-box .lbl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+    .description { font-size: 0.78rem; line-height: 1.5; color: #c5cdd8; margin-top: 8px; }
+    .extra-info { margin-top: 11px; padding-top: 9px; border-top: 1px solid var(--border); }
+    .extra-info h4 { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+    .tag { background: #243044; border: 1px solid var(--border); border-radius: 3px; padding: 2px 6px; font-size: 0.66rem; color: #c5cdd8; }
+    .tag.mineral { border-color: #a6844a; color: #e8d5a3; }
+    .tag.water { border-color: #3b82f6; color: #93c5fd; }
+    .roads-info ul { list-style: none; font-size: 0.75rem; color: #c5cdd8; }
+    .roads-info li { padding: 2px 0 2px 12px; position: relative; }
+    .roads-info li::before { content: "→"; position: absolute; left: 0; color: var(--accent); }
+
+    ::-webkit-scrollbar { width: 9px; height: 9px; }
+    ::-webkit-scrollbar-track { background: #131a26; }
+    ::-webkit-scrollbar-thumb { background: #2d3c52; border-radius: 5px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3d4f68; }
+</style>
+</head>
+<body>
+    <div id="mapwrap">
+        <svg id="map" role="application" aria-label="Интерактивная карта"></svg>
+        <div class="hud">
+            <span class="chip" id="hudCount"></span>
+            <span class="chip" id="hudZoom"></span>
+        </div>
+        <div class="zoom-controls">
+            <button id="btnZoomIn" title="Приблизить">+</button>
+            <button id="btnZoomOut" title="Отдалить">−</button>
+            <button id="btnHome" title="Показать всю карту">⌂</button>
+        </div>
+        <div class="info-bar">Перетаскивание · Колесо / +− / «домой» · Наведение на объект · Клик для деталей</div>
+        <div id="tooltip"></div>
+        <div id="popup"><span class="pp-close" id="ppClose">×</span><div id="ppBody"></div></div>
+    </div>
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h1>Средиземноморье и Ближний Восток</h1>
+            <p>Эпоха Архимеда · ~250 до н.э.<br>
+               Селевкиды · Птолемеи · Набатеи · Рим · Карфаген<br>
+               Объединённая карта: 6 итераций в одном файле, офлайн</p>
+        </div>
+
+        <div class="block">
+            <label for="search">Поиск и фильтр</label>
+            <div class="search-row">
+                <input id="search" type="text" placeholder="Название города (античное/современное)…" autocomplete="off">
+                <select id="stateFilter">
+                    <option value="all">Все державы</option>
+                    <option value="seleucid">Селевкиды</option>
+                    <option value="ptolemaic">Птолемеи</option>
+                    <option value="nabataean">Набатеи</option>
+                    <option value="independent">Прочие</option>
+                </select>
+            </div>
+            <div class="counter" id="listCounter"></div>
+        </div>
+
+        <div class="block">
+            <h3>Слои</h3>
+            <div class="layer-list">
+                <label class="layer-item"><input type="checkbox" id="layerCities" checked> Города</label>
+                <label class="layer-item"><input type="checkbox" id="layerRoutes" checked> Маршруты</label>
+                <label class="layer-item"><input type="checkbox" id="layerRegions" checked> Области</label>
+                <label class="layer-item"><input type="checkbox" id="layerStates" checked> Государства</label>
+                <label class="layer-item"><input type="checkbox" id="layerCoast" checked> Береговая (схема)</label>
+                <label class="layer-item"><input type="checkbox" id="layerGrid" checked> Сетка координат</label>
+            </div>
+        </div>
+
+        <div class="block">
+            <h3>Окраска городов</h3>
+            <div class="metric-switcher">
+                <button class="metric-btn active" data-mode="state">Держава</button>
+                <button class="metric-btn" data-mode="population">Население</button>
+                <button class="metric-btn" data-mode="trade">Торговля</button>
+                <button class="metric-btn" data-mode="military">Военное</button>
+                <button class="metric-btn" data-mode="culture">Культура</button>
+            </div>
+            <div class="legend-scale" id="legendScale" style="display:none"></div>
+            <div class="legend-labels" id="legendLabels" style="display:none">
+                <span id="legendMin"></span><span id="legendMax"></span>
+            </div>
+            <div class="state-legend" id="stateLegend"></div>
+        </div>
+
+        <div class="list-wrap">
+            <div id="cityList"></div>
+            <div class="block" style="border-bottom:none">
+                <h3>Державы (~250 до н.э.)</h3>
+                <div id="polityList" style="display:flex;flex-direction:column;gap:5px"></div>
+            </div>
+        </div>
+
+        <div class="details" id="details">
+            <div class="details-empty">
+                <strong>Выберите объект</strong>
+                Наведите курсор на город для краткой информации.<br>
+                Кликните по маркеру, области или строке списка — подробности откроются здесь и на карте.
+            </div>
+        </div>
+    </aside>
+
+<script>
+(function () {
+"use strict";
+
+/* ============================== ДАННЫЕ ============================== */
+/* Города: 39 записей из levant_hellenistic_map.html (приоритет) + 8 из levant5.html */
+const cities = [
+    { id: "antioch", name: "Антиохия", ancient: "Ἀντιόχεια ἡ ἐπὶ Ὀρόντου", modern: "Антакья",
+      lat: 36.2023, lon: 36.1613, region: "seleucid", population: 85000, trade: 9, military: 9, culture: 10,
+      minerals: ["известняк", "мрамор (импорт)", "медь (транзит)"], water: ["Оронт", "источники Дафны"],
+      description: "Столица державы Селевкидов, основана Селевком I Никатором около 300 г. до н.э. Один из крупнейших и богатейших городов эллинистического мира. Центр администрации, торговли и греческой культуры в Сирии.",
+      roads: ["Главный путь на север к Киликии и Малой Азии", "Южный тракт к Апамее и Дамаску", "Связь с портом Селевкия Пиерия"] },
+    { id: "apamea", name: "Апамея", ancient: "Ἀπάμεια", modern: "Калат аль-Мадик",
+      lat: 35.4197, lon: 36.4025, region: "seleucid", population: 35000, trade: 6, military: 8, culture: 7,
+      minerals: ["известняк"], water: ["Оронт"],
+      description: "Важный военный и административный центр Селевкидов на Оронте. Здесь содержались царские слоны и конница. Один из четырёх главных городов Селевкиды.",
+      roads: ["Оронтский путь Антиохия–Апамея–юг", "Связь с внутренними районами Сирии"] },
+    { id: "laodicea", name: "Лаодикея", ancient: "Λαοδίκεια ἡ ἐπὶ τῇ θαλάττῃ", modern: "Латакия",
+      lat: 35.5317, lon: 35.7906, region: "seleucid", population: 25000, trade: 8, military: 6, culture: 6,
+      minerals: ["соль (прибрежная)"], water: ["прибрежные источники", "реки Ливана"],
+      description: "Важный порт Селевкидов на средиземноморском побережье. Морские ворота северной Сирии.",
+      roads: ["Прибрежный путь на юг к финикийским городам", "Связь с Антиохией через внутренние дороги"] },
+    { id: "seleucia", name: "Селевкия Пиерия", ancient: "Σελεύκεια Πιερία", modern: "Самандаг",
+      lat: 36.1167, lon: 35.9167, region: "seleucid", population: 20000, trade: 8, military: 7, culture: 5,
+      minerals: ["известняк"], water: ["источники у подножия Касия"],
+      description: "Главный порт Антиохии. Стратегически важен, неоднократно становился объектом борьбы между Селевкидами и Птолемеями.",
+      roads: ["Короткий путь к Антиохии", "Морские пути в Эгейское море и Египет"] },
+    { id: "damascus", name: "Дамаск", ancient: "Δαμασκός", modern: "Дамаск",
+      lat: 33.5138, lon: 36.2765, region: "seleucid", population: 45000, trade: 8, military: 7, culture: 6,
+      minerals: ["базальт (окрестности)", "железо (транзит)"], water: ["Барада", "источники Анти-Ливана"],
+      description: "Древнейший непрерывно обитаемый город. Важный торговый и административный центр под контролем Селевкидов (с перерывами). Узел путей между побережьем, внутренними районами и Аравией.",
+      roads: ["Царская дорога (King's Highway) на юг", "Путь к Антиохии на север", "Связь с финикийским побережьем"] },
+    { id: "tyre", name: "Тир", ancient: "Τύρος", modern: "Сур",
+      lat: 33.2700, lon: 35.2033, region: "ptolemaic", population: 40000, trade: 10, military: 7, culture: 8,
+      minerals: ["пурпур (мурекс)", "стеклянная шихта", "соль"], water: ["прибрежные источники", "цистерны"],
+      description: "Легендарный финикийский город-порт. В III в. до н.э. преимущественно под контролем Птолемеев. Известен пурпуром и стеклом (литьё и формование на сердечнике).",
+      roads: ["Via Maris", "Морские пути по всему Средиземноморью", "Связь с внутренними районами через дороги к Дамаску"] },
+    { id: "sidon", name: "Сидон", ancient: "Σιδών", modern: "Сайда",
+      lat: 33.5571, lon: 35.3729, region: "ptolemaic", population: 35000, trade: 9, military: 6, culture: 7,
+      minerals: ["пурпур", "стекло (шихта)", "кедр (транзит)"], water: ["источники Ливана"],
+      description: "Один из старейших и важнейших финикийских городов. Конкурент Тира. Под контролем Птолемеев большую часть III века.",
+      roads: ["Via Maris вдоль побережья", "Дороги вглубь страны к долине Бекаа"] },
+    { id: "berytus", name: "Берит", ancient: "Βηρυτός", modern: "Бейрут",
+      lat: 33.8938, lon: 35.5018, region: "ptolemaic", population: 18000, trade: 7, military: 5, culture: 6,
+      minerals: ["известняк", "соль"], water: ["источники Ливана"],
+      description: "Финикийский порт. В середине III в. преимущественно в сфере влияния Птолемеев.",
+      roads: ["Прибрежный Via Maris", "Пути через горы Ливана"] },
+    { id: "byblos", name: "Библ", ancient: "Βύβλος", modern: "Джебейль",
+      lat: 34.1214, lon: 35.6511, region: "ptolemaic", population: 12000, trade: 6, military: 4, culture: 7,
+      minerals: ["кедр (транзит)", "папирус (транзит)"], water: ["источники Ливана"],
+      description: "Один из древнейших городов мира. В эллинистический период сохранял значение как религиозный и торговый центр.",
+      roads: ["Via Maris", "Горные тропы вглубь Ливана"] },
+    { id: "ptolemais", name: "Птолемаида", ancient: "Πτολεμαΐς (Ἄκη)", modern: "Акко",
+      lat: 32.9270, lon: 35.0818, region: "ptolemaic", population: 22000, trade: 8, military: 7, culture: 5,
+      minerals: ["соль", "пурпур (ограниченно)"], water: ["источники Кармеля", "колодцы"],
+      description: "Древний Акко, переименованный Птолемеями. Важный порт и военная база Птолемеев в южном Леванте.",
+      roads: ["Via Maris", "Путь в Галилею и к Иерусалиму", "Связь с Дамаском"] },
+    { id: "gaza", name: "Газа", ancient: "Γάζα", modern: "Газа",
+      lat: 31.5017, lon: 34.4668, region: "ptolemaic", population: 25000, trade: 8, military: 7, culture: 4,
+      minerals: ["соль", "битум (транзит с Мёртвого моря)"], water: ["колодцы", "вади"],
+      description: "Ключевой город на границе с Египтом, важный пункт Via Maris. Ворота Птолемеев в Азию и центр караванной торговли с Аравией.",
+      roads: ["Via Maris на север и в Египет", "Караванные пути в Аравию"] },
+    { id: "ashkelon", name: "Аскалон", ancient: "Ἀσκάλων", modern: "Ашкелон",
+      lat: 31.6688, lon: 34.5715, region: "ptolemaic", population: 15000, trade: 6, military: 5, culture: 4,
+      minerals: ["соль"], water: ["колодцы"],
+      description: "Древний филистимский город на побережье. В эллинистический период — важный порт и сельскохозяйственный центр под контролем Птолемеев.",
+      roads: ["Via Maris"] },
+    { id: "jerusalem", name: "Иерусалим", ancient: "Ἱεροσόλυμα", modern: "Иерусалим",
+      lat: 31.7780, lon: 35.2354, region: "ptolemaic", population: 25000, trade: 4, military: 5, culture: 9,
+      minerals: ["известняк", "селитра (афронитр) в пещерах"], water: ["источник Гихон", "цистерны"],
+      description: "Религиозный и политический центр иудеев. В III в. до н.э. находился под властью Птолемеев (до ~200 г.). Храм оставался главным святилищем.",
+      roads: ["Пути к побережью (Яффа/Птолемаида)", "Связь с Самарией и Галилеей", "Южные пути к Идумее"] },
+    { id: "philadelphia", name: "Филадельфия", ancient: "Φιλαδέλφεια (Раббат Аммон)", modern: "Амман",
+      lat: 31.9539, lon: 35.9106, region: "ptolemaic", population: 12000, trade: 5, military: 5, culture: 5,
+      minerals: ["известняк", "базальт"], water: ["источники Аммона"],
+      description: "Древняя Раббат-Аммон, переименованная Птолемеями в честь Птолемея II Филадельфа. Важный город Заиорданья на Царской дороге.",
+      roads: ["Царская дорога (King's Highway)", "Связь с Дамаском и Петрой"] },
+    { id: "gerasa", name: "Гераса", ancient: "Γέρασα", modern: "Джераш",
+      lat: 32.2806, lon: 35.8997, region: "ptolemaic", population: 8000, trade: 4, military: 3, culture: 5,
+      minerals: ["известняк"], water: ["вади Джераш"],
+      description: "Город Декаполиса (позднее). В III в. — относительно небольшой, но растущий эллинистический центр в Заиорданье.",
+      roads: ["Царская дорога", "Местные пути"] },
+    { id: "scythopolis", name: "Скифополь", ancient: "Σκυθόπολις (Βηθσάν)", modern: "Бейт-Шеан",
+      lat: 32.5008, lon: 35.5028, region: "ptolemaic", population: 15000, trade: 6, military: 6, culture: 5,
+      minerals: ["базальт", "селитра"], water: ["источники долины Иордана", "горячие источники"],
+      description: "Бейт-Шеан. Важный административный и торговый узел в долине Иордана. Базальтовые ресурсы Галилеи и окрестностей.",
+      roads: ["Путь вдоль Иордана", "Связь с Птолемаидой и Дамаском", "Дорога к Иерусалиму"] },
+    { id: "hammat_tiberias", name: "Хаммат", ancient: "Ἁμμαθά / Χαμμαθ", modern: "Хаммат-Тверия",
+      lat: 32.7680, lon: 35.5480, region: "ptolemaic", population: 3000, trade: 3, military: 2, culture: 4,
+      minerals: ["селитра", "сера (минеральные источники)"], water: ["термальные источники Хаммат"],
+      description: "Поселение у термальных источников на берегу Галилейского моря. Города Тверия ещё не существует (основан в 20 г. н.э.). Важный локальный пункт на путях вдоль озера.",
+      roads: ["Приозёрный путь", "Связь со Скифополем"] },
+    { id: "joppa", name: "Иоппия", ancient: "Ἰόππη", modern: "Яффо",
+      lat: 32.0530, lon: 34.7520, region: "ptolemaic", population: 12000, trade: 7, military: 5, culture: 4,
+      minerals: ["соль"], water: ["колодцы"],
+      description: "Главный порт Иудеи. Важный пункт Via Maris и связь Иерусалима с морем.",
+      roads: ["Via Maris", "Дорога к Иерусалиму"] },
+    { id: "azotus", name: "Азот", ancient: "Ἄζωτος", modern: "Ашдод",
+      lat: 31.8040, lon: 34.6550, region: "ptolemaic", population: 10000, trade: 5, military: 4, culture: 3,
+      minerals: ["соль"], water: ["колодцы"],
+      description: "Древний филистимский город на побережье. Сельскохозяйственный и торговый пункт под контролем Птолемеев.",
+      roads: ["Via Maris"] },
+    { id: "marisa", name: "Мариса", ancient: "Μάρισα / Μαρίσα", modern: "Тель-Мареша",
+      lat: 31.5960, lon: 34.8970, region: "ptolemaic", population: 8000, trade: 5, military: 4, culture: 5,
+      minerals: ["известняк", "селитра"], water: ["цистерны", "колодцы"],
+      description: "Эллинистический город в Идумее. Известен сложной системой подземных помещений и цистерн. Важный локальный центр.",
+      roads: ["Пути к Газе и Иерусалиму", "Связь с побережьем"] },
+    { id: "philoteria", name: "Филотерия", ancient: "Φιλωτερία", modern: "Бет-Йерах / Хирбет эль-Керак",
+      lat: 32.7170, lon: 35.5710, region: "ptolemaic", population: 5000, trade: 4, military: 3, culture: 3,
+      minerals: ["базальт"], water: ["Галилейское море", "источники"],
+      description: "Эллинистическое поселение на южном берегу Галилейского моря. Названо в честь Филотеры, сестры Птолемея II.",
+      roads: ["Приозёрный путь", "Связь со Скифополем"] },
+    { id: "engedi", name: "Ен-Геди", ancient: "Ἐγγαδί / Ενγάδδι", modern: "Эйн-Геди",
+      lat: 31.4610, lon: 35.3920, region: "ptolemaic", population: 2500, trade: 6, military: 3, culture: 4,
+      minerals: ["битум / асфальт", "соль"], water: ["источник Эйн-Геди", "вади"],
+      description: "Оазис на западном берегу Мёртвого моря («Асфальтового моря»). Ключевой пункт добычи битума, использовавшегося для кораблей, медицины и мумификации.",
+      roads: ["Пути вдоль Мёртвого моря", "Связь с Иерусалимом и Идумеей"] },
+    { id: "petra", name: "Петра", ancient: "Πέτρα", modern: "Петра",
+      lat: 30.3285, lon: 35.4444, region: "nabataean", population: 15000, trade: 9, military: 6, culture: 6,
+      minerals: ["песчаник", "медь (транзит)", "битум (транзит)"], water: ["системы сбора дождевой воды", "источники Сика"],
+      description: "Столица Набатейского царства. Контролировала караванные пути благовоний и пряностей из Южной Аравии. Уже в III в. важный торговый узел.",
+      roads: ["Царская дорога на север", "Пути в Аравию и к Красному морю"] },
+    { id: "oboda", name: "Обода", ancient: "Ὄβοδα", modern: "Авдат",
+      lat: 30.7940, lon: 34.7730, region: "nabataean", population: 4000, trade: 7, military: 5, culture: 4,
+      minerals: ["каолин (белый)", "песчаник"], water: ["цистерны", "вади"],
+      description: "Важный набатейский караванный пункт в Негеве. Контролировал пути через пустыню и доступ к месторождениям белой глины (каолина) в кратерах Махтеш.",
+      roads: ["Путь Газа–Петра", "Связь с Махтеш Рамон"] },
+    { id: "makhtesh_ramon", name: "Махтеш Рамон", ancient: "—", modern: "Махтеш Рамон",
+      lat: 30.5800, lon: 34.8600, region: "nabataean", population: 500, trade: 5, military: 2, culture: 2,
+      minerals: ["каолин (белая глина)", "песчаник", "гипс"], water: ["редкие источники", "цистерны"],
+      description: "Крупнейший эрозионный кратер Негева. Основной источник белой глины (каолина) в регионе. Контроль набатеев. Добыча для керамики, штукатурки и пигментов.",
+      roads: ["Путь через Негев к Авдату и Петре", "Связь с Газой"] },
+    { id: "shaar_ramon", name: "Шаар-Рамон", ancient: "—", modern: "Шаар-Рамон",
+      lat: 30.6200, lon: 34.9300, region: "nabataean", population: 300, trade: 4, military: 2, culture: 1,
+      minerals: ["каолин", "песчаник"], water: ["цистерны"],
+      description: "Набатейский форпост и караванный пункт у входа в Махтеш Рамон. Контроль доступа к месторождениям белой глины.",
+      roads: ["Путь к Авдату и Махтеш Рамон"] },
+    { id: "alexandria", name: "Александрия", ancient: "Ἀλεξάνδρεια", modern: "Александрия",
+      lat: 31.2001, lon: 29.9187, region: "ptolemaic", population: 300000, trade: 10, military: 9, culture: 10,
+      minerals: ["натрон (транзит)", "золото (транзит из Нубии)", "медь"], water: ["канал от Нила", "цистерны", "озеро Мареотис"],
+      description: "Столица Птолемеевского Египта, основана Александром. Крупнейший город Средиземноморья, центр науки, торговли и эллинистической культуры. Мусейон и Библиотека.",
+      roads: ["Морские пути по всему Средиземноморью", "Канал к Канопу и Нилу", "Путь в Мемфис"] },
+    { id: "memphis", name: "Мемфис", ancient: "Μέμφις", modern: "Мит-Рахина",
+      lat: 29.8497, lon: 31.2544, region: "ptolemaic", population: 80000, trade: 7, military: 6, culture: 8,
+      minerals: ["известняк", "алебастр"], water: ["Нил", "каналы"],
+      description: "Древняя столица Египта. В эллинистический период сохраняла важное религиозное и административное значение наряду с Александрией.",
+      roads: ["Нильский путь", "Связь с Александрией и Файюмом"] },
+    { id: "pelusium", name: "Пелузий", ancient: "Πηλούσιον", modern: "Телль эль-Фарама",
+      lat: 31.0410, lon: 32.5480, region: "ptolemaic", population: 25000, trade: 8, military: 8, culture: 4,
+      minerals: ["соль", "натрон (транзит)"], water: ["Пелузийский рукав Нила"],
+      description: "Главный восточный порт и крепость Египта на границе с Синайским полуостровом. Ключевой пункт обороны и торговли с Левантом.",
+      roads: ["Via Maris в сторону Газы", "Нильский путь", "Путь через Синай"] },
+    { id: "naucratis", name: "Навкратис", ancient: "Ναύκρατις", modern: "Ком Гиейф",
+      lat: 30.9010, lon: 30.5920, region: "ptolemaic", population: 15000, trade: 7, military: 3, culture: 6,
+      minerals: ["глина"], water: ["Канопский рукав Нила"],
+      description: "Древнейшая греческая колония в Египте. В эллинистический период сохраняла значение как торговый и культурный центр греков в Дельте.",
+      roads: ["Нильский путь", "Связь с Александрией"] },
+    { id: "wadi_natrun", name: "Вади-Натрун", ancient: "Νιτρία / Νατρών", modern: "Вади-Натрун",
+      lat: 30.3500, lon: 30.3500, region: "ptolemaic", population: 2000, trade: 6, military: 2, culture: 3,
+      minerals: ["натрон (природная сода)"], water: ["солёные озёра", "редкие пресные источники"],
+      description: "Главный источник натрона (природной соды) в Египте. Натрон использовался для мумификации, стеклоделия, стирки и медицины.",
+      roads: ["Путь к Александрии и Мемфису"] },
+    { id: "crocodilopolis", name: "Крокодилополь", ancient: "Κροκοδείλων πόλις / Ἀρσινόη", modern: "Мединат эль-Файюм",
+      lat: 29.3100, lon: 30.8400, region: "ptolemaic", population: 30000, trade: 6, military: 4, culture: 5,
+      minerals: ["глина", "алебастр (окрестности)"], water: ["озеро Моерис", "каналы Файюма"],
+      description: "Столица Арсиноитского нома (Файюм). Переименована в Арсиною в честь Арсинои II. Важный сельскохозяйственный и административный центр.",
+      roads: ["Нильский путь", "Связь с Мемфисом"] },
+    { id: "coptos", name: "Коптос", ancient: "Κοπτός", modern: "Кифт",
+      lat: 25.9960, lon: 32.8160, region: "ptolemaic", population: 12000, trade: 8, military: 5, culture: 4,
+      minerals: ["золото (транзит из Восточной пустыни)", "медь", "изумруды (транзит)"], water: ["Нил"],
+      description: "Ключевой пункт на пути из Красного моря в долину Нила. Через Коптос шли товары из Восточной пустыни, Нубии и Индийского океана.",
+      roads: ["Нильский путь", "Дорога к Красному морю (Береника / Миос Гормос)"] },
+    { id: "aila", name: "Айла", ancient: "Αἴλανα / Αἴλα", modern: "Акаба",
+      lat: 29.5319, lon: 35.0061, region: "nabataean", population: 6000, trade: 8, military: 6, culture: 3,
+      minerals: ["соль", "медь (транзит)"], water: ["источники у залива", "колодцы"],
+      description: "Важный порт на Красном море в северной оконечности залива Акаба. Под контролем набатеев. Связывал морские пути с Индийским океаном и караванные пути в Петру и далее на север.",
+      roads: ["Морской путь по Красному морю", "Караванный путь в Петру", "Связь с Леуке Коме"] },
+    { id: "leuke_kome", name: "Леуке Коме", ancient: "Λευκὴ Κώμη", modern: "Ум-Ледж / район Аль-Ваджа",
+      lat: 26.6500, lon: 36.4500, region: "nabataean", population: 2500, trade: 7, military: 4, culture: 2,
+      minerals: ["соль"], water: ["колодцы", "редкие источники"],
+      description: "Набатейский порт на восточном берегу Красного моря. Важный пункт перегрузки товаров с морских судов на караваны, идущие в Петру. Упоминается античными авторами как набатейская гавань.",
+      roads: ["Морской путь по Красному морю", "Караванный путь на север к Петре"] },
+    { id: "hegra", name: "Хегра", ancient: "Ἕγρα / Ḥegrā", modern: "Мадаин-Салих",
+      lat: 26.7917, lon: 37.9528, region: "nabataean", population: 5000, trade: 7, military: 5, culture: 5,
+      minerals: ["песчаник", "медь (транзит)"], water: ["цистерны", "колодцы"],
+      description: "Крупный набатейский город и некрополь в северо-западной Аравии. Важный пункт на караванном пути благовоний. Известен монументальными гробницами в скалах (расцвет чуть позже, но уже значим в III в.).",
+      roads: ["Путь благовоний (Incense Route)", "Связь с Деданом и Таймой", "Путь на север к Петре"] },
+    { id: "dedan", name: "Дедан", ancient: "Δαδάν / Dedān", modern: "Аль-Ула",
+      lat: 26.6167, lon: 37.9167, region: "nabataean", population: 4000, trade: 7, military: 4, culture: 5,
+      minerals: ["песчаник"], water: ["оазис Аль-Ула", "колодцы"],
+      description: "Древний оазисный город в северо-западной Аравии. В III в. до н.э. находился под растущим влиянием набатеев (ранее — лихьяниты). Важный узел караванной торговли.",
+      roads: ["Путь благовоний", "Связь с Хегрой и Таймой"] },
+    { id: "tayma", name: "Тайма", ancient: "Θαίμα / Taymāʾ", modern: "Тайма",
+      lat: 27.6333, lon: 38.5500, region: "independent", population: 5000, trade: 6, military: 4, culture: 4,
+      minerals: ["соль", "медь (транзит)"], water: ["оазис Тайма", "колодцы"],
+      description: "Крупный оазис в северо-западной Аравии. Исторически важный торговый и культовый центр. В эллинистический период сохранял относительную самостоятельность, хотя находился в зоне набатейского влияния.",
+      roads: ["Караванные пути к Хегре и Дедану", "Пути вглубь Аравии"] },
+    { id: "duma", name: "Дума", ancient: "Δούμεθα / Dūmat al-Jandal", modern: "Думат аль-Джандаль",
+      lat: 29.8117, lon: 39.8667, region: "independent", population: 3500, trade: 5, military: 4, culture: 3,
+      minerals: ["соль"], water: ["оазис", "колодцы"],
+      description: "Оазисный центр на северной окраине Аравийского полуострова. Контролировал пути между Сирией, Месопотамией и внутренними районами Аравии. В III в. — относительно независимый пункт.",
+      roads: ["Пути к Дамаску и Петре", "Связь с Таймой"] },
+    /* --- ниже 8 городов, которых нет в levant_hellenistic_map: данные из levant5 --- */
+    { id: "samaria", name: "Самария", ancient: "Σαμάρεια", modern: "Себастия",
+      lat: 32.2764, lon: 35.1897, region: "ptolemaic", population: 18000, trade: 6, military: 7, culture: 6,
+      description: "Укреплённый город, заселённый македонскими ветеранами ещё при Александре Великом. Мощная крепость и важнейший административный центр региона.",
+      roads: ["Центральный горный тракт", "Пути к Птолемаиде и Иерусалиму"] },
+    { id: "jericho", name: "Иерихон", ancient: "Ἱεριχώ", modern: "Ариха",
+      lat: 31.8711, lon: 35.4419, region: "ptolemaic", population: 10000, trade: 6, military: 4, culture: 6,
+      description: "Оазис в Иорданской долине, знаменитый производством высококачественных фиников и редчайшего целебного бальзама. В III веке до н.э. был богатым царским поместьем Птолемеев.",
+      roads: ["Путь вдоль Иордана", "Дорога на подъём к Иерусалиму"] },
+    { id: "paneas", name: "Панеада", ancient: "Πανειάς", modern: "Баниас",
+      lat: 33.2477, lon: 35.6934, region: "ptolemaic", population: 5000, trade: 4, military: 5, culture: 6,
+      description: "Культовый центр у истоков Иордана, посвящённый богу Пану. Расположен у подножия горы Хермон, контролировал стратегический проход из Галилеи и Келесирии в сторону Дамаска.",
+      roads: ["Путь на восток к Дамаску", "Дорога на юг через долину Хула"] },
+    { id: "syracuse", name: "Сиракузы", ancient: "Συράκουσαι", modern: "Сиракуза",
+      lat: 37.0755, lon: 15.2866, region: "independent", population: 100000, trade: 9, military: 9, culture: 9,
+      description: "Родной город Архимеда и столица Сицилийской державы царя Гиерона II. Один из богатейших полисов, лавировавший между интересами Рима и Карфагена в годы Пунических войн.",
+      roads: ["Морские маршруты в Грецию и Карфаген", "Пути вглубь Сицилии"] },
+    { id: "rome", name: "Рим", ancient: "Roma", modern: "Рим",
+      lat: 41.8926, lon: 12.4903, region: "independent", population: 250000, trade: 7, military: 10, culture: 6,
+      description: "Столица Римской Республики. В 250 г. до н.э. город находится в зените Первой Пунической войны, активно строит флот и расширяет свое влияние на Средиземноморье.",
+      roads: ["Аппиева дорога на юг", "Виа Фламиния на север", "Связь с портом Остия"] },
+    { id: "carthage", name: "Карфаген", ancient: "𐤒𐤓𐤕 𐤇𐤃𐤔𐤕 (Qart-ḥadašt)", modern: "Тунис",
+      lat: 36.8528, lon: 10.3233, region: "independent", population: 400000, trade: 10, military: 10, culture: 7,
+      description: "Могущественная морская империя и главный конкурент Рима. Контролировал торговлю в Западном Средиземноморье. Обладал огромным флотом и колоссальными богатствами.",
+      roads: ["Морская гегемония", "Караванные пути вглубь Африки"] },
+    { id: "pella", name: "Пелла", ancient: "Πέλλα", modern: "Пелла",
+      lat: 40.7610, lon: 22.5255, region: "independent", population: 40000, trade: 6, military: 9, culture: 7,
+      description: "Столица Македонского царства, родина Александра Великого. Под властью династии Антигонидов оставалась важнейшим политическим и военным центром балканской Греции.",
+      roads: ["Эгнатиева дорога (в будущем)", "Связь с Фессалией и Фракией"] },
+    { id: "pergamon", name: "Пергам", ancient: "Πέργαμον", modern: "Бергама",
+      lat: 39.1240, lon: 27.1822, region: "independent", population: 50000, trade: 7, military: 7, culture: 9,
+      description: "Столица царства Атталидов в Малой Азии. Город славился своей библиотекой (конкурировавшей с Александрийской) и алтарем Зевса. Родина пергамента.",
+      roads: ["Торговые пути Анатолии", "Связь с Эгейскими портами"] }
+];
+
+/* Маршруты: 12 из levant_hellenistic_map + «Путь по долине Иордана» из levant4/levant5 */
+const routes = [
+    { name: "Via Maris (Прибрежный путь)", color: "#22d3ee", weight: 3.5,
+      coords: [[31.04,32.55],[31.50,34.47],[31.67,34.57],[31.80,34.66],[32.05,34.75],[32.93,35.08],[33.27,35.20],[33.56,35.37],[33.89,35.50],[34.12,35.65],[35.53,35.79],[36.12,35.92]] },
+    { name: "Царская дорога (King's Highway)", color: "#fbbf24", weight: 3.5,
+      coords: [[30.33,35.44],[30.80,35.60],[31.50,35.75],[31.95,35.91],[32.28,35.90],[32.80,36.10],[33.51,36.28],[34.50,36.40],[35.42,36.40],[36.20,36.16]] },
+    { name: "Путь Антиохия–Дамаск (внутренний)", color: "#a78bfa", weight: 2.5, dashArray: "8 6",
+      coords: [[36.20,36.16],[35.70,36.30],[35.42,36.40],[34.80,36.35],[33.51,36.28]] },
+    { name: "Поперечные пути к побережью", color: "#94a3b8", weight: 2, dashArray: "4 6",
+      coords: [[33.51,36.28],[33.40,35.80],[33.27,35.20]] },
+    { name: "Путь Газа–Петра (Негев)", color: "#f97316", weight: 2.5, dashArray: "6 5",
+      coords: [[31.50,34.47],[31.20,34.70],[30.79,34.77],[30.62,34.93],[30.58,34.86],[30.33,35.44]] },
+    { name: "Нильский путь (Египет)", color: "#34d399", weight: 3,
+      coords: [[25.996,32.816],[29.31,30.84],[29.85,31.25],[30.90,30.59],[31.20,29.92]] },
+    { name: "Путь Пелузий–Александрия (Дельта)", color: "#34d399", weight: 2.5, dashArray: "5 5",
+      coords: [[31.04,32.55],[30.90,31.80],[31.20,29.92]] },
+    { name: "Путь к Вади-Натрун", color: "#64748b", weight: 2, dashArray: "4 4",
+      coords: [[31.20,29.92],[30.35,30.35]] },
+    { name: "Долина Иордана", color: "#818cf8", weight: 2.2, dashArray: "5 4",
+      coords: [[32.77,35.55],[32.72,35.57],[32.50,35.50],[31.78,35.24]] },
+    { name: "Путь благовоний (Incense Route)", color: "#eab308", weight: 3,
+      coords: [[26.65,36.45],[26.79,37.95],[26.62,37.92],[28.20,36.80],[29.53,35.01],[30.33,35.44]] },
+    { name: "Красноморский путь (Айла – Леуке Коме)", color: "#06b6d4", weight: 2.5, dashArray: "6 4",
+      coords: [[29.53,35.01],[28.50,35.60],[27.50,36.00],[26.65,36.45]] },
+    { name: "Ветвь к Тайме и Думе", color: "#a3a3a3", weight: 2, dashArray: "4 5",
+      coords: [[26.79,37.95],[27.63,38.55],[28.70,39.20],[29.81,39.87]] },
+    { name: "Путь по долине Иордана", color: "#94a3b8", weight: 2, dashArray: "4 6",
+      coords: [[33.24,35.69],[32.71,35.57],[32.50,35.50],[31.87,35.44]] }
+];
+
+/* Области: геометрия из levant_hellenistic_map (в levant2–levant5 — их дубли) */
+const regions = [
+    { name: "Селевкидская Сирия", color: "#3b82f6",
+      coords: [[37.0,35.3],[37.0,37.0],[34.5,37.2],[33.6,36.9],[33.3,35.7],[35.0,35.4],[36.5,35.2],[37.0,35.3]] },
+    { name: "Птолемеевская Койлесирия и Финикия", color: "#22c55e",
+      coords: [[34.4,34.9],[34.2,36.1],[33.0,36.3],[31.0,35.6],[30.9,34.2],[32.4,34.3],[34.0,34.7],[34.4,34.9]] },
+    { name: "Набатея", color: "#f59e0b",
+      coords: [[31.8,34.7],[31.3,36.5],[29.0,36.8],[26.3,37.5],[26.2,35.8],[28.5,34.6],[30.5,34.3],[31.8,34.7]] },
+    { name: "Птолемеевский Египет", color: "#22c55e",
+      coords: [[31.6,29.5],[31.5,32.8],[29.0,33.0],[25.5,33.2],[25.5,30.5],[29.0,29.8],[31.6,29.5]] },
+    { name: "Северо-Западная Аравия (оазисы)", color: "#a855f7",
+      coords: [[28.5,37.5],[28.0,40.0],[26.0,40.2],[25.8,36.8],[26.5,35.9],[28.5,37.5]] }
+];
+
+/* Державы: из levant5 (единственный источник массива polities) */
+const polities = [
+    { id: "seleucid", name: "Держава Селевкидов", label: "Селевкиды", native: "Σελευκίδαι",
+      capital: "Антиохия", ruler: "Антиох III", color: "#3b82f6", population: 14000000, area: 2300000,
+      army: 80000, revenue: 210, cities: 46,
+      summary: "Антиох III только начал собирать распавшуюся державу. Ахей самовластно сидит в селевкидской Малой Азии. Парфия и Бактрия уже отложились. Впереди восточный поход и временное возвращение величия — но не в этом году." },
+    { id: "ptolemy", name: "Держава Птолемеев", label: "Птолемеи", native: "Πτολεμαῖοι",
+      capital: "Александрия", ruler: "Птолемей IV Филопатор", color: "#22c55e", population: 5800000, area: 1050000,
+      army: 70000, revenue: 340, cities: 16,
+      summary: "Египет, Киренаика, Кипр и Келесирия. Александрия — главный учёный город мира, Мусейон ещё полон книг, которыми пользовались бы и в Сиракузах. Птолемей IV — слабый царь при самой богатой казне эпохи. Война с Антиохом начнётся в 219 году." },
+    { id: "nabataea", name: "Набатея", label: "Набатея", native: "𐢕𐢃𐢋𐢈",
+      capital: "Петра", ruler: "ранние цари Петры", color: "#f59e0b", population: 160000, area: 55000,
+      army: 8000, revenue: 24, cities: 3,
+      summary: "Арабское царство караванных путей между Аравией Счастливой и Средиземным морем. Петра высечена в скалах и берёт пошлину с ладана. Греки знают набатеев как народ, который нелегко осадить." },
+    { id: "arabia", name: "Аравийские племена", label: "Аравия", native: "Ἄραβες",
+      capital: "Тайма", ruler: "шейхи оазисов", color: "#8b9bb4", population: 900000, area: 1600000,
+      army: 30000, revenue: 14, cities: 6,
+      summary: "Внутренняя Аравия без единого царя: оазисы Тайма и Дедан, бедуины Неджда и побережье Персидского залива. Ладан с юга идёт на север через их земли к Набатее и в Левант." },
+    { id: "cappadocia", name: "Каппадокия", label: "Каппадокия", native: "Καππαδοκία",
+      capital: "Мазака", ruler: "Ариарат IV", color: "#8b9bb4", population: 520000, area: 90000,
+      army: 16000, revenue: 12, cities: 4,
+      summary: "Анатолийское плато под иранской по корням династией. Лошади, храмы и зависимость то от Селевкидов, то от собственных гор. Ариарат IV только входит в силу." },
+    { id: "rome", name: "Римская республика", label: "Рим", native: "Res publica Romana",
+      capital: "Рим", ruler: "сенат и консулы", color: "#a855f7", population: 4200000, area: 310000,
+      army: 130000, revenue: 85, cities: 26,
+      summary: "После мира 241 года Рим держит Италию до Цизальпинской Галлии, Сардинию, Корсику и Сицилию кроме Сиракуз. Это ещё республика мелких землевладельцев и союзников, не средиземноморская империя. Ганнибал пока в Испании." },
+    { id: "carthage", name: "Карфаген", label: "Карфаген", native: "𐤒𐤓𐤕𐤇𐤃𐤔𐤕",
+      capital: "Карфаген", ruler: "совет старейшин; Ганнибал в Испании", color: "#a855f7", population: 3400000, area: 460000,
+      army: 95000, revenue: 155, cities: 18,
+      summary: "Город потерял Сицилию и вот-вот потеряет Сардинию, но Баркиды с 237 года собирают новую державу в Испании. Гавани, серебро и наёмники. До перехода через Альпы два года, если считать от весны 218-го." },
+    { id: "syracuse", name: "Сиракузы", label: "Сиракузы", native: "Συράκουσαι",
+      capital: "Сиракузы", ruler: "Гиерон II", color: "#a855f7", population: 280000, area: 7500,
+      army: 16000, revenue: 14, cities: 2,
+      summary: "Царство Гиерона II на юго-востоке Сицилии, союзник Рима и родной город Архимеда. Двор платит стипендию математику, верфи и склады делают город богаче, чем позволяет его размер. Осада Марцелла начнётся только в 214–212 годах." },
+    { id: "macedon", name: "Македонское царство", label: "Македония", native: "Μακεδονία",
+      capital: "Пелла", ruler: "Филипп V", color: "#a855f7", population: 950000, area: 78000,
+      army: 36000, revenue: 28, cities: 8,
+      summary: "Антигониды держат Македонию и Фессалию. Филипп V только что принял царство и ещё не ввязался в союз с Ганнибалом. Пелла остаётся двором, который помнит Александра, но воюет уже по-другому." },
+    { id: "pergamon", name: "Пергамское царство", label: "Пергам", native: "Πέργαμον",
+      capital: "Пергам", ruler: "Аттал I", color: "#a855f7", population: 360000, area: 42000,
+      army: 18000, revenue: 42, cities: 6,
+      summary: "Атталиды держат северо-запад Малой Азии и библиотеку, которая спорит с Александрийской. Аттал I уже принял царский титул после побед над галатами. Казна растёт на серебре и пошлинах Эгейского моря." }
+];
+
+const STATES = {
+    seleucid:   { name: "Селевкиды",            color: "#3b82f6" },
+    ptolemaic:  { name: "Птолемеи",              color: "#22c55e" },
+    nabataean:  { name: "Набатеи",               color: "#f59e0b" },
+    independent:{ name: "Прочие / независимые",  color: "#a855f7" }
+};
+
+/* Соответствие «область → держава» для слоя «Государства» (как в levant5) */
+const regionPolity = {
+    "Селевкидская Сирия": "seleucid",
+    "Птолемеевская Койлесирия и Финикия": "ptolemy",
+    "Набатея": "nabataea",
+    "Птолемеевский Египет": "ptolemy",
+    "Северо-Западная Аравия (оазисы)": "arabia"
+};
+
+/* Схематичная береговая: морские края полигонов областей
+   (запад Селевкидской Сирии и Койлесирии, север Птолемеевского Египта) */
+const COAST = [[37.0,35.3],[36.5,35.2],[35.0,35.4],[34.4,34.9],[34.0,34.7],[32.4,34.3],[30.9,34.2],[31.5,32.8],[31.6,29.5]];
+
+/* Цветовые шкалы метрик — из levant_hellenistic_map */
+const colorScales = {
+    population: { min: 300, max: 300000, colors: ["#1e3a5f","#2563eb","#3b82f6","#60a5fa","#93c5fd","#fef08a","#fbbf24","#f59e0b","#ea580c"] },
+    trade:      { min: 1, max: 10, colors: ["#14532d","#166534","#15803d","#22c55e","#4ade80","#fef08a","#fbbf24","#f59e0b","#ea580c"] },
+    military:   { min: 1, max: 10, colors: ["#3b0764","#5b21b6","#7c3aed","#8b5cf6","#a78bfa","#fef08a","#fbbf24","#f59e0b","#dc2626"] },
+    culture:    { min: 1, max: 10, colors: ["#1e1b4b","#312e81","#4338ca","#6366f1","#818cf8","#fef08a","#fbbf24","#f59e0b","#db2777"] }
+};
+
+/* ============================ ПРОЕКЦИЯ ============================ */
+/* equirectangular: x·cos(центральной широты); границы — по всем точкам данных */
+let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+function extendBounds(lat, lon) {
+    if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+    if (lon < minLon) minLon = lon; if (lon > maxLon) maxLon = lon;
+}
+cities.forEach(c => extendBounds(c.lat, c.lon));
+routes.forEach(r => r.coords.forEach(p => extendBounds(p[0], p[1])));
+regions.forEach(r => r.coords.forEach(p => extendBounds(p[0], p[1])));
+
+const LAT0 = (minLat + maxLat) / 2;
+const LON0 = (minLon + maxLon) / 2;
+const K = 44;                       /* px на градус */
+const COSLAT = Math.cos(LAT0 * Math.PI / 180);
+const PAD_DEG = 1.6;                /* поле вокруг данных, градусы */
+const wx = lon => (lon - LON0) * K * COSLAT;
+const wy = lat => (LAT0 - lat) * K;
+const WORLD = {
+    x0: wx(minLon - PAD_DEG), x1: wx(maxLon + PAD_DEG),
+    y0: wy(maxLat + PAD_DEG), y1: wy(minLat - PAD_DEG)
+};
+WORLD.w = WORLD.x1 - WORLD.x0;
+WORLD.h = WORLD.y1 - WORLD.y0;
+
+/* ============================== DOM ============================== */
+const $ = id => document.getElementById(id);
+const mapwrap = $("mapwrap");
+const svg = $("map");
+const tooltip = $("tooltip");
+const popup = $("popup");
+const ppBody = $("ppBody");
+const RAD = Math.PI / 180;
+
+let W = 0, H = 0;                   /* размер вьюпорта, px */
+const view = { s: 1, tx: 0, ty: 0 };
+let fitScale = 1;
+let colorMode = "state";
+let selectedId = null;
+let popupCtx = null;                /* {type:'city'|'polity', id, wx, wy} */
+
+function esc(s) {
+    return String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+}
+function fmtNum(n) { return n.toLocaleString("ru-RU"); }
+function fmtBig(n, suffix) {
+    const tail = suffix ? " " + suffix : "";
+    if (n >= 1000000) { const v = n / 1000000; return (v >= 10 ? String(Math.round(v)) : v.toFixed(1).replace(".", ",")) + " млн" + tail; }
+    if (n >= 1000) { const v = n / 1000; return (v >= 10 ? String(Math.round(v)) : v.toFixed(1).replace(".", ",")) + " тыс." + tail; }
+    return String(Math.round(n)) + tail;
+}
+function getColor(value, metric) {
+    const sc = colorScales[metric];
+    const t = Math.max(0, Math.min(1, (value - sc.min) / (sc.max - sc.min)));
+    return sc.colors[Math.min(sc.colors.length - 1, Math.floor(t * sc.colors.length))];
+}
+function markerRadius(c) {
+    /* логарифмическая шкала населения — как в levant_hellenistic_map */
+    const logMin = Math.log10(300), logMax = Math.log10(300000);
+    const t = (Math.log10(Math.max(c.population, 300)) - logMin) / (logMax - logMin);
+    return 5.5 + t * 15;
+}
+function markerFill(c) {
+    return colorMode === "state" ? STATES[c.region].color : getColor(c[colorMode], colorMode);
+}
+function metricLabel() {
+    return { state: "Держава", population: "Население", trade: "Торговля", military: "Военное значение", culture: "Культура" }[colorMode];
+}
+function metricValue(c) {
+    return colorMode === "state" ? STATES[c.region].name : (colorMode === "population" ? fmtNum(c.population) : c[colorMode] + "/10");
+}
+function coordsText(lat, lon) {
+    return lat.toFixed(4) + "° с.ш., " + lon.toFixed(4) + "° в.д.";
+}
+
+/* ====================== ПОСТРОЕНИЕ СЦЕНЫ (SVG) ====================== */
+function ptsStr(arr) { return arr.map(p => wx(p[1]).toFixed(1) + "," + wy(p[0]).toFixed(1)).join(" "); }
+
+function buildGrid() {
+    let out = "";
+    const latA = Math.floor((minLat - PAD_DEG) / 5) * 5, latB = Math.ceil((maxLat + PAD_DEG) / 5) * 5;
+    const lonA = Math.floor((minLon - PAD_DEG) / 5) * 5, lonB = Math.ceil((maxLon + PAD_DEG) / 5) * 5;
+    for (let lon = lonA; lon <= lonB; lon += 5) {
+        const x = wx(lon).toFixed(1);
+        out += '<line x1="' + x + '" y1="' + wy(latB).toFixed(1) + '" x2="' + x + '" y2="' + wy(latA).toFixed(1) +
+               '" stroke="var(--grid)" stroke-width="1" vector-effect="non-scaling-stroke" opacity="0.75"/>';
+        out += '<g class="gridlbl" data-x="' + x + '" data-y="' + (wy(latA) - 10) + '"><text>' + lon + "°</text></g>";
+    }
+    for (let lat = latA; lat <= latB; lat += 5) {
+        const y = wy(lat).toFixed(1);
+        out += '<line x1="' + wx(lonA).toFixed(1) + '" y1="' + y + '" x2="' + wx(lonB).toFixed(1) + '" y2="' + y +
+               '" stroke="var(--grid)" stroke-width="1" vector-effect="non-scaling-stroke" opacity="0.75"/>';
+        out += '<g class="gridlbl" data-x="' + (wx(lonA) + 24) + '" data-y="' + (wy(lat) - 6) + '"><text>' + lat + "°</text></g>";
+    }
+    return out;
+}
+
+function buildCoast() {
+    return '<polyline points="' + ptsStr(COAST) + '" fill="none" stroke="#3d5f85" stroke-width="1.4" ' +
+           'vector-effect="non-scaling-stroke" opacity="0.9"/>';
+}
+
+function buildRegions() {
+    let out = "";
+    regions.forEach((r, i) => {
+        out += '<polygon class="region" data-i="' + i + '" points="' + ptsStr(r.coords) +
+               '" fill="' + r.color + '" fill-opacity="0.06" stroke="' + r.color +
+               '" stroke-width="1.2" vector-effect="non-scaling-stroke" stroke-opacity="0.65" stroke-dasharray="none"/>';
+    });
+    return out;
+}
+
+/* Слой государств: заливка полигонов цветом державы + подпись в центроиде.
+   pointer-events=none — клики/наведение обрабатывают полигоны областей. */
+function regionCentroid(coords) {
+    let sx = 0, sy = 0;
+    coords.forEach(p => { sx += wx(p[1]); sy += wy(p[0]); });
+    return [sx / coords.length, sy / coords.length];
+}
+function buildStates() {
+    let out = "";
+    const byPolity = {};
+    regions.forEach(r => {
+        const pid = regionPolity[r.name];
+        if (pid) (byPolity[pid] = byPolity[pid] || []).push(r);
+    });
+    polities.forEach(p => {
+        const rs = byPolity[p.id];
+        if (!rs) return;
+        rs.forEach(r => {
+            out += '<polygon class="statepoly" data-pid="' + p.id + '" points="' + ptsStr(r.coords) +
+                   '" fill="' + p.color + '" fill-opacity="0.10" stroke="none" pointer-events="none"/>';
+        });
+        let cx = 0, cy = 0;
+        rs.forEach(r => { const c = regionCentroid(r.coords); cx += c[0]; cy += c[1]; });
+        cx /= rs.length; cy /= rs.length;
+        out += '<g class="statelbl" data-x="' + cx.toFixed(1) + '" data-y="' + cy.toFixed(1) + '">' +
+               '<text fill="' + p.color + '">' + esc(p.label.toUpperCase()) + "</text></g>";
+    });
+    return out;
+}
+
+function buildRoutes() {
+    let out = "";
+    routes.forEach((r, i) => {
+        out += '<polyline class="route" data-i="' + i + '" points="' + ptsStr(r.coords) + '" fill="none" stroke="' + r.color +
+               '" stroke-width="' + r.weight + '" vector-effect="non-scaling-stroke" stroke-opacity="0.8" stroke-linejoin="round" stroke-linecap="round"' +
+               (r.dashArray ? ' stroke-dasharray="' + r.dashArray + ' ' + r.dashArray + '"' : "") + "/>";
+    });
+    return out;
+}
+
+function buildCities() {
+    let out = "";
+    cities.forEach(c => {
+        const R = markerRadius(c).toFixed(1);
+        out += '<g class="city" data-id="' + c.id + '" data-x="' + wx(c.lon).toFixed(1) + '" data-y="' + wy(c.lat).toFixed(1) + '">' +
+               '<circle class="hit" r="' + (markerRadius(c) + 7).toFixed(1) + '" fill="transparent"/>' +
+               '<circle class="dot" r="' + R + '" fill="' + markerFill(c) + '" stroke="#0f1419" stroke-width="2"/>' +
+               '<text class="lbl" y="-' + (markerRadius(c) + 6).toFixed(1) + '">' + esc(c.name) + "</text></g>";
+    });
+    return out;
+}
+
+function buildScene() {
+    svg.innerHTML =
+        '<g id="viewport">' +
+        '<g id="gGrid">' + buildGrid() + "</g>" +
+        '<g id="gCoast">' + buildCoast() + "</g>" +
+        '<g id="gRegions">' + buildRegions() + "</g>" +
+        '<g id="gStates">' + buildStates() + "</g>" +
+        '<g id="gRoutes">' + buildRoutes() + "</g>" +
+        '<g id="gCities">' + buildCities() + "</g>" +
+        "</g>";
+}
+
+/* ======================= ПРИМЕНЕНИЕ ВИДА (PAN/ZOOM) ======================= */
+function clampS(s) { return Math.max(fitScale * 0.4, Math.min(fitScale * 60, s)); }
+
+function applyView() {
+    $("viewport").setAttribute("transform", "translate(" + view.tx + "," + view.ty + ") scale(" + view.s + ")");
+    const k = 1 / view.s;
+    svg.querySelectorAll(".city").forEach(g => {
+        g.setAttribute("transform", "translate(" + g.dataset.x + "," + g.dataset.y + ") scale(" + k + ")");
+    });
+    svg.querySelectorAll(".gridlbl, .statelbl").forEach(g => {
+        g.setAttribute("transform", "translate(" + g.dataset.x + "," + g.dataset.y + ") scale(" + k + ")");
+    });
+    updateCityLabels();
+    positionPopup();
+    $("hudZoom").innerHTML = "Масштаб <b>" + Math.round(view.s / fitScale * 100) + "%</b>";
+}
+
+function updateCityLabels() {
+    /* подписи городов — по рангу населения и степени зума, чтобы не сливаться */
+    svg.querySelectorAll(".city").forEach(g => {
+        const c = cities.find(x => x.id === g.dataset.id);
+        if (!c) return;
+        const pop = c.population;
+        const show = pop >= 80000 ||
+            (view.s >= 1.4 * fitScale && pop >= 25000) ||
+            (view.s >= 2.2 * fitScale && pop >= 5000) ||
+            (view.s >= 3.4 * fitScale);
+        g.querySelector(".lbl").style.display = show ? "" : "none";
+    });
+}
+
+function fitAll() {
+    const pad = 30;
+    fitScale = Math.min((W - pad * 2) / WORLD.w, (H - pad * 2) / WORLD.h);
+    view.s = fitScale;
+    view.tx = (W - WORLD.w * view.s) / 2 - WORLD.x0 * view.s;
+    view.ty = (H - WORLD.h * view.s) / 2 - WORLD.y0 * view.s;
+    applyView();
+}
+function zoomAt(mx, my, factor) {
+    const s2 = clampS(view.s * factor);
+    const f = s2 / view.s;
+    view.tx = mx - (mx - view.tx) * f;
+    view.ty = my - (my - view.ty) * f;
+    view.s = s2;
+    applyView();
+}
+function centerOn(lat, lon, targetS) {
+    view.s = clampS(Math.max(view.s, targetS));
+    view.tx = W / 2 - wx(lon) * view.s;
+    view.ty = H / 2 - wy(lat) * view.s;
+    applyView();
+}
+function screenPos(wxv, wyv) { return [wxv * view.s + view.tx, wyv * view.s + view.ty]; }
+
+/* ======================= ТУЛТИП И ПОПАП ======================= */
+function showTooltip(html, clientX, clientY) {
+    tooltip.innerHTML = html;
+    tooltip.style.display = "block";
+    moveTooltip(clientX, clientY);
+}
+function moveTooltip(clientX, clientY) {
+    const r = mapwrap.getBoundingClientRect();
+    let x = clientX - r.left + 16, y = clientY - r.top - 12;
+    if (x + tooltip.offsetWidth > r.width - 8) x = clientX - r.left - tooltip.offsetWidth - 12;
+    if (y + tooltip.offsetHeight > r.height - 8) y = clientY - r.top - tooltip.offsetHeight - 8;
+    if (y < 4) y = 4;
+    tooltip.style.left = x + "px";
+    tooltip.style.top = y + "px";
+}
+function hideTooltip() { tooltip.style.display = "none"; }
+
+function openCityPopup(c) {
+    popupCtx = { type: "city", id: c.id, wxv: wx(c.lon), wyv: wy(c.lat) };
+    ppBody.innerHTML =
+        '<div class="pp-title">' + esc(c.name) + "</div>" +
+        '<div class="pp-anc">' + esc(c.ancient) + " · совр. " + esc(c.modern) + "</div>" +
+        '<span class="badge ' + c.region + '">' + STATES[c.region].name + "</span>" +
+        '<div class="pp-desc">' + esc(c.description) + "</div>" +
+        '<div class="pp-coords">' + coordsText(c.lat, c.lon) + " · население ~" + fmtNum(c.population) + " чел.</div>";
+    popup.style.display = "block";
+    positionPopup();
+}
+function openPolityPopup(p, anchor) {
+    popupCtx = { type: "polity", id: p.id, wxv: anchor[0], wyv: anchor[1] };
+    ppBody.innerHTML =
+        '<div class="pp-title">' + esc(p.name) + "</div>" +
+        '<div class="pp-anc">' + esc(p.native) + " · столица: " + esc(p.capital) + "</div>" +
+        '<div class="pp-desc">' + esc(p.summary) + "</div>" +
+        '<div class="pp-coords">Правитель: ' + esc(p.ruler) + " · войско " + fmtBig(p.army) + " · казна " + p.revenue + " т серебра</div>";
+    popup.style.display = "block";
+    positionPopup();
+}
+function positionPopup() {
+    if (!popupCtx || popup.style.display === "none") return;
+    const [sx, sy] = screenPos(popupCtx.wxv, popupCtx.wyv);
+    let left = sx - popup.offsetWidth / 2;
+    let top = sy - popup.offsetHeight - 16;
+    if (top < 6) top = sy + 16;
+    left = Math.max(6, Math.min(W - popup.offsetWidth - 6, left));
+    top = Math.max(6, Math.min(H - popup.offsetHeight - 6, top));
+    popup.style.left = left + "px";
+    popup.style.top = top + "px";
+}
+function closePopup() {
+    popup.style.display = "none";
+    popupCtx = null;
+    if (selectedId !== null) {
+        selectedId = null;
+        refreshMarkerStyles();
+        renderCityList();
+    }
+}
+$("ppClose").addEventListener("click", closePopup);
+
+/* ======================= ВЫДЕЛЕНИЕ ГОРОДА ======================= */
+function refreshMarkerStyles() {
+    svg.querySelectorAll(".city").forEach(g => {
+        const dot = g.querySelector(".dot");
+        if (g.dataset.id === selectedId) {
+            dot.setAttribute("stroke", "#fbbf24");
+            dot.setAttribute("stroke-width", "3");
+        } else {
+            dot.setAttribute("stroke", "#0f1419");
+            dot.setAttribute("stroke-width", "2");
+        }
+    });
+}
+function selectCity(c, fromList) {
+    selectedId = c.id;
+    refreshMarkerStyles();
+    openCityPopup(c);
+    showCityCard(c);
+    renderCityList();
+    if (!fromList) {
+        const item = document.querySelector('.city-item[data-id="' + c.id + '"]');
+        if (item) item.scrollIntoView({ block: "nearest" });
+    }
+}
+
+/* ======================= СОБЫТИЯ КАРТЫ ======================= */
+let dragging = false, moved = false, lastX = 0, lastY = 0;
+
+svg.addEventListener("pointerdown", e => {
+    if (e.button !== 0) return;
+    dragging = true; moved = false;
+    lastX = e.clientX; lastY = e.clientY;
+    svg.setPointerCapture(e.pointerId);
+    svg.classList.add("dragging");
+});
+svg.addEventListener("pointermove", e => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
+    lastX = e.clientX; lastY = e.clientY;
+    view.tx += dx; view.ty += dy;
+    applyView();
+});
+svg.addEventListener("pointerup", e => {
+    dragging = false;
+    svg.classList.remove("dragging");
+    /* клик по пустому месту (море/сетка/береговая) — закрыть попап */
+    const t = e.target;
+    if (!moved && !dragging && (t === svg || t.id === "viewport" || (t.closest && t.closest("#gGrid,#gCoast")))) closePopup();
+});
+svg.addEventListener("pointercancel", () => { dragging = false; svg.classList.remove("dragging"); });
+
+svg.addEventListener("wheel", e => {
+    e.preventDefault();
+    const r = mapwrap.getBoundingClientRect();
+    zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0016));
+}, { passive: false });
+
+svg.addEventListener("dblclick", e => {
+    const r = mapwrap.getBoundingClientRect();
+    zoomAt(e.clientX - r.left, e.clientY - r.top, 1.7);
+});
+
+$("btnZoomIn").addEventListener("click", () => zoomAt(W / 2, H / 2, 1.45));
+$("btnZoomOut").addEventListener("click", () => zoomAt(W / 2, H / 2, 1 / 1.45));
+$("btnHome").addEventListener("click", fitAll);
+
+/* ======================= ПОДКЛЮЧЕНИЕ ОБЪЕКТОВ ======================= */
+function bindMapObjects() {
+    svg.querySelectorAll(".city").forEach(g => {
+        const c = cities.find(x => x.id === g.dataset.id);
+        g.addEventListener("mouseenter", e => showTooltip(
+            "<b>" + esc(c.name) + "</b><br><span class='tt-sub'>" + STATES[c.region].name + " · население ~" + fmtNum(c.population) + " чел.</span>",
+            e.clientX, e.clientY));
+        g.addEventListener("mousemove", e => moveTooltip(e.clientX, e.clientY));
+        g.addEventListener("mouseleave", hideTooltip);
+        g.addEventListener("click", e => { e.stopPropagation(); hideTooltip(); selectCity(c); });
+    });
+    svg.querySelectorAll(".route").forEach(el => {
+        const r = routes[+el.dataset.i];
+        el.addEventListener("mouseenter", e => showTooltip("<b>" + esc(r.name) + "</b>", e.clientX, e.clientY));
+        el.addEventListener("mousemove", e => moveTooltip(e.clientX, e.clientY));
+        el.addEventListener("mouseleave", hideTooltip);
+    });
+    svg.querySelectorAll(".region").forEach(el => {
+        const r = regions[+el.dataset.i];
+        const pid = regionPolity[r.name];
+        const p = pid ? polities.find(x => x.id === pid) : null;
+        el.addEventListener("mouseenter", e => showTooltip(
+            "<b>" + esc(r.name) + "</b>" + (p ? "<br><span class='tt-sub'>" + esc(p.label) + " · " + esc(p.ruler) + "</span>" : ""),
+            e.clientX, e.clientY));
+        el.addEventListener("mousemove", e => moveTooltip(e.clientX, e.clientY));
+        el.addEventListener("mouseleave", hideTooltip);
+        el.addEventListener("click", e => {
+            e.stopPropagation();
+            hideTooltip();
+            if (p) { openPolityPopup(p, regionCentroid(r.coords)); showPolityCard(p); }
+        });
+    });
+}
+
+/* ======================= БОКОВАЯ ПАНЕЛЬ ======================= */
+function visibleCities() {
+    const q = $("search").value.trim().toLowerCase();
+    const f = $("stateFilter").value;
+    return cities.filter(c =>
+        (f === "all" || c.region === f) &&
+        (!q || c.name.toLowerCase().includes(q) || c.ancient.toLowerCase().includes(q) || c.modern.toLowerCase().includes(q)));
+}
+
+function renderCityList() {
+    const list = $("cityList");
+    const vis = visibleCities();
+    if (!vis.length) {
+        list.innerHTML = '<div class="list-empty">Ничего не найдено.<br>Измените запрос или фильтр по державе.</div>';
+    } else {
+        list.innerHTML = vis.map(c =>
+            '<div class="city-item' + (c.id === selectedId ? " selected" : "") + '" data-id="' + c.id + '">' +
+            '<span class="ci-dot" style="background:' + STATES[c.region].color + '"></span>' +
+            '<span><div class="ci-name">' + esc(c.name) + "</div>" +
+            '<div class="ci-sub">' + STATES[c.region].name + " · ~" + fmtNum(c.population) + " чел.</div></span></div>").join("");
+        list.querySelectorAll(".city-item").forEach(item => {
+            item.addEventListener("click", () => {
+                const c = cities.find(x => x.id === item.dataset.id);
+                centerOn(c.lat, c.lon, fitScale * 2.6);
+                selectCity(c, true);
+            });
+        });
+    }
+    $("listCounter").innerHTML = "Найдено: <b>" + vis.length + "</b> из " + cities.length +
+        " городов · маршрутов: <b>" + routes.length + "</b> · областей: <b>" + regions.length +
+        "</b> · держав: <b>" + polities.length + "</b>";
+    $("hudCount").innerHTML = "Города <b>" + cities.length + "</b> · Маршруты <b>" + routes.length +
+        "</b> · Области <b>" + regions.length + "</b> · Державы <b>" + polities.length + "</b>";
+}
+
+$("search").addEventListener("input", renderCityList);
+$("stateFilter").addEventListener("change", renderCityList);
+
+/* Слои */
+function bindLayer(id, gid, kind) {
+    $(id).addEventListener("change", e => {
+        $(gid).style.display = e.target.checked ? "" : "none";
+        if (!e.target.checked && popupCtx && popupCtx.type === kind) closePopup();
+    });
+}
+bindLayer("layerCities", "gCities", "city");
+bindLayer("layerRoutes", "gRoutes", "route");
+bindLayer("layerRegions", "gRegions", "polity");
+bindLayer("layerStates", "gStates", "polity");
+bindLayer("layerCoast", "gCoast");
+bindLayer("layerGrid", "gGrid");
+
+/* Окраска и легенда */
+function updateLegend() {
+    const scaleEl = $("legendScale"), labelsEl = $("legendLabels");
+    if (colorMode === "state") {
+        scaleEl.style.display = "none";
+        labelsEl.style.display = "none";
+        $("stateLegend").innerHTML = Object.keys(STATES).map(k =>
+            '<span class="state-item" data-k="' + k + '"><span class="state-dot" style="background:' + STATES[k].color + '"></span>' + STATES[k].name + "</span>").join("");
+        $("stateLegend").querySelectorAll(".state-item").forEach(el => {
+            el.addEventListener("click", () => { $("stateFilter").value = el.dataset.k; renderCityList(); });
+        });
+    } else {
+        const sc = colorScales[colorMode];
+        scaleEl.style.display = "flex";
+        labelsEl.style.display = "flex";
+        scaleEl.innerHTML = sc.colors.map(c => '<span style="background:' + c + '"></span>').join("");
+        $("legendMin").textContent = colorMode === "population" ? fmtNum(sc.min) : sc.min + "/10";
+        $("legendMax").textContent = colorMode === "population" ? fmtNum(sc.max) : sc.max + "/10";
+        $("stateLegend").innerHTML = "";
+    }
+}
+document.querySelectorAll(".metric-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        document.querySelectorAll(".metric-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        colorMode = btn.dataset.mode;
+        svg.querySelectorAll(".city").forEach(g => {
+            const c = cities.find(x => x.id === g.dataset.id);
+            g.querySelector(".dot").setAttribute("fill", markerFill(c));
+        });
+        updateLegend();
+    });
+});
+
+/* Карточки в панели деталей */
+function showCityCard(c) {
+    const mineralsHtml = c.minerals && c.minerals.length
+        ? '<div class="extra-info"><h4>Минералы и сырьё</h4><div class="tags">' + c.minerals.map(m => '<span class="tag mineral">' + esc(m) + "</span>").join("") + "</div></div>" : "";
+    const waterHtml = c.water && c.water.length
+        ? '<div class="extra-info"><h4>Вода</h4><div class="tags">' + c.water.map(w => '<span class="tag water">' + esc(w) + "</span>").join("") + "</div></div>" : "";
+    $("details").innerHTML =
+        '<div class="city-card"><h2>' + esc(c.name) + "</h2>" +
+        '<div class="ancient-name">' + esc(c.ancient) + " · совр. " + esc(c.modern) + "</div>" +
+        '<span class="badge ' + c.region + '">' + STATES[c.region].name + "</span>" +
+        '<div class="metrics-grid">' +
+        '<div class="metric-box"><div class="val">' + fmtNum(c.population) + '</div><div class="lbl">Население</div></div>' +
+        '<div class="metric-box"><div class="val">' + c.trade + '/10</div><div class="lbl">Торговля</div></div>' +
+        '<div class="metric-box"><div class="val">' + c.military + '/10</div><div class="lbl">Военное</div></div>' +
+        '<div class="metric-box"><div class="val">' + c.culture + '/10</div><div class="lbl">Культура</div></div>' +
+        "</div>" +
+        '<div class="description">' + esc(c.description) + "</div>" +
+        mineralsHtml + waterHtml +
+        '<div class="extra-info roads-info"><h4>Связанные тракты и пути</h4><ul>' +
+        c.roads.map(r => "<li>" + esc(r) + "</li>").join("") + "</ul></div>" +
+        '<div class="extra-info"><h4>Координаты</h4><ul><li>' + coordsText(c.lat, c.lon) + "</li></ul></div>" +
+        "</div>";
+}
+function showPolityCard(p) {
+    $("details").innerHTML =
+        '<div class="city-card"><h2>' + esc(p.name) + "</h2>" +
+        '<div class="ancient-name">' + esc(p.native) + " · " + esc(p.label) + "</div>" +
+        '<span class="badge" style="background:transparent;color:' + p.color + ';border:1px solid ' + p.color + '">' + esc(p.label) + "</span>" +
+        '<div class="metrics-grid">' +
+        '<div class="metric-box"><div class="val">' + fmtBig(p.population) + '</div><div class="lbl">Население</div></div>' +
+        '<div class="metric-box"><div class="val">' + fmtBig(p.area, "км²") + '</div><div class="lbl">Территория</div></div>' +
+        '<div class="metric-box"><div class="val">' + fmtBig(p.army) + '</div><div class="lbl">Войско</div></div>' +
+        '<div class="metric-box"><div class="val">' + p.revenue + ' т</div><div class="lbl">Казна, серебро</div></div>' +
+        '<div class="metric-box"><div class="val">' + p.cities + '</div><div class="lbl">Города</div></div>' +
+        "</div>" +
+        '<div class="description">' + esc(p.summary) + "</div>" +
+        '<div class="extra-info roads-info"><h4>Двор</h4><ul><li>Правитель: ' + esc(p.ruler) + "</li><li>Столица: " + esc(p.capital) + "</li></ul></div>" +
+        "</div>";
+    selectedId = null;
+    refreshMarkerStyles();
+    renderCityList();
+}
+
+/* Список держав */
+function renderPolityList() {
+    const wrap = $("polityList");
+    wrap.innerHTML = "";
+    polities.forEach(p => {
+        const btn = document.createElement("button");
+        btn.className = "polity-btn";
+        btn.innerHTML = '<span class="polity-dot" style="background:' + p.color + '"></span><span><b>' + esc(p.label) + "</b><br><span class=\"sub\">" + esc(p.ruler) + "</span></span>";
+        btn.addEventListener("click", () => {
+            showPolityCard(p);
+            const polys = svg.querySelectorAll('.statepoly[data-pid="' + p.id + '"]');
+            polys.forEach(el => {
+                el.classList.remove("stateflash");
+                void el.getBoundingClientRect(); /* перезапуск CSS-анимации */
+                el.classList.add("stateflash");
+            });
+            const ownRegion = regions.find(r => regionPolity[r.name] === p.id);
+            if (ownRegion) {
+                const c = regionCentroid(ownRegion.coords);
+                centerOn(LAT0 - c[1] / K, LON0 + c[0] / (K * COSLAT), fitScale * 1.8);
+            } else {
+                const cap = cities.find(c => c.name === p.capital);
+                if (cap) centerOn(cap.lat, cap.lon, fitScale * 2.6);
+            }
+        });
+        wrap.appendChild(btn);
+    });
+}
+
+/* ======================= РАЗМЕР И СТАРТ ======================= */
+function resize() {
+    W = mapwrap.clientWidth;
+    H = mapwrap.clientHeight;
+    svg.setAttribute("width", W);
+    svg.setAttribute("height", H);
+}
+window.addEventListener("resize", () => { resize(); applyView(); });
+
+buildScene();
+bindMapObjects();
+resize();
+fitAll();          /* вычисляет fitScale и вписывает весь мир во вьюпорт */
+renderCityList();
+renderPolityList();
+updateLegend();
+})();
+</script>
+</body>
+</html>
