@@ -1,0 +1,48 @@
+<div class="book-modal" role="dialog" aria-modal="true" aria-label="Моя книга">
+  <div class="book-modal__header">
+    <h2 data-i18n="book.title">Моя книга</h2>
+    <button type="button" class="book-modal__close" id="book-close" data-i18n="book.close">Закрыть</button>
+  </div>
+
+  <div class="book-digest">
+    <span class="book-digest__label" data-i18n="book.digest.label">Дайджест последней обработанной главы:</span>
+    <p class="book-digest__text" id="book-digest"></p>
+  </div>
+
+  <div class="book-tabs" role="tablist">
+    <button type="button" class="book-tab" data-book-tab="toc" role="tab" data-i18n="book.tab.toc">Содержание</button>
+    <button type="button" class="book-tab" data-book-tab="chapter" role="tab" data-i18n="book.tab.chapter">Глава</button>
+    <button type="button" class="book-tab" data-book-tab="censor" role="tab" data-i18n="book.tab.censor">Правки Цензора</button>
+    <button type="button" class="book-tab" data-book-tab="raw" role="tab" data-i18n="book.tab.raw">Сырой лог</button>
+  </div>
+
+  <div class="book-panel" data-book-panel="toc">
+    <ol class="book-toc" id="book-toc"></ol>
+  </div>
+  <div class="book-panel" data-book-panel="chapter" hidden>
+    <h3 class="book-chapter-title" id="book-chapter-title"></h3>
+    <div class="book-chapter-text" id="book-chapter-text"></div>
+  </div>
+  <div class="book-panel" data-book-panel="censor" hidden>
+    <ul class="book-cuts" id="book-cuts"></ul>
+  </div>
+  <div class="book-panel" data-book-panel="raw" hidden>
+    <ul class="book-raw" id="book-raw"></ul>
+  </div>
+
+  <form class="book-export" id="book-export">
+    <label class="book-export__field">
+      <span data-i18n="book.export.scope">Объём:</span>
+      <select id="book-export-scope">
+        <option value="book" data-i18n="book.export.scope.book">Вся книга</option>
+        <option value="chapter" data-i18n="book.export.scope.chapter">Глава</option>
+      </select>
+    </label>
+    <label class="book-export__field">
+      <span data-i18n="book.export.chapter">Номер главы:</span>
+      <input id="book-export-chapter" type="number" min="1" step="1" value="1">
+    </label>
+    <button type="submit" class="book-export__submit" id="book-export-submit" data-i18n="book.export.submit">Экспорт</button>
+    <span class="book-export__status" id="book-export-status"></span>
+  </form>
+</div>

@@ -46,7 +46,20 @@
     atlasWizardHints: "atlas-wizard-hints",
     atlasWizardAge: "atlas-wizard-age",
     atlasWizardIsekai: "atlas-wizard-isekai",
-    atlasWizardStart: "atlas-wizard-start"
+    atlasWizardStart: "atlas-wizard-start",
+    bookButton: "book-button",
+    bookClose: "book-close",
+    bookDigest: "book-digest",
+    bookToc: "book-toc",
+    bookChapterTitle: "book-chapter-title",
+    bookChapterText: "book-chapter-text",
+    bookCuts: "book-cuts",
+    bookRaw: "book-raw",
+    bookExport: "book-export",
+    bookExportScope: "book-export-scope",
+    bookExportChapter: "book-export-chapter",
+    bookExportSubmit: "book-export-submit",
+    bookExportStatus: "book-export-status"
   };
 
   function byId(id) {
@@ -121,6 +134,8 @@
       showView(view, tab);
       if (view === viewAtlas) {
         loadAtlasView();
+      } else if (view === viewHistory) {
+        openBookWindow();
       }
     });
   });
@@ -222,6 +237,7 @@
   }
 
   function renderAtlasWorlds(data) {
+    window.__activeSlug = data.active || "";
     var box = byId(IDS.atlasWorlds);
     if (!box) {
       return;
@@ -268,11 +284,15 @@
   }
 
   function switchAtlasWorld(slug) {
-    postJSON("/api/atlas/worlds/active", { world: slug }).then(loadAtlasWorlds).catch(atlasError);
+    postJSON("/api/atlas/worlds/active", { world: slug }).then(function () {
+      window.__activeSlug = slug;
+      loadAtlasWorlds();
+    }).catch(atlasError);
   }
 
   function playAtlasWorld(slug) {
     postJSON("/api/atlas/worlds/active", { world: slug }).then(function () {
+      window.__activeSlug = slug;
       showChat();
     }).catch(atlasError);
   }
@@ -360,6 +380,180 @@
       box.textContent = err.message;
     }
   }
+
+  var bookLoaded = false;
+  var bookWindow = null;
+
+  function openBookWindow() {
+    if (bookLoaded) {
+      showBookWindow();
+      loadBookData();
+      return;
+    }
+    fetch("/history.html").then(function (res) {
+      if (!res.ok) {
+        throw new Error("history not found");
+      }
+      return res.text();
+    }).then(function (html) {
+      viewHistory.innerHTML = html;
+      translate(viewHistory);
+      bindBookWindow();
+      bookLoaded = true;
+      showBookWindow();
+      loadBookData();
+    }).catch(function (err) {
+      viewHistory.textContent = err.message;
+    });
+  }
+
+  function showBookWindow() {
+    if (!bookWindow) {
+      return;
+    }
+    bookWindow.hidden = false;
+    switchBookTab("toc");
+  }
+
+  function closeBookWindow() {
+    if (bookWindow) {
+      bookWindow.hidden = true;
+    }
+  }
+
+  function bindBookWindow() {
+    bookWindow = viewHistory.querySelector(".book-modal");
+    var close = byId(IDS.bookClose);
+    if (close) {
+      close.addEventListener("click", closeBookWindow);
+    }
+    var tabs = viewHistory.querySelectorAll("[data-book-tab]");
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        switchBookTab(tab.getAttribute("data-book-tab"));
+      });
+    });
+    var form = byId(IDS.bookExport);
+    if (form) {
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        submitBookExport();
+      });
+    }
+  }
+
+  function switchBookTab(name) {
+    viewHistory.querySelectorAll("[data-book-tab]").forEach(function (tab) {
+      tab.classList.toggle("active", tab.getAttribute("data-book-tab") === name);
+    });
+    viewHistory.querySelectorAll("[data-book-panel]").forEach(function (panel) {
+      panel.hidden = panel.getAttribute("data-book-panel") !== name;
+    });
+  }
+
+  function loadBookData() {
+    apiJSON("/api/book/window?world=" + encodeURIComponent(activeSlugValue())).then(renderBookWindow).catch(function (err) {
+      var digest = byId(IDS.bookDigest);
+      if (digest) {
+        digest.textContent = err.message;
+      }
+    });
+  }
+
+  function activeSlugValue() {
+    // Активный мир интерфейса хранит Атлас; до выбора мира книга опирается на
+    // выбор Атласа. Пустой мир даёт обработчику мира 400, и окно покажет ошибку.
+    return window.__activeSlug || "";
+  }
+
+  function renderBookWindow(data) {
+    var dict = window.I18N || {};
+    var digest = byId(IDS.bookDigest);
+    if (digest) {
+      digest.textContent = data.digest || "";
+    }
+
+    var toc = byId(IDS.bookToc);
+    if (toc) {
+      var entries = data.toc || [];
+      if (entries.length === 0) {
+        toc.innerHTML = '<li data-i18n="book.toc.empty">' + (dict["book.toc.empty"] || "Обработанных глав пока нет.") + "</li>";
+      } else {
+        toc.innerHTML = entries.map(function (entry) {
+          return "<li data-day=\"" + entry.day + "\">" + escapeHTML(entry.title) + "</li>";
+        }).join("");
+      }
+    }
+
+    var title = byId(IDS.bookChapterTitle);
+    if (title) {
+      title.textContent = data.chapter ? data.chapter.title : "";
+    }
+    var text = byId(IDS.bookChapterText);
+    if (text) {
+      if (data.chapter && data.chapter.text) {
+        text.textContent = data.chapter.text;
+      } else {
+        text.textContent = dict["book.chapter.empty"] || "Обработанная глава появится здесь после полной обработки.";
+      }
+    }
+
+    var cuts = byId(IDS.bookCuts);
+    if (cuts) {
+      var items = data.censor_cuts || [];
+      if (items.length === 0) {
+        cuts.innerHTML = '<li data-i18n="book.censor.empty">' + (dict["book.censor.empty"] || "Правок Цензора пока нет.") + "</li>";
+      } else {
+        cuts.innerHTML = items.map(function (cut) {
+          var arrow = cut.before ? escapeHTML(cut.before) + " → " : "";
+          return "<li>" + arrow + escapeHTML(cut.after) + "</li>";
+        }).join("");
+      }
+    }
+
+    var raw = byId(IDS.bookRaw);
+    if (raw) {
+      var log = data.raw_log || [];
+      if (log.length === 0) {
+        raw.innerHTML = '<li data-i18n="book.raw.empty">' + (dict["book.raw.empty"] || "Записей лога пока нет.") + "</li>";
+      } else {
+        raw.innerHTML = log.map(function (entry) {
+          return "<li>" + escapeHTML(entry.text) + "</li>";
+        }).join("");
+      }
+    }
+  }
+
+  function submitBookExport() {
+    var statusEl = byId(IDS.bookExportStatus);
+    var scope = byId(IDS.bookExportScope);
+    var chapter = byId(IDS.bookExportChapter);
+    var path = "/api/book/export?world=" + encodeURIComponent(activeSlugValue()) +
+      "&format=md&scope=" + encodeURIComponent(scope ? scope.value : "book");
+    if (scope && scope.value === "chapter" && chapter && chapter.value) {
+      path += "&chapter=" + encodeURIComponent(chapter.value);
+    }
+    if (statusEl) {
+      statusEl.textContent = "";
+    }
+    apiJSON(path).then(function (res) {
+      if (statusEl) {
+        statusEl.textContent = res.path || "ok";
+      }
+    }).catch(function (err) {
+      if (statusEl) {
+        statusEl.textContent = err.message;
+      }
+    });
+  }
+
+  var bookButton = document.createElement("button");
+  bookButton.type = "button";
+  bookButton.id = IDS.bookButton;
+  bookButton.className = "book-button";
+  bookButton.textContent = "BOOK";
+  bookButton.addEventListener("click", openBookWindow);
+  chatLog.appendChild(bookButton);
 
   translate(document);
   showChat();

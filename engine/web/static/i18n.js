@@ -48,5 +48,21 @@ window.I18N = {
   "atlas.map.status": "Карта дорисовывается по мере путешествий героя.",
   "atlas.map.empty": "Известных мест пока нет.",
   "atlas.graph.status": "Связи между персонажами из социального графа.",
-  "atlas.graph.empty": "Связей пока нет."
+  "atlas.graph.empty": "Связей пока нет.",
+  "book.title": "Моя книга",
+  "book.close": "Закрыть",
+  "book.digest.label": "Дайджест последней обработанной главы:",
+  "book.tab.toc": "Содержание",
+  "book.tab.chapter": "Глава",
+  "book.tab.censor": "Правки Цензора",
+  "book.tab.raw": "Сырой лог",
+  "book.toc.empty": "Обработанных глав пока нет.",
+  "book.chapter.empty": "Обработанная глава появится здесь после полной обработки.",
+  "book.censor.empty": "Правок Цензора пока нет.",
+  "book.raw.empty": "Записей лога пока нет.",
+  "book.export.scope": "Объём:",
+  "book.export.scope.book": "Вся книга",
+  "book.export.scope.chapter": "Глава",
+  "book.export.chapter": "Номер главы:",
+  "book.export.submit": "Экспорт"
 };
