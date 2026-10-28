@@ -53,6 +53,8 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodGet, path: "/", handle: serveIndex},
 		{method: http.MethodGet, path: "/static/", handle: staticServe},
 		{method: http.MethodGet, path: "/ws", handle: hub.serveHTTP},
+		{method: http.MethodGet, path: "/api/world", handle: handleWorldReadonly},
+		{method: http.MethodPut, path: "/api/world/tunables", handle: handleWorldTunables},
 	}
 }
 

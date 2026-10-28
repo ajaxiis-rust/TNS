@@ -12,6 +12,8 @@
 | GET | `/` | — | `index.html` из embed | `method_not_allowed` |
 | GET | `/static/` | — | файл `static/*` из embed | `method_not_allowed`, `not_found` |
 | GET | `/ws` | — | WebSocket 101 | `bad_request` |
+| GET | `/api/world` | query `world=<slug>` | `{"world":"…","fields":{…}}` — замороженные поля анкеты из `world_meta` | `method_not_allowed`, `bad_request`, `internal` |
+| PUT | `/api/world/tunables` | `{"world":"…","tunables":{…}}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 
 Список для дословной сверки (`TestRouteTable`):
 
@@ -20,6 +22,8 @@ GET /api/health
 GET /
 GET /static/
 GET /ws
+GET /api/world
+PUT /api/world/tunables
 ```
 
 ## Контракт ошибок
@@ -31,7 +35,7 @@ HTTP-код плюс тело:
 ```
 
 Коды ошибок — константы в `routes.go`: `not_found`, `method_not_allowed`,
-`bad_request`.
+`bad_request`, `internal`.
 
 ## WebSocket
 
