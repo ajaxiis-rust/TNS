@@ -1,0 +1,106 @@
+/* Раскладка интерфейса: горизонтальное меню, чат с панелью мир/герой/система. */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #ffffff;
+  color: #1a1a1a;
+}
+
+.menu-bar {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid #c9c9c9;
+  background: #f4f4f4;
+}
+
+.tab {
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab.active {
+  background: #dcdcdc;
+}
+
+.views {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.view {
+  flex: 1 1 auto;
+  padding: 16px;
+  min-width: 0;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 100%;
+}
+
+.state-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.state {
+  flex: 1 1 30%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #c9c9c9;
+  border-radius: 6px;
+}
+
+.chat-log {
+  min-height: 240px;
+  padding: 8px;
+  border: 1px solid #c9c9c9;
+  border-radius: 6px;
+}
+
+@media (max-width: 480px) {
+  .menu-bar {
+    padding: 4px;
+  }
+
+  .tab {
+    flex: 1 1 auto;
+    text-align: center;
+    padding: 8px 6px;
+  }
+
+  .view {
+    padding: 8px;
+  }
+
+  .state-panel {
+    flex-direction: column;
+  }
+}

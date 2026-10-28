@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="app.title">TNS65</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/i18n.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <nav class="menu-bar" id="menu-bar" aria-label="Основное меню">
+    <button class="tab" id="tab-atlas" data-view="atlas" data-i18n="menu.atlas"></button>
+    <button class="tab" id="tab-history" data-view="history" data-i18n="menu.history"></button>
+    <button class="tab" id="tab-mcp" data-view="mcp" data-i18n="menu.mcp"></button>
+    <button class="tab" id="tab-settings" data-view="settings" data-i18n="menu.settings"></button>
+    <button class="tab tab-chat" id="tab-chat" data-view="chat" data-i18n="menu.chat" hidden></button>
+  </nav>
+
+  <main class="views" id="views">
+    <section class="view view-chat" id="view-chat" aria-label="Чат">
+      <div class="chat">
+        <div class="state-panel" id="state-panel" aria-label="Мир, герой и система">
+          <div class="state" id="world-panel" data-i18n="panel.world"></div>
+          <div class="state" id="hero-panel" data-i18n="panel.hero"></div>
+          <div class="state" id="system-panel" data-i18n="panel.system"></div>
+        </div>
+        <div class="chat-log" id="chat-log" aria-label="Журнал чата"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-atlas" hidden>
+      <h1 data-i18n="menu.atlas"></h1>
+    </section>
+    <section class="view" id="view-history" hidden>
+      <h1 data-i18n="menu.history"></h1>
+    </section>
+    <section class="view" id="view-mcp" hidden>
+      <h1 data-i18n="menu.mcp"></h1>
+    </section>
+    <section class="view" id="view-settings" hidden>
+      <h1 data-i18n="menu.settings"></h1>
+    </section>
+  </main>
+</body>
+</html>
