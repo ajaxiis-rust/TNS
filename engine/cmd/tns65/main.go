@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,6 +19,7 @@ import (
 	"tns65/internal/supervisor"
 	"tns65/internal/swarm"
 	"tns65/internal/version"
+	"tns65/internal/webapi"
 	"tns65/internal/workshop"
 )
 
@@ -63,8 +65,8 @@ func main() {
 }
 
 // run — старт ядра. Порядок: замок одного экземпляра (T-01-14) → порт-гейт
-// (T-01-12) → надзиратель резидентов (T-01-13). Ядро держит резидентов до
-// SIGTERM/SIGINT; замок снимается при выходе из run.
+// (T-01-12) → веб-сервер (T-08-02) → надзиратель резидентов (T-01-13). Ядро
+// держит резидентов до SIGTERM/SIGINT; замок снимается при выходе из run.
 func run() int {
 	// T-01-14: захват замка до старта детей. Второй запуск — код 4.
 	lock, err := supervisor.Acquire("state/tns65.lock")
@@ -93,6 +95,24 @@ func run() int {
 		return code
 	}
 
+	// T-08-02: веб-сервер на loopback — статика из embed и JSON/WS-эндпоинты.
+	webCfg, err := webapi.LoadConfig("config.yaml")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	webCfg.Logger = logger
+	webSrv := webapi.New(webCfg)
+	if err := webSrv.Listen(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	go func() {
+		if err := webSrv.Serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			fmt.Fprintf(os.Stderr, "tns65: web server: %v\n", err)
+		}
+	}()
+
 	// T-01-13: ядро-надзиратель запускает, лечит и останавливает резидентов.
 	children, err := supervisor.Load("config.yaml")
 	if err != nil {
@@ -106,6 +126,7 @@ func run() int {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 	<-sig
+	webSrv.Close()
 	sup.Stop()
 	return 0
 }

@@ -1,0 +1,108 @@
+package webapi
+
+import (
+	"encoding/json"
+	"net/http"
+	"strings"
+)
+
+// Коды ошибок — единый контракт ошибок (T-08-02, шаг 4): HTTP-код плюс тело
+// {"error":{"code":…,"message":…}}.
+const (
+	codeNotFound         = "not_found"
+	codeMethodNotAllowed = "method_not_allowed"
+	codeBadRequest       = "bad_request"
+	codeInternal         = "internal"
+)
+
+// errorBody — тело ошибки по единому контракту.
+type errorBody struct {
+	Error errorDetail `json:"error"`
+}
+
+type errorDetail struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
+// writeJSON пишет JSON-ответ с Content-Type.
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
+}
+
+// writeError пишет ошибку по единому контракту (T-08-02, шаг 4).
+func writeError(w http.ResponseWriter, status int, code, message string) {
+	writeJSON(w, status, errorBody{Error: errorDetail{Code: code, Message: message}})
+}
+
+// routeSpec — строка таблицы маршрутов: метод, путь и обработчик.
+type routeSpec struct {
+	method string
+	path   string
+	handle http.HandlerFunc
+}
+
+// routeSpecs — единственный источник маршрутов роутера. ROUTES.md и
+// TestRouteTable сверяются с этим списком дословно (T-08-02, шаг 3): задача P7,
+// добавляющая маршрут, правит только этот список, ROUTES.md и тест сверки.
+func routeSpecs(hub *Hub) []routeSpec {
+	return []routeSpec{
+		{method: http.MethodGet, path: "/api/health", handle: handleHealth},
+		{method: http.MethodGet, path: "/", handle: serveIndex},
+		{method: http.MethodGet, path: "/static/", handle: staticServe},
+		{method: http.MethodGet, path: "/ws", handle: hub.serveHTTP},
+	}
+}
+
+// routeLines — канонические строки "METHOD PATH" для сверки с ROUTES.md.
+func routeLines(hub *Hub) []string {
+	specs := routeSpecs(hub)
+	out := make([]string, len(specs))
+	for i, s := range specs {
+		out[i] = s.method + " " + s.path
+	}
+	return out
+}
+
+// handleHealth — GET /api/health: живой JSON-ответ (T-08-02, шаг 7).
+func handleHealth(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// router — диспетчер маршрутов: статика по путям экранов и JSON /api/...
+// (T-08-02, шаг 5).
+type router struct {
+	routes []routeSpec
+}
+
+func newRouter(hub *Hub) *router {
+	return &router{routes: routeSpecs(hub)}
+}
+
+// ServeHTTP находит маршрут по методу и пути: неверный метод — 405, неизвестный
+// путь — 404, обе ошибки по единому контракту.
+func (rt *router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	for _, spec := range rt.routes {
+		if !pathMatch(spec.path, r.URL.Path) {
+			continue
+		}
+		if r.Method != spec.method {
+			writeError(w, http.StatusMethodNotAllowed, codeMethodNotAllowed, "method not allowed")
+			return
+		}
+		spec.handle(w, r)
+		return
+	}
+	writeError(w, http.StatusNotFound, codeNotFound, "route not found")
+}
+
+// pathMatch — точное совпадение или префикс для каталога (путь длиннее "/" и
+// оканчивается "/").
+func pathMatch(pattern, path string) bool {
+	if len(pattern) > 1 && strings.HasSuffix(pattern, "/") {
+		return strings.HasPrefix(path, pattern)
+	}
+	return path == pattern
+}
