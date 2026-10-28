@@ -7,6 +7,7 @@ netgate:
     - huggingface.co                      # HF — менеджер моделей (MD-09.1)
     - region1.v2.argotunnel.com           # край туннеля cloudflared (F-04.3)
     - region2.v2.argotunnel.com           # край туннеля cloudflared (F-04.3)
+    - api.telegram.org                    # Telegram Bot API (F-04.4, T-08-03)
 
 # Порт-гейт при старте (T-01-12): белый список слушающих адресов ядра.
 # Сокет обязан быть на loopback (127.0.0.1 или ::1) и на порту из списка;
@@ -22,6 +23,17 @@ ports:
 web:
   host: 127.0.0.1
   port: 8720
+
+# Исходящий туннель (T-08-03, F-04.3): станок сам подключается к краю cloudflared
+# и пробрасывает loopback-адрес веб-интерфейса. Поля внешнего слушающего адреса
+# нет — только исходящие параметры (edge, local). Telegram-канал (F-04.4) решает
+# NAT исходящим соединением: бот шлёт getUpdates/sendMessage наружу, входящих
+# сокетов нет; пустые token/chat_id — канал не настроен.
+tunnel:
+  edge: region1.v2.argotunnel.com
+  local: http://127.0.0.1:8720
+  telegram_token: ""
+  telegram_chat_id: ""
 
 # Двухголосие подтверждения (T-03-04): пороги словарного и векторного голосов.
 # dict_match ≥ dict_threshold и cos ≥ vector_threshold — подтверждено; при

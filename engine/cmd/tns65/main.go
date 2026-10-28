@@ -58,6 +58,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+	case "tunnel":
+		if err := runTunnel(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "tns65: unknown command %q\n", args[0])
 		os.Exit(2)
@@ -220,6 +225,36 @@ func runWorldBirth(args []string) error {
 		return err
 	}
 	fmt.Printf("мир %q создан: %s\n", res.Slug, res.Dir)
+	return nil
+}
+
+// runTunnel — подкоманда tunnel (T-08-03): читает и проверяет конфигурацию
+// исходящего туннеля cloudflared и печатает команду запуска. Внешний слушающий
+// адрес отвергается (F-04.3); сам туннель поднимает scripts/tunnel.sh. События
+// подключения туннеля и Telegram-канала пишутся в журнал станка (Писатель).
+func runTunnel() error {
+	cfg, err := webapi.LoadTunnelConfig("config.yaml")
+	if err != nil {
+		return fmt.Errorf("tns65 tunnel: %w", err)
+	}
+	if err := cfg.Validate(); err != nil {
+		return fmt.Errorf("tns65 tunnel: %w", err)
+	}
+	logger, err := journal.New("state/journal/engine.log")
+	if err != nil {
+		return err
+	}
+	webapi.LogTunnelConnect(logger, cfg)
+	if cfg.TelegramToken != "" && cfg.TelegramChatID != "" {
+		webapi.LogTelegramConnect(logger, cfg)
+	}
+	fmt.Printf("tunnel: edge=%s local=%s\n", cfg.Edge, cfg.Local)
+	if cfg.TelegramToken != "" && cfg.TelegramChatID != "" {
+		fmt.Printf("telegram: chat_id=%s mode=long_poll\n", cfg.TelegramChatID)
+	} else {
+		fmt.Printf("telegram: not configured\n")
+	}
+	fmt.Printf("run: scripts/tunnel.sh\n")
 	return nil
 }
 
