@@ -44,5 +44,9 @@ window.I18N = {
   "atlas.wizard.hints": "Подсказки: пол, раса, происхождение",
   "atlas.wizard.age": "Начальный возраст",
   "atlas.wizard.isekai": "Режим переигровки в том же мире",
-  "atlas.wizard.start": "Начать новую жизнь"
+  "atlas.wizard.start": "Начать новую жизнь",
+  "atlas.map.status": "Карта дорисовывается по мере путешествий героя.",
+  "atlas.map.empty": "Известных мест пока нет.",
+  "atlas.graph.status": "Связи между персонажами из социального графа.",
+  "atlas.graph.empty": "Связей пока нет."
 };

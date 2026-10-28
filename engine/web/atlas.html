@@ -91,4 +91,23 @@
     </label>
     <button type="button" id="atlas-wizard-start" data-i18n="atlas.wizard.start">Начать новую жизнь</button>
   </div>
+
+  <section class="atlas-map-section" aria-label="Прорисовка карты">
+    <h2 data-i18n="map.title">Прорисовка карты</h2>
+    <div class="atlas-map" id="atlas-map-viewport">
+      <canvas class="atlas-map-canvas" id="atlas-map-canvas"></canvas>
+      <p class="atlas-map-status" id="atlas-map-status" data-i18n="atlas.map.status">Карта дорисовывается по мере путешествий героя.</p>
+    </div>
+  </section>
+
+  <section class="atlas-graph-section" aria-label="Граф отношений">
+    <h2 data-i18n="graph.title">Граф отношений</h2>
+    <div class="atlas-graph" id="atlas-graph-viewport">
+      <canvas class="atlas-graph-canvas" id="atlas-graph-canvas"></canvas>
+      <p class="atlas-graph-status" id="atlas-graph-status" data-i18n="atlas.graph.status">Связи между персонажами из социального графа.</p>
+    </div>
+  </section>
+
+  <script src="/static/map.js"></script>
+  <script src="/static/graph.js"></script>
 </div>
