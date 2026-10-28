@@ -66,6 +66,7 @@ type Server struct {
 // New собирает сервер: роутер и WS-хаб с журналом доступа.
 func New(cfg Config) *Server {
 	cfg = cfg.withDefaults()
+	atlasLogger = cfg.Logger
 	hub := NewHub()
 	return &Server{
 		cfg:     cfg,
@@ -77,6 +78,7 @@ func New(cfg Config) *Server {
 // NewHandler возвращает HTTP-обработчик без слушателя (для тестов).
 func NewHandler(cfg Config) http.Handler {
 	cfg = cfg.withDefaults()
+	atlasLogger = cfg.Logger
 	hub := NewHub()
 	return accessLog(newRouter(hub), cfg.Logger)
 }

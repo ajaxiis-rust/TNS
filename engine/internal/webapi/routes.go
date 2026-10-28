@@ -12,6 +12,7 @@ const (
 	codeNotFound         = "not_found"
 	codeMethodNotAllowed = "method_not_allowed"
 	codeBadRequest       = "bad_request"
+	codeConflict         = "conflict"
 	codeInternal         = "internal"
 )
 
@@ -55,6 +56,12 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodGet, path: "/ws", handle: hub.serveHTTP},
 		{method: http.MethodGet, path: "/api/world", handle: handleWorldReadonly},
 		{method: http.MethodPut, path: "/api/world/tunables", handle: handleWorldTunables},
+		{method: http.MethodGet, path: "/atlas.html", handle: handleAtlasScreen},
+		{method: http.MethodGet, path: "/api/atlas/worlds", handle: handleAtlasList},
+		{method: http.MethodPost, path: "/api/atlas/worlds/birth", handle: handleAtlasBirth},
+		{method: http.MethodPost, path: "/api/atlas/worlds/active", handle: handleAtlasSwitch},
+		{method: http.MethodPost, path: "/api/atlas/worlds/replay", handle: handleAtlasReplay},
+		{method: http.MethodDelete, path: "/api/atlas/worlds/delete", handle: handleAtlasDelete},
 	}
 }
 
