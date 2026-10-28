@@ -58,6 +58,7 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodGet, path: "/api/world", handle: handleWorldReadonly},
 		{method: http.MethodPut, path: "/api/world/tunables", handle: handleWorldTunables},
 		{method: http.MethodGet, path: "/atlas.html", handle: handleAtlasScreen},
+		{method: http.MethodGet, path: "/mcp.html", handle: handleMcpScreen},
 		{method: http.MethodGet, path: "/api/atlas/worlds", handle: handleAtlasList},
 		{method: http.MethodPost, path: "/api/atlas/worlds/birth", handle: handleAtlasBirth},
 		{method: http.MethodPost, path: "/api/atlas/worlds/active", handle: handleAtlasSwitch},
@@ -69,6 +70,10 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodPost, path: "/api/mcp/forge", handle: handleMcpForge},
 		{method: http.MethodDelete, path: "/api/mcp/source/", handle: handleMcpSourceDelete},
 		{method: http.MethodGet, path: "/api/mcp/rings", handle: handleMcpRings},
+		{method: http.MethodGet, path: "/api/mcp/coeffs", handle: handleMcpCoeffsGet},
+		{method: http.MethodPut, path: "/api/mcp/coeffs", handle: handleMcpCoeffsPut},
+		{method: http.MethodGet, path: "/api/mcp/lemmatizer", handle: handleMcpLemmatizerGet},
+		{method: http.MethodPut, path: "/api/mcp/lemmatizer", handle: handleMcpLemmatizerPut},
 		{method: http.MethodGet, path: "/settings.html", handle: handleSettingsScreen},
 		{method: http.MethodGet, path: "/api/settings", handle: handleSettingsGet},
 		{method: http.MethodPut, path: "/api/settings/bindings", handle: handleSettingsBindings},
@@ -107,15 +112,19 @@ func newRouter(hub *Hub) *router {
 // ServeHTTP находит маршрут по методу и пути: неверный метод — 405, неизвестный
 // путь — 404, обе ошибки по единому контракту.
 func (rt *router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	pathMatched := false
 	for _, spec := range rt.routes {
 		if !pathMatch(spec.path, r.URL.Path) {
 			continue
 		}
-		if r.Method != spec.method {
-			writeError(w, http.StatusMethodNotAllowed, codeMethodNotAllowed, "method not allowed")
+		pathMatched = true
+		if r.Method == spec.method {
+			spec.handle(w, r)
 			return
 		}
-		spec.handle(w, r)
+	}
+	if pathMatched {
+		writeError(w, http.StatusMethodNotAllowed, codeMethodNotAllowed, "method not allowed")
 		return
 	}
 	writeError(w, http.StatusNotFound, codeNotFound, "route not found")

@@ -640,6 +640,7 @@
   chatLog.appendChild(bookButton);
 
   var mcpLoaded = false;
+  var mcpScriptLoaded = false;
 
   function loadMcpView() {
     if (mcpLoaded) {
@@ -655,11 +656,25 @@
       viewMcp.innerHTML = html;
       translate(viewMcp);
       bindMcp();
+      loadMcpScript();
       mcpLoaded = true;
       loadMcpData();
     }).catch(function (err) {
       viewMcp.textContent = err.message;
     });
+  }
+
+  // coeffs.js подключается явным элементом script: вставленные через innerHTML
+  // теги <script src> браузер не исполняет, поэтому логика коэффициентов и
+  // лемматизатора грузится отдельно после вставки разметки вкладки.
+  function loadMcpScript() {
+    if (mcpScriptLoaded) {
+      return;
+    }
+    mcpScriptLoaded = true;
+    var script = document.createElement("script");
+    script.src = "/static/coeffs.js";
+    document.body.appendChild(script);
   }
 
   function bindMcp() {

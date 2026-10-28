@@ -15,6 +15,7 @@
 | GET | `/api/world` | query `world=<slug>` | `{"world":"…","fields":{…}}` — замороженные поля анкеты из `world_meta` | `method_not_allowed`, `bad_request`, `internal` |
 | PUT | `/api/world/tunables` | `{"world":"…","tunables":{…}}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | GET | `/atlas.html` | — | `atlas.html` из embed | `method_not_allowed`, `not_found` |
+| GET | `/mcp.html` | — | `mcp.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/api/atlas/worlds` | — | `{"active":"…","worlds":[{"slug","title","active","characters","places","paths","entities","sessions"}]}` | `method_not_allowed`, `internal` |
 | POST | `/api/atlas/worlds/birth` | анкета рождения (14 ключей) | `{"status":"ok","world":{"slug","title"}}` | `method_not_allowed`, `bad_request`, `conflict`, `internal` |
 | POST | `/api/atlas/worlds/active` | `{"world":"<slug>"}` | `{"status":"ok","active":"<slug>"}` | `method_not_allowed`, `bad_request` |
@@ -26,6 +27,10 @@
 | POST | `/api/mcp/forge` | `{"world":"<slug>"}` | `{"world":"…","sources":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | DELETE | `/api/mcp/source/{id}` | query `world=<slug>` | `{"world":"…","sources":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | GET | `/api/mcp/rings` | query `world=<slug>` | `{"world":"…","journal":{…}}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| GET | `/api/mcp/coeffs` | — | `{"confirm":{…},"sediment":{…},"saw":{…},"time":{…}}` | `method_not_allowed`, `internal` |
+| PUT | `/api/mcp/coeffs` | `{"confirm":{…},"sediment":{…},"saw":{…},"time":{…}}` | `{"status":"ok","warning":"меняет пересчёт и логику ходов"}` | `method_not_allowed`, `bad_request`, `internal` |
+| GET | `/api/mcp/lemmatizer` | — | `{"pack_id","name","lang","version","enabled","lemmatizer":{"kind","protocol","binary","dict"}}` | `method_not_allowed`, `not_found`, `internal` |
+| PUT | `/api/mcp/lemmatizer` | `{"enabled":bool}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | GET | `/settings.html` | — | `settings.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/api/settings` | query `world=<slug>` | `{"world":"…","sections":[…],"embedding_dimension":1024,"general":{…},"world":{…},"advanced":{…},"bindings":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | PUT | `/api/settings/bindings` | `{"world":"…","bindings":[{"role","model_ref","provider"}]}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
@@ -44,6 +49,7 @@ GET /ws
 GET /api/world
 PUT /api/world/tunables
 GET /atlas.html
+GET /mcp.html
 GET /api/atlas/worlds
 POST /api/atlas/worlds/birth
 POST /api/atlas/worlds/active
@@ -55,6 +61,10 @@ POST /api/mcp/import
 POST /api/mcp/forge
 DELETE /api/mcp/source/
 GET /api/mcp/rings
+GET /api/mcp/coeffs
+PUT /api/mcp/coeffs
+GET /api/mcp/lemmatizer
+PUT /api/mcp/lemmatizer
 GET /settings.html
 GET /api/settings
 PUT /api/settings/bindings
