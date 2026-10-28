@@ -20,6 +20,12 @@
 | POST | `/api/atlas/worlds/active` | `{"world":"<slug>"}` | `{"status":"ok","active":"<slug>"}` | `method_not_allowed`, `bad_request` |
 | POST | `/api/atlas/worlds/replay` | анкета переигровки (тот же `slug`) | `{"status":"ok","world":{"slug","title"}}` | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
 | DELETE | `/api/atlas/worlds/delete` | query `world=<slug>&confirm=<slug>` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| GET | `/api/mcp/dash` | query `world=<slug>` | `{"world":"…","queue":N,"current":0..1,"stats":{…}}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| GET | `/api/mcp/sources` | query `world=<slug>` | `{"world":"…","sources":[{id,name,format,status,progress,chapters,templates}]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| POST | `/api/mcp/import` | multipart `file` + `world` | `{"world":"…","sources":[…]}` | `method_not_allowed`, `bad_request`, `conflict`, `not_found`, `internal` |
+| POST | `/api/mcp/forge` | `{"world":"<slug>"}` | `{"world":"…","sources":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| DELETE | `/api/mcp/source/{id}` | query `world=<slug>` | `{"world":"…","sources":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| GET | `/api/mcp/rings` | query `world=<slug>` | `{"world":"…","journal":{…}}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 
 Список для дословной сверки (`TestRouteTable`):
 
@@ -36,6 +42,12 @@ POST /api/atlas/worlds/birth
 POST /api/atlas/worlds/active
 POST /api/atlas/worlds/replay
 DELETE /api/atlas/worlds/delete
+GET /api/mcp/dash
+GET /api/mcp/sources
+POST /api/mcp/import
+POST /api/mcp/forge
+DELETE /api/mcp/source/
+GET /api/mcp/rings
 ```
 
 ## Контракт ошибок

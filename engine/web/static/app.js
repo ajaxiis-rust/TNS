@@ -59,7 +59,17 @@
     bookExportScope: "book-export-scope",
     bookExportChapter: "book-export-chapter",
     bookExportSubmit: "book-export-submit",
-    bookExportStatus: "book-export-status"
+    bookExportStatus: "book-export-status",
+    mcpDashQueue: "mcp-dash-queue",
+    mcpDashCurrent: "mcp-dash-current",
+    mcpDashStats: "mcp-dash-stats",
+    mcpImportForm: "mcp-import-form",
+    mcpImportFile: "mcp-import-file",
+    mcpImportSubmit: "mcp-import-submit",
+    mcpForge: "mcp-forge",
+    mcpBooks: "mcp-books",
+    mcpRings: "mcp-rings",
+    mcpTools: "mcp-tools"
   };
 
   function byId(id) {
@@ -136,6 +146,8 @@
         loadAtlasView();
       } else if (view === viewHistory) {
         openBookWindow();
+      } else if (view === viewMcp) {
+        loadMcpView();
       }
     });
   });
@@ -555,6 +567,242 @@
   bookButton.addEventListener("click", openBookWindow);
   chatLog.appendChild(bookButton);
 
+  var mcpLoaded = false;
+
+  function loadMcpView() {
+    if (mcpLoaded) {
+      loadMcpData();
+      return;
+    }
+    fetch("/mcp.html").then(function (res) {
+      if (!res.ok) {
+        throw new Error("mcp not found");
+      }
+      return res.text();
+    }).then(function (html) {
+      viewMcp.innerHTML = html;
+      translate(viewMcp);
+      bindMcp();
+      mcpLoaded = true;
+      loadMcpData();
+    }).catch(function (err) {
+      viewMcp.textContent = err.message;
+    });
+  }
+
+  function bindMcp() {
+    var form = byId(IDS.mcpImportForm);
+    if (form) {
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        submitMcpImport();
+      });
+    }
+    var forge = byId(IDS.mcpForge);
+    if (forge) {
+      forge.addEventListener("click", startMcpForge);
+    }
+    var books = byId(IDS.mcpBooks);
+    if (books) {
+      books.addEventListener("click", onMcpBooksClick);
+    }
+  }
+
+  function loadMcpData() {
+    apiJSON("/api/mcp/dash?world=" + encodeURIComponent(activeSlugValue())).then(renderMcpDash).catch(function (err) {
+      var box = byId(IDS.mcpDashQueue);
+      if (box) {
+        box.textContent = err.message;
+      }
+    });
+    loadMcpSources();
+    loadMcpRings();
+  }
+
+  function renderMcpDash(data) {
+    var dict = window.I18N || {};
+    var queue = byId(IDS.mcpDashQueue);
+    if (queue) {
+      queue.textContent = (dict["mcp.forge.queue"] || "Очередь наполнения") + ": " + (data.queue || 0) + " " + (dict["mcp.units"] || "шт.");
+    }
+    var current = byId(IDS.mcpDashCurrent);
+    if (current) {
+      current.textContent = (dict["mcp.forge.current"] || "Текущая работа") + ": " + Math.round((data.current || 0) * 100) + "%";
+    }
+    var stats = byId(IDS.mcpDashStats);
+    if (stats) {
+      var s = data.stats || {};
+      var labels = [
+        ["books_processed", "mcp.stats.books", "Книг обработано"],
+        ["chapters_parsed", "mcp.stats.chapters", "Глав разобрано"],
+        ["templates", "mcp.stats.templates", "Шаблонов снято"],
+        ["censor_rejects", "mcp.stats.censor", "Отклонено Цензором"],
+        ["delex_replaces", "mcp.stats.delex", "Замен при делексификации"],
+        ["errors", "mcp.stats.errors", "Ошибок"]
+      ];
+      stats.innerHTML = labels.map(function (item) {
+        var key = item[0];
+        var label = dict[item[1]] || item[2];
+        return "<div class=\"mcp-stat\"><dt>" + escapeHTML(label) + "</dt><dd>" + (s[key] || 0) + "</dd></div>";
+      }).join("");
+    }
+  }
+
+  function loadMcpSources() {
+    apiJSON("/api/mcp/sources?world=" + encodeURIComponent(activeSlugValue())).then(renderMcpSources).catch(function (err) {
+      var box = byId(IDS.mcpBooks);
+      if (box) {
+        box.textContent = err.message;
+      }
+    });
+  }
+
+  function renderMcpSources(data) {
+    var dict = window.I18N || {};
+    var box = byId(IDS.mcpBooks);
+    if (!box) {
+      return;
+    }
+    var items = data.sources || [];
+    if (items.length === 0) {
+      box.innerHTML = '<p data-i18n="mcp.books.empty">' + (dict["mcp.books.empty"] || "Книг пока нет.") + "</p>";
+      return;
+    }
+    box.innerHTML = items.map(function (item) {
+      var status = item.status || "queued";
+      if (status === "forging") {
+        status = status + " " + Math.round((item.progress || 0) * 100) + "%";
+      }
+      var html = '<div class="mcp-book" data-id="' + escapeHTML(item.id || item.name) + '">';
+      html += '<div class="mcp-book__name">' + escapeHTML(item.name) + ' <span class="mcp-book__format">' + escapeHTML(item.format) + "</span></div>";
+      html += '<div class="mcp-book__status">' + escapeHTML(status) + "</div>";
+      html += '<div class="mcp-book__counters">' + (item.chapters || 0) + " " + (dict["mcp.books.chapters"] || "глав") + " · " + (item.templates || 0) + " " + (dict["mcp.books.templates"] || "шаблонов") + "</div>";
+      html += '<button type="button" class="mcp-book__delete" data-action="delete-source" data-id="' + escapeHTML(item.id || item.name) + '">' + (dict["mcp.books.delete"] || "Удалить сырьё") + "</button>";
+      html += "</div>";
+      return html;
+    }).join("");
+  }
+
+  function submitMcpImport() {
+    var fileEl = byId(IDS.mcpImportFile);
+    var file = fileEl && fileEl.files ? fileEl.files[0] : null;
+    if (!file) {
+      return;
+    }
+    var form = new FormData();
+    form.append("world", activeSlugValue());
+    form.append("file", file);
+    fetch("/api/mcp/import", { method: "POST", body: form, headers: { Accept: "application/json" } })
+      .then(function (res) {
+        return res.json().catch(function () {
+          return {};
+        }).then(function (body) {
+          if (!res.ok) {
+            var msg = (body && body.error && body.error.message) || res.statusText;
+            throw new Error(msg);
+          }
+          return body;
+        });
+      })
+      .then(renderMcpSources)
+      .catch(function (err) {
+        var box = byId(IDS.mcpBooks);
+        if (box) {
+          box.textContent = err.message;
+        }
+      });
+  }
+
+  function startMcpForge() {
+    postJSON("/api/mcp/forge", { world: activeSlugValue() }).then(function () {
+      loadMcpSources();
+      loadMcpData();
+    }).catch(function (err) {
+      var box = byId(IDS.mcpBooks);
+      if (box) {
+        box.textContent = err.message;
+      }
+    });
+  }
+
+  function onMcpBooksClick(event) {
+    var btn = event.target.closest("button[data-action]");
+    if (!btn || btn.getAttribute("data-action") !== "delete-source") {
+      return;
+    }
+    var id = btn.getAttribute("data-id") || "";
+    if (!window.confirm("Удалить сырьё " + id + "?")) {
+      return;
+    }
+    apiJSON("/api/mcp/source/" + encodeURIComponent(id) + "?world=" + encodeURIComponent(activeSlugValue()), { method: "DELETE" })
+      .then(renderMcpSources)
+      .catch(function (err) {
+        var box = byId(IDS.mcpBooks);
+        if (box) {
+          box.textContent = err.message;
+        }
+      });
+  }
+
+  function loadMcpRings() {
+    apiJSON("/api/mcp/rings?world=" + encodeURIComponent(activeSlugValue())).then(renderMcpRings).catch(function (err) {
+      var box = byId(IDS.mcpRings);
+      if (box) {
+        box.textContent = err.message;
+      }
+    });
+  }
+
+  // Живое обновление вкладки MCP (UI-07.2): подписка на WS-топик mcp; событие
+  // импорта/ковки/удаления перезагружает дашборд и карточки.
+  function subscribeMcpWS() {
+    if (!window.WebSocket) {
+      return;
+    }
+    var proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    var ws = new WebSocket(proto + "//" + window.location.host + "/ws");
+    ws.onopen = function () {
+      ws.send(JSON.stringify({ type: "subscribe", topics: ["mcp"] }));
+    };
+    ws.onmessage = function (event) {
+      var msg = null;
+      try {
+        msg = JSON.parse(event.data);
+      } catch (err) {
+        return;
+      }
+      if (msg && msg.topic === "mcp") {
+        loadMcpData();
+      }
+    };
+    ws.onclose = function () {
+      setTimeout(subscribeMcpWS, 1000);
+    };
+  }
+
+  function renderMcpRings(data) {
+    var dict = window.I18N || {};
+    var box = byId(IDS.mcpRings);
+    if (!box) {
+      return;
+    }
+    var j = data.journal || {};
+    var current = j.current || {};
+    var queue = j.queue || [];
+    var forge = j.forge || {};
+    var html = '<p class="mcp-rings__current">' +
+      (dict["mcp.rings.current"] || "Текущее кольцо") + ": " + (current.status || "—") + " " + Math.round((current.progress || 0) * 100) + "%" +
+      " · " + (current.places_count || 0) + " " + (dict["mcp.rings.places"] || "мест") +
+      " · " + (current.paths_count || 0) + " " + (dict["mcp.rings.paths"] || "путей") +
+      " · " + (current.people_count || 0) + " " + (dict["mcp.rings.people"] || "людей") + "</p>";
+    html += '<p class="mcp-rings__queue">' + (dict["mcp.rings.queue"] || "Очередь колец") + ": " + queue.length + "</p>";
+    html += '<p class="mcp-rings__forge">' + (dict["mcp.rings.forge"] || "Статусы записей") + ": draft → baked · " +
+      (forge.places_draft || 0) + "/" + (forge.places_baked || 0) + " " + (dict["mcp.rings.places"] || "мест") + " · " +
+      (forge.paths_draft || 0) + "/" + (forge.paths_baked || 0) + " " + (dict["mcp.rings.paths"] || "путей") + "</p>";
+    box.innerHTML = html;
+  }
+
   translate(document);
   showChat();
+  subscribeMcpWS();
 })();

@@ -49,6 +49,7 @@ type routeSpec struct {
 // TestRouteTable сверяются с этим списком дословно (T-08-02, шаг 3): задача P7,
 // добавляющая маршрут, правит только этот список, ROUTES.md и тест сверки.
 func routeSpecs(hub *Hub) []routeSpec {
+	mcpHub = hub
 	return []routeSpec{
 		{method: http.MethodGet, path: "/api/health", handle: handleHealth},
 		{method: http.MethodGet, path: "/", handle: serveIndex},
@@ -62,6 +63,12 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodPost, path: "/api/atlas/worlds/active", handle: handleAtlasSwitch},
 		{method: http.MethodPost, path: "/api/atlas/worlds/replay", handle: handleAtlasReplay},
 		{method: http.MethodDelete, path: "/api/atlas/worlds/delete", handle: handleAtlasDelete},
+		{method: http.MethodGet, path: "/api/mcp/dash", handle: handleMcpDash},
+		{method: http.MethodGet, path: "/api/mcp/sources", handle: handleMcpSources},
+		{method: http.MethodPost, path: "/api/mcp/import", handle: handleMcpImport},
+		{method: http.MethodPost, path: "/api/mcp/forge", handle: handleMcpForge},
+		{method: http.MethodDelete, path: "/api/mcp/source/", handle: handleMcpSourceDelete},
+		{method: http.MethodGet, path: "/api/mcp/rings", handle: handleMcpRings},
 	}
 }
 

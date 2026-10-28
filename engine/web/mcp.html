@@ -1,0 +1,42 @@
+<style>
+  /* Адаптив вкладки MCP (T-08-08, шаг 8): на ширине ≤ 480px экран не требует
+     горизонтальной прокрутки и не имеет бокового меню. */
+  @media (max-width: 480px) {
+    .mcp-section {
+      padding: 8px 0;
+    }
+    .mcp-stats {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+<div class="mcp">
+  <section class="mcp-section" aria-label="Дашборд ковки">
+    <h2 data-i18n="mcp.forge.title">Дашборд ковки</h2>
+    <div class="mcp-dash">
+      <p class="mcp-dash__line" id="mcp-dash-queue"></p>
+      <p class="mcp-dash__line" id="mcp-dash-current"></p>
+    </div>
+    <dl class="mcp-stats" id="mcp-dash-stats"></dl>
+  </section>
+
+  <section class="mcp-section" aria-label="Книги-источники">
+    <h2 data-i18n="mcp.books.title">Книги-источники</h2>
+    <form class="mcp-import" id="mcp-import-form">
+      <input type="file" id="mcp-import-file" accept=".txt,.md,.fb2">
+      <button type="submit" id="mcp-import-submit" data-i18n="mcp.books.import">Импорт</button>
+    </form>
+    <button type="button" class="mcp-forge" id="mcp-forge" data-i18n="mcp.books.forge">Запустить ковку</button>
+    <div class="mcp-books" id="mcp-books"></div>
+  </section>
+
+  <section class="mcp-section" aria-label="Кольца Паганеля">
+    <h2 data-i18n="mcp.rings.title">Кольца Паганеля</h2>
+    <div class="mcp-rings" id="mcp-rings"></div>
+  </section>
+
+  <section class="mcp-section" aria-label="Инструменты станка">
+    <h2 data-i18n="mcp.tools.title">Инструменты станка</h2>
+    <div class="mcp-tools" id="mcp-tools"></div>
+  </section>
+</div>

@@ -67,6 +67,7 @@ type Server struct {
 func New(cfg Config) *Server {
 	cfg = cfg.withDefaults()
 	atlasLogger = cfg.Logger
+	mcpLogger = cfg.Logger
 	hub := NewHub()
 	return &Server{
 		cfg:     cfg,
@@ -79,6 +80,7 @@ func New(cfg Config) *Server {
 func NewHandler(cfg Config) http.Handler {
 	cfg = cfg.withDefaults()
 	atlasLogger = cfg.Logger
+	mcpLogger = cfg.Logger
 	hub := NewHub()
 	return accessLog(newRouter(hub), cfg.Logger)
 }
