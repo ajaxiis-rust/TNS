@@ -69,7 +69,69 @@
     mcpForge: "mcp-forge",
     mcpBooks: "mcp-books",
     mcpRings: "mcp-rings",
-    mcpTools: "mcp-tools"
+    mcpTools: "mcp-tools",
+    settingsGeneralForm: "settings-general-form",
+    settingsLang: "settings-lang",
+    settingsTheme: "settings-theme",
+    settingsThemePreview: "settings-theme-preview",
+    settingsServerHost: "settings-server-host",
+    settingsServerPort: "settings-server-port",
+    settingsRestartWarning: "settings-restart-warning",
+    settingsDBPath: "settings-db-path",
+    settingsAuth: "settings-auth",
+    settingsVectorSearch: "settings-vector-search",
+    settingsGeneralSave: "settings-general-save",
+    settingsLLMForm: "settings-llm-form",
+    settingsGenAddr: "settings-gen-addr",
+    settingsGenKey: "settings-gen-key",
+    settingsGenModel: "settings-gen-model",
+    settingsGenTimeout: "settings-gen-timeout",
+    settingsGenMaxTokens: "settings-gen-max-tokens",
+    settingsGenTemperature: "settings-gen-temperature",
+    settingsGenRetries: "settings-gen-retries",
+    settingsGenConcurrency: "settings-gen-concurrency",
+    settingsEmbAddr: "settings-emb-addr",
+    settingsEmbKey: "settings-emb-key",
+    settingsEmbModel: "settings-emb-model",
+    settingsEmbTimeout: "settings-emb-timeout",
+    settingsLLMLocal: "settings-llm-local",
+    settingsLLMSampling: "settings-llm-sampling",
+    settingsPresets: "settings-presets",
+    settingsLLMSave: "settings-llm-save",
+    settingsProviders: "settings-providers",
+    settingsProviderForm: "settings-provider-form",
+    settingsProviderName: "settings-provider-name",
+    settingsProviderKey: "settings-provider-key",
+    settingsProviderSave: "settings-provider-save",
+    settingsModels: "settings-models",
+    settingsModelsForm: "settings-models-form",
+    settingsModelRole: "settings-model-role",
+    settingsModelSource: "settings-model-source",
+    settingsModelRef: "settings-model-ref",
+    settingsModelsSave: "settings-models-save",
+    settingsRoles: "settings-roles",
+    settingsRolesForm: "settings-roles-form",
+    settingsRoleName: "settings-role-name",
+    settingsRoleProvider: "settings-role-provider",
+    settingsRoleModel: "settings-role-model",
+    settingsRoleTemperature: "settings-role-temperature",
+    settingsRolePrompts: "settings-role-prompts",
+    settingsRolePriority: "settings-role-priority",
+    settingsRolesSave: "settings-roles-save",
+    settingsWorldForm: "settings-world-form",
+    settingsPaganelEnabled: "settings-paganel-enabled",
+    settingsScoutEnabled: "settings-scout-enabled",
+    settingsPaganelKey: "settings-paganel-key",
+    settingsWorldSave: "settings-world-save",
+    settingsPlugins: "settings-plugins",
+    settingsAdvancedForm: "settings-advanced-form",
+    settingsFlags: "settings-flags",
+    settingsMemoryMax: "settings-memory-max",
+    settingsMemorySimilarity: "settings-memory-similarity",
+    settingsMemoryHalflife: "settings-memory-halflife",
+    settingsEmbedDim: "settings-embed-dim",
+    settingsGlobalLuck: "settings-global-luck",
+    settingsAdvancedSave: "settings-advanced-save"
   };
 
   function byId(id) {
@@ -148,6 +210,8 @@
         openBookWindow();
       } else if (view === viewMcp) {
         loadMcpView();
+      } else if (view === viewSettings) {
+        loadSettingsView();
       }
     });
   });
@@ -174,6 +238,14 @@
   function postJSON(path, body) {
     return apiJSON(path, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+  }
+
+  function putJSON(path, body) {
+    return apiJSON(path, {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
@@ -800,6 +872,383 @@
       (forge.places_draft || 0) + "/" + (forge.places_baked || 0) + " " + (dict["mcp.rings.places"] || "мест") + " · " +
       (forge.paths_draft || 0) + "/" + (forge.paths_baked || 0) + " " + (dict["mcp.rings.paths"] || "путей") + "</p>";
     box.innerHTML = html;
+  }
+
+  var settingsLoaded = false;
+
+  function ensureThemeCSS() {
+    if (document.querySelector('link[href="/static/theme.css"]')) {
+      return;
+    }
+    var link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "/static/theme.css";
+    document.head.appendChild(link);
+  }
+
+  function loadSettingsView() {
+    ensureThemeCSS();
+    if (settingsLoaded) {
+      loadSettingsData();
+      return;
+    }
+    fetch("/settings.html").then(function (res) {
+      if (!res.ok) {
+        throw new Error("settings not found");
+      }
+      return res.text();
+    }).then(function (html) {
+      viewSettings.innerHTML = html;
+      translate(viewSettings);
+      bindSettings();
+      settingsLoaded = true;
+      loadSettingsData();
+    }).catch(function (err) {
+      viewSettings.textContent = err.message;
+    });
+  }
+
+  function bindSettings() {
+    bindSettingsSubmit(IDS.settingsGeneralForm, submitSettingsGeneral);
+    bindSettingsSubmit(IDS.settingsLLMForm, submitSettingsLLM);
+    bindSettingsSubmit(IDS.settingsProviderForm, submitSettingsProvider);
+    bindSettingsSubmit(IDS.settingsModelsForm, submitSettingsModel);
+    bindSettingsSubmit(IDS.settingsRolesForm, submitSettingsRoles);
+    bindSettingsSubmit(IDS.settingsWorldForm, submitSettingsWorld);
+    bindSettingsSubmit(IDS.settingsAdvancedForm, submitSettingsAdvanced);
+    var theme = byId(IDS.settingsTheme);
+    if (theme) {
+      theme.addEventListener("change", applyTheme);
+    }
+    var modelsBox = byId(IDS.settingsModels);
+    if (modelsBox) {
+      modelsBox.addEventListener("click", function (event) {
+        var btn = event.target.closest("button[data-model-role]");
+        if (!btn) {
+          return;
+        }
+        rollbackSettingsModel(btn.getAttribute("data-model-role"));
+      });
+    }
+  }
+
+  function bindSettingsSubmit(id, handler) {
+    var form = byId(id);
+    if (form) {
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        handler();
+      });
+    }
+  }
+
+  function applyTheme() {
+    var theme = byId(IDS.settingsTheme);
+    var value = theme ? theme.value : "default";
+    document.body.classList.remove("theme-dark", "theme-light");
+    if (value === "dark" || value === "light") {
+      document.body.classList.add("theme-" + value);
+    }
+    var preview = byId(IDS.settingsThemePreview);
+    if (preview) {
+      preview.textContent = value;
+    }
+  }
+
+  function loadSettingsData() {
+    apiJSON("/api/settings?world=" + encodeURIComponent(activeSlugValue())).then(renderSettings).catch(function (err) {
+      var box = byId(IDS.settingsEmbedDim);
+      if (box) {
+        box.textContent = err.message;
+      }
+    });
+  }
+
+  function renderSettings(data) {
+    setValue(IDS.settingsServerHost, data.general ? data.general.server_host : "");
+    setValue(IDS.settingsServerPort, data.general ? String(data.general.server_port) : "");
+    setValue(IDS.settingsDBPath, data.general ? data.general.db_path : "");
+    setValue(IDS.settingsAuth, data.general ? data.general.auth : "");
+    setValue(IDS.settingsEmbedDim, String(data.embedding_dimension || ""));
+    setValue(IDS.settingsMemoryMax, data.advanced ? String(data.advanced.maxMemoryEntries || 0) : "");
+    setValue(IDS.settingsMemorySimilarity, data.advanced ? String(data.advanced.similarityThreshold || 0) : "");
+    setValue(IDS.settingsMemoryHalflife, data.advanced ? String(data.advanced.halfLifeDays || 0) : "");
+    setValue(IDS.settingsGlobalLuck, data.advanced ? String(data.advanced.globalLuck || 0) : "");
+    setChecked(IDS.settingsVectorSearch, data.general ? !!data.general.external_vector_search : false);
+    setChecked(IDS.settingsPaganelEnabled, data.world_section && data.world_section.paganel ? !!data.world_section.paganel.enabled : false);
+    setChecked(IDS.settingsScoutEnabled, data.world_section && data.world_section.paganel ? !!data.world_section.paganel.scout_enabled : false);
+    renderLLMSettings(data.llm || {});
+    renderSettingsPresets(data.presets || []);
+    renderSettingsProviders(data.providers || []);
+    renderSettingsBindings(data.bindings || []);
+    renderSettingsModels(data.models || []);
+    renderEmptyState(IDS.settingsPlugins, "settings.plugins");
+    renderEmptyState(IDS.settingsFlags, "settings.flags");
+  }
+
+  function renderLLMSettings(llm) {
+    var gen = llm.gen || {};
+    var embed = llm.embed || {};
+    setValue(IDS.settingsGenAddr, gen.addr || "");
+    setValue(IDS.settingsGenModel, gen.model || "");
+    setValue(IDS.settingsGenTimeout, gen.timeout || "");
+    setValue(IDS.settingsGenMaxTokens, String(gen.max_tokens || 0));
+    setValue(IDS.settingsGenTemperature, String(gen.temperature || 0));
+    setValue(IDS.settingsGenRetries, String(gen.retries || 0));
+    setValue(IDS.settingsGenConcurrency, String(gen.concurrency || 1));
+    setValue(IDS.settingsEmbAddr, embed.addr || "");
+    setValue(IDS.settingsEmbModel, embed.model || "");
+    setValue(IDS.settingsEmbTimeout, embed.timeout || "");
+    setChecked(IDS.settingsLLMLocal, llm.local !== false);
+    setValue(IDS.settingsLLMSampling, llm.sampling || "greedy");
+    setKeyPlaceholder(IDS.settingsGenKey, gen.key_set);
+    setKeyPlaceholder(IDS.settingsEmbKey, embed.key_set);
+  }
+
+  function setKeyPlaceholder(id, keySet) {
+    var el = byId(id);
+    if (el) {
+      el.placeholder = keySet ? "ключ задан" : "";
+    }
+  }
+
+  function renderSettingsPresets(presets) {
+    var box = byId(IDS.settingsPresets);
+    if (!box) {
+      return;
+    }
+    if (presets.length === 0) {
+      box.textContent = "";
+      return;
+    }
+    box.innerHTML = presets.map(function (p) {
+      return '<div class="settings-preset">' + escapeHTML(p.provider) +
+        (p.gen_addr ? " · " + escapeHTML(p.gen_addr) : "") +
+        (p.embed_addr ? " · " + escapeHTML(p.embed_addr) : "") + "</div>";
+    }).join("");
+  }
+
+  function renderSettingsProviders(providers) {
+    var box = byId(IDS.settingsProviders);
+    if (!box) {
+      return;
+    }
+    if (providers.length === 0) {
+      box.innerHTML = '<p class="settings-empty">—</p>';
+      return;
+    }
+    box.innerHTML = providers.map(function (p) {
+      return '<div class="settings-provider">' + escapeHTML(p.name) + " · " + (p.key_set ? "ключ задан" : "без ключа") + "</div>";
+    }).join("");
+  }
+
+  function renderSettingsBindings(bindings) {
+    var box = byId(IDS.settingsRoles);
+    if (!box) {
+      return;
+    }
+    if (bindings.length === 0) {
+      box.innerHTML = '<p class="settings-empty">—</p>';
+      return;
+    }
+    box.innerHTML = bindings.map(function (b) {
+      var html = '<div class="settings-role">' + escapeHTML(b.role) + " · " + escapeHTML(b.provider) + " · " + escapeHTML(b.model_ref || "");
+      if (b.temperature) {
+        html += " · t=" + escapeHTML(String(b.temperature));
+      }
+      if (b.prompts) {
+        html += " · " + escapeHTML(b.prompts);
+      }
+      if (b.priority) {
+        html += " · p=" + escapeHTML(String(b.priority));
+      }
+      html += "</div>";
+      return html;
+    }).join("");
+  }
+
+  function renderSettingsModels(models) {
+    var box = byId(IDS.settingsModels);
+    if (!box) {
+      return;
+    }
+    if (!models || models.length === 0) {
+      box.innerHTML = '<p class="settings-empty">—</p>';
+      return;
+    }
+    var dict = window.I18N || {};
+    box.innerHTML = models.map(function (m) {
+      var html = '<div class="settings-model">' + escapeHTML(m.role) + " · " + escapeHTML(m.model_ref || "");
+      if (m.status) {
+        html += " · " + escapeHTML(m.status);
+      }
+      if (typeof m.progress === "number") {
+        html += " · " + Math.round(m.progress * 100) + "%";
+      }
+      html += " · " + (m.integrity_ok ? "целостность ок" : "целостность нарушена");
+      if (m.has_previous) {
+        html += ' <button type="button" data-model-role="' + escapeHTML(m.role) + '">' + (dict["settings.models.rollback"] || "Откатить") + "</button>";
+      }
+      html += "</div>";
+      return html;
+    }).join("");
+  }
+
+  function renderEmptyState(id) {
+    var box = byId(id);
+    if (box) {
+      box.innerHTML = '<p class="settings-empty">—</p>';
+    }
+  }
+
+  function setValue(id, value) {
+    var el = byId(id);
+    if (!el) {
+      return;
+    }
+    if (el.tagName === "INPUT" || el.tagName === "SELECT" || el.tagName === "TEXTAREA") {
+      el.value = value;
+    } else {
+      el.textContent = value;
+    }
+  }
+
+  function setChecked(id, value) {
+    var el = byId(id);
+    if (el) {
+      el.checked = value;
+    }
+  }
+
+  function submitSettingsGeneral() {
+    putJSON("/api/settings/config", {
+      host: fieldValue(IDS.settingsServerHost),
+      port: parseInt(fieldValue(IDS.settingsServerPort), 10) || 0
+    }).then(loadSettingsData).catch(settingsError);
+  }
+
+  function submitSettingsLLM() {
+    var config = {
+      gen_addr: fieldValue(IDS.settingsGenAddr),
+      gen_model: fieldValue(IDS.settingsGenModel),
+      gen_timeout: fieldValue(IDS.settingsGenTimeout),
+      gen_max_tokens: parseInt(fieldValue(IDS.settingsGenMaxTokens), 10) || 0,
+      gen_temperature: parseFloat(fieldValue(IDS.settingsGenTemperature)) || 0,
+      gen_retries: parseInt(fieldValue(IDS.settingsGenRetries), 10) || 0,
+      gen_concurrency: parseInt(fieldValue(IDS.settingsGenConcurrency), 10) || 1,
+      embed_addr: fieldValue(IDS.settingsEmbAddr),
+      embed_model: fieldValue(IDS.settingsEmbModel),
+      embed_timeout: fieldValue(IDS.settingsEmbTimeout),
+      local: byId(IDS.settingsLLMLocal) ? byId(IDS.settingsLLMLocal).checked : true,
+      sampling: fieldValue(IDS.settingsLLMSampling) || "greedy"
+    };
+    var keys = {};
+    var genKey = fieldValue(IDS.settingsGenKey);
+    var embedKey = fieldValue(IDS.settingsEmbKey);
+    if (genKey) {
+      keys.llm_gen = genKey;
+    }
+    if (embedKey) {
+      keys.llm_embed = embedKey;
+    }
+    putJSON("/api/settings/config", config).then(function () {
+      if (Object.keys(keys).length === 0) {
+        return loadSettingsData();
+      }
+      return putJSON("/api/settings/keys", { keys: keys }).then(loadSettingsData);
+    }).catch(settingsError);
+  }
+
+  function submitSettingsWorld() {
+    putJSON("/api/settings/config", {
+      paganel_enabled: byId(IDS.settingsPaganelEnabled) ? byId(IDS.settingsPaganelEnabled).checked : false,
+      scout_enabled: byId(IDS.settingsScoutEnabled) ? byId(IDS.settingsScoutEnabled).checked : false
+    }).then(function () {
+      var key = fieldValue(IDS.settingsPaganelKey);
+      if (!key) {
+        return loadSettingsData();
+      }
+      return putJSON("/api/settings/keys", { keys: { paganel: key } }).then(loadSettingsData);
+    }).catch(settingsError);
+  }
+
+  function submitSettingsAdvanced() {
+    putJSON("/api/world/tunables", {
+      world: activeSlugValue(),
+      tunables: {
+        globalLuck: parseFloat(fieldValue(IDS.settingsGlobalLuck)) || 0,
+        maxMemoryEntries: parseInt(fieldValue(IDS.settingsMemoryMax), 10) || 0,
+        similarityThreshold: parseFloat(fieldValue(IDS.settingsMemorySimilarity)) || 0,
+        halfLifeDays: parseFloat(fieldValue(IDS.settingsMemoryHalflife)) || 0
+      }
+    }).then(loadSettingsData).catch(settingsError);
+  }
+
+  function submitSettingsProvider() {
+    var name = fieldValue(IDS.settingsProviderName);
+    var key = fieldValue(IDS.settingsProviderKey);
+    if (!name || !key) {
+      return;
+    }
+    var body = { keys: {} };
+    body.keys[name] = key;
+    putJSON("/api/settings/keys", body).then(loadSettingsData).catch(settingsError);
+  }
+
+  function submitSettingsModel() {
+    var role = fieldValue(IDS.settingsModelRole);
+    var source = fieldValue(IDS.settingsModelSource);
+    var ref = fieldValue(IDS.settingsModelRef);
+    if (!role || !source || !ref) {
+      return;
+    }
+    postJSON("/api/settings/models/install", {
+      world: activeSlugValue(),
+      role: role,
+      source: source,
+      model_ref: ref
+    }).then(function () {
+      loadSettingsData();
+    }).catch(settingsError);
+  }
+
+  function rollbackSettingsModel(role) {
+    if (!role) {
+      return;
+    }
+    postJSON("/api/settings/models/rollback", {
+      world: activeSlugValue(),
+      role: role
+    }).then(function () {
+      loadSettingsData();
+    }).catch(settingsError);
+  }
+
+  function submitSettingsRoles() {
+    var role = fieldValue(IDS.settingsRoleName);
+    var provider = fieldValue(IDS.settingsRoleProvider);
+    var model = fieldValue(IDS.settingsRoleModel);
+    if (!role || !provider) {
+      return;
+    }
+    putJSON("/api/settings/bindings", {
+      world: activeSlugValue(),
+      bindings: [{
+        role: role,
+        model_ref: model,
+        provider: provider,
+        temperature: parseFloat(fieldValue(IDS.settingsRoleTemperature)) || 0,
+        prompts: fieldValue(IDS.settingsRolePrompts),
+        priority: parseInt(fieldValue(IDS.settingsRolePriority), 10) || 0
+      }]
+    }).then(loadSettingsData).catch(settingsError);
+  }
+
+  function settingsError(err) {
+    var box = byId(IDS.settingsEmbedDim);
+    if (box) {
+      box.textContent = err.message;
+    }
   }
 
   translate(document);

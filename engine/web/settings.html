@@ -1,0 +1,240 @@
+<div class="settings">
+  <section class="settings-section" aria-label="General">
+    <h2 data-i18n="settings.general">General</h2>
+    <form class="settings-form" id="settings-general-form">
+      <label class="settings-field">
+        <span data-i18n="settings.general.lang">Язык интерфейса</span>
+        <select id="settings-lang">
+          <option value="ru">Русский</option>
+        </select>
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.general.theme">Тема</span>
+        <select id="settings-theme">
+          <option value="default">default</option>
+          <option value="dark">dark</option>
+          <option value="light">light</option>
+        </select>
+      </label>
+      <div class="settings-theme-preview" id="settings-theme-preview"></div>
+      <label class="settings-field">
+        <span data-i18n="settings.general.host">Хост сервера</span>
+        <input id="settings-server-host" value="127.0.0.1">
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.general.port">Порт</span>
+        <input id="settings-server-port" type="number" min="1" max="65535" value="8720">
+      </label>
+      <p class="settings-warning" id="settings-restart-warning" data-i18n="settings.general.restart">Изменение порта требует перезапуска станка.</p>
+      <p class="settings-readonly">
+        <span data-i18n="settings.general.dbpath">Путь базы</span>:
+        <span id="settings-db-path"></span>
+      </p>
+      <p class="settings-readonly">
+        <span data-i18n="settings.general.auth">Аутентификация</span>:
+        <span id="settings-auth"></span>
+      </p>
+      <label class="settings-field settings-field--check">
+        <input id="settings-vector-search" type="checkbox">
+        <span data-i18n="settings.general.vector">Внешний векторный поиск</span>
+      </label>
+      <button type="submit" id="settings-general-save" data-i18n="settings.save">Сохранить</button>
+    </form>
+  </section>
+
+  <section class="settings-section" aria-label="LLM">
+    <h2 data-i18n="settings.llm">LLM</h2>
+    <form class="settings-form" id="settings-llm-form">
+      <fieldset class="settings-fieldset">
+        <legend data-i18n="settings.llm.generation">Слот генерации (:5001)</legend>
+        <label class="settings-field">
+          <span data-i18n="settings.llm.addr">Адрес</span>
+          <input id="settings-gen-addr" value=":5001">
+        </label>
+        <label class="settings-field">
+          <span data-i18n="settings.llm.key">Ключ</span>
+          <input id="settings-gen-key" type="password" autocomplete="off">
+        </label>
+        <label class="settings-field">
+          <span data-i18n="settings.llm.model">Модель</span>
+          <input id="settings-gen-model">
+        </label>
+        <label class="settings-field">
+          <span data-i18n="settings.llm.timeout">Тайм-аут</span>
+          <input id="settings-gen-timeout" value="30s">
+        </label>
+        <label class="settings-field">
+          <span data-i18n="settings.llm.max_tokens">Максимум токенов</span>
+          <input id="settings-gen-max-tokens" type="number" min="0" value="0">
+        </label>
+        <label class="settings-field">
+          <span data-i18n="settings.llm.temperature">Температура</span>
+          <input id="settings-gen-temperature" type="number" step="0.1" value="0">
+        </label>
+        <label class="settings-field">
+          <span data-i18n="settings.llm.retries">Повторы</span>
+          <input id="settings-gen-retries" type="number" min="0" value="0">
+        </label>
+        <label class="settings-field">
+          <span data-i18n="settings.llm.concurrency">Конкурентность</span>
+          <input id="settings-gen-concurrency" type="number" min="1" value="1">
+        </label>
+      </fieldset>
+      <fieldset class="settings-fieldset">
+        <legend data-i18n="settings.llm.embedding">Слот эмбеддинга (:5002)</legend>
+        <label class="settings-field">
+          <span data-i18n="settings.llm.addr">Адрес</span>
+          <input id="settings-emb-addr" value=":5002">
+        </label>
+        <label class="settings-field">
+          <span data-i18n="settings.llm.key">Ключ</span>
+          <input id="settings-emb-key" type="password" autocomplete="off">
+        </label>
+        <label class="settings-field">
+          <span data-i18n="settings.llm.model">Модель</span>
+          <input id="settings-emb-model">
+        </label>
+        <label class="settings-field">
+          <span data-i18n="settings.llm.timeout">Тайм-аут</span>
+          <input id="settings-emb-timeout" value="30s">
+        </label>
+      </fieldset>
+      <label class="settings-field settings-field--check">
+        <input id="settings-llm-local" type="checkbox" checked>
+        <span data-i18n="settings.llm.local">Локальные вычисления</span>
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.llm.sampling">Семплирование</span>
+        <select id="settings-llm-sampling">
+          <option value="greedy">greedy</option>
+          <option value="top_p">top_p</option>
+        </select>
+      </label>
+      <div class="settings-presets" id="settings-presets"></div>
+      <button type="submit" id="settings-llm-save" data-i18n="settings.save">Сохранить</button>
+    </form>
+  </section>
+
+  <section class="settings-section" aria-label="Провайдеры">
+    <h2 data-i18n="settings.providers">Провайдеры</h2>
+    <div class="settings-providers" id="settings-providers"></div>
+    <form class="settings-form" id="settings-provider-form">
+      <label class="settings-field">
+        <span data-i18n="settings.providers.name">Провайдер</span>
+        <input id="settings-provider-name">
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.providers.key">Ключ</span>
+        <input id="settings-provider-key" type="password" autocomplete="off">
+      </label>
+      <button type="submit" id="settings-provider-save" data-i18n="settings.save">Сохранить</button>
+    </form>
+  </section>
+
+  <section class="settings-section" aria-label="Модели">
+    <h2 data-i18n="settings.models">Модели</h2>
+    <div class="settings-models" id="settings-models"></div>
+    <form class="settings-form" id="settings-models-form">
+      <label class="settings-field">
+        <span data-i18n="settings.models.role">Роль</span>
+        <input id="settings-model-role">
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.models.source">Источник HF</span>
+        <input id="settings-model-source" placeholder="huggingface.co/…">
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.models.ref">Модель</span>
+        <input id="settings-model-ref">
+      </label>
+      <button type="submit" id="settings-models-save" data-i18n="settings.models.install">Установить</button>
+    </form>
+  </section>
+
+  <section class="settings-section" aria-label="Роли">
+    <h2 data-i18n="settings.roles">Роли</h2>
+    <div class="settings-roles" id="settings-roles"></div>
+    <form class="settings-form" id="settings-roles-form">
+      <label class="settings-field">
+        <span data-i18n="settings.roles.name">Роль (код-имя)</span>
+        <input id="settings-role-name">
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.roles.provider">Провайдер</span>
+        <input id="settings-role-provider">
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.roles.model">Модель</span>
+        <input id="settings-role-model">
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.roles.temperature">Температура</span>
+        <input id="settings-role-temperature" type="number" step="0.1" value="0">
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.roles.prompts">Промпты</span>
+        <textarea id="settings-role-prompts" rows="3"></textarea>
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.roles.priority">Приоритет</span>
+        <input id="settings-role-priority" type="number" value="0">
+      </label>
+      <button type="submit" id="settings-roles-save" data-i18n="settings.save">Сохранить</button>
+    </form>
+  </section>
+
+  <section class="settings-section" aria-label="World">
+    <h2 data-i18n="settings.world">World</h2>
+    <form class="settings-form" id="settings-world-form">
+      <div class="settings-card">
+        <h3 data-i18n="settings.world.map">Прорисовка карты</h3>
+        <label class="settings-field settings-field--check">
+          <input id="settings-paganel-enabled" type="checkbox">
+          <span data-i18n="settings.world.enabled">включён</span>
+        </label>
+        <label class="settings-field settings-field--check">
+          <input id="settings-scout-enabled" type="checkbox">
+          <span data-i18n="settings.world.scout">походы наружу</span>
+        </label>
+        <label class="settings-field">
+          <span data-i18n="settings.world.key">Ключ внешней модели</span>
+          <input id="settings-paganel-key" type="password" autocomplete="off">
+        </label>
+      </div>
+      <button type="submit" id="settings-world-save" data-i18n="settings.save">Сохранить</button>
+    </form>
+  </section>
+
+  <section class="settings-section" aria-label="Plugins">
+    <h2 data-i18n="settings.plugins">Plugins</h2>
+    <div class="settings-plugins" id="settings-plugins"></div>
+  </section>
+
+  <section class="settings-section" aria-label="Advanced">
+    <h2 data-i18n="settings.advanced">Advanced</h2>
+    <form class="settings-form" id="settings-advanced-form">
+      <div class="settings-flags" id="settings-flags"></div>
+      <label class="settings-field">
+        <span data-i18n="settings.advanced.memory_max">maxMemoryEntries</span>
+        <input id="settings-memory-max" type="number" min="0">
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.advanced.similarity">similarityThreshold</span>
+        <input id="settings-memory-similarity" type="number" step="0.01" min="0" max="1">
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.advanced.halflife">halfLifeDays</span>
+        <input id="settings-memory-halflife" type="number" step="0.1" min="0">
+      </label>
+      <p class="settings-readonly">
+        <span data-i18n="settings.advanced.embedding">embeddingDimension</span>:
+        <span id="settings-embed-dim"></span>
+      </p>
+      <label class="settings-field">
+        <span data-i18n="settings.advanced.luck">globalLuck</span>
+        <input id="settings-global-luck" type="number" step="0.01" min="0" max="1">
+      </label>
+      <button type="submit" id="settings-advanced-save" data-i18n="settings.save">Сохранить</button>
+    </form>
+  </section>
+</div>

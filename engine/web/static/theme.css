@@ -1,0 +1,111 @@
+/* Темы вкладки «Настройки» (T-08-09): переменные темы и конструктор темы.
+   На ширине ≤ 480px разделы не требуют горизонтальной прокрутки. */
+
+:root {
+  --settings-bg: #ffffff;
+  --settings-fg: #1a1a1a;
+  --settings-border: #c9c9c9;
+  --settings-accent: #4a6fa5;
+}
+
+body.theme-dark {
+  --settings-bg: #1b1b1b;
+  --settings-fg: #ececec;
+  --settings-border: #4a4a4a;
+  --settings-accent: #7fa8d9;
+}
+
+body.theme-light {
+  --settings-bg: #ffffff;
+  --settings-fg: #1a1a1a;
+  --settings-border: #c9c9c9;
+  --settings-accent: #4a6fa5;
+}
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 100%;
+}
+
+.settings-section {
+  border: 1px solid var(--settings-border);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--settings-bg);
+  color: var(--settings-fg);
+  min-width: 0;
+}
+
+.settings-section h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-field--check {
+  flex-direction: row;
+  align-items: center;
+}
+
+.settings-fieldset {
+  border: 1px solid var(--settings-border);
+  border-radius: 6px;
+  margin: 0;
+  padding: 8px;
+}
+
+.settings-card {
+  border: 1px solid var(--settings-border);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.settings-warning {
+  color: var(--settings-accent);
+}
+
+.settings-theme-preview {
+  min-height: 48px;
+  border: 1px solid var(--settings-border);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.settings-presets,
+.settings-providers,
+.settings-models,
+.settings-roles,
+.settings-plugins,
+.settings-flags {
+  min-height: 0;
+}
+
+@media (max-width: 480px) {
+  .settings-section {
+    padding: 8px;
+  }
+
+  .settings-field {
+    min-width: 0;
+  }
+
+  .settings-form input,
+  .settings-form select,
+  .settings-form textarea {
+    max-width: 100%;
+    min-width: 0;
+  }
+}

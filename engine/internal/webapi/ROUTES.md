@@ -26,6 +26,13 @@
 | POST | `/api/mcp/forge` | `{"world":"<slug>"}` | `{"world":"…","sources":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | DELETE | `/api/mcp/source/{id}` | query `world=<slug>` | `{"world":"…","sources":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | GET | `/api/mcp/rings` | query `world=<slug>` | `{"world":"…","journal":{…}}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| GET | `/settings.html` | — | `settings.html` из embed | `method_not_allowed`, `not_found` |
+| GET | `/api/settings` | query `world=<slug>` | `{"world":"…","sections":[…],"embedding_dimension":1024,"general":{…},"world":{…},"advanced":{…},"bindings":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| PUT | `/api/settings/bindings` | `{"world":"…","bindings":[{"role","model_ref","provider"}]}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| PUT | `/api/settings/config` | `{"host","port","paganel_enabled","scout_enabled","gen_addr","gen_model","gen_timeout","gen_max_tokens","gen_temperature","gen_retries","gen_concurrency","embed_addr","embed_model","embed_timeout","local","sampling"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
+| PUT | `/api/settings/keys` | `{"keys":{…}}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
+| POST | `/api/settings/models/install` | `{"world":"…","role":"…","source":"https://huggingface.co/…","model_ref":"…"}` | `{"status":"ok","model_ref":"…"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| POST | `/api/settings/models/rollback` | `{"world":"…","role":"…"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
 
 Список для дословной сверки (`TestRouteTable`):
 
@@ -48,6 +55,13 @@ POST /api/mcp/import
 POST /api/mcp/forge
 DELETE /api/mcp/source/
 GET /api/mcp/rings
+GET /settings.html
+GET /api/settings
+PUT /api/settings/bindings
+PUT /api/settings/config
+PUT /api/settings/keys
+POST /api/settings/models/install
+POST /api/settings/models/rollback
 ```
 
 ## Контракт ошибок

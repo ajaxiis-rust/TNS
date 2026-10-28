@@ -69,6 +69,13 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodPost, path: "/api/mcp/forge", handle: handleMcpForge},
 		{method: http.MethodDelete, path: "/api/mcp/source/", handle: handleMcpSourceDelete},
 		{method: http.MethodGet, path: "/api/mcp/rings", handle: handleMcpRings},
+		{method: http.MethodGet, path: "/settings.html", handle: handleSettingsScreen},
+		{method: http.MethodGet, path: "/api/settings", handle: handleSettingsGet},
+		{method: http.MethodPut, path: "/api/settings/bindings", handle: handleSettingsBindings},
+		{method: http.MethodPut, path: "/api/settings/config", handle: handleSettingsConfig},
+		{method: http.MethodPut, path: "/api/settings/keys", handle: handleSettingsKeys},
+		{method: http.MethodPost, path: "/api/settings/models/install", handle: handleSettingsModelInstall},
+		{method: http.MethodPost, path: "/api/settings/models/rollback", handle: handleSettingsModelRollback},
 	}
 }
 
