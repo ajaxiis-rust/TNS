@@ -50,6 +50,7 @@ type routeSpec struct {
 // добавляющая маршрут, правит только этот список, ROUTES.md и тест сверки.
 func routeSpecs(hub *Hub) []routeSpec {
 	mcpHub = hub
+	monitorHub = hub
 	return []routeSpec{
 		{method: http.MethodGet, path: "/api/health", handle: handleHealth},
 		{method: http.MethodGet, path: "/", handle: serveIndex},
@@ -81,6 +82,7 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodPut, path: "/api/settings/keys", handle: handleSettingsKeys},
 		{method: http.MethodPost, path: "/api/settings/models/install", handle: handleSettingsModelInstall},
 		{method: http.MethodPost, path: "/api/settings/models/rollback", handle: handleSettingsModelRollback},
+		{method: http.MethodGet, path: "/api/monitor", handle: handleMonitor},
 	}
 }
 

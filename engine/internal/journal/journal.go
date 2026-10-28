@@ -25,6 +25,7 @@ type Logger struct {
 	path     string
 	maxBytes int64
 	maxFiles int
+	onEvent  func(event string)
 }
 
 // New создаёт каталоги пути (os.MkdirAll) и открывает файл на добавление.
@@ -55,10 +56,10 @@ type eventRecord struct {
 	Fields []Field `json:"fields"`
 }
 
-// Event пишет одно событие одной JSON-строкой, завершённой '\n'.
+// Event пишет одно событие одной JSON-строкой, завершённой '\n'. После удачной
+// записи вызывает наблюдателя, если он подписан через OnEvent.
 func (l *Logger) Event(source, event string, fields ...Field) error {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 
 	rec := eventRecord{
 		TS:     time.Now().Format(time.RFC3339),
@@ -72,6 +73,7 @@ func (l *Logger) Event(source, event string, fields ...Field) error {
 	}
 	b, err := json.Marshal(rec)
 	if err != nil {
+		l.mu.Unlock()
 		return err
 	}
 	line := append(b, '\n')
@@ -79,13 +81,27 @@ func (l *Logger) Event(source, event string, fields ...Field) error {
 	if l.f != nil {
 		if info, err := l.f.Stat(); err == nil && info.Size()+int64(len(line)) > l.maxBytes {
 			if err := l.rotateLocked(); err != nil {
+				l.mu.Unlock()
 				return err
 			}
 		}
 	}
 
 	_, err = l.f.Write(line)
+	fn := l.onEvent
+	l.mu.Unlock()
+	if err == nil && fn != nil {
+		fn(event)
+	}
 	return err
+}
+
+// OnEvent подписывает наблюдателя, вызываемого после каждой удачной записи
+// события. Наблюдатель не вызывается под мьютексом писателя.
+func (l *Logger) OnEvent(fn func(event string)) {
+	l.mu.Lock()
+	l.onEvent = fn
+	l.mu.Unlock()
 }
 
 // rotateLocked закрывает текущий файл, сдвигает архивы и открывает новый.

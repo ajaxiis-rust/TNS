@@ -131,7 +131,12 @@
     settingsMemoryHalflife: "settings-memory-halflife",
     settingsEmbedDim: "settings-embed-dim",
     settingsGlobalLuck: "settings-global-luck",
-    settingsAdvancedSave: "settings-advanced-save"
+    settingsAdvancedSave: "settings-advanced-save",
+    monitorSlots: "monitor-slots",
+    monitorRoles: "monitor-roles",
+    monitorMachines: "monitor-machines",
+    monitorDegradations: "monitor-degradations",
+    monitorJournal: "monitor-journal"
   };
 
   function byId(id) {
@@ -905,6 +910,7 @@
     ensureThemeCSS();
     if (settingsLoaded) {
       loadSettingsData();
+      loadMonitorData();
       return;
     }
     fetch("/settings.html").then(function (res) {
@@ -918,6 +924,7 @@
       bindSettings();
       settingsLoaded = true;
       loadSettingsData();
+      loadMonitorData();
     }).catch(function (err) {
       viewSettings.textContent = err.message;
     });
@@ -977,6 +984,131 @@
         box.textContent = err.message;
       }
     });
+  }
+
+  function loadMonitorData() {
+    apiJSON("/api/monitor").then(renderMonitor).catch(function (err) {
+      var box = byId(IDS.monitorJournal);
+      if (box) {
+        box.textContent = err.message;
+      }
+    });
+  }
+
+  function renderMonitor(data) {
+    var dict = window.I18N || {};
+    renderMonitorSlots(data.slots || [], dict);
+    renderMonitorRoles(data.roles || [], dict);
+    renderMonitorMachines(data.machines || [], dict);
+    renderMonitorDegradations(data.degradations || 0, dict);
+    renderMonitorJournal(data.journal_tail || [], dict);
+  }
+
+  function renderMonitorSlots(slots, dict) {
+    var box = byId(IDS.monitorSlots);
+    if (!box) {
+      return;
+    }
+    if (slots.length === 0) {
+      box.innerHTML = '<p class="monitor-empty">—</p>';
+      return;
+    }
+    box.innerHTML = slots.map(function (s) {
+      var online = s.online ? (dict["settings.monitor.slots.online"] || "онлайн") : (dict["settings.monitor.slots.offline"] || "офлайн");
+      var key = s.key_valid ? (dict["settings.monitor.slots.key_valid"] || "ключ валиден") : (dict["settings.monitor.slots.key_missing"] || "ключ не задан");
+      var line = '<div class="monitor-row">' + escapeHTML(s.name || "") + " · " + online + " · " + key;
+      if (s.limit_remaining) {
+        line += " · " + (dict["settings.monitor.slots.limit"] || "остаток лимита") + ": " + escapeHTML(s.limit_remaining);
+      }
+      if (s.addr) {
+        line += " · " + escapeHTML(s.addr);
+      }
+      line += "</div>";
+      return line;
+    }).join("");
+  }
+
+  function renderMonitorRoles(roles, dict) {
+    var box = byId(IDS.monitorRoles);
+    if (!box) {
+      return;
+    }
+    if (roles.length === 0) {
+      box.innerHTML = '<p class="monitor-empty">' + (dict["settings.monitor.roles.empty"] || "Вызовов ролей пока нет") + "</p>";
+      return;
+    }
+    box.innerHTML = roles.map(function (r) {
+      var last = r.last_call_at ? " · " + (dict["settings.monitor.roles.last_call"] || "последний вызов") + ": " + escapeHTML(r.last_call_at) : "";
+      return '<div class="monitor-row">' + escapeHTML(r.name || "") +
+        " · " + (r.calls || 0) + " " + (dict["settings.monitor.roles.calls"] || "вызовов") +
+        " · " + (r.errors || 0) + " " + (dict["settings.monitor.roles.errors"] || "ошибок") +
+        " · " + (dict["settings.monitor.roles.error_percent"] || "процент ошибок") + ": " + (r.error_percent || 0) + "%" +
+        " · " + (dict["settings.monitor.roles.avg_ms"] || "среднее время ответа") + ": " + (r.avg_response_ms || 0) + " мс" +
+        last + "</div>";
+    }).join("");
+  }
+
+  function renderMonitorMachines(machines, dict) {
+    var box = byId(IDS.monitorMachines);
+    if (!box) {
+      return;
+    }
+    if (machines.length === 0) {
+      box.innerHTML = '<p class="monitor-empty">—</p>';
+      return;
+    }
+    box.innerHTML = machines.map(function (m) {
+      var state = m.alive ? (dict["settings.monitor.machines.alive"] || "жива") : (dict["settings.monitor.machines.dead"] || "мертва");
+      return '<div class="monitor-row">' + escapeHTML(m.addr || "") + " · " + state +
+        " · " + (dict["settings.monitor.machines.queue"] || "очередь") + ": " + (m.queue || 0) + "</div>";
+    }).join("");
+  }
+
+  function renderMonitorDegradations(n, dict) {
+    var box = byId(IDS.monitorDegradations);
+    if (!box) {
+      return;
+    }
+    box.innerHTML = '<p class="monitor-row">' + (dict["settings.monitor.degradations.count"] || "Сколько раз ход ушёл на запасной путь") + ": " + (n || 0) + "</p>";
+  }
+
+  function renderMonitorJournal(lines, dict) {
+    var box = byId(IDS.monitorJournal);
+    if (!box) {
+      return;
+    }
+    if (lines.length === 0) {
+      box.innerHTML = '<p class="monitor-empty">' + (dict["settings.monitor.journal.empty"] || "Журнал пуст") + "</p>";
+      return;
+    }
+    box.innerHTML = lines.map(function (line) {
+      return '<div class="monitor-journal-line">' + escapeHTML(line) + "</div>";
+    }).join("");
+  }
+
+  function subscribeMonitorWS() {
+    if (!window.WebSocket) {
+      return;
+    }
+    var proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+    var ws = new WebSocket(proto + "//" + window.location.host + "/ws");
+    ws.onopen = function () {
+      ws.send(JSON.stringify({ type: "subscribe", topics: ["monitor"] }));
+    };
+    ws.onmessage = function (event) {
+      var msg = null;
+      try {
+        msg = JSON.parse(event.data);
+      } catch (err) {
+        return;
+      }
+      if (msg && msg.topic === "monitor") {
+        loadMonitorData();
+      }
+    };
+    ws.onclose = function () {
+      setTimeout(subscribeMonitorWS, 1000);
+    };
   }
 
   function renderSettings(data) {
@@ -1269,4 +1401,5 @@
   translate(document);
   showChat();
   subscribeMcpWS();
+  subscribeMonitorWS();
 })();

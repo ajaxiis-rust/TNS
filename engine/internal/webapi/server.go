@@ -70,10 +70,12 @@ func New(cfg Config) *Server {
 	mcpLogger = cfg.Logger
 	coeffLogger = cfg.Logger
 	hub := NewHub()
+	router := newRouter(hub)
+	bindMonitorJournal(cfg.Logger)
 	return &Server{
 		cfg:     cfg,
 		hub:     hub,
-		httpSrv: &http.Server{Handler: accessLog(newRouter(hub), cfg.Logger)},
+		httpSrv: &http.Server{Handler: accessLog(router, cfg.Logger)},
 	}
 }
 
@@ -84,7 +86,9 @@ func NewHandler(cfg Config) http.Handler {
 	mcpLogger = cfg.Logger
 	coeffLogger = cfg.Logger
 	hub := NewHub()
-	return accessLog(newRouter(hub), cfg.Logger)
+	router := newRouter(hub)
+	bindMonitorJournal(cfg.Logger)
+	return accessLog(router, cfg.Logger)
 }
 
 // Hub возвращает WS-хаб сервера: подписка на топики экранов и рассылка.
