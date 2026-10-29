@@ -51,6 +51,7 @@ type routeSpec struct {
 func routeSpecs(hub *Hub) []routeSpec {
 	mcpHub = hub
 	monitorHub = hub
+	chatHub = hub
 	return []routeSpec{
 		{method: http.MethodGet, path: "/api/health", handle: handleHealth},
 		{method: http.MethodGet, path: "/", handle: serveIndex},
@@ -58,6 +59,9 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodGet, path: "/ws", handle: hub.serveHTTP},
 		{method: http.MethodGet, path: "/api/world", handle: handleWorldReadonly},
 		{method: http.MethodPut, path: "/api/world/tunables", handle: handleWorldTunables},
+		{method: http.MethodPost, path: "/api/turn", handle: handleChatTurn},
+		{method: http.MethodGet, path: "/api/state", handle: handleChatState},
+		{method: http.MethodPost, path: "/api/scene/", handle: handleChatSignal},
 		{method: http.MethodGet, path: "/atlas.html", handle: handleAtlasScreen},
 		{method: http.MethodGet, path: "/mcp.html", handle: handleMcpScreen},
 		{method: http.MethodGet, path: "/api/atlas/worlds", handle: handleAtlasList},

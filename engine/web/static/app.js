@@ -194,6 +194,10 @@
     heroPanel.hidden = false;
     systemPanel.hidden = false;
     chatLog.hidden = false;
+    // Роут чата (T-08-15): при входе обновляем состояние и сводку при возврате.
+    if (window.Chat && typeof window.Chat.refresh === "function") {
+      window.Chat.refresh();
+    }
   }
 
   var sections = [

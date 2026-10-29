@@ -69,6 +69,7 @@ func New(cfg Config) *Server {
 	atlasLogger = cfg.Logger
 	mcpLogger = cfg.Logger
 	coeffLogger = cfg.Logger
+	chatLogger = cfg.Logger
 	hub := NewHub()
 	router := newRouter(hub)
 	bindMonitorJournal(cfg.Logger)
@@ -85,6 +86,7 @@ func NewHandler(cfg Config) http.Handler {
 	atlasLogger = cfg.Logger
 	mcpLogger = cfg.Logger
 	coeffLogger = cfg.Logger
+	chatLogger = cfg.Logger
 	hub := NewHub()
 	router := newRouter(hub)
 	bindMonitorJournal(cfg.Logger)

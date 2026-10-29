@@ -8,6 +8,7 @@
   <script src="/static/names.js" defer></script>
   <script src="/static/i18n.js" defer></script>
   <script src="/static/app.js" defer></script>
+  <script src="/static/chat.js" defer></script>
 </head>
 <body>
   <nav class="menu-bar" id="menu-bar" aria-label="Основное меню">
@@ -27,6 +28,10 @@
           <div class="state" id="system-panel" data-i18n="panel.system"></div>
         </div>
         <div class="chat-log" id="chat-log" aria-label="Журнал чата"></div>
+        <form class="chat-form" id="chat-form">
+          <input type="text" id="chat-input" autocomplete="off" placeholder="Твоя реплика миру…">
+          <button type="submit" id="chat-send" data-i18n="chat.send"></button>
+        </form>
       </div>
     </section>
 

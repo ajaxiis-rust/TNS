@@ -14,6 +14,9 @@
 | GET | `/ws` | — | WebSocket 101 | `bad_request` |
 | GET | `/api/world` | query `world=<slug>` | `{"world":"…","fields":{…}}` — замороженные поля анкеты из `world_meta` | `method_not_allowed`, `bad_request`, `internal` |
 | PUT | `/api/world/tunables` | `{"world":"…","tunables":{…}}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
+| POST | `/api/turn` | `{"world":"<slug>","text":"…"}` | `{"turn_id":N}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| GET | `/api/state` | query `world=<slug>` | `{"world":"…","world_state":{…},"hero":{…},"system":{…},"return_summary":"…","return_news":[…],"turns":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| POST | `/api/scene/{id}/signal` | `{"kind":"like|dislike"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | GET | `/atlas.html` | — | `atlas.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/mcp.html` | — | `mcp.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/api/atlas/worlds` | — | `{"active":"…","worlds":[{"slug","title","active","characters","places","paths","entities","sessions"}]}` | `method_not_allowed`, `internal` |
@@ -49,6 +52,9 @@ GET /static/
 GET /ws
 GET /api/world
 PUT /api/world/tunables
+POST /api/turn
+GET /api/state
+POST /api/scene/
 GET /atlas.html
 GET /mcp.html
 GET /api/atlas/worlds
@@ -121,3 +127,6 @@ censorship
 - Рассылка сервера: текстовый фрейм
   `{"topic":"…","event_type":"…","payload":{…}}`; сообщение получают клиенты,
   подписавшиеся на `topic`.
+- Топик чата: клиент подписывается на `turn.stream` и получает порции сцены
+  `{"topic":"turn.stream","event_type":"chunk","payload":{"turn_id":N,"text":"…"}}`
+  по мере готовности (T-08-15).

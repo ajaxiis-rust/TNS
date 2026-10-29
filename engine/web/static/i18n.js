@@ -10,6 +10,7 @@ window.I18N = {
   "panel.world": "Мир",
   "panel.hero": "Герой",
   "panel.system": "Система",
+  "chat.send": "Отправить",
   "map.title": "Прорисовка карты",
   "graph.title": "Граф отношений",
   "summary": "сводка",
