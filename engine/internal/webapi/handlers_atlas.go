@@ -35,10 +35,10 @@ const (
 // «Писатель»: удаление разрешено, писатель core).
 const eventWorldDeleted = "world.deleted"
 
-// Точки подмены для тестов: корень миров, base.db, эмбеддер и журнал.
+// Точки подмены для тестов: корень миров, база языка, эмбеддер и журнал.
 var (
 	atlasRoot   = db.WorldsRoot
-	atlasBaseDB = "" // пусто — <корень миров>/base/base.db
+	atlasBaseDB = "" // пусто — <корень миров>/base/base.<lang>.db
 	atlasEmbed  models.Embedder
 	atlasLogger *journal.Logger
 )
@@ -134,13 +134,14 @@ func countWorld(w birth.World) (characters, places, paths, sessions int) {
 	return
 }
 
-// atlasBirthConfig собирает конфигурацию рождения для webapi. Эмбеддер в тестах
-// подменяется фейком testkit (T-08-05, шаг 5).
-func atlasBirthConfig(isekai bool) birth.Config {
+// atlasBirthConfig собирает конфигурацию рождения для webapi. База — языка
+// анкеты (base.<lang>.db). Эмбеддер в тестах подменяется фейком testkit
+// (T-08-05, шаг 5).
+func atlasBirthConfig(a birth.Ancketa, isekai bool) birth.Config {
 	root := atlasRootDir()
 	base := atlasBaseDB
 	if base == "" {
-		base = filepath.Join(root, "base", "base.db")
+		base = filepath.Join(root, "base", "base."+a.Lang+".db")
 	}
 	return birth.Config{
 		WorldsRoot: root,
@@ -169,7 +170,7 @@ func handleAtlasBirth(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	res, err := birth.Birth(&a, atlasBirthConfig(false))
+	res, err := birth.Birth(&a, atlasBirthConfig(a, false))
 	if err != nil {
 		writeBirthError(w, err)
 		return
@@ -187,7 +188,7 @@ func handleAtlasReplay(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	res, err := birth.Birth(&a, atlasBirthConfig(true))
+	res, err := birth.Birth(&a, atlasBirthConfig(a, true))
 	if err != nil {
 		writeBirthError(w, err)
 		return

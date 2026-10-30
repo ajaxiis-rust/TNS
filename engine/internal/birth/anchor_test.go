@@ -26,7 +26,7 @@ func TestAnchorNearest(t *testing.T) {
 	// Два нарратива: близкий (косинус 1.0) и далёкий (косинус -1.0).
 	baseDB := writeAnchorBaseDB(t, filepath.Join(dir, "base.db"), [][]float32{synVec, negate(synVec)})
 
-	got, err := selectAnchor(ctx, embed, baseDB, validAncketa().Synopsis, 0)
+	got, err := selectAnchor(ctx, embed, baseDB, validAncketa().Lang, validAncketa().Synopsis, 0)
 	if err != nil {
 		t.Fatalf("selectAnchor: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestAnchorForced(t *testing.T) {
 	far2 := combine(synVec, orthUnit(synVec), 0.3, 0.95)
 	baseDB := writeAnchorBaseDB(t, filepath.Join(dir, "base.db"), [][]float32{far1, far2})
 
-	got, err := selectAnchor(ctx, embed, baseDB, validAncketa().Synopsis, 0)
+	got, err := selectAnchor(ctx, embed, baseDB, validAncketa().Lang, validAncketa().Synopsis, 0)
 	if err != nil {
 		t.Fatalf("selectAnchor: %v", err)
 	}
@@ -96,6 +96,51 @@ func TestAnchorForced(t *testing.T) {
 	}
 	if !strings.Contains(log, `"key":"forced","value":"true"`) {
 		t.Fatalf("журнал не содержит forced=true: %s", log)
+	}
+}
+
+// TestAnchorLangFilter — базы теперь свои на язык (base.<lang>.db): векторы
+// чужого языка не участвуют в подборе якоря.
+func TestAnchorLangFilter(t *testing.T) {
+	dir := t.TempDir()
+	embed := testkit.NewFakeEmbed()
+	vec := synopsisVec(t, embed)
+
+	baseDB := filepath.Join(dir, "base.en.db")
+	w, err := db.OpenWriter(baseDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Migrate(w, "base", "shared"); err != nil {
+		t.Fatal(err)
+	}
+	res, err := w.Exec(`INSERT INTO narratives (name, arc_summary, lang, created_at) VALUES (?,?,?,?)`,
+		"n1", "arc 1", "en", "2026-01-01T00:00:00Z")
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.Exec(`INSERT INTO vectors (owner_table, owner_id, model, dim, lang, source_text, vec, created_at) VALUES (?,?,?,?,?,?,?,?)`,
+		"narratives", id, "bge-m3", models.EmbedDim, "en", "arc 1", float32Blob(vec), "2026-01-01T00:00:00Z"); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Вектор есть, но язык чужой — векторов языка анкеты нет, отказ.
+	if _, err := selectAnchor(context.Background(), embed, baseDB, "ru", validAncketa().Synopsis, 0); err == nil {
+		t.Fatal("selectAnchor с чужим языком ошибку не вернул")
+	}
+	got, err := selectAnchor(context.Background(), embed, baseDB, "en", validAncketa().Synopsis, 0)
+	if err != nil {
+		t.Fatalf("selectAnchor: %v", err)
+	}
+	if got.narrativeID != 1 || got.forced {
+		t.Fatalf("якорь = %+v, want narrativeID=1 forced=false", got)
 	}
 }
 

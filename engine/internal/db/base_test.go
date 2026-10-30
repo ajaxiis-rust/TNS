@@ -58,13 +58,13 @@ func TestBaseSchema(t *testing.T) {
 		t.Errorf("tables = %v, want %v", got, want)
 	}
 
-	// 3. user_version == 2 и две записи в schema_migrations.
+	// 3. user_version == 3 и три записи в schema_migrations (0003 — lang пула имён).
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 2 {
-		t.Errorf("user_version = %d, want 2", uv)
+	if uv != 3 {
+		t.Errorf("user_version = %d, want 3", uv)
 	}
 
 	type migration struct {
@@ -85,7 +85,7 @@ func TestBaseSchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_characters_lang"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
@@ -125,7 +125,7 @@ func TestBaseSchema(t *testing.T) {
 	checks := []colCheck{
 		{"verses", []string{"id", "narrative_id", "text", "lang", "ord"}},
 		{"patterns", []string{"id", "narrative_id", "kind", "text", "lang"}},
-		{"characters", []string{"id", "narrative_id", "name", "traits_json"}},
+		{"characters", []string{"id", "narrative_id", "name", "traits_json", "lang"}},
 	}
 	for _, c := range checks {
 		irows, err := w.Query(`PRAGMA table_info(` + c.table + `)`)

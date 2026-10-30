@@ -42,7 +42,7 @@ type Config struct {
 	ProseCalls     *int            // тестовый счётчик вызовов слота прозы (гвардия B-04.1).
 	PackCalls      *int            // тестовый счётчик вызовов генерации пачки (T-02-09).
 	Isekai         bool            // переигровка в том же мире (T-02-12).
-	BaseDBPath     string          // путь к замороженной base.db; пусто — <root>/base/base.db.
+	BaseDBPath     string          // путь к замороженной базе языка; пусто — <root>/base/base.<lang>.db.
 	Embed          models.Embedder // эмбеддер векторов смысла; nil — клиент :5002.
 	EmbedURL       string          // адрес эмбеддера для клиента по умолчанию; пусто — 127.0.0.1:5002.
 	MatchThreshold float64         // порог косинусной близости якоря; 0 — 0.5.
@@ -129,7 +129,9 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 
 	baseDBPath := cfg.BaseDBPath
 	if baseDBPath == "" {
-		baseDBPath = filepath.Join(root, "base", "base.db")
+		// Базы варки — по одной на язык (base.<lang>.db): мир рождается на
+		// языке анкеты, якорь читает векторы базы этого языка.
+		baseDBPath = filepath.Join(root, "base", "base."+a.Lang+".db")
 	}
 	embedder := cfg.Embed
 	if embedder == nil {

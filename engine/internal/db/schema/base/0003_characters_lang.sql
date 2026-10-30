@@ -1,0 +1,1 @@
+ALTER TABLE characters ADD COLUMN lang TEXT NOT NULL DEFAULT 'en';

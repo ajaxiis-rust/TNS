@@ -27,7 +27,7 @@ type anchorResult struct {
 // anchor — шаг цепочки рождения: подбор нарратива-якоря по векторам и запись
 // ссылки в world_meta хэндлом forge (карта писателей T-01-07).
 func (b *builder) anchor() error {
-	res, err := selectAnchor(context.Background(), b.embedder, b.baseDBPath, b.a.Synopsis, b.matchThreshold)
+	res, err := selectAnchor(context.Background(), b.embedder, b.baseDBPath, b.a.Lang, b.a.Synopsis, b.matchThreshold)
 	if err != nil {
 		return err
 	}
@@ -59,9 +59,9 @@ func (b *builder) logAnchorForced(id int64) {
 }
 
 // selectAnchor выбирает нарратив-якорь по косинусной близости векторов смысла
-// синопсиса и нарративов base.db. Близкий — косинус ≥ threshold; при отсутствии
-// близкого берётся принудительно ближайший с пометкой forced (B-10).
-func selectAnchor(ctx context.Context, embedder models.Embedder, baseDBPath, synopsis string, threshold float64) (anchorResult, error) {
+// синопсиса и нарративов базы языка. Близкий — косинус ≥ threshold; при
+// отсутствии близкого берётся принудительно ближайший с пометкой forced (B-10).
+func selectAnchor(ctx context.Context, embedder models.Embedder, baseDBPath, lang, synopsis string, threshold float64) (anchorResult, error) {
 	if threshold <= 0 {
 		threshold = defaultMatchThreshold
 	}
@@ -70,7 +70,7 @@ func selectAnchor(ctx context.Context, embedder models.Embedder, baseDBPath, syn
 		return anchorResult{}, fmt.Errorf("birth: эмбеддинг синопсиса: %w", err)
 	}
 
-	vecs, err := readNarrativeVectors(baseDBPath)
+	vecs, err := readNarrativeVectors(baseDBPath, lang)
 	if err != nil {
 		return anchorResult{}, err
 	}
@@ -93,15 +93,16 @@ func selectAnchor(ctx context.Context, embedder models.Embedder, baseDBPath, syn
 	return anchorResult{narrativeID: best, forced: bestSim < threshold}, nil
 }
 
-// readNarrativeVectors читает векторы нарративов из base.db только на чтение.
-func readNarrativeVectors(baseDBPath string) (map[int64][]float32, error) {
+// readNarrativeVectors читает векторы нарративов языка из базы только на
+// чтение: в базе языка секция одна, фильтр lang страхует от смешанной базы.
+func readNarrativeVectors(baseDBPath, lang string) (map[int64][]float32, error) {
 	d, err := db.OpenReader(baseDBPath)
 	if err != nil {
-		return nil, fmt.Errorf("birth: открыть base.db для чтения: %w", err)
+		return nil, fmt.Errorf("birth: открыть базу языка для чтения: %w", err)
 	}
 	defer d.Close()
 
-	rows, err := d.Query(`SELECT owner_id, vec FROM vectors WHERE owner_table = 'narratives'`)
+	rows, err := d.Query(`SELECT owner_id, vec FROM vectors WHERE owner_table = 'narratives' AND lang = ?`, lang)
 	if err != nil {
 		return nil, fmt.Errorf("birth: читать векторы нарративов: %w", err)
 	}
