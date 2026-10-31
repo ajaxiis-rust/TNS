@@ -81,3 +81,16 @@ func Client(host string) *http.Client // единственный путь на�
 func Local(addr string) *http.Client  // явный хук loopback (:5001, :5002, httptest)
 var ErrDeniedHost = errors.New("netgate: denied host")
 ```
+
+## 6. Раскладка каталогов engine/
+
+| Каталог | Назначение |
+| --- | --- |
+| bin/ | бинарники станка |
+| base/ | поставка баз языков base.<lang>.db и реестра archetypes.json — рядом с бинарниками, заморожена, только чтение (D-01, D-03, T-10-02) |
+| world_db/worlds/<slug>/ | рабочие данные мира: оперативная и литературная базы |
+| world_db/models/ | модели менеджера моделей (MD-09.5) |
+| seed/ | сид-нарративы и газетир |
+| packs/ | языковые пакеты |
+| web/ | статика интерфейса игрока |
+

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"tns65/internal/db"
+	"tns65/internal/models"
 	"tns65/internal/testkit"
 )
 
@@ -218,6 +219,37 @@ func TestNoProseAtBirthRejectsSeededProse(t *testing.T) {
 
 	if err := checkNoProseAtBirth(res.WorldDB, nil); err == nil {
 		t.Fatal("гвардия не заметила готовую прозу в scenes")
+	}
+}
+
+// TestBirthBaseRootDefault — пустой BaseDBPath берёт базу языка из каталога
+// поставки db.BaseRoot (base/base.<lang>.db), а не из world_db/ (T-10-02).
+func TestBirthBaseRootDefault(t *testing.T) {
+	worldsRoot := t.TempDir()
+	baseDir := t.TempDir()
+
+	// Фикстура поставки: base.ru.db под db.BaseRoot (в проде — base/base.ru.db).
+	vec := make([]float32, models.EmbedDim)
+	vec[0] = 1
+	writeAnchorBaseDB(t, filepath.Join(baseDir, "base.ru.db"), [][]float32{vec})
+
+	old := db.BaseRoot
+	db.BaseRoot = baseDir
+	t.Cleanup(func() { db.BaseRoot = old })
+
+	res, err := Birth(validAncketa(), Config{WorldsRoot: worldsRoot, Embed: testkit.NewFakeEmbed()})
+	if err != nil {
+		t.Fatalf("Birth: %v", err)
+	}
+
+	// Якорь прочитан из базы под db.BaseRoot.
+	if ids := anchorIDs(t, res.WorldDB); len(ids) != 1 || ids[0] != 1 {
+		t.Fatalf("якорей в world_meta: %v, want [1]", ids)
+	}
+
+	// Под WorldsRoot каталог base/ не создаётся.
+	if _, err := os.Stat(filepath.Join(worldsRoot, "base")); !os.IsNotExist(err) {
+		t.Fatalf("каталог base/ создан под WorldsRoot: %v", err)
 	}
 }
 

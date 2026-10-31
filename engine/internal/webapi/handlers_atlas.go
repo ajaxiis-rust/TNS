@@ -38,7 +38,7 @@ const eventWorldDeleted = "world.deleted"
 // Точки подмены для тестов: корень миров, база языка, эмбеддер и журнал.
 var (
 	atlasRoot   = db.WorldsRoot
-	atlasBaseDB = "" // пусто — <корень миров>/base/base.<lang>.db
+	atlasBaseDB = "" // пусто — db.BaseRoot/base.<lang>.db (поставка, T-10-02)
 	atlasEmbed  models.Embedder
 	atlasLogger *journal.Logger
 )
@@ -135,13 +135,13 @@ func countWorld(w birth.World) (characters, places, paths, sessions int) {
 }
 
 // atlasBirthConfig собирает конфигурацию рождения для webapi. База — языка
-// анкеты (base.<lang>.db). Эмбеддер в тестах подменяется фейком testkit
-// (T-08-05, шаг 5).
+// анкеты (base.<lang>.db) из каталога поставки db.BaseRoot (T-10-02). Эмбеддер
+// в тестах подменяется фейком testkit (T-08-05, шаг 5).
 func atlasBirthConfig(a birth.Ancketa, isekai bool) birth.Config {
 	root := atlasRootDir()
 	base := atlasBaseDB
 	if base == "" {
-		base = filepath.Join(root, "base", "base."+a.Lang+".db")
+		base = filepath.Join(db.BaseRoot, "base."+a.Lang+".db")
 	}
 	return birth.Config{
 		WorldsRoot: root,
