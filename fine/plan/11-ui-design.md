@@ -1,0 +1,80 @@
+# P10 — UI-редизайн по референсам TrueNeverStory
+
+Норма волны — референсы владельца в `RAW/design/`: скриншоты интерфейса
+TrueNeverStory (`2.png`…`6.png`, снимки `Снимок экрана_2026-10-31_*.png`) и
+сохранённая страница провайдеров `RAW/design/TrueNeverStory — Providers.html`.
+`RAW/` только читается: правки, копирование и коммиты содержимого `RAW/`
+запрещены. Меняется только вид интерфейса: логика JS, маршруты и контракты
+`/api/...` и WS не меняются.
+
+### T-11-01. UI-редизайн по референсам TrueNeverStory и каталог провайдеров
+- **Атомы:** F-11.3 (интерфейс игрока — веб, рендер в браузере); правка вида по референсам владельца (запись 2026-10-31 в журнале решений).
+- **Выдержки атомов:** F-11.3 — «Интерфейс игрока — веб: рендер на стороне браузера». Доставка — статика без Node и без сборки (F-11.2).
+- **Зависит от:** нет (все задачи журнала закрыты).
+- **Читать:** нет файлов плана; норма вида — референсы `RAW/design/`, задача самодостаточна.
+- **Создаётся:** `engine/web/static/providers.js`.
+- **Правится:** `engine/web/static/theme.css`; `engine/web/static/app.css`; `engine/web/static/i18n.js` — только добавление новых ключей; `engine/web/index.html`; `engine/web/atlas.html`; `engine/web/history.html`; `engine/web/mcp.html`; `engine/web/settings.html`.
+- **Писатель:** нет записи (статика интерфейса базы не пишет).
+- **Шаги:**
+  1. Открыть референсы `RAW/design/2.png`, `3.png`, `4.png`, `5.png`, `6.png` и три снимка `Снимок экрана_2026-10-31_*.png`; сверить с ними текущие пять страниц `engine/web/` и перечислить расхождения вида.
+  2. Переписать `engine/web/static/theme.css` под норму вида: CSS-переменные тем, тёмная терминальная тема по умолчанию, моноширинный шрифт, пилюли-кнопки, карточки, статус-чипы, таблицы, формы, модалки — по контракту вида ниже.
+  3. Править `engine/web/static/app.css`: раскладка пяти страниц (верхняя панель навигации «пилюлями», сетки карточек, разделы настроек), адаптив от 480px сохранён.
+  4. Править разметку пяти страниц: классы, обёртки и порядок блоков под норму вида; каждый `id`, каждый `data-i18n`, все формы и их поля сохраняются.
+  5. В `engine/web/settings.html` в раздел «Провайдеры» добавить блок «Быстрое добавление»: `select` с 21 опцией каталога из таблицы ниже (label опции дословно; base URL — в `data-base-url` без схемы) и строка подсказки с URL выбранного провайдера.
+  6. Создать `engine/web/static/providers.js`: обработчик выбора в каталоге подставляет имя провайдера в `settings-provider-name` и показывает base URL в строке подсказки; только клиентская подстановка полей формы, новых запросов нет; подключить файл тегом `<script src>` в `settings.html`.
+  7. Дописать в `engine/web/static/i18n.js` ключи нового блока (`settings.providers.catalog.*`); существующие ключи и значения не менять.
+  8. Выполнить «Проверку».
+- **Проверка:** `cd engine && bash scripts/ui-check.sh release` → exit 0, все строки OK, включая «нет внешних CDN» и «каждый id из разметки используется в JS».
+- **Исполнитель:** код.
+
+## Контракт вида (по референсам)
+
+- Тёмная терминальная тема по умолчанию: почти чёрный фон, моноширинный шрифт во всём интерфейсе, тонкие рамки карточек, приглушённые серые вторичные тексты.
+- Верхняя панель: имя приложения слева капсом с разрядкой, навигация «пилюлями» (капс, мелкий кегль, скруглённые контуры) справа; текущая страница выделена.
+- Заголовки секций и подписи полей — капсом, мелко, с межбуквенной разрядкой, приглушённым цветом.
+- Кнопки-пилюли: основное действие — светлый filled, вторичное — контур, опасное (удаление, сброс) — красный контур.
+- Статус-чипы: зелёные (назначено/по умолчанию), красные (офлайн/ошибка), жёлтый акцент для ввода ключей.
+- Карточки (миры, модели, агенты, провайдеры): сетка карточек с рамкой, заголовок, подпись-слаг, мета-строки мелким кеглем.
+- Таблицы назначения моделей: заголовки колонок капсом приглушённым цветом, строки с тонкими разделителями.
+- Существующий переключатель тем в настройках остаётся рабочим: тёмная тема — по умолчанию и по референсу; светлые темы приводятся к той же системе переменных.
+- Тексты интерфейса не переписываются: норма имен — `GLO-2`, `GLO-3` сохраняется.
+
+## Контракт каталога провайдеров (21 запись)
+
+Источник — `RAW/design/TrueNeverStory — Providers.html` (только чтение);
+таблица ниже извлечена из него дословно. В `engine/web/` URL пишутся без
+схемы: линтер `ui-lint.sh` (правило 1) запрещает `https?://` в статике.
+
+| # | Label опции (дословно из HTML) | Base URL (без схемы) |
+|---|---|---|
+| 1 | OpenAI — GPT-4o, o-series ($) \| en de fr es ja zh ru | api.openai.com/v1 |
+| 2 | Anthropic — Claude 4/3 ($) \| en de fr es ja zh ru | api.anthropic.com |
+| 3 | Google Gemini — 2.5/2.0 (free) \| en de fr es ja zh ru ar ko hi | generativelanguage.googleapis.com/v1beta/openai |
+| 4 | Cohere — Command A/R (free) \| en de fr es ja zh ru | api.cohere.com/v2 |
+| 5 | Mistral AI — Large/Small, Codestral (free) \| en de fr es ja zh ru | api.mistral.ai/v1 |
+| 6 | Together AI — Llama, Qwen, DeepSeek ($1 free) \| en | api.together.xyz/v1 |
+| 7 | Groq — Ultra-fast Llama, Mixtral (free) \| en | api.groq.com/openai/v1 |
+| 8 | Fireworks AI — OSS inference (free) \| en | api.fireworks.ai/inference/v1 |
+| 9 | Perplexity — Sonar search-augmented LLM ($) \| en | api.perplexity.ai |
+| 10 | DeepSeek — V3/R1 reasoning \| en zh ru | api.deepseek.com/v1 |
+| 11 | Moonshot (Kimi) — 128K context \| en zh | api.moonshot.cn/v1 |
+| 12 | Zhipu (GLM) — GLM-4 family \| en zh | open.bigmodel.cn/api/paas/v4 |
+| 13 | Baichuan — Baichuan 4 \| en zh | api.baichuan-ai.com/v1 |
+| 14 | MiniMax — Text-01, 4M context \| en zh | api.minimax.chat/v1 |
+| 15 | SenseNova — SenseTime LLM \| en zh | api.sensenova.cn/v1 |
+| 16 | 01.AI (Yi) — Yi-Lightning \| en zh | api.lingyiwanwu.com/v1 |
+| 17 | Alibaba (Qwen) — Qwen-MAX/Plus \| en zh ru ja ko | dashscope.aliyuncs.com/compatible-mode/v1 |
+| 18 | Baidu (Ernie) — ERNIE 4.0/3.5 \| en zh | qianfan.baidubce.com/v2 |
+| 19 | Tencent (Hunyuan) — text + vision \| en zh | api.hunyuan.cloud.tencent.com/v1 |
+| 20 | ByteDance (Doubao) — Doubao 1.5 \| en zh | ark.cn-beijing.volces.com/api/v3 |
+| 21 | StepFun — step-2, vision \| en zh | api.stepfun.com/v1 |
+
+Первая опция каталога — «Choose a provider to auto-fill —» (пустое значение,
+выбрана по умолчанию), как в референсе.
+
+## Инварианты волны
+
+- Линтер `ui-lint.sh` зелёный: в статике нет `https?://`; нет inline-скриптов; каждый `id` из разметки упомянут в каком-либо `.js` (в т.ч. новые `id` блока каталога — в `providers.js`); ключи i18n — ASCII; на игровых экранах нет код-имён.
+- Файлы логики `app.js`, `chat.js`, `coeffs.js`, `graph.js`, `map.js`, `names.js` не правятся; `providers.js` — только клиентская подстановка полей формы.
+- Все `data-i18n`, `id`, формы, `/api/...` и WS вызовы сохраняются; мобильная вёрстка от 480px работает.
+- Plain static assets: без npm и без шага сборки.
