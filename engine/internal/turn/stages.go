@@ -109,6 +109,13 @@ const reaskReply = "Я не уверен, что верно понял тебя.
 // сводка/вести → коммит. Каждая задача P2 добавляет свою стадию отдельным файлом
 // и одной строкой реестра.
 func (p *Pipeline) stages() []Stage {
+	// Челнок (T-03-07): банк рутины над литературной базой мира. Банк выбирает
+	// запись кодом и слот генерации не вызывает; без LitDB банк не подключён —
+	// путь Челнока падает на страховку.
+	var shuttle *bank.Bank
+	if p.LitDB != nil {
+		shuttle = bank.New(p.LitDB, p.Clock, nil, nil)
+	}
 	return []Stage{
 		&returnStage{db: p.DB, clock: p.Clock, lastActive: p.LastActive},
 		&cutStage{logger: p.Logger},
@@ -117,8 +124,8 @@ func (p *Pipeline) stages() []Stage {
 		&prepathStage{db: p.DB},
 		&compositionStage{lit: p.LitDB, world: p.DriftDB, logger: p.Logger},
 		&confirmStage{configPath: "config.yaml"},
-		&selectStage{weaver: p.Weaver},
-		&executeStage{weaver: p.Weaver, logger: p.Logger},
+		&selectStage{weaver: p.Weaver, bank: shuttle},
+		&executeStage{weaver: p.Weaver, bank: shuttle, logger: p.Logger},
 		&timejumpStage{db: p.DB},
 		&safetyStage{},
 		&digestStage{db: p.DB},
