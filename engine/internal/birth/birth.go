@@ -229,6 +229,7 @@ func (b *builder) steps() []birthStep {
 		{name: "orders", fn: (*builder).enqueueOrders},
 		{name: "seed", fn: (*builder).seedLiteraryBase},
 		{name: "anchor", fn: (*builder).anchor},
+		{name: "anchor_material", fn: (*builder).materializeAnchor},
 		{name: "geo", fn: (*builder).geoSeed},
 		{name: "ready", fn: (*builder).markReady},
 	}
