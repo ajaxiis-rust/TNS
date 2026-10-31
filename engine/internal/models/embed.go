@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"tns65/internal/journal"
 	"tns65/internal/netgate"
@@ -16,34 +17,49 @@ import (
 // EmbedDim — размерность вектора смысла (MD-03.2, D-16.2).
 const EmbedDim = 1024
 
+// DefaultEmbedModel — имя эмбеддинг-модели llama-server по умолчанию
+// (bge-m3, 1024 измерения — TUN-3); берётся, когда llm.embed_model пуст.
+const DefaultEmbedModel = "bge-m3"
+
 // Embedder — клиент эмбеддингов: текст → вектор смысла.
 type Embedder interface {
 	Embed(ctx context.Context, text string) ([]float32, error)
 }
 
-// Client — HTTP-клиент эмбеддингов :5002 (BGE-M3): POST {"input":…}, ответ
-// {"embedding":[1024 чисел]}. Вектор L2-нормализуется; ошибки — embed.fail.
+// Client — HTTP-клиент эмбеддингов :5002 напрямую к llama-server с контрактом
+// OpenAI /v1/embeddings (TUN-3): POST {"input":[текст],"model":"bge-m3"}, ответ
+// {"data":[{"embedding":[1024 чисел]}]}. Вектор L2-нормализуется; ошибки — embed.fail.
 type Client struct {
 	http   *http.Client
 	url    string
+	model  string
 	logger *journal.Logger
 }
 
 // NewClient создаёт клиент эмбеддингов по адресу embedURL (loopback, netgate.Local).
-func NewClient(embedURL string, logger *journal.Logger) (*Client, error) {
+// model — имя эмбеддинг-модели (llm.embed_model из config.yaml); пусто/без аргумента
+// — DefaultEmbedModel (bge-m3, 1024 измерения, TUN-3).
+func NewClient(embedURL string, logger *journal.Logger, model ...string) (*Client, error) {
 	u, err := url.Parse(embedURL)
 	if err != nil {
 		return nil, fmt.Errorf("models: адрес эмбеддера: %w", err)
 	}
-	return &Client{http: netgate.Local(u.Host), url: embedURL, logger: logger}, nil
+	m := DefaultEmbedModel
+	if len(model) > 0 && strings.TrimSpace(model[0]) != "" {
+		m = strings.TrimSpace(model[0])
+	}
+	return &Client{http: netgate.Local(u.Host), url: strings.TrimRight(embedURL, "/"), model: m, logger: logger}, nil
 }
 
 type embedRequest struct {
-	Input string `json:"input"`
+	Input []string `json:"input"`
+	Model string   `json:"model"`
 }
 
 type embedResponse struct {
-	Embedding []float64 `json:"embedding"`
+	Data []struct {
+		Embedding []float64 `json:"embedding"`
+	} `json:"data"`
 }
 
 // Embed возвращает L2-нормированный вектор смысла текста размерности EmbedDim.
@@ -51,11 +67,11 @@ func (c *Client) Embed(ctx context.Context, text string) ([]float32, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	body, err := json.Marshal(embedRequest{Input: text})
+	body, err := json.Marshal(embedRequest{Input: []string{text}, Model: c.model})
 	if err != nil {
 		return nil, c.fail(err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url+"/v1/embeddings", bytes.NewReader(body))
 	if err != nil {
 		return nil, c.fail(err)
 	}
@@ -72,10 +88,14 @@ func (c *Client) Embed(ctx context.Context, text string) ([]float32, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, c.fail(err)
 	}
-	if len(out.Embedding) != EmbedDim {
-		return nil, c.fail(fmt.Errorf("embedder returned dim %d, want %d", len(out.Embedding), EmbedDim))
+	if len(out.Data) == 0 || len(out.Data[0].Embedding) != EmbedDim {
+		dim := 0
+		if len(out.Data) > 0 {
+			dim = len(out.Data[0].Embedding)
+		}
+		return nil, c.fail(fmt.Errorf("embedder returned dim %d, want %d", dim, EmbedDim))
 	}
-	return l2Normalize(out.Embedding), nil
+	return l2Normalize(out.Data[0].Embedding), nil
 }
 
 // fail пишет ошибку в журнал event=embed.fail и возвращает её.
