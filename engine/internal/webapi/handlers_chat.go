@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -130,7 +131,13 @@ func handleChatTurn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, err := (&turn.Pipeline{Logger: chatLogger, DB: h}).Run(r.Context(), turn.TurnInput{
+	lang := chatWorldLang(h)
+	baseDBPath := ""
+	if lang != "" {
+		baseDBPath = filepath.Join(db.BaseRoot, "base."+lang+".db")
+	}
+
+	out, err := (&turn.Pipeline{Logger: chatLogger, DB: h, BaseDBPath: baseDBPath, Lang: lang}).Run(r.Context(), turn.TurnInput{
 		SessionID:  sessionID,
 		PlayerText: text,
 		At:         time.Now(),
@@ -235,6 +242,20 @@ func handleChatSignal(w http.ResponseWriter, r *http.Request) {
 // пишет webapi, сам ход — конвейер (тот же писатель).
 func openChatWriter(slug string) (*db.Handle, error) {
 	return db.OpenWriterAs(worldDBPath(slug), db.DBWorld, db.WriterCore, chatLogger)
+}
+
+// chatWorldLang читает язык мира из world_meta (замороженное поле lang, TUN-5):
+// значение — JSON-строка. Пусто — пул имён не подключается.
+func chatWorldLang(h *db.Handle) string {
+	var raw string
+	if err := h.QueryRow(`SELECT value FROM world_meta WHERE "key" = 'lang'`).Scan(&raw); err != nil {
+		return ""
+	}
+	var lang string
+	if err := json.Unmarshal([]byte(raw), &lang); err != nil {
+		return ""
+	}
+	return lang
 }
 
 // chatWorldReady сообщает, существует ли база мира по слагу.

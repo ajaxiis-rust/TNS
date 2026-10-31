@@ -62,12 +62,23 @@ type gun struct {
 // Troupe — лица мира в живом ходе. Запись идёт хэндлом core: память реакций в
 // memory_topics, реестр ружей — событиями events (карта писателей T-01-07).
 type Troupe struct {
-	db *db.Handle
+	db         *db.Handle
+	baseDBPath string // путь базы языка base.<lang>.db для пула имён (TUN-5).
+	lang       string // язык мира для выбора имён; пусто — пул пропущен.
 }
 
 // NewTroupe возвращает Труппу над оперативной базой мира h (писатель core).
 func NewTroupe(h *db.Handle) *Troupe {
 	return &Troupe{db: h}
+}
+
+// WithNamePool подключает пул имён из базы языка (TUN-5): пустое имя карточки
+// назначается из base.<lang>.db при появлении. Пустые baseDBPath или lang
+// оставляют деградацию без имени — текущее поведение.
+func (t *Troupe) WithNamePool(baseDBPath, lang string) *Troupe {
+	t.baseDBPath = baseDBPath
+	t.lang = lang
+	return t
 }
 
 // LoadRoster собирает труппу из карточек characters: по лицу на строку с именем
@@ -107,24 +118,78 @@ func (t *Troupe) LoadRoster() (Roster, error) {
 }
 
 // Spawn — мгновенное появление персонажа из книги (LT-16.1): архетип, голос и
-// внешность из карточки, предыстория пустая до второго обращения. Имя при первом
-// появлении не задаётся: назначение имени — следующий шаг живого хода.
+// внешность из карточки, предыстория пустая до второго обращения. Пустое имя
+// карточки (B-05.3) назначается из пула базы языка, если он подключён.
 func (t *Troupe) Spawn(characterID int64) (NPC, error) {
-	var raw string
-	if err := t.db.QueryRow(`SELECT card_json FROM characters WHERE id = ?`, characterID).Scan(&raw); err != nil {
+	var name, raw string
+	if err := t.db.QueryRow(`SELECT name, card_json FROM characters WHERE id = ?`, characterID).Scan(&name, &raw); err != nil {
 		return NPC{}, fmt.Errorf("turn: карточка лица %d: %w", characterID, err)
 	}
 	var c card
 	if err := json.Unmarshal([]byte(raw), &c); err != nil {
 		return NPC{}, fmt.Errorf("turn: карточка лица %d: %w", characterID, err)
 	}
+	if name == "" {
+		picked, err := t.assignPoolName(characterID)
+		if err != nil {
+			return NPC{}, err
+		}
+		name = picked
+	}
 	return NPC{
 		ID:        characterID,
+		Name:      name,
 		Role:      nonEmpty(c.Archetype, c.Voice),
 		Group:     c.Appearance,
 		Tags:      []string{c.Archetype, c.Voice, c.Appearance},
 		Backstory: "", // предыстории при первом появлении нет (LT-16.1).
 	}, nil
+}
+
+// assignPoolName назначает пустое имя карточки из пула базы языка и пишет его в
+// characters хэндлом core (TUN-5, шаг 2). Пустой пул или неполная проводка
+// оставляют имя пустым — имя остаётся назначаться позже.
+func (t *Troupe) assignPoolName(characterID int64) (string, error) {
+	if t.baseDBPath == "" || t.lang == "" {
+		return "", nil
+	}
+	taken, err := t.takenNames()
+	if err != nil {
+		return "", err
+	}
+	name, err := PickPoolName(t.baseDBPath, t.lang, taken)
+	if err != nil {
+		return "", err
+	}
+	if name == "" {
+		return "", nil
+	}
+	if err := t.db.Tx(db.WriterCore, func(tx *db.Tx) error {
+		_, err := tx.Exec("characters", `UPDATE characters SET name = ? WHERE id = ?`, name, characterID)
+		return err
+	}); err != nil {
+		return "", err
+	}
+	return name, nil
+}
+
+// takenNames собирает занятые имена карточек мира, чтобы пул не выдал дубль.
+func (t *Troupe) takenNames() (map[string]bool, error) {
+	rows, err := t.db.Query(`SELECT name FROM characters WHERE name != ''`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	taken := map[string]bool{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		taken[name] = true
+	}
+	return taken, rows.Err()
 }
 
 // RecordMeeting пишет память реакций (LT-16.2): при каждой встрече мир фиксирует,

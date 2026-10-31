@@ -34,6 +34,12 @@ type TurnOutput struct {
 type Pipeline struct {
 	Logger *journal.Logger // журнал станка; nil — события не пишутся.
 	DB     *db.Handle      // писатель core оперативной базы мира; nil — коммит пропускается.
+	// BaseDBPath — путь базы языка base.<lang>.db для пула имён (TUN-5); пусто —
+	// шаг пула пропущен, имя карточки остаётся пустым.
+	BaseDBPath string
+	// Lang — язык мира для выбора имён из base.<lang>.db (TUN-5); пусто — пул
+	// пропущен.
+	Lang string
 }
 
 // Run прогоняет реплику по реестру стадий и возвращает результат. Каждая стадия
@@ -50,6 +56,11 @@ func (p *Pipeline) Run(ctx context.Context, in TurnInput) (TurnOutput, error) {
 	st := &TurnState{Input: in, StartedAt: started}
 	if cmd, ok := parseCommand(in.PlayerText); ok {
 		st.Command = &cmd
+	}
+	// Пул имён (TUN-5): подключается только при полной проводке базы языка,
+	// иначе труппа рождается без имени (деградация без отказа).
+	if p.BaseDBPath != "" && p.Lang != "" {
+		st.Troupe = NewTroupe(p.DB).WithNamePool(p.BaseDBPath, p.Lang)
 	}
 
 	for _, stage := range p.stages() {
