@@ -982,11 +982,19 @@
   }
 
   function loadSettingsData() {
-    apiJSON("/api/settings?world=" + encodeURIComponent(activeSlugValue())).then(renderSettings).catch(function (err) {
+    apiJSON("/api/settings?world=" + encodeURIComponent(activeSlugValue())).then(renderSettings).then(loadProvidersData).catch(function (err) {
       var box = byId(IDS.settingsEmbedDim);
       if (box) {
         box.textContent = err.message;
       }
+    });
+  }
+
+  function loadProvidersData() {
+    apiJSON("/api/providers").then(function (data) {
+      renderSettingsProviders(data.providers || []);
+    }).catch(function () {
+      renderSettingsProviders([]);
     });
   }
 
@@ -1130,7 +1138,6 @@
     setChecked(IDS.settingsScoutEnabled, data.world_section && data.world_section.paganel ? !!data.world_section.paganel.scout_enabled : false);
     renderLLMSettings(data.llm || {});
     renderSettingsPresets(data.presets || []);
-    renderSettingsProviders(data.providers || []);
     renderSettingsBindings(data.bindings || []);
     renderSettingsModels(data.models || []);
     renderEmptyState(IDS.settingsPlugins, "settings.plugins");
@@ -1184,13 +1191,29 @@
     if (!box) {
       return;
     }
-    if (providers.length === 0) {
+    if (!providers || providers.length === 0) {
       box.innerHTML = '<p class="settings-empty">—</p>';
       return;
     }
+    var dict = window.I18N || {};
+    var unavailable = dict["settings.providers.unavailable"] || "недоступно";
     box.innerHTML = providers.map(function (p) {
-      return '<div class="settings-provider">' + escapeHTML(p.name) + " · " + (p.key_set ? "ключ задан" : "без ключа") + "</div>";
+      var model = p.model ? escapeHTML(p.model) : unavailable;
+      var quota = p.quota ? escapeHTML(p.quota) : unavailable;
+      var cost = formatProviderCost(p.cost_millis);
+      return '<div class="settings-provider">' + escapeHTML(p.name) + " · " +
+        (p.key_set ? "ключ задан" : "без ключа") + " · " +
+        (dict["settings.providers.model"] || "Модель") + ": " + model + " · " +
+        (dict["settings.providers.quota"] || "Остаток лимита вызовов") + ": " + quota + " · " +
+        (dict["settings.providers.cost"] || "Стоимость по тарифу") + ": " + cost + "</div>";
     }).join("");
+  }
+
+  function formatProviderCost(millis) {
+    if (typeof millis !== "number" || !isFinite(millis)) {
+      return (window.I18N && window.I18N["settings.providers.unavailable"]) || "недоступно";
+    }
+    return String(millis);
   }
 
   function renderSettingsBindings(bindings) {
