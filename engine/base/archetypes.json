@@ -1,0 +1,262 @@
+[
+  {
+    "name": "escape_liberation",
+    "gloss_en": "Escape and Liberation",
+    "keywords": [
+      "escape",
+      "flee",
+      "cross",
+      "sea",
+      "river",
+      "pass through",
+      "deliver",
+      "rescue",
+      "free",
+      "liberate",
+      "bondage",
+      "slavery",
+      "chains",
+      "break",
+      "exodus",
+      "wilderness",
+      "wandering"
+    ]
+  },
+  {
+    "name": "judgment_trial",
+    "gloss_en": "Judgment and Trial",
+    "keywords": [
+      "judge",
+      "judgment",
+      "decide",
+      "dispute",
+      "claim",
+      "truth",
+      "verdict",
+      "trial",
+      "court",
+      "testimony",
+      "witness",
+      "accuse",
+      "defend",
+      "sentence"
+    ]
+  },
+  {
+    "name": "loyalty",
+    "gloss_en": "Loyalty",
+    "keywords": [
+      "loyal",
+      "follow",
+      "faithful",
+      "devoted",
+      "stick",
+      "remain",
+      "serve",
+      "steadfast",
+      "covenant",
+      "oath",
+      "promise",
+      "dedication",
+      "commit"
+    ]
+  },
+  {
+    "name": "betrayal",
+    "gloss_en": "Betrayal",
+    "keywords": [
+      "betray",
+      "deny",
+      "abandon",
+      "forsake",
+      "deceive",
+      "lie",
+      "treachery",
+      "sell",
+      "sell out",
+      "turn against",
+      "backstab",
+      "disloyal"
+    ]
+  },
+  {
+    "name": "inheritance_return",
+    "gloss_en": "Inheritance and Return",
+    "keywords": [
+      "inherit",
+      "son",
+      "daughter",
+      "father",
+      "estate",
+      "portion",
+      "return",
+      "birthright",
+      "primogeniture",
+      "legacy",
+      "heir",
+      "lineage",
+      "descend"
+    ]
+  },
+  {
+    "name": "endurance_suffering",
+    "gloss_en": "Endurance and Trial",
+    "keywords": [
+      "suffer",
+      "endure",
+      "patience",
+      "trial",
+      "test",
+      "loss",
+      "grief",
+      "persecution",
+      "oppression",
+      "affliction",
+      "persevere",
+      "tribulation"
+    ]
+  },
+  {
+    "name": "rescue",
+    "gloss_en": "Rescue",
+    "keywords": [
+      "save",
+      "deliver",
+      "oppressed",
+      "enemy",
+      "battle",
+      "war",
+      "victory",
+      "redeem",
+      "restore",
+      "champion",
+      "defend",
+      "shield",
+      "protect"
+    ]
+  },
+  {
+    "name": "rise_fall_rise",
+    "gloss_en": "Rise and Fall",
+    "keywords": [
+      "rise",
+      "fall",
+      "exalt",
+      "humble",
+      "power",
+      "servant",
+      "promote",
+      "demote",
+      "elevate",
+      "cast down",
+      "throne",
+      "pit"
+    ]
+  },
+  {
+    "name": "wisdom_counsel",
+    "gloss_en": "Wisdom and Counsel",
+    "keywords": [
+      "wisdom",
+      "wise",
+      "counsel",
+      "advice",
+      "proverb",
+      "teach",
+      "learn",
+      "understand",
+      "insight",
+      "discernment",
+      "parable",
+      "instruction"
+    ]
+  },
+  {
+    "name": "political_intrigue",
+    "gloss_en": "Intrigue and Power",
+    "keywords": [
+      "king",
+      "queen",
+      "throne",
+      "power",
+      "plot",
+      "secret",
+      "decree",
+      "scheme",
+      "coup",
+      "conspiracy",
+      "cabinet",
+      "council",
+      "faction"
+    ]
+  },
+  {
+    "name": "quest_journey",
+    "gloss_en": "Journey and Search",
+    "keywords": [
+      "journey",
+      "quest",
+      "travel",
+      "pilgrimage",
+      "road",
+      "path",
+      "seek",
+      "search",
+      "find",
+      "wander",
+      "explore",
+      "expedition",
+      "adventure"
+    ]
+  },
+  {
+    "name": "temptation_fall",
+    "gloss_en": "Temptation",
+    "keywords": [
+      "tempt",
+      "sin",
+      "desire",
+      "seduce",
+      "corrupt",
+      "forbidden",
+      "fall",
+      "disobey",
+      "rebel",
+      "idol",
+      "covet",
+      "lust",
+      "transgress"
+    ]
+  },
+  {
+    "name": "prophetic_oracle",
+    "gloss_en": "Prophetic Oracle",
+    "keywords": [
+      "oracle",
+      "vision",
+      "thus says",
+      "prophecy",
+      "prophesy",
+      "seer",
+      "foretell",
+      "burden",
+      "reveal"
+    ]
+  },
+  {
+    "name": "teaching_discourse",
+    "gloss_en": "Teaching and Exhortation",
+    "keywords": [
+      "teach",
+      "teaching",
+      "exhort",
+      "rebuke",
+      "repent",
+      "instruct",
+      "parable",
+      "sermon",
+      "doctrine",
+      "covenant renewal"
+    ]
+  }
+]
