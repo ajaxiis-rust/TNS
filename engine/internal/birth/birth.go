@@ -118,6 +118,12 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 		return nil, fmt.Errorf("birth: проверить каталог мира: %w", err)
 	}
 
+	// Язык анкеты — по установленным базам (TUN-2, T-10-03): отказ кодом 2 с
+	// перечнем полей до создания каталога мира, тот же контракт, что у Validate.
+	if fe := validateLangForConfig(a, cfg); fe != nil {
+		return nil, &ExitError{Code: ExitInvalid, Err: &ValidationError{Fields: []FieldError{*fe}}}
+	}
+
 	// Шаг 2: каталог мира и метка состояния creating.
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("birth: создать каталог мира: %w", err)

@@ -81,7 +81,7 @@ func TestBirthRollback(t *testing.T) {
 	dir := t.TempDir()
 	a := validAncketa()
 
-	_, err := Birth(a, Config{WorldsRoot: dir, FailStep: "pack"})
+	_, err := Birth(a, Config{WorldsRoot: dir, BaseDBPath: testBaseDB(t, dir), FailStep: "pack"})
 	if err == nil {
 		t.Fatal("рождение, прерванное на шаге пачки, не вернуло ошибку")
 	}
@@ -250,6 +250,62 @@ func TestBirthBaseRootDefault(t *testing.T) {
 	// Под WorldsRoot каталог base/ не создаётся.
 	if _, err := os.Stat(filepath.Join(worldsRoot, "base")); !os.IsNotExist(err) {
 		t.Fatalf("каталог base/ создан под WorldsRoot: %v", err)
+	}
+}
+
+// TestValidateLang — язык анкеты по установленным базам (TUN-2, T-10-03):
+// пустой язык и не установленный язык дают код 2 с полем lang до создания
+// каталога мира; установленный язык проходит до шага pack.
+func TestValidateLang(t *testing.T) {
+	worldsRoot := t.TempDir()
+	baseDir := t.TempDir()
+	writeLangBaseDB(t, baseDir, "en")
+	old := db.BaseRoot
+	db.BaseRoot = baseDir
+	t.Cleanup(func() { db.BaseRoot = old })
+
+	a := validAncketa()
+	a.Lang = ""
+	assertLangRejected(t, worldsRoot, a, "язык не указан")
+
+	a = validAncketa()
+	a.Lang = "klingon"
+	assertLangRejected(t, worldsRoot, a, "нет базы base.klingon.db")
+
+	a = validAncketa()
+	a.Lang = "en"
+	var packCalls int
+	if _, err := Birth(a, Config{WorldsRoot: worldsRoot, Embed: testkit.NewFakeEmbed(), PackCalls: &packCalls}); err != nil {
+		t.Fatalf("Birth с установленным языком: %v", err)
+	}
+	if packCalls != 1 {
+		t.Fatalf("вызовов генерации пачки: %d, want 1", packCalls)
+	}
+}
+
+func assertLangRejected(t *testing.T, worldsRoot string, a *Ancketa, wantReason string) {
+	t.Helper()
+	_, err := Birth(a, Config{WorldsRoot: worldsRoot})
+	var ee *ExitError
+	if !errors.As(err, &ee) {
+		t.Fatalf("ожидался *ExitError, получен %T: %v", err, err)
+	}
+	if ee.Code != ExitInvalid {
+		t.Fatalf("код отказа: %d, want %d", ee.Code, ExitInvalid)
+	}
+	var ve *ValidationError
+	if !errors.As(err, &ve) {
+		t.Fatalf("ожидался *ValidationError, получен %T: %v", err, err)
+	}
+	if len(ve.Fields) != 1 || ve.Fields[0].Field != "lang" {
+		t.Fatalf("перечень полей: %+v, want ровно одно поле lang", ve.Fields)
+	}
+	if !strings.Contains(ve.Fields[0].Reason, wantReason) {
+		t.Fatalf("причина: %q, want содержит %q", ve.Fields[0].Reason, wantReason)
+	}
+	worldDir := filepath.Join(worldsRoot, "worlds", a.Slug)
+	if _, statErr := os.Stat(worldDir); !os.IsNotExist(statErr) {
+		t.Fatalf("каталог мира создан при невалидном языке: %v", statErr)
 	}
 }
 
