@@ -65,7 +65,30 @@ func advanceAbsence(h *db.Handle, clock ClockSource, lastActive time.Time) (Abse
 		return r, err
 	}
 	r.DeferredFired = fired
+
+	// Герой — ближний круг: по возврату его состояние фиксируется в
+	// character_state (LT-12.3 касается только NPC вне ближнего круга). След
+	// нужен приёмке INT-2: состояние мира после паузы отличается от состояния
+	// до паузы.
+	if err := markHeroActive(h); err != nil {
+		return r, err
+	}
 	return r, nil
+}
+
+// heroActiveStatus — статус героя в character_state после прогона паузы.
+const heroActiveStatus = "в игре"
+
+// markHeroActive отмечает героя «в игре» в character_state после возврата.
+func markHeroActive(h *db.Handle) error {
+	if h == nil {
+		return nil
+	}
+	_, err := h.Exec("character_state",
+		`INSERT INTO character_state (character_id, status) VALUES (?, ?)
+		 ON CONFLICT(character_id) DO UPDATE SET status = excluded.status`,
+		heroCharacterID, heroActiveStatus)
+	return err
 }
 
 // fireDeferred — срабатывание отложенных событий (LT-12.2): события с дедлайном

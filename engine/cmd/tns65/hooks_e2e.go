@@ -14,6 +14,7 @@ import (
 	"tns65/internal/db"
 	"tns65/internal/journal"
 	"tns65/internal/testkit"
+	"tns65/internal/webapi"
 )
 
 // e2eBirthHooksImpl — реализация хуков world birth (T-09-01): детерминированный
@@ -81,18 +82,21 @@ func isE2ECoreFlag(arg string) bool {
 	return false
 }
 
-// runE2ECore принимает хуки ядра и стартует его штатно. Инъекция фейковых
-// часов/эмбеддера/слота в рантайм ядра — следующий сценарий (T-09-02+); здесь
-// флаги только принимаются, чтобы хук не выглядел неизвестной командой.
+// runE2ECore принимает хуки ядра и стартует его штатно. Фейковые часы
+// подключаются к серверу хода и контрольному эндпоинту /api/e2e/clock
+// (T-09-02): время движется только вызовом эндпоинта, реального ожидания нет.
 func runE2ECore(args []string) int {
 	fs := flag.NewFlagSet("tns65", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
-	_ = fs.Bool("fake-clock", false, "фейковые часы (e2e)")
+	fakeClock := fs.Bool("fake-clock", false, "фейковые часы (e2e)")
 	_ = fs.Bool("fake-embed", false, "детерминированный эмбеддер 1024 (e2e)")
 	_ = fs.Bool("fake-slot", false, "счётчик вызовов слота прозы (e2e)")
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 2
+	}
+	if *fakeClock {
+		webapi.SetE2EClock(testkit.NewClock())
 	}
 	return run()
 }

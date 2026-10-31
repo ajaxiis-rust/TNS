@@ -52,7 +52,7 @@ func routeSpecs(hub *Hub) []routeSpec {
 	mcpHub = hub
 	monitorHub = hub
 	chatHub = hub
-	return []routeSpec{
+	specs := []routeSpec{
 		{method: http.MethodGet, path: "/api/health", handle: handleHealth},
 		{method: http.MethodGet, path: "/", handle: serveIndex},
 		{method: http.MethodGet, path: "/static/", handle: staticServe},
@@ -88,6 +88,7 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodPost, path: "/api/settings/models/rollback", handle: handleSettingsModelRollback},
 		{method: http.MethodGet, path: "/api/monitor", handle: handleMonitor},
 	}
+	return append(specs, e2eRoutes()...)
 }
 
 // routeLines — канонические строки "METHOD PATH" для сверки с ROUTES.md.

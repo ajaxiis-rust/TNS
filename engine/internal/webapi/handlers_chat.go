@@ -142,7 +142,16 @@ func handleChatTurn(w http.ResponseWriter, r *http.Request) {
 		defer lit.Close()
 	}
 
-	out, err := (&turn.Pipeline{Logger: chatLogger, DB: h, LitDB: lit, DriftDB: h, BaseDBPath: baseDBPath, Lang: lang}).Run(r.Context(), turn.TurnInput{
+	out, err := (&turn.Pipeline{
+		Logger:     chatLogger,
+		DB:         h,
+		LitDB:      lit,
+		DriftDB:    h,
+		BaseDBPath: baseDBPath,
+		Lang:       lang,
+		Clock:      chatClock,
+		LastActive: chatLastActiveAt(slug),
+	}).Run(r.Context(), turn.TurnInput{
 		SessionID:  sessionID,
 		PlayerText: text,
 		At:         time.Now(),
@@ -301,16 +310,24 @@ func chatReturnSummary(slug string) string {
 	if !ok || last.IsZero() {
 		return ""
 	}
-	if time.Since(last) < time.Duration(turn.NightThresholdMin)*time.Minute {
+	if chatClock.Now().Sub(last) < time.Duration(turn.NightThresholdMin)*time.Minute {
 		return ""
 	}
 	return chatSummaryText
 }
 
+// chatLastActiveAt возвращает момент последней реплики игрока по миру.
+func chatLastActiveAt(slug string) time.Time {
+	chatLastActiveMu.Lock()
+	last := chatLastActive[slug]
+	chatLastActiveMu.Unlock()
+	return last
+}
+
 // chatTouch фиксирует момент последней реплики игрока по миру.
 func chatTouch(slug string) {
 	chatLastActiveMu.Lock()
-	chatLastActive[slug] = time.Now()
+	chatLastActive[slug] = chatClock.Now()
 	chatLastActiveMu.Unlock()
 }
 

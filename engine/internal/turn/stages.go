@@ -110,7 +110,7 @@ const reaskReply = "Я не уверен, что верно понял тебя.
 // и одной строкой реестра.
 func (p *Pipeline) stages() []Stage {
 	return []Stage{
-		&returnStage{db: p.DB},
+		&returnStage{db: p.DB, clock: p.Clock, lastActive: p.LastActive},
 		&cutStage{logger: p.Logger},
 		&troupeStage{db: p.DB},
 		&secretStage{db: p.DB},
