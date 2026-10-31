@@ -17,6 +17,7 @@ const (
 	EventBaseCorrupt           = "birth.base_corrupt"
 	EventTurnStage             = "turn.stage"
 	EventSawPhaseBreak         = "saw.phase_break"
+	EventSlotDegraded          = "slot.degraded"
 	EventTurnSawRecommendation = "turn.saw_recommendation"
 	EventTurnSelectorDecision  = "turn.selector_decision"
 	EventTurnPath              = "turn.path"

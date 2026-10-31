@@ -42,6 +42,14 @@ llm:
   local: true
   sampling: greedy
 
+# Слоты генерации (T-03-18, MD-04/MD-05): заводской реестр пресетов — local
+# (локальная запаска :5001), gemini-flash, gemini-pro (внешний провайдер).
+# Дефолт — local; сброс возвращает локальный пресет. Внешний хост — в белом
+# списке netgate; ключ провайдера вводится в UI и хранится в settings.toml.
+slots:
+  default: local
+  gemini_host: generativelanguage.googleapis.com
+
 # Исходящий туннель (T-08-03, F-04.3): станок сам подключается к краю cloudflared
 # и пробрасывает loopback-адрес веб-интерфейса. Поля внешнего слушающего адреса
 # нет — только исходящие параметры (edge, local). Telegram-канал (F-04.4) решает

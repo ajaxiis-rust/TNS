@@ -1,6 +1,10 @@
 package turn
 
-import "strings"
+import (
+	"strings"
+
+	"tns65/internal/models"
+)
 
 // Токены-заменители биндера слотов (T-03-03, шаг 2). Закрываются биндером по
 // труппе/пачке и склонению лица; литералы имён событий в журнале запрещены,
@@ -169,4 +173,25 @@ func nonEmpty(v, fallback string) string {
 		return fallback
 	}
 	return v
+}
+
+// ProviderSlot возвращает слот Ткача для пресета из cfg (T-03-18, шаг 3):
+// local — локальная запаска :5001 (models.Weaver); внешний пресет — клиент
+// провайдера через сетевой гейт (models.ProviderClient). Выбранный провайдер
+// читается из cfg.Default; дефолт и сброс — local.
+func ProviderSlot(cfg models.SlotsConfig, apiKey string) (ProseSlot, error) {
+	if cfg.Default == models.ProviderGeminiFlash || cfg.Default == models.ProviderGeminiPro {
+		return models.NewProviderClient("https://"+cfg.GeminiHost, models.ModelFor(cfg.Default), apiKey)
+	}
+	return models.NewWeaver(models.DefaultWeaverURL)
+}
+
+// ProviderSlotFromConfig читает выбранного провайдера из секции slots файла
+// конфигурации path и возвращает слот Ткача для него.
+func ProviderSlotFromConfig(path, apiKey string) (ProseSlot, error) {
+	cfg, err := models.LoadSlotsConfig(path)
+	if err != nil {
+		return nil, err
+	}
+	return ProviderSlot(cfg, apiKey)
 }
