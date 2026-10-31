@@ -78,6 +78,7 @@ var writerMap = map[writerKey]Writer{
 	{DBWorld, "turns"}:            WriterCore,
 	{DBWorld, "scenes"}:           WriterCore,
 	{DBWorld, "events"}:           WriterCore,
+	{DBWorld, "family_usage"}:     WriterCore,
 	{DBWorld, "sessions"}:         WriterCore,
 	{DBWorld, "characters"}:       WriterCore,
 	{DBWorld, "character_layers"}: WriterCore,

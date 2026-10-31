@@ -69,13 +69,13 @@ func TestWorldSchema(t *testing.T) {
 	// мастерской — третьей миграцией, Пила и арка сцены — четвёртой, сигналы
 	// игрока — пятой, Паганель — шестой, пробуждение — седьмой, глубокий разбор —
 	// восьмой, заявка книги — девятой, эпилог и метки пиков — десятой, лексикон
-	// мира — одиннадцатой (user_version == 11).
+	// мира — одиннадцатой, счётчики дрейфа — двенадцатой (user_version == 12).
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 11 {
-		t.Errorf("user_version = %d, want 11", uv)
+	if uv != 12 {
+		t.Errorf("user_version = %d, want 12", uv)
 	}
 
 	type migration struct {
@@ -96,7 +96,7 @@ func TestWorldSchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}, {5, "0005_scene_signals"}, {6, "0006_paganel"}, {7, "0007_book_wakeup"}, {8, "0008_book_deepread"}, {9, "0009_book_claim"}, {10, "0010_book_epilogue"}, {11, "0011_world_lexicon"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}, {5, "0005_scene_signals"}, {6, "0006_paganel"}, {7, "0007_book_wakeup"}, {8, "0008_book_deepread"}, {9, "0009_book_claim"}, {10, "0010_book_epilogue"}, {11, "0011_world_lexicon"}, {12, "0012_structural_drift"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
@@ -283,6 +283,25 @@ func TestWorldSchema(t *testing.T) {
 	}
 	if err := insertLexicon("bogus"); err == nil {
 		t.Errorf("INSERT world_lexicon status='bogus' should fail CHECK (status)")
+	}
+
+	// 12a. Контракт DDL счётчиков дрейфа (T-10-10): колонки family_usage и
+	// CHECK scope IN ('chapter','book').
+	if got := colsOf(t, w, "family_usage"); !slices.Equal(got, []string{"scope", "family", "count", "updated_at"}) {
+		t.Errorf("family_usage columns = %v", got)
+	}
+	insertUsage := func(scope string) error {
+		_, err := w.Exec(`INSERT INTO family_usage (scope, family, count, updated_at) VALUES (?, 'escape_liberation', 1, '2026-01-01T00:00:00Z')`, scope)
+		return err
+	}
+	if err := insertUsage("chapter"); err != nil {
+		t.Errorf("INSERT family_usage scope='chapter': %v", err)
+	}
+	if err := insertUsage("book"); err != nil {
+		t.Errorf("INSERT family_usage scope='book': %v", err)
+	}
+	if err := insertUsage("bogus"); err == nil {
+		t.Errorf("INSERT family_usage scope='bogus' should fail CHECK (scope)")
 	}
 
 	// 13. Контракт DDL заявки книги (T-07-09): колонки book_claim и CHECK

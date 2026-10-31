@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"tns65/internal/db"
+	"tns65/internal/structural"
 	"tns65/internal/workshop"
 )
 
@@ -182,6 +183,12 @@ func OpenChapter(h *db.Handle, day int64, now string) (Chapter, error) {
 
 	sessionID, err := EnsureSession(h, now)
 	if err != nil {
+		return Chapter{}, err
+	}
+
+	// Граница главы (SCR-§6.2): chapter-счётчики дрейфа семей сбрасываются,
+	// book-счётчики не сбрасываются.
+	if err := structural.ResetScope(h, structural.ScopeChapter, now); err != nil {
 		return Chapter{}, err
 	}
 

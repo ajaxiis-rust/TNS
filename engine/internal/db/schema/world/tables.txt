@@ -12,6 +12,7 @@ deep_reads
 deferred_events
 economy
 events
+family_usage
 memory_topics
 model_bindings
 paths

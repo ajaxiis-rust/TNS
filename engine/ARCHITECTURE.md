@@ -53,6 +53,7 @@
 | 0009_book_claim | world | T-07-09 |
 | 0010_book_epilogue | world | T-07-13 |
 | 0011_world_lexicon | world | T-07-05 |
+| 0012_structural_drift | world | T-10-10 |
 
 Каждая новая миграция вписывается задачей, которая её создаёт.
 

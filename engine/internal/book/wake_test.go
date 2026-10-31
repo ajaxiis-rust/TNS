@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"tns65/internal/db"
+	"tns65/internal/structural"
 	"tns65/internal/testkit"
 )
 
@@ -221,5 +222,37 @@ func TestWake(t *testing.T) {
 	}
 	if got := slot.Calls(); got != 1 {
 		t.Fatalf("вызовов живого слота при непрогретой ковке = %d, want 1", got)
+	}
+}
+
+// TestOpenChapterResetsDrift — «Проверка» T-10-10 (граница главы, SCR-§6.2):
+// OpenChapter сбрасывает chapter-счётчики семей, book-счётчики остаются.
+func TestOpenChapterResetsDrift(t *testing.T) {
+	world := newWakeWorld(t, "Раннее утро в порту.")
+
+	now := "2026-10-27T07:00:00Z"
+	for _, scope := range []string{structural.ScopeChapter, structural.ScopeBook} {
+		if err := structural.BumpUsage(world, scope, "escape_liberation", now); err != nil {
+			t.Fatalf("BumpUsage(%s): %v", scope, err)
+		}
+	}
+
+	if _, err := OpenChapter(world, 1, now); err != nil {
+		t.Fatalf("OpenChapter(день 1): %v", err)
+	}
+
+	chapterUsage, err := structural.Usage(world, structural.ScopeChapter)
+	if err != nil {
+		t.Fatalf("Usage(chapter): %v", err)
+	}
+	if len(chapterUsage) != 0 {
+		t.Fatalf("chapter-счётчики после OpenChapter = %v, want пустая карта", chapterUsage)
+	}
+	bookUsage, err := structural.Usage(world, structural.ScopeBook)
+	if err != nil {
+		t.Fatalf("Usage(book): %v", err)
+	}
+	if bookUsage["escape_liberation"] != 1 {
+		t.Fatalf("book-счётчик после OpenChapter = %d, want 1 (не сброшен)", bookUsage["escape_liberation"])
 	}
 }
