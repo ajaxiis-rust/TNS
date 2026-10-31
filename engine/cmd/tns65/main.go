@@ -23,6 +23,14 @@ import (
 	"tns65/internal/workshop"
 )
 
+// e2eBirthHooks — хуки world birth (--fake-clock/--fake-embed/--fake-slot),
+// доступные только в сборке с тегом e2e. В релизной сборке addE2EBirthFlags
+// возвращает nil, и флаги не регистрируются (hooks_release.go).
+type e2eBirthHooks interface {
+	config() birth.Config
+	finish(io.Writer)
+}
+
 func main() {
 	args := os.Args[1:]
 	if len(args) > 0 && (args[0] == "-version" || args[0] == "--version") {
@@ -36,6 +44,9 @@ func main() {
 	}
 	if len(args) == 0 {
 		os.Exit(run())
+	}
+	if isE2ECoreFlag(args[0]) {
+		os.Exit(runE2ECore(args))
 	}
 
 	switch args[0] {
@@ -204,6 +215,7 @@ func runWorldBirth(args []string) error {
 	fs := flag.NewFlagSet("world birth", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	ancketaPath := fs.String("ancketa", "", "путь к файлу анкеты (JSON)")
+	hooks := addE2EBirthFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -220,9 +232,16 @@ func runWorldBirth(args []string) error {
 		return fmt.Errorf("tns65 world birth: чтение анкеты: %w", err)
 	}
 
-	res, err := birth.Birth(&a, birth.Config{})
+	cfg := birth.Config{}
+	if hooks != nil {
+		cfg = hooks.config()
+	}
+	res, err := birth.Birth(&a, cfg)
 	if err != nil {
 		return err
+	}
+	if hooks != nil {
+		hooks.finish(os.Stdout)
 	}
 	fmt.Printf("мир %q создан: %s\n", res.Slug, res.Dir)
 	return nil
