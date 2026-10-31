@@ -1,5 +1,8 @@
-// Команда tns65-bake — внеигровое запекание сида (T-01-16, D-04): один раз
-// готовит замороженную base.db. Повторный запуск — код 5.
+// Команда tns65-bake — легаси-пекарь (TUN-8): один раз готовит замороженную
+// слитую base.db из сида. Заменён devForge — базы поставляются готовыми
+// base.<lang>.db в engine/base/, рантайм слитую базу не читает. Совместимость
+// сохранена: при старте печатается предупреждение, команда продолжает работу.
+// Повторный запуск — код 5.
 package main
 
 import (
@@ -16,7 +19,8 @@ func main() {
 }
 
 func run() int {
-	dbPath := flag.String("db", "world_db/base/base.db", "путь к base.db")
+	fmt.Fprintln(os.Stderr, "заменён devForge: базы поставляются готовыми base.<lang>.db в engine/base/")
+	dbPath := flag.String("db", "state/legacy-base.db", "путь к легаси-слитой base.db (данные станка вне поставки)")
 	seedDir := flag.String("seed", "engine/seed", "каталог сида (narratives/, verses.txt)")
 	embedURL := flag.String("embed-url", "http://127.0.0.1:5002", "адрес эмбеддера")
 	flag.Parse()

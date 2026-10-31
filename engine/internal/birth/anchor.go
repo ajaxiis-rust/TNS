@@ -75,8 +75,8 @@ func selectAnchor(ctx context.Context, embedder models.Embedder, baseDBPath, lan
 		return anchorResult{}, err
 	}
 	if len(vecs) == 0 {
-		// Пустой base.db — дефект запекания T-01-16; отдельной ветки нет (шаг 3).
-		return anchorResult{}, fmt.Errorf("birth: в base.db нет векторов нарративов")
+		// Пустая база языка base.<lang>.db — дефект запекания T-01-16; отдельной ветки нет (шаг 3).
+		return anchorResult{}, fmt.Errorf("birth: в базе языка base.<lang>.db нет векторов нарративов")
 	}
 
 	best := int64(0)
@@ -98,7 +98,7 @@ func selectAnchor(ctx context.Context, embedder models.Embedder, baseDBPath, lan
 func readNarrativeVectors(baseDBPath, lang string) (map[int64][]float32, error) {
 	d, err := db.OpenReader(baseDBPath)
 	if err != nil {
-		return nil, fmt.Errorf("birth: открыть базу языка для чтения: %w", err)
+		return nil, fmt.Errorf("birth: открыть базу языка base.<lang>.db для чтения: %w", err)
 	}
 	defer d.Close()
 
