@@ -3,3 +3,4 @@ state/
 *.db
 *.db-wal
 *.db-shm
+!base/*.db
