@@ -66,14 +66,14 @@ func TestLiterarySchema(t *testing.T) {
 		}
 	}
 
-	// 3. Учёт миграций: user_version == 2 и schema_migrations ==
-	// [{1, "0001_init"}, {2, "0002_sediment_idempotency"}].
+	// 3. Учёт миграций: user_version == 3 и schema_migrations ==
+	// [{1, "0001_init"}, {2, "0002_sediment_idempotency"}, {3, "0003_composition"}].
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 2 {
-		t.Errorf("user_version = %d, want 2", uv)
+	if uv != 3 {
+		t.Errorf("user_version = %d, want 3", uv)
 	}
 
 	type migration struct {
@@ -94,7 +94,7 @@ func TestLiterarySchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_sediment_idempotency"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_sediment_idempotency"}, {3, "0003_composition"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
@@ -151,5 +151,82 @@ func TestLiterarySchema(t *testing.T) {
 	}
 	if err := insertTrust(3); err == nil {
 		t.Errorf("INSERT bank_pool trust_level=3 should fail CHECK (trust_level)")
+	}
+
+	// 6. Контракт композиции (T-10-08): шесть новых колонок bank_pool,
+	// CHECK inversion_flag IN (0,1), чтение/запись всех колонок.
+	wantCols := []string{
+		"id", "kind", "text", "lang", "tags", "trust_level", "origin",
+		"source_scene_id", "created_at",
+		"family_primary", "pattern_secondary", "technique", "moral_stance",
+		"inversion_flag", "usage_count",
+	}
+	if got := colsOf(t, w, "bank_pool"); !slices.Equal(got, wantCols) {
+		t.Errorf("bank_pool columns = %v, want %v", got, wantCols)
+	}
+
+	insertComposed := func(inversion int) error {
+		_, err := w.Exec(`INSERT INTO bank_pool (kind, text, lang, tags, trust_level, origin, created_at, family_primary, pattern_secondary, technique, moral_stance, inversion_flag, usage_count) VALUES ('drama', 't', 'ru', 't', 2, 'comp', '2026-01-01T00:00:00Z', 'escape_liberation', 'rescue', 'slow_revelation', 'tragic', ?, 7)`, inversion)
+		return err
+	}
+	if err := insertComposed(1); err != nil {
+		t.Errorf("INSERT bank_pool с композицией inversion=1: %v", err)
+	}
+	if err := insertComposed(2); err == nil {
+		t.Errorf("INSERT bank_pool inversion_flag=2 should fail CHECK (inversion_flag)")
+	}
+
+	var fp, ps, tech, ms string
+	var inv, uc int
+	if err := w.QueryRow(`SELECT family_primary, pattern_secondary, technique, moral_stance, inversion_flag, usage_count FROM bank_pool WHERE origin = 'comp'`).
+		Scan(&fp, &ps, &tech, &ms, &inv, &uc); err != nil {
+		t.Fatalf("SELECT composition columns: %v", err)
+	}
+	if fp != "escape_liberation" || ps != "rescue" || tech != "slow_revelation" || ms != "tragic" || inv != 1 || uc != 7 {
+		t.Errorf("composition row = (%q, %q, %q, %q, %d, %d)", fp, ps, tech, ms, inv, uc)
+	}
+
+	// 7. Старая фикстура (схема до 0003) с записью банка: после миграции
+	// деградационные дефолты family_primary='' и inversion_flag=0 (SCR-§4).
+	oldPath := filepath.Join(t.TempDir(), "literary-old.db")
+	ow, err := OpenWriter(oldPath)
+	if err != nil {
+		t.Fatalf("OpenWriter(old): %v", err)
+	}
+	defer ow.Close()
+
+	for _, name := range []string{"0001_init.sql", "0002_sediment_idempotency.sql"} {
+		content, err := schemaFS.ReadFile("schema/literary/" + name)
+		if err != nil {
+			t.Fatalf("ReadFile %s: %v", name, err)
+		}
+		if _, err := ow.Exec(string(content)); err != nil {
+			t.Fatalf("apply %s: %v", name, err)
+		}
+	}
+	if _, err := ow.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`); err != nil {
+		t.Fatalf("create schema_migrations: %v", err)
+	}
+	for _, m := range []migration{{1, "0001_init"}, {2, "0002_sediment_idempotency"}} {
+		if _, err := ow.Exec(`INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)`, m.version, m.name, "2026-01-01T00:00:00Z"); err != nil {
+			t.Fatalf("insert schema_migrations: %v", err)
+		}
+	}
+	if _, err := ow.Exec(`PRAGMA user_version = 2`); err != nil {
+		t.Fatalf("PRAGMA user_version = 2: %v", err)
+	}
+	if _, err := ow.Exec(`INSERT INTO bank_pool (kind, text, lang, tags, trust_level, origin, created_at) VALUES ('drama', 'старая', 'ru', 't', 2, 'old', '2026-01-01T00:00:00Z')`); err != nil {
+		t.Fatalf("insert old bank_pool row: %v", err)
+	}
+	if err := Migrate(ow, "literary"); err != nil {
+		t.Fatalf("Migrate(literary) over old fixture: %v", err)
+	}
+	var oldFP string
+	var oldInv int
+	if err := ow.QueryRow(`SELECT family_primary, inversion_flag FROM bank_pool WHERE origin = 'old'`).Scan(&oldFP, &oldInv); err != nil {
+		t.Fatalf("old bank_pool row scan: %v", err)
+	}
+	if oldFP != "" || oldInv != 0 {
+		t.Errorf("old bank_pool row defaults = (%q, %d), want (\"\", 0)", oldFP, oldInv)
 	}
 }
