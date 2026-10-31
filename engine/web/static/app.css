@@ -1,4 +1,6 @@
-/* Раскладка интерфейса: горизонтальное меню, чат с панелью мир/герой/система. */
+/* Раскладка интерфейса (T-11-01): верхняя панель навигации «пилюлями»,
+   сетки карточек, чат с панелью мир/герой/система, модалки книги и ковки.
+   От 480px все страницы укладываются без горизонтальной прокрутки. */
 
 * {
   box-sizing: border-box;
@@ -10,39 +12,79 @@ body {
   padding: 0;
 }
 
+html {
+  background: var(--bg, #08090b);
+}
+
 body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  background: #ffffff;
-  color: #1a1a1a;
+  font-family: var(--font-ui, ui-monospace, Menlo, Consolas, monospace);
+  font-size: 13px;
+  line-height: 1.45;
+  background: var(--bg, #08090b);
+  color: var(--fg, #e8e8ea);
 }
+
+[hidden] {
+  display: none !important;
+}
+
+/* --- Верхняя панель ---------------------------------------------------- */
 
 .menu-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  gap: 4px;
-  padding: 8px;
-  border-bottom: 1px solid #c9c9c9;
-  background: #f4f4f4;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg, #08090b);
+  border-bottom: 1px solid var(--border, #23262c);
 }
 
-.tab {
-  border: none;
-  border-radius: 6px;
-  padding: 8px 12px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
+.menu-bar__name {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--fg, #e8e8ea);
   white-space: nowrap;
 }
 
-.tab.active {
-  background: #dcdcdc;
+.menu-bar__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  min-width: 0;
+  margin-left: auto;
 }
+
+.tab {
+  padding: 5px 12px;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--fg-dim, #a2a3aa);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill, 999px);
+}
+
+.tab:hover:not(.active) {
+  color: var(--fg, #e8e8ea);
+  border-color: var(--border, #23262c);
+}
+
+.tab.active {
+  color: var(--fg, #e8e8ea);
+  background: var(--panel, #101215);
+  border-color: var(--border-strong, #3a3e47);
+}
+
+/* --- Полотно страниц --------------------------------------------------- */
 
 .views {
   flex: 1 1 auto;
@@ -53,54 +95,571 @@ body {
 
 .view {
   flex: 1 1 auto;
-  padding: 16px;
   min-width: 0;
+  padding: 16px;
 }
+
+.view > h1 {
+  margin-bottom: 12px;
+}
+
+/* --- Чат --------------------------------------------------------------- */
 
 .chat {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  height: calc(100vh - 76px);
+  height: calc(100dvh - 76px);
+  min-height: 0;
   max-width: 100%;
 }
 
 .state-panel {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .state {
-  flex: 1 1 30%;
   min-width: 0;
-  padding: 8px;
-  border: 1px solid #c9c9c9;
-  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.7rem;
+  color: var(--fg-dim, #a2a3aa);
+  overflow-wrap: anywhere;
+  background: var(--panel, #101215);
+  border: 1px solid var(--border, #23262c);
+  border-radius: var(--radius, 8px);
 }
 
 .chat-log {
-  min-height: 240px;
-  padding: 8px;
-  border: 1px solid #c9c9c9;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 200px;
+  padding: 12px;
+  overflow-y: auto;
+  background: var(--bg-elev, #0d0f12);
+  border: 1px solid var(--border, #23262c);
+  border-radius: var(--radius, 8px);
+}
+
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 80ch;
+  padding: 8px 10px;
+  background: var(--panel, #101215);
+  border: 1px solid var(--border, #23262c);
+  border-radius: var(--radius, 8px);
+}
+
+.chat-msg--world {
+  background: var(--panel-alt, #15181d);
+}
+
+.chat-msg--player {
+  align-self: flex-end;
+  border-color: var(--border-strong, #3a3e47);
+}
+
+.chat-msg--system {
+  color: var(--fg-dim, #a2a3aa);
+  border-style: dashed;
+}
+
+.chat-msg__text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat-msg__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.chat-msg__actions button {
+  padding: 1px 9px;
+  font-size: 0.68rem;
+}
+
+.chat-return {
+  padding: 2px 0 2px 8px;
+  font-size: 0.7rem;
+  color: var(--fg-dim, #a2a3aa);
+  border-left: 2px solid var(--border-strong, #3a3e47);
+}
+
+.book-button {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chat-form input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* --- Атлас ------------------------------------------------------------- */
+
+.atlas {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 100%;
+}
+
+.atlas-worlds {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.atlas-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  background: var(--panel-alt, #15181d);
+  border: 1px solid var(--border, #23262c);
+  border-radius: var(--radius, 8px);
+}
+
+.atlas-card--active {
+  border-color: var(--ok, #48b87f);
+}
+
+.atlas-card__name {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.atlas-card__meta {
+  font-size: 0.66rem;
+  color: var(--muted, #6f717a);
+}
+
+.atlas-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.atlas-card__actions button {
+  padding: 4px 10px;
+  font-size: 0.6rem;
+}
+
+.atlas-form,
+.atlas-wizard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 14px;
+  align-items: start;
+}
+
+.atlas-field {
+  min-width: 0;
+}
+
+.atlas-field--wide {
+  grid-column: 1 / -1;
+}
+
+.atlas-wizard > button {
+  justify-self: start;
+}
+
+.atlas-map,
+.atlas-graph {
+  position: relative;
+  padding: 6px;
+  overflow: hidden;
+  background: var(--bg-elev, #0d0f12);
+  border: 1px solid var(--border, #23262c);
+  border-radius: var(--radius, 8px);
+}
+
+.atlas-map-canvas,
+.atlas-graph-canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.atlas-map-status,
+.atlas-graph-status {
+  margin: 6px 0 0;
+  font-size: 0.66rem;
+  color: var(--muted, #6f717a);
+}
+
+/* --- Книга (модалка истории) ------------------------------------------ */
+
+.book-modal {
+  position: fixed;
+  top: 24px;
+  bottom: 24px;
+  left: 50%;
+  z-index: 40;
+  width: min(960px, calc(100vw - 32px));
+  padding: 18px;
+  overflow: auto;
+  transform: translateX(-50%);
+  background: var(--panel, #101215);
+  border: 1px solid var(--border-strong, #3a3e47);
+  border-radius: var(--radius, 8px);
+}
+
+.book-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border, #23262c);
+}
+
+.book-modal__header h2 {
+  margin: 0;
+}
+
+.book-digest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px;
+  margin: 10px 0;
+  font-size: 0.7rem;
+  color: var(--fg-dim, #a2a3aa);
+  background: var(--panel-alt, #15181d);
+  border: 1px solid var(--border, #23262c);
   border-radius: 6px;
 }
 
+.book-digest__label {
+  color: var(--muted, #6f717a);
+}
+
+.book-digest__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.book-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.book-tab {
+  padding: 4px 12px;
+  font-size: 0.62rem;
+}
+
+.book-tab.active {
+  color: var(--fg, #e8e8ea);
+  background: var(--panel-alt, #15181d);
+  border-color: var(--fg-dim, #a2a3aa);
+}
+
+.book-modal__body {
+  min-height: 160px;
+}
+
+.book-panel {
+  min-height: 160px;
+}
+
+.book-toc,
+.book-cuts,
+.book-raw {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--fg-dim, #a2a3aa);
+}
+
+.book-toc {
+  padding-left: 18px;
+}
+
+.book-cuts,
+.book-raw {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.book-chapter-title {
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  color: var(--fg, #e8e8ea);
+}
+
+.book-chapter-text {
+  font-size: 0.8rem;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.book-export {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  padding-top: 12px;
+  margin-top: 14px;
+  border-top: 1px solid var(--border, #23262c);
+}
+
+.book-export__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted, #6f717a);
+}
+
+.book-export__status {
+  font-size: 0.7rem;
+  color: var(--fg-dim, #a2a3aa);
+}
+
+/* --- Настройки --------------------------------------------------------- */
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 100%;
+}
+
+.settings-providers,
+.settings-models,
+.settings-roles,
+.settings-presets,
+.settings-plugins,
+.settings-flags {
+  min-height: 0;
+}
+
+/* --- Ковка (MCP) ------------------------------------------------------- */
+
+.mcp {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 100%;
+}
+
+.mcp-dash {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.mcp-dash__line {
+  font-size: 0.72rem;
+  color: var(--fg-dim, #a2a3aa);
+}
+
+.mcp-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.mcp-stat {
+  min-width: 0;
+  padding: 10px;
+  background: var(--panel-alt, #15181d);
+  border: 1px solid var(--border, #23262c);
+  border-radius: var(--radius, 8px);
+}
+
+.mcp-stat dt {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted, #6f717a);
+}
+
+.mcp-stat dd {
+  margin: 4px 0 0;
+  font-size: 1.15rem;
+}
+
+.mcp-import {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.mcp-import input[type="file"] {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.mcp-books {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.mcp-book {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  background: var(--panel-alt, #15181d);
+  border: 1px solid var(--border, #23262c);
+  border-radius: var(--radius, 8px);
+}
+
+.mcp-book__name {
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.mcp-book__format {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted, #6f717a);
+}
+
+.mcp-book__counters {
+  font-size: 0.66rem;
+  color: var(--muted, #6f717a);
+}
+
+.mcp-book__delete {
+  align-self: flex-start;
+  padding: 3px 10px;
+  font-size: 0.6rem;
+}
+
+.mcp-rings {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mcp-rings__current,
+.mcp-rings__queue,
+.mcp-rings__forge {
+  font-size: 0.7rem;
+  color: var(--fg-dim, #a2a3aa);
+  overflow-wrap: anywhere;
+}
+
+.mcp-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.mcp-lemmatizer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.68rem;
+  color: var(--fg-dim, #a2a3aa);
+}
+
+.mcp-lemmatizer__line {
+  margin: 0;
+}
+
+.mcp-lemmatizer__toggle {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.7rem;
+  color: var(--fg-dim, #a2a3aa);
+}
+
+.mcp-forge {
+  margin-bottom: 10px;
+}
+
+/* --- Мобильная вёрстка от 480px ---------------------------------------- */
+
 @media (max-width: 480px) {
   .menu-bar {
-    padding: 4px;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 10px;
   }
 
-  .tab {
-    flex: 1 1 auto;
-    text-align: center;
-    padding: 8px 6px;
+  .menu-bar__tabs {
+    width: 100%;
+    margin-left: 0;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+  }
+
+  .menu-bar__name {
+    font-size: 0.66rem;
   }
 
   .view {
-    padding: 8px;
+    padding: 10px;
   }
 
-  .state-panel {
-    flex-direction: column;
+  .chat {
+    height: calc(100vh - 100px);
+    height: calc(100dvh - 100px);
+  }
+
+  .state-panel,
+  .atlas-worlds,
+  .mcp-books,
+  .mcp-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .atlas-form,
+  .atlas-wizard {
+    grid-template-columns: 1fr;
+  }
+
+  .book-modal {
+    top: 8px;
+    bottom: 8px;
+    width: calc(100vw - 12px);
+    padding: 12px;
+  }
+
+  .chat-msg {
+    max-width: 100%;
   }
 }

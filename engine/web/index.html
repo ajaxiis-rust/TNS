@@ -4,19 +4,24 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="app.title">TNS65</title>
+  <link rel="stylesheet" href="/static/theme.css">
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/names.js" defer></script>
   <script src="/static/i18n.js" defer></script>
   <script src="/static/app.js" defer></script>
   <script src="/static/chat.js" defer></script>
+  <script src="/static/providers.js" defer></script>
 </head>
 <body>
   <nav class="menu-bar" id="menu-bar" aria-label="Основное меню">
-    <button class="tab" id="tab-atlas" data-view="atlas" data-i18n="menu.atlas"></button>
-    <button class="tab" id="tab-history" data-view="history" data-i18n="menu.history"></button>
-    <button class="tab" id="tab-mcp" data-view="mcp" data-i18n="menu.mcp"></button>
-    <button class="tab" id="tab-settings" data-view="settings" data-i18n="menu.settings"></button>
-    <button class="tab tab-chat" id="tab-chat" data-view="chat" data-i18n="menu.chat" hidden></button>
+    <span class="menu-bar__name" data-i18n="app.title">TNS65</span>
+    <div class="menu-bar__tabs">
+      <button class="tab" id="tab-atlas" data-view="atlas" data-i18n="menu.atlas"></button>
+      <button class="tab" id="tab-history" data-view="history" data-i18n="menu.history"></button>
+      <button class="tab" id="tab-mcp" data-view="mcp" data-i18n="menu.mcp"></button>
+      <button class="tab" id="tab-settings" data-view="settings" data-i18n="menu.settings"></button>
+      <button class="tab tab-chat" id="tab-chat" data-view="chat" data-i18n="menu.chat" hidden></button>
+    </div>
   </nav>
 
   <main class="views" id="views">

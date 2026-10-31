@@ -194,5 +194,8 @@ window.I18N = {
   "mcp.lemmatizer.pack": "Пакет",
   "mcp.lemmatizer.kind": "Библиотека",
   "mcp.lemmatizer.protocol": "Протокол",
-  "mcp.lemmatizer.empty": "Языковой пакет не найден."
+  "mcp.lemmatizer.empty": "Языковой пакет не найден.",
+  "settings.providers.catalog.title": "Быстрое добавление",
+  "settings.providers.catalog.hint": "Выберите провайдера — имя подставится в форму, base URL появится здесь.",
+  "settings.providers.catalog.base_url": "Base URL"
 };

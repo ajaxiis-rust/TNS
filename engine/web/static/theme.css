@@ -1,111 +1,543 @@
-/* Темы вкладки «Настройки» (T-08-09): переменные темы и конструктор темы.
+/* Норма вида (T-11-01): тёмная терминальная тема по умолчанию по референсам
+   TrueNeverStory — почти чёрный фон, моноширинный шрифт, тонкие рамки карточек,
+   пилюли-кнопки, статус-чипы. Светлые темы приводятся к той же системе
+   переменных; переключатель тем в настройках остаётся рабочим.
    На ширине ≤ 480px разделы не требуют горизонтальной прокрутки. */
 
 :root {
-  --settings-bg: #ffffff;
-  --settings-fg: #1a1a1a;
-  --settings-border: #c9c9c9;
-  --settings-accent: #4a6fa5;
-}
+  color-scheme: dark;
+  --bg: #08090b;
+  --bg-elev: #0d0f12;
+  --panel: #101215;
+  --panel-alt: #15181d;
+  --fg: #e8e8ea;
+  --fg-dim: #a2a3aa;
+  --muted: #6f717a;
+  --border: #23262c;
+  --border-strong: #3a3e47;
+  --accent: #d9dbe0;
+  --accent-fg: #0a0b0d;
+  --ok: #48b87f;
+  --danger: #d9534f;
+  --warn: #d8b24a;
+  --focus: #6d8cff;
+  --backdrop: rgba(0, 0, 0, 0.72);
+  --radius: 8px;
+  --radius-pill: 999px;
+  --font-ui: ui-monospace, "SFMono-Regular", "JetBrains Mono", "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-body.theme-dark {
-  --settings-bg: #1b1b1b;
-  --settings-fg: #ececec;
-  --settings-border: #4a4a4a;
-  --settings-accent: #7fa8d9;
+  /* Прежние имена переменных вкладки «Настройки» остаются в силе. */
+  --settings-bg: var(--panel);
+  --settings-fg: var(--fg);
+  --settings-border: var(--border);
+  --settings-accent: var(--focus);
 }
 
 body.theme-light {
-  --settings-bg: #ffffff;
-  --settings-fg: #1a1a1a;
-  --settings-border: #c9c9c9;
-  --settings-accent: #4a6fa5;
+  color-scheme: light;
+  --bg: #f3f3f4;
+  --bg-elev: #ffffff;
+  --panel: #ffffff;
+  --panel-alt: #f7f7f8;
+  --fg: #16171a;
+  --fg-dim: #4d4f57;
+  --muted: #7c7f88;
+  --border: #d6d7dc;
+  --border-strong: #b4b6bd;
+  --accent: #1c1e23;
+  --accent-fg: #f7f7f8;
+  --ok: #1f8f5f;
+  --danger: #b5302c;
+  --warn: #9a6b00;
+  --focus: #3a5bd9;
+  --backdrop: rgba(24, 25, 28, 0.5);
 }
 
-.settings {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 100%;
+/* --- Основа типографики и полей --------------------------------------- */
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-ui);
 }
 
-.settings-section {
-  border: 1px solid var(--settings-border);
-  border-radius: 6px;
-  padding: 12px;
-  background: var(--settings-bg);
-  color: var(--settings-fg);
-  min-width: 0;
+h1,
+h2,
+h3,
+legend {
+  font-weight: 600;
 }
 
-.settings-section h2 {
+h1,
+h2 {
+  margin: 0 0 10px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--fg-dim);
+}
+
+h3 {
   margin: 0 0 8px;
-  font-size: 1.1rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--fg-dim);
 }
 
-.settings-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+p {
+  margin: 0;
 }
 
-.settings-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+a {
+  color: var(--fg);
 }
 
-.settings-field--check {
-  flex-direction: row;
-  align-items: center;
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+input,
+select,
+textarea {
+  min-width: 0;
+  max-width: 100%;
+  padding: 7px 10px;
+  color: var(--fg);
+  text-transform: none;
+  letter-spacing: normal;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  border-color: var(--focus);
+  outline: 1px solid var(--focus);
+  outline-offset: 0;
+}
+
+input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  accent-color: var(--fg);
+}
+
+input[type="file"] {
+  border-style: dashed;
+  border-color: var(--border-strong);
+}
+
+textarea {
+  min-height: 76px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+::placeholder {
+  color: var(--muted);
+}
+
+button {
+  padding: 6px 14px;
+  color: var(--fg);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--fg-dim);
+  color: var(--fg);
+}
+
+button:disabled {
+  color: var(--muted);
+  border-color: var(--border);
+  cursor: default;
+}
+
+/* Основное действие — светлый filled, вторичное — контур, опасное — красный. */
+button[type="submit"],
+.mcp-forge,
+#mcp-coeffs-save {
+  color: var(--accent-fg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+button[type="submit"]:hover:not(:disabled),
+.mcp-forge:hover:not(:disabled),
+#mcp-coeffs-save:hover:not(:disabled) {
+  color: var(--accent-fg);
+  filter: brightness(0.92);
+}
+
+button[data-action="delete"],
+button[data-action="delete-source"],
+#mcp-coeffs-close {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* --- Карточки и панели ------------------------------------------------- */
+
+.settings-section,
+.atlas-section,
+.mcp-section,
+.settings-card,
+.monitor-block {
+  min-width: 0;
+  padding: 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.settings-section > h2:first-child,
+.atlas-section > h2:first-child,
+.mcp-section > h2:first-child {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+fieldset,
+.settings-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 .settings-fieldset {
-  border: 1px solid var(--settings-border);
-  border-radius: 6px;
-  margin: 0;
-  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px 12px;
+  align-items: start;
 }
 
-.settings-card {
-  border: 1px solid var(--settings-border);
-  border-radius: 6px;
-  padding: 8px;
+.settings-fieldset > legend {
+  grid-column: 1 / -1;
+}
+
+legend {
+  padding: 0 6px;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+
+/* --- Подписи полей и формы -------------------------------------------- */
+
+.settings-field,
+.atlas-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.settings-field > span,
+.atlas-field > span {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.settings-field--check,
+.atlas-field--check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-field--check > span,
+.atlas-field--check > span {
+  font-size: 0.78rem;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--fg);
+}
+
+.settings-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px 14px;
+  align-items: start;
+}
+
+.settings-form > .settings-field--check,
+.settings-form > button,
+.settings-form > fieldset,
+.settings-form > .settings-card,
+.settings-form > .settings-flags,
+.settings-form > .settings-presets,
+.settings-form > .settings-readonly,
+.settings-form > .settings-warning {
+  grid-column: 1 / -1;
+}
+
+.settings-form > button,
+.atlas-form > button {
+  justify-self: start;
 }
 
 .settings-warning {
-  color: var(--settings-accent);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--warn);
+}
+
+.settings-readonly {
+  font-size: 0.7rem;
+  color: var(--muted);
 }
 
 .settings-theme-preview {
-  min-height: 48px;
-  border: 1px solid var(--settings-border);
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 10px;
+  font-size: 0.7rem;
+  color: var(--fg-dim);
+  background: var(--panel-alt);
+  border: 1px dashed var(--border-strong);
   border-radius: 6px;
-  padding: 8px;
 }
 
-.settings-presets,
+/* --- Каталог провайдеров и списки ------------------------------------- */
+
+.settings-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.settings-catalog__hint {
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  color: var(--fg-dim);
+  overflow-wrap: anywhere;
+}
+
 .settings-providers,
 .settings-models,
 .settings-roles,
+.settings-presets,
 .settings-plugins,
 .settings-flags {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
   min-height: 0;
+  margin-bottom: 10px;
+}
+
+.settings-provider,
+.settings-model,
+.settings-role,
+.settings-preset {
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 0.7rem;
+  color: var(--fg-dim);
+  overflow-wrap: anywhere;
+  background: var(--panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.settings-provider::first-line,
+.settings-model::first-line {
+  color: var(--fg);
+}
+
+.settings-empty,
+.monitor-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+/* --- Мониторинг -------------------------------------------------------- */
+
+.monitor-block {
+  margin: 10px 0;
+}
+
+.monitor-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.monitor-row,
+.monitor-journal-line {
+  padding: 4px 0;
+  font-size: 0.7rem;
+  color: var(--fg-dim);
+  overflow-wrap: anywhere;
+  border-bottom: 1px dashed var(--border);
+}
+
+.monitor-row:last-child,
+.monitor-journal-line:last-child {
+  border-bottom: none;
+}
+
+/* --- Статус-чипы ------------------------------------------------------- */
+
+.atlas-card__active,
+.mcp-book__status {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+}
+
+.atlas-card__active {
+  color: var(--ok);
+}
+
+.mcp-book__status {
+  color: var(--warn);
+}
+
+/* --- Модалки ----------------------------------------------------------- */
+
+.mcp-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px;
+  overflow: auto;
+  background: var(--backdrop);
+}
+
+.mcp-modal__panel {
+  width: 100%;
+  max-width: 620px;
+  padding: 16px;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+
+.mcp-modal__warning {
+  margin-bottom: 10px;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--warn);
+}
+
+.mcp-modal__panel fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.mcp-modal__panel legend {
+  grid-column: 1 / -1;
+}
+
+.mcp-modal__panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.mcp-modal__panel input {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--fg);
+}
+
+/* --- Таблицы ----------------------------------------------------------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+th {
+  padding: 6px 8px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+td {
+  padding: 6px 8px;
+  color: var(--fg-dim);
+  border-bottom: 1px solid var(--border);
 }
 
 @media (max-width: 480px) {
-  .settings-section {
-    padding: 8px;
+  .settings-section,
+  .atlas-section,
+  .mcp-section {
+    padding: 10px;
   }
 
-  .settings-field {
-    min-width: 0;
+  .settings-form,
+  .settings-fieldset,
+  .settings-providers,
+  .settings-models,
+  .settings-roles,
+  .settings-presets,
+  .settings-plugins,
+  .settings-flags,
+  .mcp-modal__panel fieldset {
+    grid-template-columns: 1fr;
   }
 
   .settings-form input,
   .settings-form select,
   .settings-form textarea {
-    max-width: 100%;
     min-width: 0;
+    max-width: 100%;
+  }
+
+  .mcp-modal {
+    padding: 8px;
   }
 }

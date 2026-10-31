@@ -118,7 +118,40 @@
   <section class="settings-section" aria-label="Провайдеры">
     <h2 data-i18n="settings.providers">Провайдеры</h2>
     <p class="settings-readonly" data-i18n="settings.providers.counters">Внешние слоты: ключ, модель, лимит вызовов; рядом — остаток лимита и стоимость по тарифу из журнала вызовов. Без данных поле помечается «недоступно».</p>
-    <div class="settings-providers" id="settings-providers"></div>
+    <div class="settings-catalog">
+      <label class="settings-field">
+        <span data-i18n="settings.providers.catalog.title">Быстрое добавление</span>
+        <select id="settings-provider-catalog">
+          <option value="" selected>— Choose a provider to auto-fill —</option>
+          <optgroup label="Major Players">
+            <option value="openai" data-base-url="api.openai.com/v1">OpenAI — GPT-4o, o-series ($) | en de fr es ja zh ru</option>
+            <option value="anthropic" data-base-url="api.anthropic.com">Anthropic — Claude 4/3 ($) | en de fr es ja zh ru</option>
+            <option value="google" data-base-url="generativelanguage.googleapis.com/v1beta/openai">Google Gemini — 2.5/2.0 (free) | en de fr es ja zh ru ar ko hi</option>
+            <option value="cohere" data-base-url="api.cohere.com/v2">Cohere — Command A/R (free) | en de fr es ja zh ru</option>
+            <option value="mistral" data-base-url="api.mistral.ai/v1">Mistral AI — Large/Small, Codestral (free) | en de fr es ja zh ru</option>
+            <option value="together" data-base-url="api.together.xyz/v1">Together AI — Llama, Qwen, DeepSeek ($1 free) | en</option>
+            <option value="groq" data-base-url="api.groq.com/openai/v1">Groq — Ultra-fast Llama, Mixtral (free) | en</option>
+            <option value="fireworks" data-base-url="api.fireworks.ai/inference/v1">Fireworks AI — OSS inference (free) | en</option>
+            <option value="perplexity" data-base-url="api.perplexity.ai">Perplexity — Sonar search-augmented LLM ($) | en</option>
+          </optgroup>
+          <optgroup label="Chinese Providers (Free Tier)">
+            <option value="deepseek" data-base-url="api.deepseek.com/v1">DeepSeek — V3/R1 reasoning | en zh ru</option>
+            <option value="moonshot" data-base-url="api.moonshot.cn/v1">Moonshot (Kimi) — 128K context | en zh</option>
+            <option value="zhipu" data-base-url="open.bigmodel.cn/api/paas/v4">Zhipu (GLM) — GLM-4 family | en zh</option>
+            <option value="baichuan" data-base-url="api.baichuan-ai.com/v1">Baichuan — Baichuan 4 | en zh</option>
+            <option value="minimax" data-base-url="api.minimax.chat/v1">MiniMax — Text-01, 4M context | en zh</option>
+            <option value="sensenova" data-base-url="api.sensenova.cn/v1">SenseNova — SenseTime LLM | en zh</option>
+            <option value="01ai" data-base-url="api.lingyiwanwu.com/v1">01.AI (Yi) — Yi-Lightning | en zh</option>
+            <option value="alibaba" data-base-url="dashscope.aliyuncs.com/compatible-mode/v1">Alibaba (Qwen) — Qwen-MAX/Plus | en zh ru ja ko</option>
+            <option value="baidu" data-base-url="qianfan.baidubce.com/v2">Baidu (Ernie) — ERNIE 4.0/3.5 | en zh</option>
+            <option value="tencent" data-base-url="api.hunyuan.cloud.tencent.com/v1">Tencent (Hunyuan) — text + vision | en zh</option>
+            <option value="bytedance" data-base-url="ark.cn-beijing.volces.com/api/v3">ByteDance (Doubao) — Doubao 1.5 | en zh</option>
+            <option value="stepfun" data-base-url="api.stepfun.com/v1">StepFun — step-2, vision | en zh</option>
+          </optgroup>
+        </select>
+      </label>
+      <p class="settings-catalog__hint" id="settings-provider-catalog-hint" data-i18n="settings.providers.catalog.hint">Выберите провайдера — имя подставится в форму, base URL появится здесь.</p>
+    </div>
     <form class="settings-form" id="settings-provider-form">
       <label class="settings-field">
         <span data-i18n="settings.providers.name">Провайдер</span>
@@ -130,6 +163,7 @@
       </label>
       <button type="submit" id="settings-provider-save" data-i18n="settings.save">Сохранить</button>
     </form>
+    <div class="settings-providers" id="settings-providers"></div>
   </section>
 
   <section class="settings-section" aria-label="Модели">
@@ -264,3 +298,4 @@
     </div>
   </section>
 </div>
+<script src="/static/providers.js"></script>
