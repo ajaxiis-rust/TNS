@@ -8,6 +8,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/sediment"
+	"tns65/internal/structural"
 	"tns65/internal/version"
 )
 
@@ -43,6 +44,9 @@ type ForgeMaterial struct {
 	Text     string
 	Facts    []sediment.Fact
 	Bindings []sediment.Binding
+	// Composition — композиция чанка (T-10-12): family_primary задаётся кодом
+	// классификации, остальные поля — слотом compose. Пустая семья — family-only.
+	Composition structural.Composition
 }
 
 // Delexify — делексификация выхода ковки (шаг 1): источник замен — только факты
@@ -178,6 +182,8 @@ func RemeltScene(lit *db.Handle, sceneID int64) (int64, error) {
 
 // writeBankRecord собирает и пишет запись банка хэндлом forge (шаг 1, сборка).
 // Выкованная запись — проверенная (trust_level=2), конкретных имён в тексте нет.
+// Пишет все шесть колонок композиции (T-10-12, шаг 5); пустая композиция —
+// деградационные дефолты: family_primary пусто, inversion_flag=0.
 func writeBankRecord(lit *db.Handle, m ForgeMaterial, text string) (int64, error) {
 	var id int64
 	err := lit.Tx(db.WriterForge, func(tx *db.Tx) error {
@@ -185,9 +191,14 @@ func writeBankRecord(lit *db.Handle, m ForgeMaterial, text string) (int64, error
 		if m.SourceSceneID != 0 {
 			source = m.SourceSceneID
 		}
+		inversion := 0
+		if m.Composition.Inversion {
+			inversion = 1
+		}
 		res, err := tx.Exec("bank_pool",
-			`INSERT INTO bank_pool (kind, text, lang, tags, trust_level, origin, source_scene_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			m.Kind, text, m.Lang, m.Tags, sediment.TrustLevelVerified, m.Origin, source, nowUTC())
+			`INSERT INTO bank_pool (kind, text, lang, tags, trust_level, origin, source_scene_id, created_at, family_primary, pattern_secondary, technique, moral_stance, inversion_flag, usage_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			m.Kind, text, m.Lang, m.Tags, sediment.TrustLevelVerified, m.Origin, source, nowUTC(),
+			m.Composition.FamilyPrimary, m.Composition.PatternSecondary, m.Composition.Technique, m.Composition.MoralStance, inversion, 0)
 		if err != nil {
 			return err
 		}

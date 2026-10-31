@@ -14,6 +14,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/sediment"
+	"tns65/internal/structural"
 )
 
 // StyleRole — роль слота фоновой стилизации под классика (W-21.4).
@@ -272,17 +273,23 @@ func StylizeClassic(ctx context.Context, lit *db.Handle, draft string) (int64, e
 	if text = strings.TrimSpace(text); text == "" {
 		return 0, errors.New("workshop: пустой выход стилизации")
 	}
-	return writeStyleRecord(lit, text)
+	return writeStyleRecord(lit, text, structural.Composition{})
 }
 
 // writeStyleRecord пишет стилизованную заготовку в bank_pool хэндлом forge
-// (W-21.4): доверие как у банка-ресурса.
-func writeStyleRecord(lit *db.Handle, text string) (int64, error) {
+// (W-21.4): доверие как у банка-ресурса. Композиция пишется, если извлечена
+// (T-10-12); стилизация композицию не извлекает — колонки остаются пустыми.
+func writeStyleRecord(lit *db.Handle, text string, comp structural.Composition) (int64, error) {
 	var id int64
 	err := lit.Tx(db.WriterForge, func(tx *db.Tx) error {
+		inversion := 0
+		if comp.Inversion {
+			inversion = 1
+		}
 		res, err := tx.Exec("bank_pool",
-			`INSERT INTO bank_pool (kind, text, lang, tags, trust_level, origin, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-			styleKind, text, styleLang, styleTag, sediment.TrustLevelVerified, styleOrigin(text), nowUTC())
+			`INSERT INTO bank_pool (kind, text, lang, tags, trust_level, origin, created_at, family_primary, pattern_secondary, technique, moral_stance, inversion_flag, usage_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			styleKind, text, styleLang, styleTag, sediment.TrustLevelVerified, styleOrigin(text), nowUTC(),
+			comp.FamilyPrimary, comp.PatternSecondary, comp.Technique, comp.MoralStance, inversion, 0)
 		if err != nil {
 			return err
 		}
