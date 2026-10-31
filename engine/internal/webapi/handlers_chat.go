@@ -44,6 +44,14 @@ var chatHub *Hub
 // chatLogger — журнал станка для хода; подключается при сборке сервера.
 var chatLogger *journal.Logger
 
+// chatWeaver — слот Ткача пути генерации прозы (T-03-08); nil — слот не
+// подключён, ход уходит на страховку. Подменяется e2e-хуком SetE2ESlot.
+var chatWeaver turn.ProseSlot
+
+// chatLemmatizer — лемматизатор резки реплики (T-03-02); nil — лемм нет.
+// Подменяется e2e-хуком SetE2ELemmatizer.
+var chatLemmatizer turn.Lemmatizer
+
 // chatLastActive — момент последней реплики игрока по миру (проводка
 // последней активности сервером хода, T-08-15). Ключ — слаг мира.
 var (
@@ -151,6 +159,8 @@ func handleChatTurn(w http.ResponseWriter, r *http.Request) {
 		Lang:       lang,
 		Clock:      chatClock,
 		LastActive: chatLastActiveAt(slug),
+		Weaver:     chatWeaver,
+		Lemmatizer: chatLemmatizer,
 	}).Run(r.Context(), turn.TurnInput{
 		SessionID:  sessionID,
 		PlayerText: text,

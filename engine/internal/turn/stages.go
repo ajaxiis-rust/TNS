@@ -117,8 +117,8 @@ func (p *Pipeline) stages() []Stage {
 		&prepathStage{db: p.DB},
 		&compositionStage{lit: p.LitDB, world: p.DriftDB, logger: p.Logger},
 		&confirmStage{configPath: "config.yaml"},
-		&selectStage{},
-		&executeStage{},
+		&selectStage{weaver: p.Weaver},
+		&executeStage{weaver: p.Weaver, logger: p.Logger},
 		&timejumpStage{db: p.DB},
 		&safetyStage{},
 		&digestStage{db: p.DB},
@@ -502,9 +502,10 @@ func isRepeatable(st *TurnState) bool {
 // тишины (T-03-08). До путей и при пустом банке — нейтральная запись fallback;
 // reply_text непуст с первого дня.
 type executeStage struct {
-	bank   *bank.Bank // Челнок (T-03-07); nil — банк не подключён, ответ заглушкой.
-	weaver ProseSlot  // Ткач (T-03-08); nil — слот не подключён, ответ заглушкой.
-	clock  Clock      // часы порога тишины Ткача; nil — реальное время.
+	bank   *bank.Bank      // Челнок (T-03-07); nil — банк не подключён, ответ заглушкой.
+	weaver ProseSlot       // Ткач (T-03-08); nil — слот не подключён, ответ заглушкой.
+	clock  Clock           // часы порога тишины Ткача; nil — реальное время.
+	logger *journal.Logger // журнал станка; nil — события деградации не пишутся.
 }
 
 func (*executeStage) Name() string { return "execute" }
@@ -526,6 +527,12 @@ func (s *executeStage) Run(ctx context.Context, st *TurnState) error {
 		if degraded {
 			st.Degraded = true
 			st.DegradeReason = "slot"
+			// Деградировавший слот прозы: ход доставлен запаской, путь помечается
+			// fallback (MD-07); slot.degraded различимо от child.degraded.
+			st.Path = string(selector.PathFallback)
+			if s.logger != nil {
+				_ = s.logger.Event("turn", journal.EventSlotDegraded)
+			}
 			return nil
 		}
 		// Отрицательная ветка — готовая запись из БД — не вошла в ход и

@@ -137,7 +137,30 @@ func (b *SlotBinder) Bind(template string, mentions []Mention, sceneID, chapterI
 	if place != nil {
 		add(TokenPlace, place.Name, 0, place.ID)
 	}
+	// Незакрытые токены-заменители не должны попадать в промпт слота: опциональный
+	// токен без соответствия (например, [NPCroleDeity] при отсутствии влиятельной
+	// сущности) убирается, иначе путь Ткача вечно деградирует на незакрытом токене.
+	res = stripUnboundTokens(res)
 	return res, bindings
+}
+
+// stripUnboundTokens убирает из текста остатки токенов вида [Имя].
+func stripUnboundTokens(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); {
+		if s[i] != '[' {
+			b.WriteByte(s[i])
+			i++
+			continue
+		}
+		if j := strings.IndexByte(s[i:], ']'); j >= 0 {
+			i += j + 1
+			continue
+		}
+		b.WriteByte(s[i])
+		i++
+	}
+	return b.String()
 }
 
 // deity — первая влиятельная сущность труппы (стихия/закон/судьба), не смертный.

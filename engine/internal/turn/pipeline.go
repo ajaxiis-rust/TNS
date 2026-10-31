@@ -52,6 +52,12 @@ type Pipeline struct {
 	// LastActive — момент последней реплики игрока (проводка сервера хода
 	// T-08-15); нулевое значение — отсутствия нет, мир не продвигается.
 	LastActive time.Time
+	// Weaver — слот Ткача для пути генерации прозы (T-03-08); nil — слот мёртв,
+	// ход уходит на страховку.
+	Weaver ProseSlot
+	// Lemmatizer — лемматизатор резки реплики (T-03-02); nil — лемм нет, гипотеза
+	// намерения не считается.
+	Lemmatizer Lemmatizer
 }
 
 // Run прогоняет реплику по реестру стадий и возвращает результат. Каждая стадия
@@ -66,6 +72,7 @@ func (p *Pipeline) Run(ctx context.Context, in TurnInput) (TurnOutput, error) {
 	}
 
 	st := &TurnState{Input: in, StartedAt: started}
+	st.Lemmatizer = p.Lemmatizer
 	if cmd, ok := parseCommand(in.PlayerText); ok {
 		st.Command = &cmd
 	}

@@ -13,6 +13,7 @@ import (
 	"tns65/internal/birth"
 	"tns65/internal/db"
 	"tns65/internal/journal"
+	"tns65/internal/models"
 	"tns65/internal/testkit"
 	"tns65/internal/webapi"
 )
@@ -90,13 +91,22 @@ func runE2ECore(args []string) int {
 	fs.SetOutput(io.Discard)
 	fakeClock := fs.Bool("fake-clock", false, "фейковые часы (e2e)")
 	_ = fs.Bool("fake-embed", false, "детерминированный эмбеддер 1024 (e2e)")
-	_ = fs.Bool("fake-slot", false, "счётчик вызовов слота прозы (e2e)")
+	fakeSlot := fs.String("fake-slot", "", "адрес подставного слота Ткача (e2e)")
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 2
 	}
 	if *fakeClock {
 		webapi.SetE2EClock(testkit.NewClock())
+	}
+	if *fakeSlot != "" {
+		weaver, err := models.NewWeaver(*fakeSlot)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 2
+		}
+		webapi.SetE2ESlot(weaver)
+		webapi.SetE2ELemmatizer()
 	}
 	return run()
 }
