@@ -35,14 +35,15 @@ func TestBirthCreatesWorld(t *testing.T) {
 	worldDB := openReader(t, res.WorldDB)
 	litDB := openReader(t, res.LiteraryDB)
 
-	// world_meta содержит 14 ключей анкеты, якорь сценарной рамки и четыре
-	// ключа материализации якоря (T-10-06) — всего 19.
+	// world_meta содержит 14 ключей анкеты, якорь сценарной рамки, четыре
+	// ключа материализации якоря (T-10-06) и отпечаток реестра семей
+	// (T-10-13) — всего 20.
 	var n int
 	if err := worldDB.QueryRow(`SELECT COUNT(*) FROM world_meta`).Scan(&n); err != nil {
 		t.Fatalf("world_meta count: %v", err)
 	}
-	if n != 19 {
-		t.Fatalf("ключей world_meta: %d, want 19", n)
+	if n != 20 {
+		t.Fatalf("ключей world_meta: %d, want 20", n)
 	}
 
 	var keys []string
@@ -60,7 +61,7 @@ func TestBirthCreatesWorld(t *testing.T) {
 	rows.Close()
 
 	want := append([]string{}, Fields...)
-	want = append(want, anchorKey, anchorNameKey, anchorSummaryKey, anchorVersesKey, anchorFamiliesKey)
+	want = append(want, anchorKey, anchorNameKey, anchorSummaryKey, anchorVersesKey, anchorFamiliesKey, registryKey)
 	sort.Strings(want)
 	sort.Strings(keys)
 	if !slices.Equal(keys, want) {

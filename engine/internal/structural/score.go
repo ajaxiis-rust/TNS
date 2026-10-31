@@ -20,6 +20,30 @@ type Config struct {
 	WFreshness        float64 // w_freshness: свежесть семьи в главе.
 	FamilyOnlyPenalty float64 // family_only_penalty: штраф family-only при richer-кандидатах.
 	InversionBoost    float64 // inversion_boost: бонус слома ожидания.
+	AdjacentPenalty   float64 // adjacent_penalty: штраф близкой пары primary+secondary.
+}
+
+// AdjacentPairs — канонические близкие пары семей (SCR-§3.2.5, SCR-§7-Этап 4):
+// пара не должна часто выступать primary + secondary друг друга без явной
+// причины. Состав пар — часть канона SCR, поэтому он в коде, а не в конфиге
+// (T-10-13, шаг 1).
+var AdjacentPairs = [][2]string{
+	{"escape_liberation", "rescue"},
+	{"wisdom_counsel", "teaching_discourse"},
+}
+
+// IsAdjacentPair сообщает, образуют ли primary и secondary близкую пару
+// (порядок пары не важен).
+func IsAdjacentPair(primary, secondary string) bool {
+	if secondary == "" {
+		return false
+	}
+	for _, p := range AdjacentPairs {
+		if (primary == p[0] && secondary == p[1]) || (primary == p[1] && secondary == p[0]) {
+			return true
+		}
+	}
+	return false
 }
 
 // familyWeightLimit — инвариант SCR-§3.1: вес primary-семьи не выше порога.
@@ -38,6 +62,7 @@ func DefaultConfig() Config {
 		WFreshness:        0.07,
 		FamilyOnlyPenalty: 0.10,
 		InversionBoost:    0.10,
+		AdjacentPenalty:   0.15,
 	}
 }
 
@@ -102,6 +127,8 @@ func parseCompositionSection(data string) (Config, error) {
 			cfg.FamilyOnlyPenalty = f
 		case "inversion_boost":
 			cfg.InversionBoost = f
+		case "adjacent_penalty":
+			cfg.AdjacentPenalty = f
 		}
 	}
 	if err := sc.Err(); err != nil {
@@ -156,6 +183,11 @@ func Score(c Candidate, q Query, cfg Config) float64 {
 	if c.Inversion && q.BreakExpectation {
 		score += cfg.InversionBoost
 	}
+	// SCR-§3.2 правило 5 (T-10-13): близкая пара primary+secondary штрафуется;
+	// «явная причина» = слом ожидания — тогда штраф не применяется.
+	if IsAdjacentPair(c.FamilyPrimary, c.PatternSecondary) && !q.BreakExpectation {
+		score -= cfg.AdjacentPenalty
+	}
 	return score
 }
 
@@ -187,6 +219,9 @@ func withDefaults(cfg Config) Config {
 	}
 	if cfg.InversionBoost <= 0 {
 		cfg.InversionBoost = 0.10
+	}
+	if cfg.AdjacentPenalty <= 0 {
+		cfg.AdjacentPenalty = 0.15
 	}
 	return cfg
 }

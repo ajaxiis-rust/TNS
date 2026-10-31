@@ -1,6 +1,8 @@
 package structural
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -61,4 +63,17 @@ func LoadFamilies(path string) ([]Family, error) {
 		}
 	}
 	return families, nil
+}
+
+// RegistrySHA256 — sha256 канонического JSON реестра семей (T-10-13, шаг 3).
+// Канонический JSON — marshal в порядке полей Family и порядке записей файла:
+// отпечаток стабилен для одного набора и меняется при смене словаря. Мир
+// фиксирует отпечаток в world_meta, чтобы тихая смена набора 14 была видна.
+func RegistrySHA256(fams []Family) string {
+	raw, err := json.Marshal(fams)
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:])
 }

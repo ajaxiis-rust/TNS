@@ -11,6 +11,7 @@ import (
 	"tns65/internal/db"
 	"tns65/internal/journal"
 	"tns65/internal/models"
+	"tns65/internal/structural"
 	"tns65/internal/workshop"
 )
 
@@ -66,6 +67,10 @@ const (
 )
 
 const stateFileName = "state"
+
+// registryKey — ключ world_meta с отпечатком канонического реестра семей
+// (T-10-13, шаг 3): мир фиксирует, на каком наборе 14 он рождён.
+const registryKey = "family_registry_sha256"
 
 // defaultEmbedURL — адрес эмбеддера векторов смысла :5002 (T-02-07, «Создаётся»
 // models/embed.go); подменяется полем Config.Embed в тестах.
@@ -292,7 +297,49 @@ func (b *builder) writeWorldMeta() error {
 			return err
 		}
 	}
+	// Отпечаток реестра семей (T-10-13, шаг 3) — тем же хэндлом forge, что и
+	// прочие ключи world_meta при рождении. Реестр не найден — ключ не пишется
+	// (рождение мира от отпечатка не зависит).
+	if sum := registrySHA256(); sum != "" {
+		if _, err := h.Exec("world_meta",
+			`INSERT INTO world_meta ("key", value) VALUES (?, ?)`, registryKey, sum); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+// registrySHA256 — отпечаток канонического реестра семей base/archetypes.json.
+// Ошибка загрузки — пустая строка: ключ не пишется, рождение не падает.
+func registrySHA256() string {
+	root := findEngineRoot()
+	if root == "" {
+		return ""
+	}
+	fams, err := structural.LoadFamilies(structural.FamiliesPath(root))
+	if err != nil {
+		return ""
+	}
+	return structural.RegistrySHA256(fams)
+}
+
+// findEngineRoot поднимается от рабочего каталога до каталога с go.mod — корень
+// движка, от которого считается base/archetypes.json.
+func findEngineRoot() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
 }
 
 // pack — пачка из 96 карточек (T-02-04): 16 психотипов × 6 сословий в characters
