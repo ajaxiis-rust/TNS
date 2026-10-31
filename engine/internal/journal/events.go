@@ -14,6 +14,7 @@ const (
 	EventWebAccess             = "web.access"
 	EventEmbedFail             = "embed.fail"
 	EventAnchorForced          = "birth.anchor_forced"
+	EventBaseCorrupt           = "birth.base_corrupt"
 	EventTurnStage             = "turn.stage"
 	EventSawPhaseBreak         = "saw.phase_break"
 	EventTurnSawRecommendation = "turn.saw_recommendation"

@@ -22,8 +22,8 @@ func writeLangBaseDB(t *testing.T, dir, lang string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer w.Close()
 	if err := db.Migrate(w, "base", "shared"); err != nil {
+		_ = w.Close()
 		t.Fatal(err)
 	}
 	vec := make([]float32, models.EmbedDim)
@@ -39,8 +39,13 @@ func writeLangBaseDB(t *testing.T, dir, lang string) string {
 	}
 	if _, err := w.Exec(`INSERT INTO vectors (owner_table, owner_id, model, dim, lang, source_text, vec, created_at) VALUES (?,?,?,?,?,?,?,?)`,
 		"narratives", id, "bge-m3", models.EmbedDim, lang, "arc 1", float32Blob(vec), "2026-01-01T00:00:00Z"); err != nil {
+		_ = w.Close()
 		t.Fatal(err)
 	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	writeFixtureSHA256(t, path)
 	return path
 }
 

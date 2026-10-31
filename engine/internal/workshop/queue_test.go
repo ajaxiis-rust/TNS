@@ -1,7 +1,10 @@
 package workshop_test
 
 import (
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -136,8 +139,8 @@ func testBaseDB(t *testing.T, dir string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer w.Close()
 	if err := db.Migrate(w, "base", "shared"); err != nil {
+		_ = w.Close()
 		t.Fatal(err)
 	}
 	res, err := w.Exec(`INSERT INTO narratives (name, arc_summary, lang, created_at) VALUES (?,?,?,?)`,
@@ -151,9 +154,28 @@ func testBaseDB(t *testing.T, dir string) string {
 	}
 	if _, err := w.Exec(`INSERT INTO vectors (owner_table, owner_id, model, dim, lang, source_text, vec, created_at) VALUES (?,?,?,?,?,?,?,?)`,
 		"narratives", id, "bge-m3", 1024, "ru", "arc", make([]byte, 1024*4), "2026-01-01T00:00:00Z"); err != nil {
+		_ = w.Close()
 		t.Fatal(err)
 	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	writeFixtureChecksum(t, path)
 	return path
+}
+
+// writeFixtureChecksum записывает рядом с фикстурной base.db её sha256 (hex\n) —
+// рождение сверяет контрольную сумму базы (T-10-04).
+func writeFixtureChecksum(t *testing.T, path string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(data)
+	if err := os.WriteFile(path+".sha256", []byte(hex.EncodeToString(sum[:])+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func validAncketa() *birth.Ancketa {

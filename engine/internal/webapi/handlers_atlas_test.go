@@ -1,7 +1,9 @@
 package webapi
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"math"
 	"net/http"
@@ -45,8 +47,8 @@ func writeAtlasBaseDB(t *testing.T, dir string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer w.Close()
 	if err := db.Migrate(w, "base", "shared"); err != nil {
+		_ = w.Close()
 		t.Fatal(err)
 	}
 
@@ -63,9 +65,28 @@ func writeAtlasBaseDB(t *testing.T, dir string) string {
 	}
 	if _, err := w.Exec(`INSERT INTO vectors (owner_table, owner_id, model, dim, lang, source_text, vec, created_at) VALUES (?,?,?,?,?,?,?,?)`,
 		"narratives", id, "bge-m3", models.EmbedDim, "ru", "arc 1", float32Blob(vec), "2026-01-01T00:00:00Z"); err != nil {
+		_ = w.Close()
 		t.Fatal(err)
 	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	writeAtlasChecksum(t, path)
 	return path
+}
+
+// writeAtlasChecksum записывает рядом с фикстурной base.db её sha256 (hex\n) —
+// рождение сверяет контрольную сумму базы (T-10-04).
+func writeAtlasChecksum(t *testing.T, path string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(data)
+	if err := os.WriteFile(path+".sha256", []byte(hex.EncodeToString(sum[:])+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func float32Blob(vec []float32) []byte {

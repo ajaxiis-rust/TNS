@@ -185,8 +185,8 @@ func writeAnchorBaseDB(t *testing.T, path string, vecs [][]float32) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer w.Close()
 	if err := db.Migrate(w, "base", "shared"); err != nil {
+		_ = w.Close()
 		t.Fatal(err)
 	}
 	for i, v := range vecs {
@@ -204,9 +204,14 @@ func writeAnchorBaseDB(t *testing.T, path string, vecs [][]float32) string {
 		}
 		if _, err := w.Exec(`INSERT INTO vectors (owner_table, owner_id, model, dim, lang, source_text, vec, created_at) VALUES (?,?,?,?,?,?,?,?)`,
 			"narratives", id, "bge-m3", models.EmbedDim, "ru", fmt.Sprintf("arc %d", i+1), float32Blob(v), "2026-01-01T00:00:00Z"); err != nil {
+			_ = w.Close()
 			t.Fatal(err)
 		}
 	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	writeFixtureSHA256(t, path)
 	return path
 }
 
