@@ -137,7 +137,12 @@ func handleChatTurn(w http.ResponseWriter, r *http.Request) {
 		baseDBPath = filepath.Join(db.BaseRoot, "base."+lang+".db")
 	}
 
-	out, err := (&turn.Pipeline{Logger: chatLogger, DB: h, BaseDBPath: baseDBPath, Lang: lang}).Run(r.Context(), turn.TurnInput{
+	lit := openChatLiterary(slug)
+	if lit != nil {
+		defer lit.Close()
+	}
+
+	out, err := (&turn.Pipeline{Logger: chatLogger, DB: h, LitDB: lit, DriftDB: h, BaseDBPath: baseDBPath, Lang: lang}).Run(r.Context(), turn.TurnInput{
 		SessionID:  sessionID,
 		PlayerText: text,
 		At:         time.Now(),
@@ -242,6 +247,20 @@ func handleChatSignal(w http.ResponseWriter, r *http.Request) {
 // пишет webapi, сам ход — конвейер (тот же писатель).
 func openChatWriter(slug string) (*db.Handle, error) {
 	return db.OpenWriterAs(worldDBPath(slug), db.DBWorld, db.WriterCore, chatLogger)
+}
+
+// openChatLiterary открывает литературную базу мира для выбора композиции
+// (T-10-11). Базы нет — nil: композиция не выбирается, ход идёт прежним путём
+// (деградация без отказа).
+func openChatLiterary(slug string) *db.Handle {
+	if _, err := os.Stat(litDBPath(slug)); err != nil {
+		return nil
+	}
+	lit, err := db.OpenReaderAs(litDBPath(slug), db.DBLiterary, db.WriterForge, chatLogger)
+	if err != nil {
+		return nil
+	}
+	return lit
 }
 
 // chatWorldLang читает язык мира из world_meta (замороженное поле lang, TUN-5):

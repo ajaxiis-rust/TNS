@@ -9,6 +9,7 @@ import (
 	"tns65/internal/journal"
 	"tns65/internal/models"
 	"tns65/internal/selector"
+	"tns65/internal/structural"
 )
 
 // Stage — одна стадия конвейера хода (T-03-01, шаг 2).
@@ -46,6 +47,10 @@ type TurnState struct {
 	HypothesisLemmas []string
 	// Confirm — результат двухголосия подтверждения (T-03-04) в памяти хода.
 	Confirm Confirmation
+	// Composition — выбранная композиция хода (T-10-11): family_primary,
+	// secondary, technique, moral_stance, inversion, mood. FamilyPrimary пусто —
+	// деградация (пул без композиции), ход идёт прежним теговым путём.
+	Composition structural.Composition
 	// Bindings — привязки токенов биндера до подтверждения (T-03-03); на коммите
 	// хода пишутся в token_bindings (T-03-05).
 	Bindings []Binding
@@ -110,6 +115,7 @@ func (p *Pipeline) stages() []Stage {
 		&troupeStage{db: p.DB},
 		&secretStage{db: p.DB},
 		&prepathStage{db: p.DB},
+		&compositionStage{lit: p.LitDB, world: p.DriftDB, logger: p.Logger},
 		&confirmStage{configPath: "config.yaml"},
 		&selectStage{},
 		&executeStage{},
@@ -554,7 +560,11 @@ func (s *executeStage) weaverReply(ctx context.Context, st *TurnState) (string, 
 	if clock == nil {
 		clock = wallClock{}
 	}
-	prompt := models.BuildPrompt(st.Prepath.Prompt, models.WeaverInstruction)
+	instruction := models.WeaverInstruction
+	if guide := compositionGuide(st.Composition); guide != "" {
+		instruction += "\n" + guide
+	}
+	prompt := models.BuildPrompt(st.Prepath.Prompt, instruction)
 	if models.HasReplacementTokens(prompt) {
 		return fallbackReply, true
 	}
@@ -576,7 +586,8 @@ func (s *executeStage) weaverReply(ctx context.Context, st *TurnState) (string, 
 }
 
 // sceneTags — теги сцены для выбора записи банка (T-03-07, шаг 1): намерение и
-// настроение реплики из предпути. Пусто — банк выберет запись по умолчанию.
+// настроение реплики из предпути плюс слаг выбранной семьи композиции (T-10-11,
+// шаг 4). Пусто — банк выберет запись по умолчанию.
 func sceneTags(st *TurnState) []string {
 	var tags []string
 	if st.Prepath.Intent.Name != "" {
@@ -584,6 +595,9 @@ func sceneTags(st *TurnState) []string {
 	}
 	if st.Prepath.Mood != "" {
 		tags = append(tags, st.Prepath.Mood)
+	}
+	if st.Composition.FamilyPrimary != "" {
+		tags = append(tags, st.Composition.FamilyPrimary)
 	}
 	return tags
 }
@@ -629,6 +643,11 @@ func (s *commitStage) Run(_ context.Context, st *TurnState) error {
 	}
 	if s.db == nil {
 		return nil
+	}
+	// После успешного хода выбранная семья композиции бумпит счётчики дрейфа
+	// одной транзакцией core (T-10-11, шаг 6).
+	if err := commitCompositionUsage(s.db, st.Composition, time.Now().UTC().Format(time.RFC3339)); err != nil {
+		return err
 	}
 	// После закрытия сцены невошедшие ветки уходят заказом sediment в очередь
 	// мастерской (T-03-10, шаг 3); в игровые таблицы кандидат не пишется.

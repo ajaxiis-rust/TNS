@@ -24,5 +24,6 @@ const (
 	EventTurnLatency           = "turn.latency"
 	EventTurnDegraded          = "turn.degraded"
 	EventTurnFallback          = "turn.fallback"
+	EventTurnComposition       = "turn.composition"
 	EventDeepreadCall          = "deepread.call"
 )
