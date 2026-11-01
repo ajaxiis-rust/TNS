@@ -19,9 +19,11 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"tns65/internal/db"
+	"tns65/internal/geo"
 	"tns65/internal/models"
 	"tns65/internal/netgate"
 	"tns65/internal/paganel"
@@ -42,6 +44,7 @@ const (
 	settingsBindingsPath       = "/api/settings/bindings"
 	settingsConfigRoutePath    = "/api/settings/config"
 	settingsKeysPath           = "/api/settings/keys"
+	settingsChannelPath        = "/api/settings/channel"
 	settingsModelsInstallPath  = "/api/settings/models/install"
 	settingsModelsRollbackPath = "/api/settings/models/rollback"
 )
@@ -64,6 +67,7 @@ var settingsSections = []string{
 	"Модели",
 	"Роли",
 	"World",
+	"Канал",
 	"Plugins",
 	"Advanced",
 }
@@ -129,11 +133,34 @@ type settingsResponse struct {
 	LLM                llmSettings        `json:"llm"`
 	WorldSection       worldSettings      `json:"world_section"`
 	Advanced           advancedSettings   `json:"advanced"`
+	Channel            channelSettings    `json:"channel"`
 	Bindings           []slotBinding      `json:"bindings"`
 	Presets            []settingsPreset   `json:"presets"`
 	Providers          []settingsProvider `json:"providers"`
 	Models             []modelStatus      `json:"models"`
 }
+
+// channelSettings — исходящий канал станка (T-08-03, F-04.3/F-04.4): край
+// туннеля cloudflared, пробрасываемый loopback-адрес и Telegram-канал. Токен
+// наружу не отдаётся — только признак; настроен бот, когда есть и токен, и
+// chat_id.
+type channelSettings struct {
+	Edge               string `json:"edge"`
+	Local              string `json:"local"`
+	TelegramChatID     string `json:"telegram_chat_id"`
+	TelegramTokenSet   bool   `json:"telegram_token_set"`
+	TelegramConfigured bool   `json:"telegram_configured"`
+	BotRunning         bool   `json:"bot_running"`
+	Warning            string `json:"warning"`
+}
+
+// channelWarning — предупреждение Q-1: публичный туннель не аутентифицирует
+// пришедшего; доступ получит любой, кто знает адрес.
+const channelWarning = "Публичный туннель не имеет аутентификации"
+
+// botRunning — запущен ли Telegram-бот. Флагом владеет задача W3 (цикл бота);
+// экран Настроек читает его через Channel.BotRunning.
+var botRunning atomic.Bool
 
 type settingsPreset struct {
 	Provider  string `json:"provider"`
@@ -174,6 +201,7 @@ type advancedSettings struct {
 	HalfLifeDays        float64  `json:"halfLifeDays"`
 	EmbeddingDimension  int      `json:"embedding_dimension"`
 	GlobalLuck          float64  `json:"globalLuck"`
+	DayNormKm           float64  `json:"dayNormKm"`
 }
 
 // handleSettingsScreen — GET /settings.html: экран Настроек из embed (статика из
@@ -193,28 +221,31 @@ func handleSettingsScreen(w http.ResponseWriter, _ *http.Request) {
 // мировых переключателей, памяти NPC, удачи мира и привязок слотов.
 func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 	slug := strings.TrimSpace(r.URL.Query().Get("world"))
-	if slug == "" {
-		writeError(w, http.StatusBadRequest, codeBadRequest, "world slug required")
-		return
-	}
-	world, err := db.OpenReaderAs(worldDBPath(slug), db.DBWorld, db.WriterCore, nil)
-	if err != nil {
-		writeError(w, http.StatusNotFound, codeNotFound, "world not found")
-		return
-	}
-	defer world.Close()
 
-	meta, err := readWorldMeta(world)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, codeInternal, "world meta read failed")
-		return
+	meta := map[string]string{}
+	bindings := []slotBinding{}
+	models := []modelStatus{}
+	if slug != "" {
+		world, err := db.OpenReaderAs(worldDBPath(slug), db.DBWorld, db.WriterCore, nil)
+		if err != nil {
+			writeError(w, http.StatusNotFound, codeNotFound, "world not found")
+			return
+		}
+		defer world.Close()
+
+		meta, err = readWorldMeta(world)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, codeInternal, "world meta read failed")
+			return
+		}
+		bindings, err = readSlotBindings(world)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, codeInternal, "slot bindings read failed")
+			return
+		}
+		bindings = enrichBindings(meta, bindings)
+		models = readModelStatuses()
 	}
-	bindings, err := readSlotBindings(world)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, codeInternal, "slot bindings read failed")
-		return
-	}
-	bindings = enrichBindings(meta, bindings)
 
 	webCfg := Config{Host: DefaultHost, Port: DefaultPort}
 	if cfg, err := LoadConfig(settingsConfigPath); err == nil {
@@ -223,6 +254,10 @@ func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 	pagCfg := paganel.DefaultPaganelConfig()
 	if cfg, err := paganel.LoadPaganelConfig(settingsConfigPath); err == nil {
 		pagCfg = cfg
+	}
+	tunCfg := DefaultTunnelConfig()
+	if cfg, err := LoadTunnelConfig(settingsConfigPath); err == nil {
+		tunCfg = cfg
 	}
 	keys := readSettingsKeys(settingsTOMLPath)
 
@@ -240,7 +275,7 @@ func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 			DBPath:               db.WorldsRoot,
 			RestartRequired:      false,
 			Auth:                 "none",
-			ExternalVectorSearch: false,
+			ExternalVectorSearch: keys["external_vector_search"] == "true",
 		},
 		LLM: readLLMSettings(settingsConfigPath, keys),
 		WorldSection: worldSettings{
@@ -251,11 +286,33 @@ func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 		Advanced:  buildAdvanced(meta),
+		Channel:   buildChannelSettings(tunCfg, keys),
 		Bindings:  bindings,
 		Presets:   presets,
 		Providers: providers,
-		Models:    readModelStatuses(),
+		Models:    models,
 	})
+}
+
+// buildChannelSettings собирает карточку канала из секции tunnel config.yaml и
+// settings.toml. Токен читается из ключа telegram, при его отсутствии — из
+// прежнего tunnel.telegram_token; сам токен наружу не возвращается.
+func buildChannelSettings(tun TunnelConfig, keys map[string]string) channelSettings {
+	token := keys["telegram"]
+	if token == "" {
+		token = tun.TelegramToken
+	}
+	tokenSet := token != ""
+	chatID := tun.TelegramChatID
+	return channelSettings{
+		Edge:               tun.Edge,
+		Local:              tun.Local,
+		TelegramChatID:     chatID,
+		TelegramTokenSet:   tokenSet,
+		TelegramConfigured: tokenSet && chatID != "",
+		BotRunning:         botRunning.Load(),
+		Warning:            channelWarning,
+	}
 }
 
 // buildSettingsPresets собирает пресеты реестра T-02-11 и карточки внешних
@@ -474,6 +531,66 @@ func handleSettingsKeys(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// handleSettingsChannel — PUT /api/settings/channel: исходящий канал станка.
+// edge/local/telegram_chat_id пишутся в секцию tunnel config.yaml, токен — в
+// settings.toml под ключом telegram. Токен пишется только непустым; clear_token
+// стирает его. Токен наружу не возвращается.
+func handleSettingsChannel(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Edge           string `json:"edge"`
+		Local          string `json:"local"`
+		TelegramChatID string `json:"telegram_chat_id"`
+		TelegramToken  string `json:"telegram_token"`
+		ClearToken     bool   `json:"clear_token"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "bad channel body")
+		return
+	}
+	edge := strings.TrimSpace(req.Edge)
+	if !validTunnelEdge(edge) {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "edge must be a bare hostname")
+		return
+	}
+	tun := TunnelConfig{Edge: edge, Local: strings.TrimSpace(req.Local)}
+	if err := tun.Validate(); err != nil {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "local must be a loopback address")
+		return
+	}
+	updates := map[string]string{
+		"tunnel.edge":             edge,
+		"tunnel.local":            tun.Local,
+		"tunnel.telegram_chat_id": req.TelegramChatID,
+	}
+	if err := updateConfigScalars(settingsConfigPath, updates); err != nil {
+		writeError(w, http.StatusInternalServerError, codeInternal, "channel config write failed")
+		return
+	}
+	keys := readSettingsKeys(settingsTOMLPath)
+	if req.ClearToken {
+		delete(keys, "telegram")
+	} else if strings.TrimSpace(req.TelegramToken) != "" {
+		keys["telegram"] = req.TelegramToken
+	}
+	if err := writeSettingsKeys(settingsTOMLPath, keys); err != nil {
+		writeError(w, http.StatusInternalServerError, codeInternal, "token write failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// validTunnelEdge сообщает, что край туннеля — bare hostname: без схемы,
+// слэша и пробелов (Q-1). Пустая строка недопустима.
+func validTunnelEdge(edge string) bool {
+	if edge == "" {
+		return false
+	}
+	if strings.ContainsAny(edge, "/ \t\r\n") {
+		return false
+	}
+	return !strings.Contains(edge, "://")
+}
+
 // validSettingsHost сообщает, что host — loopback из фиксированной таблицы.
 func validSettingsHost(host string) bool {
 	_, ok := allowedHosts[host]
@@ -535,7 +652,7 @@ func parseLLMSection(data string, cfg *llmSettings) {
 		if !ok {
 			continue
 		}
-		value = strings.TrimSpace(strings.SplitN(value, "#", 2)[0])
+		value = unquoteScalar(strings.TrimSpace(strings.SplitN(value, "#", 2)[0]))
 		switch strings.TrimSpace(key) {
 		case "gen_addr":
 			cfg.Gen.Addr = value
@@ -1015,6 +1132,7 @@ func buildAdvanced(meta map[string]string) advancedSettings {
 		HalfLifeDays:        tunableFloat(meta, "halfLifeDays", 0),
 		EmbeddingDimension:  embeddingDimension,
 		GlobalLuck:          tunableFloat(meta, "globalLuck", 0.5),
+		DayNormKm:           tunableFloat(meta, "dayNormKm", geo.DefaultDayNormKm),
 	}
 }
 

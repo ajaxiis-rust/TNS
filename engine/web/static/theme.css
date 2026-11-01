@@ -146,7 +146,7 @@ textarea {
 }
 
 button {
-  padding: 6px 14px;
+  padding: 7px 16px;
   color: var(--fg);
   font-size: 0.68rem;
   text-transform: uppercase;
@@ -156,11 +156,17 @@ button {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-pill);
   cursor: pointer;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
 }
 
 button:hover:not(:disabled) {
   border-color: var(--fg-dim);
   color: var(--fg);
+}
+
+button:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: 2px;
 }
 
 button:disabled {
@@ -190,6 +196,35 @@ button[data-action="delete-source"],
 #mcp-coeffs-close {
   color: var(--danger);
   border-color: var(--danger);
+}
+
+button[data-action="delete"]:hover:not(:disabled),
+button[data-action="delete-source"]:hover:not(:disabled),
+#mcp-coeffs-close:hover:not(:disabled) {
+  background: var(--danger);
+  color: var(--bg);
+}
+
+/* Установка / действие в каталоге моделей */
+.btn-install,
+button.btn-install {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+button.btn-install:hover:not(:disabled) {
+  background: var(--ok);
+  color: var(--bg);
+}
+
+button.btn-ghost {
+  color: var(--fg-dim);
+  border-color: var(--border);
+}
+
+button.btn-ghost:hover:not(:disabled) {
+  color: var(--fg);
+  border-color: var(--border-strong);
 }
 
 /* --- Карточки и панели ------------------------------------------------- */
@@ -484,6 +519,35 @@ legend {
   text-transform: none;
   letter-spacing: 0;
   color: var(--fg);
+}
+
+/* --- Статус-чипы и бейджи ---------------------------------------------- */
+
+.chip {
+  display: inline-block;
+  padding: 1px 8px;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.chip--ok {
+  color: var(--ok);
+}
+
+.chip--warn {
+  color: var(--warn);
+}
+
+.chip--danger {
+  color: var(--danger);
+}
+
+.chip--muted {
+  color: var(--muted);
 }
 
 /* --- Таблицы ----------------------------------------------------------- */

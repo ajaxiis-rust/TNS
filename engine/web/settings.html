@@ -1,13 +1,27 @@
 <div class="settings">
-  <section class="settings-section" aria-label="General">
+  <nav class="settings-nav" id="settings-nav" aria-label="Разделы настроек">
+    <a href="#settings-section-general" data-i18n="settings.general">General</a>
+    <a href="#settings-section-llm" data-i18n="settings.llm">LLM</a>
+    <a href="#settings-section-providers" data-i18n="settings.providers">Провайдеры</a>
+    <a href="#settings-section-models" data-i18n="settings.models">Модели</a>
+    <a href="#settings-section-roles" data-i18n="settings.roles">Роли</a>
+    <a href="#settings-section-world" data-i18n="settings.world">World</a>
+    <a href="#settings-section-channel" data-i18n="settings.channel">Канал</a>
+    <a href="#settings-section-plugins" data-i18n="settings.plugins">Plugins</a>
+    <a href="#settings-section-advanced" data-i18n="settings.advanced">Advanced</a>
+    <a href="#settings-section-monitor" data-i18n="settings.monitor">Мониторинг</a>
+  </nav>
+
+  <section class="settings-section" id="settings-section-general" aria-label="General">
     <h2 data-i18n="settings.general">General</h2>
     <form class="settings-form" id="settings-general-form">
       <label class="settings-field">
         <span data-i18n="settings.general.lang">Язык интерфейса</span>
-        <select id="settings-lang">
+        <select id="settings-lang" disabled>
           <option value="ru">Русский</option>
         </select>
       </label>
+      <p class="settings-note" data-i18n="settings.general.lang_hint">Доступен только русский пакет (ru).</p>
       <label class="settings-field">
         <span data-i18n="settings.general.theme">Тема</span>
         <select id="settings-theme">
@@ -38,11 +52,12 @@
         <input id="settings-vector-search" type="checkbox">
         <span data-i18n="settings.general.vector">Внешний векторный поиск</span>
       </label>
+      <p class="settings-note" data-i18n="settings.general.vector_hint">Сохранённое предпочтение — живой контур пока не использует.</p>
       <button type="submit" id="settings-general-save" data-i18n="settings.save">Сохранить</button>
     </form>
   </section>
 
-  <section class="settings-section" aria-label="LLM">
+  <section class="settings-section" id="settings-section-llm" aria-label="LLM">
     <h2 data-i18n="settings.llm">LLM</h2>
     <form class="settings-form" id="settings-llm-form">
       <fieldset class="settings-fieldset">
@@ -115,7 +130,7 @@
     </form>
   </section>
 
-  <section class="settings-section" aria-label="Провайдеры">
+  <section class="settings-section" id="settings-section-providers" aria-label="Провайдеры">
     <h2 data-i18n="settings.providers">Провайдеры</h2>
     <p class="settings-readonly" data-i18n="settings.providers.counters">Внешние слоты: ключ, модель, лимит вызовов; рядом — остаток лимита и стоимость по тарифу из журнала вызовов. Без данных поле помечается «недоступно».</p>
     <div class="settings-catalog">
@@ -166,9 +181,32 @@
     <div class="settings-providers" id="settings-providers"></div>
   </section>
 
-  <section class="settings-section" aria-label="Модели">
+  <section class="settings-section" id="settings-section-models" aria-label="Модели">
     <h2 data-i18n="settings.models">Модели</h2>
     <div class="settings-models" id="settings-models"></div>
+
+    <div class="model-catalog" id="model-catalog">
+      <h3 data-i18n="settings.models.catalog">Каталог для скачивания</h3>
+      <p class="model-catalog__hint" id="model-catalog-hint" data-i18n="settings.models.catalog.hint">Нажмите модель — поля формы заполнятся. Затем «Установить».</p>
+      <div class="model-catalog__grid" id="model-catalog-grid"></div>
+    </div>
+
+    <div class="file-browser" id="model-file-browser">
+      <h3 data-i18n="settings.models.local">Локальная модель</h3>
+      <div class="file-browser__path">
+        <label class="settings-field" style="flex:1 1 220px">
+          <span data-i18n="settings.models.local_path">Путь или имя GGUF</span>
+          <input id="model-local-path" placeholder="world_db/models/model.gguf">
+        </label>
+        <button type="button" class="btn-ghost" id="model-local-apply" data-i18n="settings.models.local_apply">Подставить</button>
+      </div>
+      <div class="file-browser__pick">
+        <input type="file" id="model-local-file" accept=".gguf,.bin,.safetensors,.pt,.pth">
+        <button type="button" class="btn-ghost" id="model-local-pick" data-i18n="settings.models.local_pick">Выбрать файл…</button>
+      </div>
+      <p class="file-browser__selected" id="model-local-selected" data-i18n="settings.models.local_empty">Файл не выбран</p>
+    </div>
+
     <form class="settings-form" id="settings-models-form">
       <label class="settings-field">
         <span data-i18n="settings.models.role">Роль</span>
@@ -186,7 +224,7 @@
     </form>
   </section>
 
-  <section class="settings-section" aria-label="Роли">
+  <section class="settings-section" id="settings-section-roles" aria-label="Роли">
     <h2 data-i18n="settings.roles">Роли</h2>
     <div class="settings-roles" id="settings-roles"></div>
     <form class="settings-form" id="settings-roles-form">
@@ -218,7 +256,7 @@
     </form>
   </section>
 
-  <section class="settings-section" aria-label="World">
+  <section class="settings-section" id="settings-section-world" aria-label="World">
     <h2 data-i18n="settings.world">World</h2>
     <form class="settings-form" id="settings-world-form">
       <div class="settings-card">
@@ -240,12 +278,44 @@
     </form>
   </section>
 
-  <section class="settings-section" aria-label="Plugins">
+  <section class="settings-section" id="settings-section-channel" aria-label="Канал">
+    <h2 data-i18n="settings.channel">Канал</h2>
+    <form class="settings-form" id="settings-channel-form">
+      <label class="settings-field">
+        <span data-i18n="settings.channel.edge">Край туннеля</span>
+        <input id="settings-channel-edge" placeholder="region1.v2.argotunnel.com">
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.channel.local">Локальный адрес (loopback)</span>
+        <input id="settings-channel-local" placeholder="127.0.0.1:8720">
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.channel.chat_id">Telegram chat_id</span>
+        <input id="settings-channel-chat-id">
+      </label>
+      <label class="settings-field">
+        <span data-i18n="settings.channel.token">Токен Telegram</span>
+        <input id="settings-channel-token" type="password" autocomplete="off">
+      </label>
+      <p class="settings-readonly">
+        <span data-i18n="settings.channel.configured">Канал</span>:
+        <span id="settings-channel-configured"></span>
+      </p>
+      <p class="settings-readonly">
+        <span data-i18n="settings.channel.bot">Бот</span>:
+        <span id="settings-channel-bot"></span>
+      </p>
+      <p class="settings-warning" id="settings-channel-warning" data-i18n="settings.channel.warning">Публичный туннель не имеет аутентификации</p>
+      <button type="submit" id="settings-channel-save" data-i18n="settings.save">Сохранить</button>
+    </form>
+  </section>
+
+  <section class="settings-section" id="settings-section-plugins" aria-label="Plugins">
     <h2 data-i18n="settings.plugins">Plugins</h2>
     <div class="settings-plugins" id="settings-plugins"></div>
   </section>
 
-  <section class="settings-section" aria-label="Advanced">
+  <section class="settings-section" id="settings-section-advanced" aria-label="Advanced">
     <h2 data-i18n="settings.advanced">Advanced</h2>
     <form class="settings-form" id="settings-advanced-form">
       <div class="settings-flags" id="settings-flags"></div>
@@ -269,11 +339,15 @@
         <span data-i18n="settings.advanced.luck">globalLuck</span>
         <input id="settings-global-luck" type="number" step="0.01" min="0" max="1">
       </label>
+      <label class="settings-field">
+        <span data-i18n="settings.advanced.day_norm">dayNormKm</span>
+        <input id="settings-day-norm" type="number" step="0.1" min="20" max="30">
+      </label>
       <button type="submit" id="settings-advanced-save" data-i18n="settings.save">Сохранить</button>
     </form>
   </section>
 
-  <section class="settings-section" aria-label="Мониторинг">
+  <section class="settings-section" id="settings-section-monitor" aria-label="Мониторинг">
     <h2 data-i18n="settings.monitor">Мониторинг</h2>
     <p class="settings-readonly" data-i18n="settings.monitor.readonly">Только чтение: вмешательство — распоряжением, не отсюда.</p>
     <div class="monitor-block">

@@ -139,6 +139,32 @@ func LoadTunnelConfig(path string) (TunnelConfig, error) {
 	return parseTunnel(string(data))
 }
 
+// LoadBotConfig читает секцию tunnel и подмешивает токен Telegram из
+// settings.toml (ключ telegram), если в config.yaml токен не задан: токен в UI
+// (W2) пишется в settings.toml, config.yaml хранит прежний fallback.
+func LoadBotConfig(tunnelPath, settingsPath string) (TunnelConfig, error) {
+	cfg, err := LoadTunnelConfig(tunnelPath)
+	if err != nil {
+		return TunnelConfig{}, err
+	}
+	if cfg.TelegramToken == "" {
+		cfg.TelegramToken = readSettingsKeys(settingsPath)["telegram"]
+	}
+	return cfg, nil
+}
+
+// unquoteScalar снимает одну пару кавычек ("…" или '…') со скаляра после
+// обрезки инлайн-комментария: пустые кавычки становятся пустой строкой,
+// значение без кавычек не меняется.
+func unquoteScalar(s string) string {
+	if len(s) >= 2 {
+		if (s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\'') {
+			return s[1 : len(s)-1]
+		}
+	}
+	return s
+}
+
 // parseTunnel разбирает топ-ключ `tunnel:` с полями edge, local, bind,
 // telegram_token и telegram_chat_id. Наличие ключа bind (внешний слушающий
 // адрес) возвращает ErrExternalBind — туннель исходящий, слушающих адресов у
@@ -169,7 +195,7 @@ func parseTunnel(data string) (TunnelConfig, error) {
 			continue
 		}
 		key = strings.TrimSpace(key)
-		val = strings.TrimSpace(strings.SplitN(strings.TrimSpace(val), "#", 2)[0])
+		val = unquoteScalar(strings.TrimSpace(strings.SplitN(strings.TrimSpace(val), "#", 2)[0]))
 
 		switch key {
 		case "edge":
@@ -248,6 +274,50 @@ func localAddr(local string) string {
 		return u.Host
 	}
 	return strings.TrimPrefix(strings.TrimPrefix(local, "http://"), "https://")
+}
+
+// newTelegramBot — фабрика бота. Переменная, чтобы тест подменял Telegram- и
+// loopback-клиентов на httptest-фейки без живой сети.
+var newTelegramBot = NewTelegramBot
+
+// StartTelegram запускает исходящий Telegram-канал (F-04.4): long poll реплик
+// (Poll) и подписку на вести станка (SubscribeNews) в отдельных горутинах на
+// производном отменяемом контексте. Возвращает ErrTelegramNotConfigured, когда
+// токен или chat_id не заданы. Событие telegram.connect пишется один раз на
+// старт канала; флаг botRunning (экран Настроек, W2) поднимается на старте и
+// снимается, когда ctx отменён.
+func StartTelegram(ctx context.Context, cfg TunnelConfig, logger *journal.Logger) error {
+	if strings.TrimSpace(cfg.TelegramToken) == "" || strings.TrimSpace(cfg.TelegramChatID) == "" {
+		return ErrTelegramNotConfigured
+	}
+
+	bot := newTelegramBot(cfg, logger)
+	runCtx, cancel := context.WithCancel(ctx)
+	botRunning.Store(true)
+	LogTelegramConnect(logger, cfg)
+
+	go func() {
+		_ = bot.Poll(runCtx)
+	}()
+	go func() {
+		_ = bot.SubscribeNews(runCtx, func(msg WSMessage) error {
+			var p struct {
+				Text string `json:"text"`
+			}
+			if err := json.Unmarshal(msg.Payload, &p); err != nil {
+				return nil
+			}
+			return bot.SendNews(runCtx, p.Text)
+		})
+	}()
+
+	go func() {
+		<-ctx.Done()
+		cancel()
+		botRunning.Store(false)
+	}()
+
+	return nil
 }
 
 // SendChat пересылает сообщение чата из игры в Telegram (loopback → Telegram).
@@ -346,8 +416,8 @@ func (b *TelegramBot) PollOnce(ctx context.Context, offset int64) (int64, error)
 }
 
 // Poll — цикл исходящего long poll: подписка на Telegram без входящих сокетов.
+// Событие подключения пишет StartTelegram (один раз на старт канала).
 func (b *TelegramBot) Poll(ctx context.Context) error {
-	LogTelegramConnect(b.logger, b.cfg)
 	var offset int64
 	for {
 		select {
@@ -367,7 +437,6 @@ func (b *TelegramBot) Poll(ctx context.Context) error {
 // подписывается на топик вестей станка; каждую весть передаёт в onNews.
 // Входящих сокетов у бота нет — соединение к /ws исходящее (F-04.4, шаг 3).
 func (b *TelegramBot) SubscribeNews(ctx context.Context, onNews func(WSMessage) error) error {
-	LogTelegramConnect(b.logger, b.cfg)
 	conn, br, err := b.dialWS(ctx, wsURL(b.localBase))
 	if err != nil {
 		return err

@@ -65,6 +65,9 @@ func TestTunnelOutboundOnly(t *testing.T) {
 	if cfg.Bind != "" {
 		t.Fatalf("engine/config.yaml tunnel has bind %q, want empty", cfg.Bind)
 	}
+	if cfg.TelegramToken != "" || cfg.TelegramChatID != "" {
+		t.Fatalf("engine/config.yaml tunnel telegram configured = %q/%q, want empty (not configured)", cfg.TelegramToken, cfg.TelegramChatID)
+	}
 
 	// Команда запуска содержит край и пробрасываемый loopback-адрес, без bind.
 	args := strings.Join(ok.Command(), " ")
@@ -80,6 +83,39 @@ func TestTunnelOutboundOnly(t *testing.T) {
 	}
 	if strings.Contains(string(data), "0.0.0.0") {
 		t.Fatalf("scripts/tunnel.sh contains 0.0.0.0 (external bind)")
+	}
+}
+
+// TestParseTunnelUnquotes — кавычки YAML снимаются: `""` становится пустой
+// строкой (канал не настроен), одинарные и двойные кавычки токена снимаются.
+func TestParseTunnelUnquotes(t *testing.T) {
+	cfg, err := parseTunnel("tunnel:\n" +
+		"  edge: region1.v2.argotunnel.com\n" +
+		"  local: http://127.0.0.1:8720\n" +
+		"  telegram_token: \"\"\n" +
+		"  telegram_chat_id: \"\"\n")
+	if err != nil {
+		t.Fatalf("parseTunnel with quoted empty telegram: %v", err)
+	}
+	if cfg.TelegramToken != "" || cfg.TelegramChatID != "" {
+		t.Fatalf("quoted empty telegram params = %q/%q, want empty", cfg.TelegramToken, cfg.TelegramChatID)
+	}
+	if cfg.TelegramToken != "" && cfg.TelegramChatID != "" {
+		t.Fatalf("telegram configured = true, want false")
+	}
+
+	for _, q := range []struct{ open, close string }{{`"`, `"`}, {`'`, `'`}} {
+		cfg, err := parseTunnel("tunnel:\n" +
+			"  edge: region1.v2.argotunnel.com\n" +
+			"  local: http://127.0.0.1:8720\n" +
+			"  telegram_token: " + q.open + "tok" + q.close + "\n" +
+			"  telegram_chat_id: " + q.open + "42" + q.close + "\n")
+		if err != nil {
+			t.Fatalf("parseTunnel with %s quotes: %v", q.open, err)
+		}
+		if cfg.TelegramToken != "tok" || cfg.TelegramChatID != "42" {
+			t.Fatalf("telegram params (%s quotes) = %q/%q, want tok/42", q.open, cfg.TelegramToken, cfg.TelegramChatID)
+		}
 	}
 }
 

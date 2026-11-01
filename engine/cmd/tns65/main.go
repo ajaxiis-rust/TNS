@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -8,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"syscall"
 
@@ -70,7 +72,7 @@ func main() {
 			os.Exit(1)
 		}
 	case "tunnel":
-		if err := runTunnel(); err != nil {
+		if err := runTunnel(args[1:]); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
@@ -129,10 +131,20 @@ func run() int {
 		}
 	}()
 
+	// T-08-03/F-04.4: Telegram-бот стартует только когда канал настроен (есть
+	// токен и chat_id). Без настройки старт не блокируется и не падает.
+	botCtx, stopBot := context.WithCancel(context.Background())
+	if tunCfg, err := webapi.LoadBotConfig("config.yaml", "settings.toml"); err != nil {
+		fmt.Fprintf(os.Stderr, "tns65: tunnel config: %v\n", err)
+	} else if err := webapi.StartTelegram(botCtx, tunCfg, logger); err != nil && !errors.Is(err, webapi.ErrTelegramNotConfigured) {
+		fmt.Fprintf(os.Stderr, "tns65: telegram: %v\n", err)
+	}
+
 	// T-01-13: ядро-надзиратель запускает, лечит и останавливает резидентов.
 	children, err := supervisor.Load("config.yaml")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		stopBot()
 		return 1
 	}
 	sup := supervisor.New(logger, children)
@@ -142,6 +154,7 @@ func run() int {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 	<-sig
+	stopBot()
 	webSrv.Close()
 	sup.Stop()
 	return 0
@@ -248,10 +261,21 @@ func runWorldBirth(args []string) error {
 }
 
 // runTunnel — подкоманда tunnel (T-08-03): читает и проверяет конфигурацию
-// исходящего туннеля cloudflared и печатает команду запуска. Внешний слушающий
-// адрес отвергается (F-04.3); сам туннель поднимает scripts/tunnel.sh. События
-// подключения туннеля и Telegram-канала пишутся в журнал станка (Писатель).
-func runTunnel() error {
+// исходящего туннеля cloudflared. Без флага --run печатает команду запуска; с
+// флагом --run запускает scripts/tunnel.sh, пробрасывая stdout/stderr и
+// пересылая SIGINT/SIGTERM дочернему cloudflared. Внешний слушающий адрес
+// отвергается (F-04.3).
+func runTunnel(args []string) error {
+	fs := flag.NewFlagSet("tunnel", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	run := fs.Bool("run", false, "запустить scripts/tunnel.sh")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("tns65 tunnel: unexpected argument %q", fs.Arg(0))
+	}
+
 	cfg, err := webapi.LoadTunnelConfig("config.yaml")
 	if err != nil {
 		return fmt.Errorf("tns65 tunnel: %w", err)
@@ -259,6 +283,11 @@ func runTunnel() error {
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("tns65 tunnel: %w", err)
 	}
+
+	if *run {
+		return runTunnelScript()
+	}
+
 	logger, err := journal.New("state/journal/engine.log")
 	if err != nil {
 		return err
@@ -275,6 +304,40 @@ func runTunnel() error {
 	}
 	fmt.Printf("run: scripts/tunnel.sh\n")
 	return nil
+}
+
+// runTunnelScript запускает scripts/tunnel.sh через os/exec: stdout/stderr
+// пробрасываются в терминал, SIGINT/SIGTERM пересылаются дочернему процессу
+// (после exec это cloudflared). Возврат по завершении скрипта или по сигналу.
+func runTunnelScript() error {
+	cmd := exec.Command("scripts/tunnel.sh")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("tns65 tunnel: start scripts/tunnel.sh: %w", err)
+	}
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sig)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			return fmt.Errorf("tns65 tunnel: scripts/tunnel.sh: %w", err)
+		}
+		return nil
+	case s := <-sig:
+		_ = cmd.Process.Signal(s)
+		<-done
+		return nil
+	}
 }
 
 // runSwarm — точка запуска однозадачных задач роя (T-01-15, T-05-02):

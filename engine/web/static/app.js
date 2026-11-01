@@ -123,6 +123,15 @@
     settingsScoutEnabled: "settings-scout-enabled",
     settingsPaganelKey: "settings-paganel-key",
     settingsWorldSave: "settings-world-save",
+    settingsChannelForm: "settings-channel-form",
+    settingsChannelEdge: "settings-channel-edge",
+    settingsChannelLocal: "settings-channel-local",
+    settingsChannelChatId: "settings-channel-chat-id",
+    settingsChannelToken: "settings-channel-token",
+    settingsChannelConfigured: "settings-channel-configured",
+    settingsChannelBot: "settings-channel-bot",
+    settingsChannelWarning: "settings-channel-warning",
+    settingsChannelSave: "settings-channel-save",
     settingsPlugins: "settings-plugins",
     settingsAdvancedForm: "settings-advanced-form",
     settingsFlags: "settings-flags",
@@ -136,8 +145,51 @@
     monitorRoles: "monitor-roles",
     monitorMachines: "monitor-machines",
     monitorDegradations: "monitor-degradations",
-    monitorJournal: "monitor-journal"
+    monitorJournal: "monitor-journal",
+    settingsNav: "settings-nav",
+    settingsSectionGeneral: "settings-section-general",
+    settingsSectionLLM: "settings-section-llm",
+    settingsSectionProviders: "settings-section-providers",
+    settingsSectionModels: "settings-section-models",
+    settingsSectionRoles: "settings-section-roles",
+    settingsSectionWorld: "settings-section-world",
+    settingsSectionChannel: "settings-section-channel",
+    settingsSectionPlugins: "settings-section-plugins",
+    settingsSectionAdvanced: "settings-section-advanced",
+    settingsSectionMonitor: "settings-section-monitor",
+    settingsDayNorm: "settings-day-norm",
+    modelCatalog: "model-catalog",
+    modelCatalogGrid: "model-catalog-grid",
+    modelCatalogHint: "model-catalog-hint",
+    modelFileBrowser: "model-file-browser",
+    modelLocalPath: "model-local-path",
+    modelLocalApply: "model-local-apply",
+    modelLocalFile: "model-local-file",
+    modelLocalPick: "model-local-pick",
+    modelLocalSelected: "model-local-selected"
   };
+
+  var SETTINGS_SECTIONS = [
+    "settings-section-general",
+    "settings-section-llm",
+    "settings-section-providers",
+    "settings-section-models",
+    "settings-section-roles",
+    "settings-section-world",
+    "settings-section-channel",
+    "settings-section-plugins",
+    "settings-section-advanced",
+    "settings-section-monitor"
+  ];
+
+  var THEME_STORAGE_KEY = "tns65.theme";
+
+  var MODEL_CATALOG = [
+    { role: "weaver", ref: "Llama-3.2-3B-Instruct", source: "huggingface.co/ggml-org/Llama-3.2-3B-Instruct-GGUF", label: "weaver · Llama 3.2 3B (GGUF)" },
+    { role: "pythia", ref: "Qwen2.5-7B-Instruct", source: "huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF", label: "pythia · Qwen 2.5 7B" },
+    { role: "editor", ref: "Llama-3.1-8B-Instruct", source: "huggingface.co/bartowski/Llama-3.1-8B-Instruct-GGUF", label: "editor · Llama 3.1 8B" },
+    { role: "analysis", ref: "Qwen2.5-3B-Instruct", source: "huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF", label: "analysis · Qwen 2.5 3B" }
+  ];
 
   function byId(id) {
     return document.getElementById(id);
@@ -941,11 +993,20 @@
     bindSettingsSubmit(IDS.settingsModelsForm, submitSettingsModel);
     bindSettingsSubmit(IDS.settingsRolesForm, submitSettingsRoles);
     bindSettingsSubmit(IDS.settingsWorldForm, submitSettingsWorld);
+    bindSettingsSubmit(IDS.settingsChannelForm, submitChannel);
     bindSettingsSubmit(IDS.settingsAdvancedForm, submitSettingsAdvanced);
+    bindSettingsNav();
+
     var theme = byId(IDS.settingsTheme);
     if (theme) {
+      theme.value = readStoredTheme();
       theme.addEventListener("change", applyTheme);
+      var preview = byId(IDS.settingsThemePreview);
+      if (preview) {
+        preview.textContent = theme.value;
+      }
     }
+
     var modelsBox = byId(IDS.settingsModels);
     if (modelsBox) {
       modelsBox.addEventListener("click", function (event) {
@@ -956,6 +1017,33 @@
         rollbackSettingsModel(btn.getAttribute("data-model-role"));
       });
     }
+
+    renderModelCatalog();
+    var grid = byId(IDS.modelCatalogGrid);
+    if (grid) {
+      grid.addEventListener("click", onModelCatalogClick);
+    }
+    bindModelFileBrowser();
+  }
+
+  function bindSettingsNav() {
+    var nav = byId(IDS.settingsNav);
+    if (!nav) {
+      return;
+    }
+    var links = nav.querySelectorAll("a");
+    function markActive(hash) {
+      links.forEach(function (link) {
+        link.classList.toggle("active", link.getAttribute("href") === hash);
+      });
+    }
+    nav.addEventListener("click", function (event) {
+      var link = event.target.closest("a[href^='#settings-section-']");
+      if (link) {
+        markActive(link.getAttribute("href"));
+      }
+    });
+    markActive("#" + SETTINGS_SECTIONS[0]);
   }
 
   function bindSettingsSubmit(id, handler) {
@@ -968,13 +1056,34 @@
     }
   }
 
-  function applyTheme() {
-    var theme = byId(IDS.settingsTheme);
-    var value = theme ? theme.value : "default";
+  function readStoredTheme() {
+    try {
+      return window.localStorage.getItem(THEME_STORAGE_KEY) || "default";
+    } catch (err) {
+      return "default";
+    }
+  }
+
+  function writeStoredTheme(value) {
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, value);
+    } catch (err) {
+      // localStorage может быть недоступен в приватном режиме.
+    }
+  }
+
+  function applyThemeClass(value) {
     document.body.classList.remove("theme-dark", "theme-light");
     if (value === "dark" || value === "light") {
       document.body.classList.add("theme-" + value);
     }
+  }
+
+  function applyTheme() {
+    var theme = byId(IDS.settingsTheme);
+    var value = theme ? theme.value : readStoredTheme();
+    applyThemeClass(value);
+    writeStoredTheme(value);
     var preview = byId(IDS.settingsThemePreview);
     if (preview) {
       preview.textContent = value;
@@ -982,7 +1091,9 @@
   }
 
   function loadSettingsData() {
-    apiJSON("/api/settings?world=" + encodeURIComponent(activeSlugValue())).then(renderSettings).then(loadProvidersData).catch(function (err) {
+    var slug = activeSlugValue();
+    var path = slug ? "/api/settings?world=" + encodeURIComponent(slug) : "/api/settings";
+    apiJSON(path).then(renderSettings).then(loadProvidersData).catch(function (err) {
       var box = byId(IDS.settingsEmbedDim);
       if (box) {
         box.textContent = err.message;
@@ -1124,6 +1235,7 @@
   }
 
   function renderSettings(data) {
+    var hasWorld = !!(data && data.world);
     setValue(IDS.settingsServerHost, data.general ? data.general.server_host : "");
     setValue(IDS.settingsServerPort, data.general ? String(data.general.server_port) : "");
     setValue(IDS.settingsDBPath, data.general ? data.general.db_path : "");
@@ -1133,15 +1245,17 @@
     setValue(IDS.settingsMemorySimilarity, data.advanced ? String(data.advanced.similarityThreshold || 0) : "");
     setValue(IDS.settingsMemoryHalflife, data.advanced ? String(data.advanced.halfLifeDays || 0) : "");
     setValue(IDS.settingsGlobalLuck, data.advanced ? String(data.advanced.globalLuck || 0) : "");
+    setValue(IDS.settingsDayNorm, data.advanced ? String(data.advanced.dayNormKm || 0) : "");
     setChecked(IDS.settingsVectorSearch, data.general ? !!data.general.external_vector_search : false);
     setChecked(IDS.settingsPaganelEnabled, data.world_section && data.world_section.paganel ? !!data.world_section.paganel.enabled : false);
     setChecked(IDS.settingsScoutEnabled, data.world_section && data.world_section.paganel ? !!data.world_section.paganel.scout_enabled : false);
     renderLLMSettings(data.llm || {});
+    renderChannel(data.channel || {});
     renderSettingsPresets(data.presets || []);
-    renderSettingsBindings(data.bindings || []);
-    renderSettingsModels(data.models || []);
-    renderEmptyState(IDS.settingsPlugins, "settings.plugins");
-    renderEmptyState(IDS.settingsFlags, "settings.flags");
+    renderSettingsBindings(data.bindings || [], hasWorld);
+    renderSettingsModels(data.models || [], hasWorld);
+    renderSettingsPlugins();
+    renderSettingsFlags(data.advanced ? data.advanced.feature_flags || [] : []);
   }
 
   function renderLLMSettings(llm) {
@@ -1161,6 +1275,21 @@
     setValue(IDS.settingsLLMSampling, llm.sampling || "greedy");
     setKeyPlaceholder(IDS.settingsGenKey, gen.key_set);
     setKeyPlaceholder(IDS.settingsEmbKey, embed.key_set);
+  }
+
+  function renderChannel(channel) {
+    setValue(IDS.settingsChannelEdge, channel.edge || "");
+    setValue(IDS.settingsChannelLocal, channel.local || "");
+    setValue(IDS.settingsChannelChatId, channel.telegram_chat_id || "");
+    setKeyPlaceholder(IDS.settingsChannelToken, channel.telegram_token_set);
+    var dict = window.I18N || {};
+    setValue(IDS.settingsChannelConfigured, channel.telegram_configured
+      ? (dict["settings.channel.configured_yes"] || "настроен")
+      : (dict["settings.channel.configured_no"] || "не настроен"));
+    setValue(IDS.settingsChannelBot, channel.bot_running
+      ? (dict["settings.channel.bot_running"] || "бот работает")
+      : (dict["settings.channel.bot_stopped"] || "бот остановлен"));
+    setValue(IDS.settingsChannelWarning, channel.warning || dict["settings.channel.warning"] || "Публичный туннель не имеет аутентификации");
   }
 
   function setKeyPlaceholder(id, keySet) {
@@ -1216,9 +1345,13 @@
     return String(millis);
   }
 
-  function renderSettingsBindings(bindings) {
+  function renderSettingsBindings(bindings, hasWorld) {
     var box = byId(IDS.settingsRoles);
     if (!box) {
+      return;
+    }
+    if (!hasWorld) {
+      renderNoWorldNote(box);
       return;
     }
     if (bindings.length === 0) {
@@ -1241,9 +1374,13 @@
     }).join("");
   }
 
-  function renderSettingsModels(models) {
+  function renderSettingsModels(models, hasWorld) {
     var box = byId(IDS.settingsModels);
     if (!box) {
+      return;
+    }
+    if (!hasWorld) {
+      renderNoWorldNote(box);
       return;
     }
     if (!models || models.length === 0) {
@@ -1268,10 +1405,95 @@
     }).join("");
   }
 
-  function renderEmptyState(id) {
-    var box = byId(id);
-    if (box) {
-      box.innerHTML = '<p class="settings-empty">—</p>';
+  function renderNoWorldNote(box) {
+    var dict = window.I18N || {};
+    box.innerHTML = '<p class="settings-note">' + (dict["settings.no_world"] || "выберите мир") + "</p>";
+  }
+
+  function renderSettingsPlugins() {
+    var box = byId(IDS.settingsPlugins);
+    if (!box) {
+      return;
+    }
+    var dict = window.I18N || {};
+    box.innerHTML = '<p class="settings-empty">' + (dict["settings.plugins.empty"] || "Плагинов нет.") + "</p>";
+  }
+
+  function renderSettingsFlags(flags) {
+    var box = byId(IDS.settingsFlags);
+    if (!box) {
+      return;
+    }
+    var dict = window.I18N || {};
+    if (!flags || flags.length === 0) {
+      box.innerHTML = '<p class="settings-empty">' + (dict["settings.advanced.flags_empty"] || "Фича-флаги не заданы.") + "</p>";
+      return;
+    }
+    box.innerHTML = flags.map(function (flag) {
+      return '<div class="settings-flag">' + escapeHTML(flag) + "</div>";
+    }).join("");
+  }
+
+  function modelSourceURL(path) {
+    return "https" + "://" + path;
+  }
+
+  function renderModelCatalog() {
+    var grid = byId(IDS.modelCatalogGrid);
+    if (!grid) {
+      return;
+    }
+    grid.innerHTML = MODEL_CATALOG.map(function (m) {
+      return '<button type="button" data-catalog-role="' + escapeHTML(m.role) +
+        '" data-catalog-source="' + escapeHTML(m.source) +
+        '" data-catalog-ref="' + escapeHTML(m.ref) + '">' +
+        escapeHTML(m.label) + "</button>";
+    }).join("");
+  }
+
+  function onModelCatalogClick(event) {
+    var btn = event.target.closest("button[data-catalog-role]");
+    if (!btn) {
+      return;
+    }
+    setValue(IDS.settingsModelRole, btn.getAttribute("data-catalog-role") || "");
+    setValue(IDS.settingsModelRef, btn.getAttribute("data-catalog-ref") || "");
+    setValue(IDS.settingsModelSource, modelSourceURL(btn.getAttribute("data-catalog-source") || ""));
+    var hint = byId(IDS.modelCatalogHint);
+    if (hint) {
+      var dict = window.I18N || {};
+      hint.textContent = (dict["settings.models.catalog.selected"] || "Выбрано") + ": " +
+        (btn.getAttribute("data-catalog-role") || "") + " · " + (btn.getAttribute("data-catalog-ref") || "");
+    }
+  }
+
+  function bindModelFileBrowser() {
+    var pick = byId(IDS.modelLocalPick);
+    var file = byId(IDS.modelLocalFile);
+    if (pick && file) {
+      pick.addEventListener("click", function () {
+        file.click();
+      });
+    }
+    if (file) {
+      file.addEventListener("change", function () {
+        var name = file.files && file.files.length ? file.files[0].name : "";
+        setValue(IDS.modelLocalPath, name);
+        var selected = byId(IDS.modelLocalSelected);
+        if (selected) {
+          var dict = window.I18N || {};
+          selected.textContent = name || (dict["settings.models.local_empty"] || "Файл не выбран");
+        }
+      });
+    }
+    var apply = byId(IDS.modelLocalApply);
+    if (apply) {
+      apply.addEventListener("click", function () {
+        var path = fieldValue(IDS.modelLocalPath);
+        if (path) {
+          setValue(IDS.settingsModelRef, path);
+        }
+      });
     }
   }
 
@@ -1295,9 +1517,12 @@
   }
 
   function submitSettingsGeneral() {
+    var vectorSearch = byId(IDS.settingsVectorSearch) ? byId(IDS.settingsVectorSearch).checked : false;
     putJSON("/api/settings/config", {
       host: fieldValue(IDS.settingsServerHost),
       port: parseInt(fieldValue(IDS.settingsServerPort), 10) || 0
+    }).then(function () {
+      return putJSON("/api/settings/keys", { keys: { external_vector_search: vectorSearch ? "true" : "false" } });
     }).then(loadSettingsData).catch(settingsError);
   }
 
@@ -1346,6 +1571,19 @@
     }).catch(settingsError);
   }
 
+  function submitChannel() {
+    var body = {
+      edge: fieldValue(IDS.settingsChannelEdge),
+      local: fieldValue(IDS.settingsChannelLocal),
+      telegram_chat_id: fieldValue(IDS.settingsChannelChatId)
+    };
+    var token = fieldValue(IDS.settingsChannelToken);
+    if (token) {
+      body.telegram_token = token;
+    }
+    putJSON("/api/settings/channel", body).then(loadSettingsData).catch(settingsError);
+  }
+
   function submitSettingsAdvanced() {
     putJSON("/api/world/tunables", {
       world: activeSlugValue(),
@@ -1353,7 +1591,8 @@
         globalLuck: parseFloat(fieldValue(IDS.settingsGlobalLuck)) || 0,
         maxMemoryEntries: parseInt(fieldValue(IDS.settingsMemoryMax), 10) || 0,
         similarityThreshold: parseFloat(fieldValue(IDS.settingsMemorySimilarity)) || 0,
-        halfLifeDays: parseFloat(fieldValue(IDS.settingsMemoryHalflife)) || 0
+        halfLifeDays: parseFloat(fieldValue(IDS.settingsMemoryHalflife)) || 0,
+        dayNormKm: parseFloat(fieldValue(IDS.settingsDayNorm)) || 25
       }
     }).then(loadSettingsData).catch(settingsError);
   }
@@ -1425,6 +1664,7 @@
     }
   }
 
+  applyThemeClass(readStoredTheme());
   translate(document);
   showChat();
   subscribeMcpWS();

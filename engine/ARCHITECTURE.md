@@ -100,3 +100,5 @@ var ErrDeniedHost = errors.New("netgate: denied host")
 | packs/ | языковые пакеты |
 | web/ | статика интерфейса игрока |
 
+Настройки станка — раскладка по `config.yaml`, `settings.toml`, `world_meta` и настройка Telegram/туннеля — описаны в `DOCS/10-STATION-SETTINGS.md` (от корня репозитория).
+

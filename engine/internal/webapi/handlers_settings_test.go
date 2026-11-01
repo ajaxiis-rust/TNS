@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"tns65/internal/db"
+	"tns65/internal/geo"
 	"tns65/internal/models"
 )
 
@@ -31,7 +32,9 @@ func seedSettingsWorld(t *testing.T) {
 		"llm:\n  gen_addr: \":5001\"\n  gen_model: \"\"\n  gen_timeout: 30s\n" +
 		"  gen_max_tokens: 0\n  gen_temperature: 0.0\n  gen_retries: 0\n  gen_concurrency: 1\n" +
 		"  embed_addr: \":5002\"\n  embed_model: \"\"\n  embed_timeout: 30s\n" +
-		"  local: true\n  sampling: greedy\n"
+		"  local: true\n  sampling: greedy\n" +
+		"tunnel:\n  edge: region1.v2.argotunnel.com\n  local: http://127.0.0.1:8720\n" +
+		"  telegram_token: \"\"\n  telegram_chat_id: \"\"\n"
 	if err := os.WriteFile(cfg, []byte(cfgBody), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +46,7 @@ func seedSettingsWorld(t *testing.T) {
 	})
 }
 
-// TestSettingsSections — «Проверка» T-08-09: экран Настроек содержит все восемь
+// TestSettingsSections — «Проверка» T-08-09: экран Настроек содержит все девять
 // разделов.
 func TestSettingsSections(t *testing.T) {
 	rr := httptest.NewRecorder()
@@ -148,6 +151,53 @@ func TestEmbedDim1024(t *testing.T) {
 		[]byte(`{"embedding_dimension":2048}`), "application/json")
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("PUT config embedding_dimension: status = %d, want 400", rr.Code)
+	}
+}
+
+// TestLLMSettingsUnquotesAddr — адрес слота из config.yaml с кавычками
+// разбирается без кавычек, проходит validLLMAddr и round-trip через
+// PUT /api/settings/config.
+func TestLLMSettingsUnquotesAddr(t *testing.T) {
+	seedSettingsWorld(t)
+
+	cfg := defaultLLMSettings()
+	parseLLMSection("llm:\n  gen_addr: \":5001\"\n", &cfg)
+	if cfg.Gen.Addr != ":5001" {
+		t.Fatalf("gen_addr = %q, want :5001", cfg.Gen.Addr)
+	}
+	if !validLLMAddr(cfg.Gen.Addr) {
+		t.Fatalf("validLLMAddr(%q) = false, want true", cfg.Gen.Addr)
+	}
+
+	// Адрес из текущего config.yaml (seedSettingsWorld) читается без кавычек.
+	rr := mcpRequest(t, handleSettingsGet, http.MethodGet, settingsPath+"?world=alpha", nil, "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET settings: status = %d", rr.Code)
+	}
+	var out settingsResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if out.LLM.Gen.Addr != ":5001" {
+		t.Fatalf("GET settings llm.gen.addr = %q, want :5001", out.LLM.Gen.Addr)
+	}
+
+	// Round-trip: PUT принимает адрес и GET возвращает его без кавычек.
+	rr = mcpRequest(t, handleSettingsConfig, http.MethodPut, settingsConfigRoutePath,
+		[]byte(`{"gen_addr":":5007"}`), "application/json")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("PUT config gen_addr: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	rr = mcpRequest(t, handleSettingsGet, http.MethodGet, settingsPath+"?world=alpha", nil, "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET settings после PUT: status = %d", rr.Code)
+	}
+	out = settingsResponse{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if out.LLM.Gen.Addr != ":5007" {
+		t.Fatalf("GET settings llm.gen.addr после PUT = %q, want :5007", out.LLM.Gen.Addr)
 	}
 }
 
@@ -417,5 +467,84 @@ func TestModelRollbackIntegrity(t *testing.T) {
 	rr := mcpRequest(t, handleSettingsModelRollback, http.MethodPost, settingsModelsRollbackPath, body, "application/json")
 	if rr.Code != http.StatusConflict {
 		t.Fatalf("rollback повреждённой версии: status = %d, want 409", rr.Code)
+	}
+}
+
+// TestSettingsGetWithoutWorld — GET /api/settings без мира отдаёт станочные
+// разделы с пустыми мировыми массивами и дефолтами Advanced; непустой
+// несуществующий мир по-прежнему 404 (W4.4).
+func TestSettingsGetWithoutWorld(t *testing.T) {
+	seedSettingsWorld(t)
+
+	rr := mcpRequest(t, handleSettingsGet, http.MethodGet, settingsPath, nil, "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET %s без мира: status = %d, want 200; body=%s", settingsPath, rr.Code, rr.Body.String())
+	}
+	var out settingsResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if out.World != "" {
+		t.Fatalf("world = %q, want пусто", out.World)
+	}
+	if len(out.Bindings) != 0 {
+		t.Fatalf("bindings = %d, want 0", len(out.Bindings))
+	}
+	if len(out.Models) != 0 {
+		t.Fatalf("models = %d, want 0", len(out.Models))
+	}
+	if out.EmbeddingDimension != models.EmbedDim || out.Advanced.EmbeddingDimension != 1024 {
+		t.Fatalf("embedding_dimension = %d/%d, want 1024", out.EmbeddingDimension, out.Advanced.EmbeddingDimension)
+	}
+	if out.Advanced.GlobalLuck != 0.5 {
+		t.Fatalf("globalLuck = %v, want 0.5", out.Advanced.GlobalLuck)
+	}
+	if out.Advanced.MaxMemoryEntries != 0 || out.Advanced.SimilarityThreshold != 0 || out.Advanced.HalfLifeDays != 0 {
+		t.Fatalf("memory defaults = %+v, want нули", out.Advanced)
+	}
+
+	// Непустой несуществующий мир — по-прежнему 404.
+	rr = mcpRequest(t, handleSettingsGet, http.MethodGet, settingsPath+"?world=nope", nil, "")
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("GET %s?world=nope: status = %d, want 404", settingsPath, rr.Code)
+	}
+}
+
+// TestDayNormKmTunable — dayNormKm читается в Advanced (дефолт 25) и пишется
+// через PUT /api/world/tunables в world_meta (W4.3).
+func TestDayNormKmTunable(t *testing.T) {
+	seedSettingsWorld(t)
+
+	rr := mcpRequest(t, handleSettingsGet, http.MethodGet, settingsPath+"?world=alpha", nil, "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET settings: status = %d", rr.Code)
+	}
+	var out settingsResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if out.Advanced.DayNormKm != geo.DefaultDayNormKm {
+		t.Fatalf("dayNormKm по умолчанию = %v, want %v", out.Advanced.DayNormKm, geo.DefaultDayNormKm)
+	}
+
+	body := []byte(`{"world":"alpha","tunables":{"dayNormKm":30}}`)
+	rr = mcpRequest(t, handleWorldTunables, http.MethodPut, worldTunablesPath, body, "application/json")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("PUT tunables dayNormKm: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	if got := readWorldMetaValues(t, worldDBPath("alpha")); got["dayNormKm"] != "30" {
+		t.Fatalf("world_meta dayNormKm = %q, want 30", got["dayNormKm"])
+	}
+
+	rr = mcpRequest(t, handleSettingsGet, http.MethodGet, settingsPath+"?world=alpha", nil, "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET settings после записи: status = %d", rr.Code)
+	}
+	out = settingsResponse{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if out.Advanced.DayNormKm != 30 {
+		t.Fatalf("dayNormKm после записи = %v, want 30", out.Advanced.DayNormKm)
 	}
 }

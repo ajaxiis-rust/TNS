@@ -39,6 +39,7 @@
 | PUT | `/api/settings/bindings` | `{"world":"…","bindings":[{"role","model_ref","provider"}]}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | PUT | `/api/settings/config` | `{"host","port","paganel_enabled","scout_enabled","gen_addr","gen_model","gen_timeout","gen_max_tokens","gen_temperature","gen_retries","gen_concurrency","embed_addr","embed_model","embed_timeout","local","sampling"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | PUT | `/api/settings/keys` | `{"keys":{…}}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
+| PUT | `/api/settings/channel` | `{"edge","local","telegram_chat_id","telegram_token","clear_token"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | POST | `/api/settings/models/install` | `{"world":"…","role":"…","source":"https://huggingface.co/…","model_ref":"…"}` | `{"status":"ok","model_ref":"…"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | POST | `/api/settings/models/rollback` | `{"world":"…","role":"…"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
 | GET | `/api/providers` | — | `{"providers":[{name,key_set,model,quota,cost_millis}]}` — внешние слоты: ключ, модель, остаток лимита вызовов («недоступно» без лимита), стоимость по тарифу из журнала вызовов | `method_not_allowed` |
@@ -78,6 +79,7 @@ GET /api/settings
 PUT /api/settings/bindings
 PUT /api/settings/config
 PUT /api/settings/keys
+PUT /api/settings/channel
 POST /api/settings/models/install
 POST /api/settings/models/rollback
 GET /api/providers
