@@ -1,0 +1,126 @@
+# 10 — Настройки станка
+
+> Руководство оператора: где лежит каждая настройка, что она меняет, нужен ли перезапуск, и как поднять исходящий канал (Telegram + туннель). Полные объяснения механик — в `DOCS/01`–`DOCS/08`, термины — по `GLOSSARY.md`.
+
+## 1. Где что хранится
+
+| Хранилище | Путь | Что в нём |
+| --- | --- | --- |
+| Станочный конфиг | `engine/config.yaml` | сервер, слоты LLM, пресеты, туннель, коэффициенты, скоринг композиции, резиденты, белые списки |
+| Ключи и токены | `engine/settings.toml` | ключи слотов и провайдеров, токен Telegram, переключатели; формат — `key = "value"` |
+| Мировые настраиваемые параметры | `world_db/worlds/<slug>/world.db` → `world_meta` | tunables (`globalLuck`, память NPC, норма дня) и состав роли `role.<роль>`; пишутся хэндлом `forge` |
+| Привязки слотов | `world_db/worlds/<slug>/world.db` → `model_bindings` | роль → провайдер/модель; пишутся хэндлом `core` |
+| Файлы моделей | `world_db/models/<роль>/` | `current.bin`/`current.json`, `previous.*` для отката |
+| Тема интерфейса | браузер, `localStorage` `tns65.theme` | на сервере не хранится |
+
+Правила: токены и ключи наружу из API не отдаются — только признак `*_set`; живой контур `settings.toml` не читает (F-03.4). Мировые поля анкеты рождения (14 ключей) заморожены и здесь не редактируются (UI-04).
+
+## 2. Сводная таблица настроек
+
+Колонка «Перезапуск»: «да» — значение читается при старте ядра и меняется только перезапуском; «нет» — применяется к будущим просчётам или хранится без перезапуска; «—» — только чтение.
+
+| Секция · настройка | Где в UI | Хранилище | Дефолт | Перезапуск | Примечание |
+| --- | --- | --- | --- | --- | --- |
+| General — хост сервера (`web.host`) | Настройки → General | `config.yaml` `web.host` | `127.0.0.1` | да | только loopback (`127.0.0.1`/`localhost`), иное — отказ старта (F-04.2) |
+| General — порт (`web.port`) | Настройки → General | `config.yaml` `web.port` | `8720` | да | должен быть в `ports.whitelist`; в UI стоит предупреждение |
+| General — язык интерфейса | Настройки → General | — | `ru` | — | доступен только русский пакет, поле не редактируется |
+| General — тема | Настройки → General | `localStorage` `tns65.theme` | `default` | нет | `default`/`dark`/`light`; сервер не хранит |
+| General — путь базы | Настройки → General (чтение) | `world_db/` (`db.WorldsRoot`) | `world_db/` | — | не редактируется |
+| General — аутентификация | Настройки → General (чтение) | — (`auth_none`) | `none` | — | входа нет (UI-03) |
+| General — внешний векторный поиск | Настройки → General | `settings.toml` `external_vector_search` | `false` | нет | сохранённое предпочтение; живой контур пока не использует |
+| LLM — адрес генерации (`llm.gen_addr`) | Настройки → LLM | `config.yaml` `llm.gen_addr` | `:5001` | да | локальный слот генерации |
+| LLM — модель генерации (`llm.gen_model`) | Настройки → LLM | `config.yaml` `llm.gen_model` | `` | да | имя модели слота |
+| LLM — тайм-аут генерации (`llm.gen_timeout`) | Настройки → LLM | `config.yaml` `llm.gen_timeout` | `30s` | да | |
+| LLM — максимум токенов (`llm.gen_max_tokens`) | Настройки → LLM | `config.yaml` `llm.gen_max_tokens` | `0` | да | `0` — без ограничения |
+| LLM — температура (`llm.gen_temperature`) | Настройки → LLM | `config.yaml` `llm.gen_temperature` | `0.0` | да | |
+| LLM — повторы (`llm.gen_retries`) | Настройки → LLM | `config.yaml` `llm.gen_retries` | `0` | да | |
+| LLM — конкурентность (`llm.gen_concurrency`) | Настройки → LLM | `config.yaml` `llm.gen_concurrency` | `1` | да | минимум 1 |
+| LLM — адрес эмбеддинга (`llm.embed_addr`) | Настройки → LLM | `config.yaml` `llm.embed_addr` | `:5002` | да | BGE-M3 |
+| LLM — модель эмбеддинга (`llm.embed_model`) | Настройки → LLM | `config.yaml` `llm.embed_model` | `` | да | |
+| LLM — тайм-аут эмбеддинга (`llm.embed_timeout`) | Настройки → LLM | `config.yaml` `llm.embed_timeout` | `30s` | да | |
+| LLM — локальные вычисления (`llm.local`) | Настройки → LLM | `config.yaml` `llm.local` | `true` | да | |
+| LLM — семплирование (`llm.sampling`) | Настройки → LLM | `config.yaml` `llm.sampling` | `greedy` | да | `greedy`/`top_p` |
+| LLM — ключ слота генерации | Настройки → LLM | `settings.toml` `llm_gen` | пусто | нет | наружу не отдаётся (только `key_set`) |
+| LLM — ключ слота эмбеддинга | Настройки → LLM | `settings.toml` `llm_embed` | пусто | нет | наружу не отдаётся |
+| Провайдеры — ключ внешнего провайдера | Настройки → Провайдеры | `settings.toml` `<имя>` | пусто | нет | ключ не отдаётся; остаток лимита/стоимость — чтение журнала вызовов |
+| Провайдеры — пресеты реестра | Настройки → LLM (только чтение) | код `workshop.Presets()` | `local` | — | `local`/`gemini-flash`/`gemini-pro`; выбор пресета — `slots.default` |
+| Модели — установка/замена модели роли | Настройки → Модели | `world_db/models/<роль>/` + `model_bindings` (core) | — | нет | источник — только `https://huggingface.co`; загрузка по явному запросу |
+| Модели — откат модели | Настройки → Модели | `world_db/models/<роль>/previous.*` | — | нет | сверка sha256, привязка обновляется |
+| Роли — привязка слота (роль→провайдер/модель) | Настройки → Роли | `model_bindings` (core) | — | нет | |
+| Роли — температура | Настройки → Роли | `world_meta` `role.<роль>` (forge) | `0` | нет | JSON-состав роли |
+| Роли — промпты | Настройки → Роли | `world_meta` `role.<роль>` (forge) | пусто | нет | |
+| Роли — приоритет | Настройки → Роли | `world_meta` `role.<роль>` (forge) | `0` | нет | |
+| World — прорисовка карты (`paganel.enabled`) | Настройки → World | `config.yaml` `paganel.enabled` | `true` | да | ковка колец |
+| World — походы наружу (`paganel.scout_enabled`) | Настройки → World | `config.yaml` `paganel.scout_enabled` | `false` | да | `false` — ноль внешних вызовов (F-08) |
+| World — ключ внешней модели Паганеля | Настройки → World | `settings.toml` `paganel` | пусто | нет | `key_ref = paganel`; живой ход доступа не имеет |
+| Канал — край туннеля (`tunnel.edge`) | Настройки → Канал | `config.yaml` `tunnel.edge` | `region1.v2.argotunnel.com` | да* | bare hostname, без схемы/слэша; см. §4 |
+| Канал — локальный адрес (`tunnel.local`) | Настройки → Канал | `config.yaml` `tunnel.local` | `http://127.0.0.1:8720` | да* | только loopback |
+| Канал — `telegram_chat_id` | Настройки → Канал | `config.yaml` `tunnel.telegram_chat_id` | пусто | да | бот стартует с ядром, когда заданы токен и chat_id |
+| Канал — токен Telegram | Настройки → Канал | `settings.toml` `telegram` | пусто | да | наружу не отдаётся; `tunnel.telegram_token` — legacy fallback |
+| Plugins — список плагинов | Настройки → Plugins | — | пусто | — | сейчас плагинов нет |
+| Advanced — фича-флаги | Настройки → Advanced | `advanced.feature_flags` | `[]` | — | сейчас пусто, только чтение |
+| Advanced — `maxMemoryEntries` | Настройки → Advanced | `world_meta` tunable (forge) | `0` | нет | память NPC; пишется через `/api/world/tunables` |
+| Advanced — `similarityThreshold` | Настройки → Advanced | `world_meta` tunable (forge) | `0` | нет | |
+| Advanced — `halfLifeDays` | Настройки → Advanced | `world_meta` tunable (forge) | `0` | нет | |
+| Advanced — `embeddingDimension` | Настройки → Advanced (чтение) | код (`models.EmbedDim`) | `1024` | — | только чтение (D-16) |
+| Advanced — `globalLuck` | Настройки → Advanced | `world_meta` tunable (forge) | `0.5` | нет | удача мира |
+| Advanced — `dayNormKm` | Настройки → Advanced | `world_meta` tunable (forge) | `25` | нет | норма дня, диапазон 20–30 км |
+| Мониторинг — слоты/роли/машины/деградации/журнал | Настройки → Мониторинг | чтение журнала вызовов и состояния | — | — | только чтение, управляющих кнопок нет |
+| netgate — белый список внешних хостов (`allowed_hosts`) | — (config-only) | `config.yaml` `netgate.allowed_hosts` | 5 хостов (см. §5) | да | проверка до соединения (T-01-11) |
+| ports — белый список слушающих адресов (`whitelist`) | — (config-only) | `config.yaml` `ports.whitelist` | `127.0.0.1:8720`, `:5001`, `:5002` | да | чужой сокет — отказ старта, код 3 (T-01-12) |
+| slots — пресет по умолчанию (`slots.default`) | — (config-only) | `config.yaml` `slots.default` | `local` | нет | читается при выборе слота; сброс → `local` |
+| slots — хост Gemini (`slots.gemini_host`) | — (config-only) | `config.yaml` `slots.gemini_host` | `generativelanguage.googleapis.com` | нет | внешний хост в белом списке netgate |
+| composition — веса и штрафы скоринга | — (config-only) | `config.yaml` `composition.*` | см. §5 | да | инвариант `w_family ≤ 0.30`, иначе отказ старта |
+| children — резиденты ядра | — (config-only) | `config.yaml` `children` | `[]` | да | сейчас пусто (T-01-13) |
+| paganel — `build_budget` | — (config-only) | `config.yaml` `paganel.build_budget` | `10` | да | бюджет достройки кольца/коридора |
+| paganel — `scout_budget` | — (config-only) | `config.yaml` `paganel.scout_budget` | `3` | да | вызовов разведки на сессию |
+| paganel — `scout_timeout` | — (config-only) | `config.yaml` `paganel.scout_timeout` | `30s` | да | тайм-аут разведки |
+| paganel — `key_ref` | — (config-only) | `config.yaml` `paganel.key_ref` | `paganel` | да | ссылка на ключ в `settings.toml` |
+| MCP — `confirm.*` (двухголосие) | MCP → Инструменты станка → Коэффициенты | `config.yaml` `confirm.dict_threshold`/`vector_threshold`/`margin_dict`/`margin_vector` | `0.6`/`0.75`/`0.7`/`0.85` | нет | применяются к будущим просчётам; история не пересчитывается |
+| MCP — `sediment.dedup_threshold` | MCP → Коэффициенты | `config.yaml` | `0.85` | нет | дедуп оседания |
+| MCP — `saw.*` (пила) | MCP → Коэффициенты | `config.yaml` `saw.rise_min`/`rise_max`/`peak`/`fall`/`flat` | `0.03`/`0.08`/`0.8`/`0.35`/`0.3` | нет | |
+| MCP — `time.night_threshold_min` | MCP → Коэффициенты | `config.yaml` | `480` | нет | порог ночи, минуты |
+| MCP — переключатель лемматизатора | MCP → Инструменты станка → Лемматизатор | `settings.toml` `lemmatizer_enabled` | включён | нет | `false` — режим без лемматизатора |
+
+> \* Канал: параметры `tunnel.edge`/`tunnel.local` читаются при каждом запуске туннеля (`tns65 tunnel`/`scripts/tunnel.sh`); Telegram-бот читает токен и `chat_id` один раз при старте ядра, поэтому после сохранения Канала перезапустите ядро.
+
+## 3. Настройка Telegram по шагам
+
+1. Создайте бота в **@BotFather**: `/newbot`, укажите имя и юзернейм. БотFather вернёт **токен** вида `123456:ABC-DEF…`. Токен держите в тайне — это ключ к боту.
+2. Узнайте **chat_id**: напишите боту любое сообщение, затем запросите `https://api.telegram.org/bot<ТОКЕН>/getUpdates` (или через @userinfobot / @getidsbot). Нужный `chat_id` — числовой идентификатор чата из `message.chat.id`.
+3. Откройте интерфейс станка `http://127.0.0.1:8720` → вкладка **Настройки** → раздел **Канал**.
+4. Заполните поля: **Токен Telegram** и **Telegram chat_id**. Поля **Край туннеля** и **Локальный адрес** можно оставить дефолтными (`region1.v2.argotunnel.com` и `http://127.0.0.1:8720`).
+5. Нажмите **Сохранить**. Происходит:
+   - `telegram_chat_id`, `edge`, `local` пишутся в секцию `tunnel` файла `engine/config.yaml`;
+   - **токен пишется в `engine/settings.toml`** под ключом `telegram` (в `config.yaml` он не попадает);
+   - токен наружу не возвращается — в карточке только статусы.
+6. Перезапустите ядро станка. Бот стартует **вместе с ядром**, когда заданы и токен, и `chat_id` (`StartTelegram`); если канал не настроен — ядро продолжает работу без бота (`ErrTelegramNotConfigured`).
+
+## 4. Настройка туннеля
+
+- Туннель — исходящее соединение к краю Cloudflare: станок сам выходит наружу, **входящих портов нет**.
+- Бинарник `cloudflared` проект **не поставляет** — установите его отдельно.
+- Запуск: `cd engine && scripts/tunnel.sh` или `cd engine && tns65 tunnel --run`. Оба читают секцию `tunnel` из `engine/config.yaml`.
+- Сухой прогон без запуска: `cd engine && tns65 tunnel` — печатает `tunnel: edge=… local=…` и команду `run: scripts/tunnel.sh`, а в журнал пишет событие `tunnel.connect`.
+- Слушающего адреса у туннеля нет: ключ `bind` и не-loopback `local` отвергаются (`ErrExternalBind`).
+
+## 5. Предупреждение Q-1
+
+Интерфейс работает без аутентификации (UI-03): у станка нет входа, уровней доступа и скрытой админ-зоны. Поэтому **публичный туннель открывает станок любому, кто знает адрес** — до решения о подписи в URL (Q-1) не выставляйте туннель наружу. В разделе «Канал» это предупреждение показано явно: «Публичный туннель не имеет аутентификации».
+
+## 6. Проверка и журнал
+
+Журнал станка — `engine/state/journal/engine.log` (одна JSON-строка — одно событие).
+
+- `"event":"tunnel.connect"` (источник `tunnel`) — туннель запускался (`scripts/tunnel.sh` или `tns65 tunnel`).
+- `"event":"telegram.connect"` (источник `telegram`, `"mode":"long_poll"`) — Telegram-бот поднялся при старте ядра; пишется один раз на старт канала.
+- `"event":"web.access"` — каждый HTTP-запрос интерфейса.
+- `"event":"coeffs.changed"` — правка коэффициентов MCP с записью «было → стало».
+
+Проверка Telegram без живого бота: `cd engine && tns65 tunnel` покажет параметры туннеля; фактический подъём бота подтверждается записью `telegram.connect` в журнале после перезапуска ядра. Статус в интерфейсе — карточка «Канал»: «настроен» (есть токен и chat_id) и «бот работает» (флаг `bot_running`).
+
+## 7. Конфиг-секции вне интерфейса (defaults)
+
+`netgate.allowed_hosts` (по умолчанию): `generativelanguage.googleapis.com`, `huggingface.co`, `region1.v2.argotunnel.com`, `region2.v2.argotunnel.com`, `api.telegram.org`.
+`ports.whitelist` (по умолчанию): `127.0.0.1:8720`, `127.0.0.1:5001`, `127.0.0.1:5002`.
+`composition` (по умолчанию): `w_family 0.28`, `w_secondary 0.18`, `w_technique 0.15`, `w_moral 0.12`, `w_mood 0.10`, `w_quality 0.10`, `w_freshness 0.07`, `family_only_penalty 0.10`, `inversion_boost 0.10`, `adjacent_penalty 0.15`.
