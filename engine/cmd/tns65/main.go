@@ -276,7 +276,7 @@ func runTunnel(args []string) error {
 		return fmt.Errorf("tns65 tunnel: unexpected argument %q", fs.Arg(0))
 	}
 
-	cfg, err := webapi.LoadTunnelConfig("config.yaml")
+	cfg, err := webapi.LoadBotConfig("config.yaml", "settings.toml")
 	if err != nil {
 		return fmt.Errorf("tns65 tunnel: %w", err)
 	}

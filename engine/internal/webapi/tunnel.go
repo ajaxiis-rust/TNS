@@ -57,6 +57,11 @@ var ErrExternalBind = errors.New("webapi: tunnel has external bind address")
 // ErrTelegramNotConfigured — бот не настроен: нет токена или chat_id.
 var ErrTelegramNotConfigured = errors.New("webapi: telegram bot is not configured")
 
+// ErrNoActiveWorld — в интерфейсе не выбран активный мир, поэтому реплику из
+// Telegram некуда передать. Бот продолжает long poll и сообщает игроку, что
+// сначала нужно выбрать мир в Атласе.
+var ErrNoActiveWorld = errors.New("webapi: no active world for telegram chat")
+
 // TunnelConfig — конфигурация исходящего туннеля cloudflared (секция tunnel).
 // Edge — край, к которому станок подключается наружу; Local — loopback-адрес
 // веб-интерфейса, который туннель пробрасывает. Поля слушающего адреса нет.
@@ -333,7 +338,11 @@ func (b *TelegramBot) SendNews(ctx context.Context, text string) error {
 // ForwardChat пересылает реплику из Telegram в чат loopback-сервера
 // (Telegram → loopback, локальный порт 8720).
 func (b *TelegramBot) ForwardChat(ctx context.Context, text string) error {
-	body, err := json.Marshal(map[string]string{"text": text})
+	slug := getActiveSlug()
+	if slug == "" {
+		return ErrNoActiveWorld
+	}
+	body, err := json.Marshal(map[string]string{"world": slug, "text": text})
 	if err != nil {
 		return err
 	}
@@ -405,7 +414,13 @@ func (b *TelegramBot) PollOnce(ctx context.Context, offset int64) (int64, error)
 	for _, u := range updates {
 		if u.Message != nil && u.Message.Text != "" {
 			if err := b.ForwardChat(ctx, u.Message.Text); err != nil {
-				return offset, err
+				if !errors.Is(err, ErrNoActiveWorld) {
+					return offset, err
+				}
+				// Мир ещё не выбран: не останавливаем long poll, а просим
+				// выбрать мир в Атласе. Ошибка отправки подсказки не важнее
+				// самого цикла подписки.
+				_ = b.SendChat(ctx, "Сначала выберите мир в Атласе.")
 			}
 		}
 		if u.UpdateID >= offset {

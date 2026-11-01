@@ -166,6 +166,8 @@ func TestTelegramBotForwardsChat(t *testing.T) {
 		TelegramChatID: "42",
 	}, loopSrv, tgSrv, nil)
 
+	setActiveSlug("alpha")
+	t.Cleanup(func() { setActiveSlug("") })
 	ctx := context.Background()
 
 	// Telegram → чат loopback-сервера (локальный порт 8720/фейк).
@@ -176,8 +178,8 @@ func TestTelegramBotForwardsChat(t *testing.T) {
 	if got.method != http.MethodPost || got.path != chatPath {
 		t.Fatalf("forward chat request = %s %s, want POST %s", got.method, got.path, chatPath)
 	}
-	if !strings.Contains(got.body, "привет из телеграма") {
-		t.Fatalf("forward chat body = %q, want replica", got.body)
+	if !strings.Contains(got.body, "привет из телеграма") || !strings.Contains(got.body, `"world":"alpha"`) {
+		t.Fatalf("forward chat body = %q, want world alpha and replica", got.body)
 	}
 
 	// Чат loopback → Telegram (SendChat).
@@ -238,6 +240,9 @@ func TestTelegramBotLongPoll(t *testing.T) {
 		TelegramChatID: "42",
 	}, loopSrv, tgSrv, nil)
 
+	setActiveSlug("alpha")
+	t.Cleanup(func() { setActiveSlug("") })
+
 	// Один шаг long poll пересылает реплику в чат и двигает offset.
 	next, err := bot.PollOnce(context.Background(), 0)
 	if err != nil {
@@ -249,6 +254,87 @@ func TestTelegramBotLongPoll(t *testing.T) {
 	got := <-loopCh
 	if got.path != chatPath || !strings.Contains(got.body, "реплика из телеграма") {
 		t.Fatalf("forwarded chat = %s %s, want %s with replica", got.method, got.path, chatPath)
+	}
+}
+
+func TestLoadBotConfigMergesTelegramToken(t *testing.T) {
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	tomlPath := filepath.Join(dir, "settings.toml")
+	if err := os.WriteFile(cfgPath, []byte("tunnel:\n  edge: region1.v2.argotunnel.com\n  local: http://127.0.0.1:8720\n  telegram_chat_id: \"42\"\n  telegram_token: \"\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(tomlPath, []byte("telegram = \"tok-from-toml\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := LoadBotConfig(cfgPath, tomlPath)
+	if err != nil {
+		t.Fatalf("LoadBotConfig: %v", err)
+	}
+	if cfg.TelegramToken != "tok-from-toml" || cfg.TelegramChatID != "42" {
+		t.Fatalf("cfg = %q/%q, want tok-from-toml/42", cfg.TelegramToken, cfg.TelegramChatID)
+	}
+}
+
+func TestTelegramBotNoActiveWorld(t *testing.T) {
+	setActiveSlug("")
+	t.Cleanup(func() { setActiveSlug("") })
+
+	tgCh := make(chan requestCapture, 4)
+	tgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "sendMessage") {
+			b, _ := io.ReadAll(r.Body)
+			tgCh <- requestCapture{method: r.Method, path: r.URL.Path, body: string(b)}
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok": true,
+			"result": []telegramUpdate{
+				{UpdateID: 1, Message: &telegramMessage{Text: "реплика без мира"}},
+			},
+		})
+	}))
+	defer tgSrv.Close()
+
+	loopCalled := make(chan struct{}, 1)
+	loopSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		loopCalled <- struct{}{}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer loopSrv.Close()
+
+	bot := newBot(t, TunnelConfig{
+		Edge:           "region1.v2.argotunnel.com",
+		Local:          loopSrv.URL,
+		TelegramToken:  "tok",
+		TelegramChatID: "42",
+	}, loopSrv, tgSrv, nil)
+
+	next, err := bot.PollOnce(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("PollOnce without active world: %v", err)
+	}
+	if next != 2 {
+		t.Fatalf("next offset = %d, want 2", next)
+	}
+	select {
+	case <-loopCalled:
+		t.Fatal("loopback chat must not be called without an active world")
+	default:
+	}
+	select {
+	case got := <-tgCh:
+		vals, err := url.ParseQuery(got.body)
+		if err != nil {
+			t.Fatalf("parse telegram form: %v", err)
+		}
+		if !strings.Contains(vals.Get("text"), "Атласе") {
+			t.Fatalf("hint = %q, want Atlas hint", vals.Get("text"))
+		}
+	default:
+		t.Fatal("no hint sent to Telegram")
 	}
 }
 
