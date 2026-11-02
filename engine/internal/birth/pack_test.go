@@ -175,6 +175,36 @@ func TestPackDeterministic(t *testing.T) {
 	}
 }
 
+// TestEstatesCoverAllOrders — у каждого строя из ancketa.json каждое из шести
+// сословий имеет явный вес 0.1..1.0; пропуск строя дал бы нейтральный 1.0 по
+// умолчанию (T-12-03).
+func TestEstatesCoverAllOrders(t *testing.T) {
+	estates, err := LoadEstates()
+	if err != nil {
+		t.Fatalf("LoadEstates: %v", err)
+	}
+	if len(estates) != 6 {
+		t.Fatalf("сословий: %d, want 6", len(estates))
+	}
+
+	data, err := LoadData()
+	if err != nil {
+		t.Fatalf("LoadData: %v", err)
+	}
+
+	for _, e := range estates {
+		for _, order := range data.SocialOrders {
+			w, ok := e.WeightByOrder[order]
+			if !ok {
+				t.Fatalf("сословие %q: нет веса для строя %q", e.Estate, order)
+			}
+			if w < 0.1 || w > 1.0 {
+				t.Fatalf("сословие %q: вес для строя %q = %v вне [0.1, 1.0]", e.Estate, order, w)
+			}
+		}
+	}
+}
+
 // jsonStr читает строковое поле JSON из карточки.
 func jsonStr(t *testing.T, raw json.RawMessage, field string, i int) string {
 	t.Helper()
