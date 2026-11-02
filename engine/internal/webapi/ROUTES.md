@@ -47,6 +47,9 @@
 | POST | `/api/settings/models/rollback` | `{"world":"…","role":"…"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
 | GET | `/api/providers` | — | `{"providers":[{name,key_set,model,quota,cost_millis}]}` — внешние слоты: ключ, модель, остаток лимита вызовов («недоступно» без лимита), стоимость по тарифу из журнала вызовов | `method_not_allowed` |
 | GET | `/api/monitor` | — | `{"slots":[…],"roles":[…],"machines":[…],"degradations":N,"journal_tail":[…]}` — пять блоков мониторинга, только чтение | `method_not_allowed` |
+| GET | `/api/library` | — | `{"books":[{id,name,author,format,lang,genres,rating,chapters,bytes,sha256,status,progress,created_at}]}` — полка книг со статусами, мир не требуется | `method_not_allowed`, `internal` |
+| POST | `/api/library/import` | multipart `file` (txt/fb2) | `{"books":[…]}` — обновлённая полка | `method_not_allowed`, `bad_request`, `internal` |
+| DELETE | `/api/library/books/{id}` | — | `{"books":[…]}` — обновлённая полка | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 
 Список для дословной сверки (`TestRouteTable`):
 
@@ -90,6 +93,9 @@ GET /api/settings/models/status
 POST /api/settings/models/rollback
 GET /api/providers
 GET /api/monitor
+GET /api/library
+POST /api/library/import
+DELETE /api/library/books/
 ```
 
 ## Контракт ошибок

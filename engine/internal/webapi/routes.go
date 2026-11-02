@@ -106,6 +106,9 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodPost, path: "/api/settings/models/rollback", handle: handleSettingsModelRollback},
 		{method: http.MethodGet, path: "/api/providers", handle: handleProviders},
 		{method: http.MethodGet, path: "/api/monitor", handle: handleMonitor},
+		{method: http.MethodGet, path: "/api/library", handle: handleLibraryList},
+		{method: http.MethodPost, path: "/api/library/import", handle: handleLibraryImport},
+		{method: http.MethodDelete, path: "/api/library/books/", handle: handleLibraryDelete},
 	}
 	return append(specs, e2eRoutes()...)
 }
