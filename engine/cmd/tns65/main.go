@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"tns65/internal/birth"
@@ -31,6 +32,35 @@ import (
 type e2eBirthHooks interface {
 	config() birth.Config
 	finish(io.Writer)
+}
+
+// botMu защищает botStop — отмену текущего Telegram-канала. Канал
+// перезапускается из Настроек (PUT /api/settings/channel), поэтому ссылка может
+// меняться после старта ядра.
+var (
+	botMu   sync.Mutex
+	botStop context.CancelFunc
+)
+
+// startTelegramBot поднимает Telegram-канал из текущих config.yaml/settings.toml,
+// гася прежний канал. Ненастроенный канал — не ошибка: бот просто не запускается.
+func startTelegramBot(logger *journal.Logger) error {
+	cfg, err := webapi.LoadBotConfig("config.yaml", "settings.toml")
+	if err != nil {
+		return err
+	}
+	ctx, stop := context.WithCancel(context.Background())
+	botMu.Lock()
+	if botStop != nil {
+		botStop()
+	}
+	botStop = stop
+	botMu.Unlock()
+
+	if err := webapi.StartTelegram(ctx, cfg, logger); err != nil && !errors.Is(err, webapi.ErrTelegramNotConfigured) {
+		return err
+	}
+	return nil
 }
 
 func main() {
@@ -132,19 +162,28 @@ func run() int {
 	}()
 
 	// T-08-03/F-04.4: Telegram-бот стартует только когда канал настроен (есть
-	// токен и chat_id). Без настройки старт не блокируется и не падает.
-	botCtx, stopBot := context.WithCancel(context.Background())
-	if tunCfg, err := webapi.LoadBotConfig("config.yaml", "settings.toml"); err != nil {
-		fmt.Fprintf(os.Stderr, "tns65: tunnel config: %v\n", err)
-	} else if err := webapi.StartTelegram(botCtx, tunCfg, logger); err != nil && !errors.Is(err, webapi.ErrTelegramNotConfigured) {
+	// токен и chat_id). Без настройки старт не блокируется и не падает. Хуки
+	// перезапуска выставляются после первого старта — их вызывает PUT /api/settings/channel.
+	if err := startTelegramBot(logger); err != nil {
 		fmt.Fprintf(os.Stderr, "tns65: telegram: %v\n", err)
+	}
+	webapi.StopTelegram = func() {
+		botMu.Lock()
+		defer botMu.Unlock()
+		if botStop != nil {
+			botStop()
+			botStop = nil
+		}
+	}
+	webapi.TelegramRestart = func(_ context.Context) error {
+		return startTelegramBot(logger)
 	}
 
 	// T-01-13: ядро-надзиратель запускает, лечит и останавливает резидентов.
 	children, err := supervisor.Load("config.yaml")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		stopBot()
+		webapi.StopTelegram()
 		return 1
 	}
 	sup := supervisor.New(logger, children)
@@ -154,7 +193,7 @@ func run() int {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 	<-sig
-	stopBot()
+	webapi.StopTelegram()
 	webSrv.Close()
 	sup.Stop()
 	return 0

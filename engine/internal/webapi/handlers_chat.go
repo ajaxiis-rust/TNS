@@ -70,17 +70,23 @@ type chatSignalRequest struct {
 	Kind string `json:"kind"`
 }
 
-// chatHeroState — состояние героя панели чата из character_state.
+// chatHeroState — состояние героя панели чата из character_state и слоя
+// состояния character_layers (W2).
 type chatHeroState struct {
-	PlaceID int64  `json:"place_id,omitempty"`
-	Mood    string `json:"mood,omitempty"`
-	Status  string `json:"status,omitempty"`
+	PlaceID     int64  `json:"place_id,omitempty"`
+	Mood        string `json:"mood,omitempty"`
+	Status      string `json:"status,omitempty"`
+	Health      int    `json:"health,omitempty"`
+	HealthKnown bool   `json:"health_known"`
+	Place       string `json:"place,omitempty"`
+	PlaceKind   string `json:"place_kind,omitempty"`
 }
 
 // chatSystemState — состояние системы панели чата.
 type chatSystemState struct {
 	Mode      string `json:"mode"`
 	SessionID int64  `json:"session_id,omitempty"`
+	StartedAt string `json:"started_at,omitempty"`
 }
 
 // chatTurnItem — строка журнала хода для переподключения (обрыв WS не теряет
@@ -401,7 +407,16 @@ func readChatWorldState(h *db.Handle) map[string]string {
 	return out
 }
 
-// readChatHero читает состояние героя из character_state (character_id=0).
+// chatHeroHealthLayer — минимальный слой состояния героя для чтения здоровья
+// (W2): здоровье лежит в character_layers character_id=0 layer='state',
+// payload_json.health — целое число процентов.
+type chatHeroHealthLayer struct {
+	Health int `json:"health"`
+}
+
+// readChatHero читает состояние героя из character_state (character_id=0) и
+// дополняет его здоровьем из character_layers и названием места из places —
+// только чтение, ничего не пишется.
 func readChatHero(h *db.Handle) chatHeroState {
 	var out chatHeroState
 	var placeID sql.NullInt64
@@ -413,6 +428,23 @@ func readChatHero(h *db.Handle) chatHeroState {
 	out.PlaceID = placeID.Int64
 	out.Mood = mood.String
 	out.Status = status.String
+
+	var raw string
+	if err := h.QueryRow(`SELECT payload_json FROM character_layers WHERE character_id = 0 AND layer = 'state'`).Scan(&raw); err == nil {
+		var layer chatHeroHealthLayer
+		if json.Unmarshal([]byte(raw), &layer) == nil {
+			out.Health = layer.Health
+			out.HealthKnown = true
+		}
+	}
+
+	if out.PlaceID != 0 {
+		var name, kind sql.NullString
+		if err := h.QueryRow(`SELECT name, kind FROM places WHERE id = ?`, out.PlaceID).Scan(&name, &kind); err == nil {
+			out.Place = name.String
+			out.PlaceKind = kind.String
+		}
+	}
 	return out
 }
 
@@ -420,8 +452,11 @@ func readChatHero(h *db.Handle) chatHeroState {
 func readChatSystem(h *db.Handle) chatSystemState {
 	out := chatSystemState{Mode: "normal"}
 	var id int64
-	if err := h.QueryRow(`SELECT id FROM sessions WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1`).Scan(&id); err == nil {
+	var startedAt sql.NullString
+	if err := h.QueryRow(`SELECT id, started_at FROM sessions WHERE ended_at IS NULL ORDER BY id DESC LIMIT 1`).
+		Scan(&id, &startedAt); err == nil {
 		out.SessionID = id
+		out.StartedAt = startedAt.String
 	}
 	return out
 }

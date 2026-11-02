@@ -162,6 +162,30 @@ const channelWarning = "Публичный туннель не имеет аут
 // экран Настроек читает его через Channel.BotRunning.
 var botRunning atomic.Bool
 
+// botGeneration — поколение запущенного канала. StartTelegram увеличивает его на
+// старте; гасящая горутина снимает botRunning, только если она из текущего
+// поколения (иначе перезапуск канала перекрыл бы флаг у нового бота).
+var botGeneration atomic.Int64
+
+// channelRestartWarning — последнее предупреждение перезапуска Telegram-канала,
+// записанное PUT /api/settings/channel. Карточка Канал читает его в Warning.
+var (
+	channelRestartMu      sync.Mutex
+	channelRestartWarning string
+)
+
+func setChannelRestartWarning(msg string) {
+	channelRestartMu.Lock()
+	channelRestartWarning = msg
+	channelRestartMu.Unlock()
+}
+
+func getChannelRestartWarning() string {
+	channelRestartMu.Lock()
+	defer channelRestartMu.Unlock()
+	return channelRestartWarning
+}
+
 type settingsPreset struct {
 	Provider  string `json:"provider"`
 	GenAddr   string `json:"gen_addr"`
@@ -311,8 +335,17 @@ func buildChannelSettings(tun TunnelConfig, keys map[string]string) channelSetti
 		TelegramTokenSet:   tokenSet,
 		TelegramConfigured: tokenSet && chatID != "",
 		BotRunning:         botRunning.Load(),
-		Warning:            channelWarning,
+		Warning:            channelWarningValue(),
 	}
+}
+
+// channelWarningValue — предупреждение карточки Канал: постоянное Q-1 плюс, если
+// есть, последнее предупреждение перезапуска канала.
+func channelWarningValue() string {
+	if w := getChannelRestartWarning(); w != "" {
+		return channelWarning + "; " + w
+	}
+	return channelWarning
 }
 
 // buildSettingsPresets собирает пресеты реестра T-02-11 и карточки внешних
@@ -531,10 +564,20 @@ func handleSettingsKeys(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+// channelUpdateResponse — ответ PUT /api/settings/channel. warning появляется,
+// когда перезапуск канала завершился ошибкой; bot_running — текущий флаг бота.
+type channelUpdateResponse struct {
+	Status     string `json:"status"`
+	Warning    string `json:"warning,omitempty"`
+	BotRunning bool   `json:"bot_running"`
+}
+
 // handleSettingsChannel — PUT /api/settings/channel: исходящий канал станка.
 // edge/local/telegram_chat_id пишутся в секцию tunnel config.yaml, токен — в
 // settings.toml под ключом telegram. Токен пишется только непустым; clear_token
-// стирает его. Токен наружу не возвращается.
+// стирает его. Токен наружу не возвращается. Изменение токена, chat_id или
+// clear_token перезапускает Telegram-канал; если канал после изменения не
+// настроен — бот останавливается.
 func handleSettingsChannel(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Edge           string `json:"edge"`
@@ -557,6 +600,12 @@ func handleSettingsChannel(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, codeBadRequest, "local must be a loopback address")
 		return
 	}
+
+	oldChatID := ""
+	if oldCfg, err := LoadTunnelConfig(settingsConfigPath); err == nil {
+		oldChatID = strings.TrimSpace(oldCfg.TelegramChatID)
+	}
+
 	updates := map[string]string{
 		"tunnel.edge":             edge,
 		"tunnel.local":            tun.Local,
@@ -567,16 +616,78 @@ func handleSettingsChannel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	keys := readSettingsKeys(settingsTOMLPath)
+	oldToken := keys["telegram"]
+	newToken := oldToken
 	if req.ClearToken {
 		delete(keys, "telegram")
+		newToken = ""
 	} else if strings.TrimSpace(req.TelegramToken) != "" {
 		keys["telegram"] = req.TelegramToken
+		newToken = req.TelegramToken
 	}
 	if err := writeSettingsKeys(settingsTOMLPath, keys); err != nil {
 		writeError(w, http.StatusInternalServerError, codeInternal, "token write failed")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+
+	newChatID := strings.TrimSpace(req.TelegramChatID)
+	if newToken == oldToken && newChatID == oldChatID {
+		writeJSON(w, http.StatusOK, channelUpdateResponse{Status: "ok", BotRunning: botRunning.Load()})
+		return
+	}
+
+	// Канал стал ненастроенным — гасим бота и честно сообщаем bot_running=false.
+	if strings.TrimSpace(newToken) == "" || newChatID == "" {
+		stopTelegramChannel()
+		writeJSON(w, http.StatusOK, channelUpdateResponse{Status: "ok", BotRunning: false})
+		return
+	}
+
+	// Канал настроен — перезапуск в горутине, ответ не ждёт сеть дольше секунды.
+	writeJSON(w, http.StatusOK, channelUpdateResponse{
+		Status:     "ok",
+		Warning:    restartTelegramChannel(),
+		BotRunning: botRunning.Load(),
+	})
+}
+
+// stopTelegramChannel гасит текущий канал и снимает флаг bot_running. Хук
+// StopTelegram пуст в тестах — тогда снимается только флаг.
+func stopTelegramChannel() {
+	if StopTelegram != nil {
+		StopTelegram()
+	}
+	botRunning.Store(false)
+	setChannelRestartWarning("")
+}
+
+// restartTelegramChannel запускает TelegramRestart в горутине и ждёт результата
+// не дольше секунды, чтобы не блокировать HTTP-ответ. Ошибка хука возвращается
+// предупреждением и запоминается для карточки Канал; без хука (тесты) — пусто.
+func restartTelegramChannel() string {
+	if TelegramRestart == nil {
+		setChannelRestartWarning("")
+		return ""
+	}
+	done := make(chan error, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		done <- TelegramRestart(ctx)
+	}()
+	select {
+	case err := <-done:
+		if err == nil {
+			setChannelRestartWarning("")
+			return ""
+		}
+		msg := "перезапуск канала: " + err.Error()
+		setChannelRestartWarning(msg)
+		return msg
+	case <-time.After(time.Second):
+		setChannelRestartWarning("")
+		return ""
+	}
 }
 
 // validTunnelEdge сообщает, что край туннеля — bare hostname: без схемы,
@@ -1250,7 +1361,8 @@ func updateConfigScalars(path string, updates map[string]string) error {
 }
 
 // writeFileAtomic записывает данные во временный файл в том же каталоге и
-// переименовывает поверх target; падение не оставляет половину файла.
+// переименовывает поверх target; падение не оставляет половину файла. Файл
+// создаётся с правами 0600 — settings.toml хранит токен Telegram и ключи API.
 func writeFileAtomic(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".tmp-*")
@@ -1259,7 +1371,7 @@ func writeFileAtomic(path string, data []byte) error {
 	}
 	tmpName := tmp.Name()
 	defer os.Remove(tmpName)
-	if err := tmp.Chmod(0o644); err != nil {
+	if err := tmp.Chmod(0o600); err != nil {
 		_ = tmp.Close()
 		return err
 	}

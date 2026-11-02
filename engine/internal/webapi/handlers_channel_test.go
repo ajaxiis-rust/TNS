@@ -1,9 +1,12 @@
 package webapi
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -137,5 +140,110 @@ func TestChannelQuotedEmptyToken(t *testing.T) {
 	}
 	if out.Channel.TelegramConfigured {
 		t.Fatal("channel.telegram_configured = true, want false for empty token")
+	}
+}
+
+// TestWriteSettingsKeysMode — settings.toml создаётся с правами 0600: файл хранит
+// токен Telegram и ключи внешних провайдеров.
+func TestWriteSettingsKeysMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.toml")
+	if err := writeSettingsKeys(path, map[string]string{"telegram": "secret"}); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("settings.toml mode = %o, want 600", got)
+	}
+}
+
+// TestChannelPutRestartsBotOnce — новый токен вызывает хук перезапуска ровно
+// один раз; повторный PUT с теми же значениями хука не вызывает.
+func TestChannelPutRestartsBotOnce(t *testing.T) {
+	seedSettingsWorld(t)
+	oldRestart, oldStop := TelegramRestart, StopTelegram
+	t.Cleanup(func() { TelegramRestart, StopTelegram = oldRestart, oldStop })
+
+	calls := 0
+	TelegramRestart = func(context.Context) error { calls++; return nil }
+	StopTelegram = func() {}
+
+	body := []byte(`{"edge":"region1.v2.argotunnel.com","local":"http://127.0.0.1:8720","telegram_chat_id":"42","telegram_token":"tok-1"}`)
+	rr := mcpRequest(t, handleSettingsChannel, http.MethodPut, settingsChannelPath, body, "application/json")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("PUT channel: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	if calls != 1 {
+		t.Fatalf("restart hook calls = %d, want 1", calls)
+	}
+
+	rr = mcpRequest(t, handleSettingsChannel, http.MethodPut, settingsChannelPath, body, "application/json")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("PUT channel (same values): status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	if calls != 1 {
+		t.Fatalf("restart hook calls after same values = %d, want 1", calls)
+	}
+}
+
+// TestChannelPutRestartErrorWarning — ошибка хука перезапуска уходит в ответ
+// предупреждением, а не 500.
+func TestChannelPutRestartErrorWarning(t *testing.T) {
+	seedSettingsWorld(t)
+	oldRestart, oldStop := TelegramRestart, StopTelegram
+	t.Cleanup(func() { TelegramRestart, StopTelegram = oldRestart, oldStop })
+
+	TelegramRestart = func(context.Context) error { return errors.New("restart boom") }
+	StopTelegram = func() {}
+
+	body := []byte(`{"edge":"region1.v2.argotunnel.com","local":"http://127.0.0.1:8720","telegram_chat_id":"42","telegram_token":"tok-1"}`)
+	rr := mcpRequest(t, handleSettingsChannel, http.MethodPut, settingsChannelPath, body, "application/json")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("PUT channel: status = %d, want 200 (not 500); body=%s", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "restart boom") {
+		t.Fatalf("PUT channel body missing restart warning, got %s", rr.Body.String())
+	}
+}
+
+// TestChannelPutClearTokenStopsBot — clear_token гасит канал и отвечает
+// bot_running=false, не вызывая перезапуск.
+func TestChannelPutClearTokenStopsBot(t *testing.T) {
+	seedSettingsWorld(t)
+	oldRestart, oldStop := TelegramRestart, StopTelegram
+	t.Cleanup(func() { TelegramRestart, StopTelegram = oldRestart, oldStop })
+
+	restarts := 0
+	TelegramRestart = func(context.Context) error { restarts++; return nil }
+	stopped := false
+	StopTelegram = func() { stopped = true }
+
+	cfg := []byte(`{"edge":"region1.v2.argotunnel.com","local":"http://127.0.0.1:8720","telegram_chat_id":"42","telegram_token":"tok-1"}`)
+	if rr := mcpRequest(t, handleSettingsChannel, http.MethodPut, settingsChannelPath, cfg, "application/json"); rr.Code != http.StatusOK {
+		t.Fatalf("PUT channel: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	if restarts != 1 {
+		t.Fatalf("restart hook calls = %d, want 1", restarts)
+	}
+
+	clear := []byte(`{"edge":"region1.v2.argotunnel.com","local":"http://127.0.0.1:8720","telegram_chat_id":"42","clear_token":true}`)
+	rr := mcpRequest(t, handleSettingsChannel, http.MethodPut, settingsChannelPath, clear, "application/json")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("PUT clear_token: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	if !stopped {
+		t.Fatal("StopTelegram not called after clear_token")
+	}
+	if restarts != 1 {
+		t.Fatalf("restart hook calls after clear_token = %d, want 1 (no restart)", restarts)
+	}
+	var out channelUpdateResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if out.BotRunning {
+		t.Fatalf("bot_running = true after clear_token, want false; body=%s", rr.Body.String())
 	}
 }

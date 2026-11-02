@@ -327,6 +327,49 @@ func TestChatState(t *testing.T) {
 	}
 }
 
+// TestChatStateHeroHealthAndPlace — /api/state отдаёт здоровье из слоя состояния
+// character_layers и название/тип места из places (W2), только чтением.
+func TestChatStateHeroHealthAndPlace(t *testing.T) {
+	path := seedChatWorld(t)
+
+	forge, err := db.OpenWriterAs(path, db.DBWorld, db.WriterForge, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := forge.Exec("places", `INSERT INTO places (id, name, kind) VALUES (1, 'Таверна', 'город')`); err != nil {
+		_ = forge.Close()
+		t.Fatal(err)
+	}
+	_ = forge.Close()
+
+	core, err := db.OpenWriterAs(path, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := json.Marshal(map[string]int{"health": 50})
+	if _, err := core.Exec("character_layers",
+		`INSERT INTO character_layers (character_id, layer, payload_json) VALUES (0, 'state', ?)`, string(raw)); err != nil {
+		_ = core.Close()
+		t.Fatal(err)
+	}
+	_ = core.Close()
+
+	rr := chatRequest(t, handleChatState, http.MethodGet, chatStatePath+"?world=alpha", "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET /api/state: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	var out chatStateResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if !out.Hero.HealthKnown || out.Hero.Health != 50 {
+		t.Fatalf("hero health = %d/%v, want 50/true", out.Hero.Health, out.Hero.HealthKnown)
+	}
+	if out.Hero.Place != "Таверна" || out.Hero.PlaceKind != "город" {
+		t.Fatalf("hero place = %q/%q, want Таверна/город", out.Hero.Place, out.Hero.PlaceKind)
+	}
+}
+
 // TestSceneSignal — сигнал сцены пишется в scene_signals.
 func TestSceneSignal(t *testing.T) {
 	seedChatWorld(t)

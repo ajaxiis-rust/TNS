@@ -15,7 +15,7 @@
 | GET | `/api/world` | query `world=<slug>` | `{"world":"…","fields":{…}}` — замороженные поля анкеты из `world_meta` | `method_not_allowed`, `bad_request`, `internal` |
 | PUT | `/api/world/tunables` | `{"world":"…","tunables":{…}}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | POST | `/api/turn` | `{"world":"<slug>","text":"…"}` | `{"turn_id":N}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
-| GET | `/api/state` | query `world=<slug>` | `{"world":"…","world_state":{…},"hero":{…},"system":{…},"return_summary":"…","return_news":[…],"turns":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| GET | `/api/state` | query `world=<slug>` | `{"world":"…","world_state":{…},"hero":{place_id,mood,status,health,health_known,place,place_kind},"system":{mode,session_id,started_at},"return_summary":"…","return_news":[…],"turns":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | POST | `/api/scene/{id}/signal` | `{"kind":"like|dislike"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | GET | `/atlas.html` | — | `atlas.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/history.html` | — | `history.html` из embed | `method_not_allowed`, `not_found` |
@@ -40,7 +40,7 @@
 | PUT | `/api/settings/bindings` | `{"world":"…","bindings":[{"role","model_ref","provider"}]}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | PUT | `/api/settings/config` | `{"host","port","paganel_enabled","scout_enabled","gen_addr","gen_model","gen_timeout","gen_max_tokens","gen_temperature","gen_retries","gen_concurrency","embed_addr","embed_model","embed_timeout","local","sampling"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | PUT | `/api/settings/keys` | `{"keys":{…}}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
-| PUT | `/api/settings/channel` | `{"edge","local","telegram_chat_id","telegram_token","clear_token"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
+| PUT | `/api/settings/channel` | `{"edge","local","telegram_chat_id","telegram_token","clear_token"}` | `{"status":"ok","bot_running":bool,"warning":"…"}` | `method_not_allowed`, `bad_request`, `internal` |
 | POST | `/api/settings/models/install` | `{"world":"…","role":"…","source":"https://huggingface.co/…","model_ref":"…"}` | `{"status":"ok","model_ref":"…"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | POST | `/api/settings/models/rollback` | `{"world":"…","role":"…"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
 | GET | `/api/providers` | — | `{"providers":[{name,key_set,model,quota,cost_millis}]}` — внешние слоты: ключ, модель, остаток лимита вызовов («недоступно» без лимита), стоимость по тарифу из журнала вызовов | `method_not_allowed` |

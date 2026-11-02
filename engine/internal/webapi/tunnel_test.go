@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -171,7 +172,7 @@ func TestTelegramBotForwardsChat(t *testing.T) {
 	ctx := context.Background()
 
 	// Telegram → чат loopback-сервера (локальный порт 8720/фейк).
-	if err := bot.ForwardChat(ctx, "привет из телеграма"); err != nil {
+	if _, err := bot.ForwardChat(ctx, "привет из телеграма"); err != nil {
 		t.Fatalf("ForwardChat: %v", err)
 	}
 	got := <-loopCh
@@ -219,7 +220,7 @@ func TestTelegramBotLongPoll(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"ok": true,
 			"result": []telegramUpdate{
-				{UpdateID: 1, Message: &telegramMessage{Text: "реплика из телеграма"}},
+				{UpdateID: 1, Message: &telegramMessage{Text: "реплика из телеграма", Chat: &telegramChat{ID: 42}}},
 			},
 		})
 	}))
@@ -292,7 +293,7 @@ func TestTelegramBotNoActiveWorld(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"ok": true,
 			"result": []telegramUpdate{
-				{UpdateID: 1, Message: &telegramMessage{Text: "реплика без мира"}},
+				{UpdateID: 1, Message: &telegramMessage{Text: "реплика без мира", Chat: &telegramChat{ID: 42}}},
 			},
 		})
 	}))
@@ -475,4 +476,477 @@ func wsSubscribed(hub *Hub, topic string) bool {
 		}
 	}
 	return false
+}
+
+// TestTelegramBotRoundTrip — полный цикл: реплика из Telegram → POST /api/turn
+// (world+text) → GET /api/state → sendMessage с ответом мира и клавиатурой сцены.
+func TestTelegramBotRoundTrip(t *testing.T) {
+	setActiveSlug("alpha")
+	t.Cleanup(func() { setActiveSlug("") })
+
+	loopCh := make(chan requestCapture, 4)
+	loopSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		loopCh <- requestCapture{method: r.Method, path: r.URL.RequestURI(), body: string(b)}
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case chatPath:
+			_ = json.NewEncoder(w).Encode(map[string]int64{"turn_id": 7})
+		case chatStatePath:
+			_ = json.NewEncoder(w).Encode(chatStateResponse{
+				World: "alpha",
+				Turns: []chatTurnItem{
+					{TurnID: 7, SceneID: 9, PlayerText: "привет", ReplyText: "ответ мира"},
+				},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer loopSrv.Close()
+
+	tgCh := make(chan requestCapture, 4)
+	tgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "sendMessage") {
+			b, _ := io.ReadAll(r.Body)
+			tgCh <- requestCapture{method: r.Method, path: r.URL.Path, body: string(b)}
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":     true,
+			"result": []telegramUpdate{{UpdateID: 1, Message: &telegramMessage{Text: "привет", Chat: &telegramChat{ID: 42}}}},
+		})
+	}))
+	defer tgSrv.Close()
+
+	bot := newBot(t, TunnelConfig{
+		Edge:           "region1.v2.argotunnel.com",
+		Local:          loopSrv.URL,
+		TelegramToken:  "tok",
+		TelegramChatID: "42",
+	}, loopSrv, tgSrv, nil)
+
+	next, err := bot.PollOnce(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("PollOnce: %v", err)
+	}
+	if next != 2 {
+		t.Fatalf("next = %d, want 2", next)
+	}
+
+	// Шаг 1: реплика ушла в POST /api/turn с миром и текстом.
+	turnReq := <-loopCh
+	if turnReq.method != http.MethodPost || turnReq.path != chatPath {
+		t.Fatalf("turn request = %s %s, want POST %s", turnReq.method, turnReq.path, chatPath)
+	}
+	if !strings.Contains(turnReq.body, `"world":"alpha"`) || !strings.Contains(turnReq.body, "привет") {
+		t.Fatalf("turn body = %q, want world alpha and replica", turnReq.body)
+	}
+
+	// Шаг 2: ответ читается из GET /api/state.
+	stateReq := <-loopCh
+	if stateReq.method != http.MethodGet || !strings.HasPrefix(stateReq.path, chatStatePath) {
+		t.Fatalf("state request = %s %s, want GET %s", stateReq.method, stateReq.path, chatStatePath)
+	}
+	if !strings.Contains(stateReq.path, "world=alpha") {
+		t.Fatalf("state path = %q, want world=alpha", stateReq.path)
+	}
+
+	// Шаг 3: ответ мира уходит в sendMessage с клавиатурой сигналов сцены.
+	got := <-tgCh
+	assertTelegramMessage(t, got, "ответ мира")
+	vals, err := url.ParseQuery(got.body)
+	if err != nil {
+		t.Fatalf("parse telegram form: %v", err)
+	}
+	if mk := vals.Get("reply_markup"); !strings.Contains(mk, "signal:9:like") || !strings.Contains(mk, "signal:9:dislike") {
+		t.Fatalf("reply_markup = %q, want scene signal buttons", mk)
+	}
+}
+
+// TestTelegramBotLoopbackErrorDoesNotStopPoll — 500 от loopback не роняет цикл
+// long poll: бот честно сообщает о сбое и продолжает опрос.
+func TestTelegramBotLoopbackErrorDoesNotStopPoll(t *testing.T) {
+	setActiveSlug("alpha")
+	t.Cleanup(func() { setActiveSlug("") })
+
+	loopSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer loopSrv.Close()
+
+	tgCh := make(chan requestCapture, 4)
+	tgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "sendMessage") {
+			b, _ := io.ReadAll(r.Body)
+			tgCh <- requestCapture{method: r.Method, path: r.URL.Path, body: string(b)}
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":     true,
+			"result": []telegramUpdate{{UpdateID: 1, Message: &telegramMessage{Text: "привет", Chat: &telegramChat{ID: 42}}}},
+		})
+	}))
+	defer tgSrv.Close()
+
+	bot := newBot(t, TunnelConfig{
+		Edge:           "region1.v2.argotunnel.com",
+		Local:          loopSrv.URL,
+		TelegramToken:  "tok",
+		TelegramChatID: "42",
+	}, loopSrv, tgSrv, nil)
+
+	next, err := bot.PollOnce(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("PollOnce after loopback 500: %v", err)
+	}
+	if next != 2 {
+		t.Fatalf("next = %d, want 2", next)
+	}
+
+	select {
+	case got := <-tgCh:
+		vals, err := url.ParseQuery(got.body)
+		if err != nil {
+			t.Fatalf("parse telegram form: %v", err)
+		}
+		if vals.Get("text") == "" {
+			t.Fatalf("honest message missing after loopback 500")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("no honest message sent after loopback 500")
+	}
+}
+
+// TestTelegramBotStaleTurnReplyNotSent — ответ на устаревший turn_id не
+// отправляется (хода уже нет в журнале GET /api/state).
+func TestTelegramBotStaleTurnReplyNotSent(t *testing.T) {
+	setActiveSlug("alpha")
+	t.Cleanup(func() { setActiveSlug("") })
+
+	loopSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case chatPath:
+			_ = json.NewEncoder(w).Encode(map[string]int64{"turn_id": 7})
+		case chatStatePath:
+			_ = json.NewEncoder(w).Encode(chatStateResponse{
+				World: "alpha",
+				Turns: []chatTurnItem{{TurnID: 6, ReplyText: "старый ответ"}},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer loopSrv.Close()
+
+	tgCh := make(chan requestCapture, 4)
+	tgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "sendMessage") {
+			b, _ := io.ReadAll(r.Body)
+			tgCh <- requestCapture{method: r.Method, path: r.URL.Path, body: string(b)}
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":     true,
+			"result": []telegramUpdate{{UpdateID: 1, Message: &telegramMessage{Text: "привет", Chat: &telegramChat{ID: 42}}}},
+		})
+	}))
+	defer tgSrv.Close()
+
+	bot := newBot(t, TunnelConfig{
+		Edge:           "region1.v2.argotunnel.com",
+		Local:          loopSrv.URL,
+		TelegramToken:  "tok",
+		TelegramChatID: "42",
+	}, loopSrv, tgSrv, nil)
+
+	if _, err := bot.PollOnce(context.Background(), 0); err != nil {
+		t.Fatalf("PollOnce: %v", err)
+	}
+
+	select {
+	case got := <-tgCh:
+		t.Fatalf("stale turn reply must not be sent, got %q", got.body)
+	case <-time.After(200 * time.Millisecond):
+	}
+}
+
+// TestSplitReply — длинный ответ режется по границам абзацев, внутри абзаца —
+// по границе слова; куски не длиннее лимита и не рвут слово посередине.
+func TestSplitReply(t *testing.T) {
+	var paras []string
+	for i := 0; i < 6; i++ {
+		paras = append(paras, strings.Repeat("слово"+strconv.Itoa(i)+" ", 300))
+	}
+	text := strings.Join(paras, "\n")
+
+	chunks := splitReply(text)
+	if len(chunks) != len(paras) {
+		t.Fatalf("chunks = %d, want %d (paragraph boundaries)", len(chunks), len(paras))
+	}
+	for i, c := range chunks {
+		if c != strings.TrimSpace(paras[i]) {
+			t.Fatalf("chunk %d = %q, want full paragraph %q", i, c, strings.TrimSpace(paras[i]))
+		}
+		if len(c) > maxTelegramText {
+			t.Fatalf("chunk %d length = %d, want <= %d", i, len(c), maxTelegramText)
+		}
+	}
+
+	// Один абзац длиннее лимита режется по границе слова, не по букве.
+	long := strings.Repeat("слово ", 900)
+	chunks = splitReply(long)
+	if len(chunks) < 2 {
+		t.Fatalf("long paragraph produced %d chunk, want > 1", len(chunks))
+	}
+	for i, c := range chunks {
+		if len(c) > maxTelegramText {
+			t.Fatalf("chunk %d length = %d, want <= %d", i, len(c), maxTelegramText)
+		}
+	}
+	if got := strings.Join(chunks, " "); got != strings.TrimSpace(long) {
+		t.Fatalf("joined chunks = %q, want original words %q", got, strings.TrimSpace(long))
+	}
+}
+
+// newCallbackBot собирает бота на фейковых серверах для callback-запросов:
+// loopback пишет запросы в loopCh, Telegram отвечает заданным обновлением на
+// getUpdates и пишет answerCallbackQuery в tgCh.
+func newCallbackBot(t *testing.T, update telegramUpdate) (*TelegramBot, chan requestCapture, chan requestCapture) {
+	t.Helper()
+	loopCh := make(chan requestCapture, 8)
+	loopSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		loopCh <- requestCapture{method: r.Method, path: r.URL.Path, body: string(b)}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}))
+	t.Cleanup(loopSrv.Close)
+
+	tgCh := make(chan requestCapture, 8)
+	tgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(r.URL.Path, "answerCallbackQuery") {
+			b, _ := io.ReadAll(r.Body)
+			tgCh <- requestCapture{method: r.Method, path: r.URL.Path, body: string(b)}
+			_ = json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "result": []telegramUpdate{update}})
+	}))
+	t.Cleanup(tgSrv.Close)
+
+	bot := newBot(t, TunnelConfig{
+		Edge:           "region1.v2.argotunnel.com",
+		Local:          loopSrv.URL,
+		TelegramToken:  "tok",
+		TelegramChatID: "42",
+	}, loopSrv, tgSrv, nil)
+	return bot, loopCh, tgCh
+}
+
+// assertAnswerCallback проверяет, что бот ответил на callback коротким текстом.
+func assertAnswerCallback(t *testing.T, got requestCapture, wantID, wantText string) {
+	t.Helper()
+	if got.method != http.MethodPost || got.path != "/bot/tok/answerCallbackQuery" {
+		t.Fatalf("answer callback = %s %s, want POST /bot/tok/answerCallbackQuery", got.method, got.path)
+	}
+	vals, err := url.ParseQuery(got.body)
+	if err != nil {
+		t.Fatalf("parse answerCallbackQuery form: %v", err)
+	}
+	if vals.Get("callback_query_id") != wantID || vals.Get("text") != wantText {
+		t.Fatalf("answerCallbackQuery form = %v, want callback_query_id=%s text=%s", vals, wantID, wantText)
+	}
+}
+
+// assertSignalRequest проверяет POST /api/scene/{id}/signal с телом kind.
+func assertSignalRequest(t *testing.T, got requestCapture, wantID string, wantKind string) {
+	t.Helper()
+	wantPath := "/api/scene/" + wantID + "/signal"
+	if got.method != http.MethodPost || got.path != wantPath {
+		t.Fatalf("signal request = %s %s, want POST %s", got.method, got.path, wantPath)
+	}
+	var body chatSignalRequest
+	if err := json.Unmarshal([]byte(got.body), &body); err != nil {
+		t.Fatalf("bad signal body %q: %v", got.body, err)
+	}
+	if body.Kind != wantKind {
+		t.Fatalf("signal kind = %q, want %s", body.Kind, wantKind)
+	}
+}
+
+// TestTelegramBotLikeCallback — лайк из inline-кнопки уходит в
+// POST /api/scene/{id}/signal с kind=like, а бот отвечает «принято».
+func TestTelegramBotLikeCallback(t *testing.T) {
+	setActiveSlug("alpha")
+	t.Cleanup(func() { setActiveSlug("") })
+
+	bot, loopCh, tgCh := newCallbackBot(t, telegramUpdate{
+		UpdateID: 1,
+		CallbackQuery: &telegramCallbackQuery{
+			ID:      "cb1",
+			Data:    "signal:7:like",
+			Message: &telegramMessage{Chat: &telegramChat{ID: 42}},
+		},
+	})
+
+	next, err := bot.PollOnce(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("PollOnce: %v", err)
+	}
+	if next != 2 {
+		t.Fatalf("next offset = %d, want 2", next)
+	}
+
+	assertSignalRequest(t, <-loopCh, "7", "like")
+	assertAnswerCallback(t, <-tgCh, "cb1", "принято")
+}
+
+// TestTelegramBotDislikeCallback — дизлайк: kind=dislike и тот же короткий ответ.
+func TestTelegramBotDislikeCallback(t *testing.T) {
+	setActiveSlug("alpha")
+	t.Cleanup(func() { setActiveSlug("") })
+
+	bot, loopCh, tgCh := newCallbackBot(t, telegramUpdate{
+		UpdateID: 1,
+		CallbackQuery: &telegramCallbackQuery{
+			ID:      "cb2",
+			Data:    "signal:8:dislike",
+			Message: &telegramMessage{Chat: &telegramChat{ID: 42}},
+		},
+	})
+
+	next, err := bot.PollOnce(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("PollOnce: %v", err)
+	}
+	if next != 2 {
+		t.Fatalf("next offset = %d, want 2", next)
+	}
+
+	assertSignalRequest(t, <-loopCh, "8", "dislike")
+	assertAnswerCallback(t, <-tgCh, "cb2", "принято")
+}
+
+// TestTelegramBotForeignCallbackIgnored — callback из чужого чата не доходит ни
+// до loopback, ни до answerCallbackQuery, но offset двигается.
+func TestTelegramBotForeignCallbackIgnored(t *testing.T) {
+	setActiveSlug("alpha")
+	t.Cleanup(func() { setActiveSlug("") })
+
+	bot, loopCh, tgCh := newCallbackBot(t, telegramUpdate{
+		UpdateID: 1,
+		CallbackQuery: &telegramCallbackQuery{
+			ID:      "cb1",
+			Data:    "signal:7:like",
+			Message: &telegramMessage{Chat: &telegramChat{ID: 999}},
+		},
+	})
+
+	next, err := bot.PollOnce(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("PollOnce: %v", err)
+	}
+	if next != 2 {
+		t.Fatalf("next offset = %d, want 2", next)
+	}
+
+	select {
+	case got := <-loopCh:
+		t.Fatalf("foreign callback must not reach loopback, got %s %s", got.method, got.path)
+	default:
+	}
+	select {
+	case got := <-tgCh:
+		t.Fatalf("foreign callback must not get answerCallbackQuery, got %q", got.body)
+	default:
+	}
+}
+
+// TestTelegramBotUnknownCallbackDataIgnored — незнакомая callback_data молча
+// игнорируется: ни loopback, ни answerCallbackQuery, ни ошибки.
+func TestTelegramBotUnknownCallbackDataIgnored(t *testing.T) {
+	setActiveSlug("alpha")
+	t.Cleanup(func() { setActiveSlug("") })
+
+	bot, loopCh, tgCh := newCallbackBot(t, telegramUpdate{
+		UpdateID: 1,
+		CallbackQuery: &telegramCallbackQuery{
+			ID:      "cb1",
+			Data:    "garbage",
+			Message: &telegramMessage{Chat: &telegramChat{ID: 42}},
+		},
+	})
+
+	next, err := bot.PollOnce(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("PollOnce: %v", err)
+	}
+	if next != 2 {
+		t.Fatalf("next offset = %d, want 2", next)
+	}
+
+	select {
+	case got := <-loopCh:
+		t.Fatalf("unknown callback data must not reach loopback, got %s %s", got.method, got.path)
+	default:
+	}
+	select {
+	case got := <-tgCh:
+		t.Fatalf("unknown callback data must not get answerCallbackQuery, got %q", got.body)
+	default:
+	}
+}
+
+// TestTelegramBotSignalErrorAnswer — сбой loopback сигнала превращается в
+// короткий ответ «ошибка» вместо тишины.
+func TestTelegramBotSignalErrorAnswer(t *testing.T) {
+	setActiveSlug("alpha")
+	t.Cleanup(func() { setActiveSlug("") })
+
+	loopSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer loopSrv.Close()
+
+	tgCh := make(chan requestCapture, 8)
+	tgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.Contains(r.URL.Path, "answerCallbackQuery") {
+			b, _ := io.ReadAll(r.Body)
+			tgCh <- requestCapture{method: r.Method, path: r.URL.Path, body: string(b)}
+			_ = json.NewEncoder(w).Encode(map[string]bool{"ok": true})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok": true,
+			"result": []telegramUpdate{{UpdateID: 1, CallbackQuery: &telegramCallbackQuery{
+				ID:      "cb1",
+				Data:    "signal:7:like",
+				Message: &telegramMessage{Chat: &telegramChat{ID: 42}},
+			}}},
+		})
+	}))
+	defer tgSrv.Close()
+
+	bot := newBot(t, TunnelConfig{
+		Edge:           "region1.v2.argotunnel.com",
+		Local:          loopSrv.URL,
+		TelegramToken:  "tok",
+		TelegramChatID: "42",
+	}, loopSrv, tgSrv, nil)
+
+	if _, err := bot.PollOnce(context.Background(), 0); err != nil {
+		t.Fatalf("PollOnce: %v", err)
+	}
+
+	assertAnswerCallback(t, <-tgCh, "cb1", "ошибка")
 }

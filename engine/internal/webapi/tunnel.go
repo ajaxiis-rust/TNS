@@ -285,6 +285,15 @@ func localAddr(local string) string {
 // loopback-клиентов на httptest-фейки без живой сети.
 var newTelegramBot = NewTelegramBot
 
+// TelegramRestart — хук перезапуска Telegram-канала после изменения настроек
+// канала. Выставляется main после первого StartTelegram; в тестах остаётся nil,
+// и хэндлер PUT /api/settings/channel его не вызывает.
+var TelegramRestart func(context.Context) error
+
+// StopTelegram — отмена текущего канала: гасит контекст, переданный в
+// StartTelegram. Выставляется main вместе с TelegramRestart.
+var StopTelegram func()
+
 // StartTelegram запускает исходящий Telegram-канал (F-04.4): long poll реплик
 // (Poll) и подписку на вести станка (SubscribeNews) в отдельных горутинах на
 // производном отменяемом контексте. Возвращает ErrTelegramNotConfigured, когда
@@ -298,6 +307,7 @@ func StartTelegram(ctx context.Context, cfg TunnelConfig, logger *journal.Logger
 
 	bot := newTelegramBot(cfg, logger)
 	runCtx, cancel := context.WithCancel(ctx)
+	gen := botGeneration.Add(1)
 	botRunning.Store(true)
 	LogTelegramConnect(logger, cfg)
 
@@ -319,7 +329,11 @@ func StartTelegram(ctx context.Context, cfg TunnelConfig, logger *journal.Logger
 	go func() {
 		<-ctx.Done()
 		cancel()
-		botRunning.Store(false)
+		// Флаг снимает только текущее поколение канала: при перезапуске старый
+		// бот не должен перекрывать botRunning у нового.
+		if botGeneration.Load() == gen {
+			botRunning.Store(false)
+		}
 	}()
 
 	return nil
@@ -335,43 +349,71 @@ func (b *TelegramBot) SendNews(ctx context.Context, text string) error {
 	return b.sendTelegram(ctx, text)
 }
 
+// chatTurnResponse — тело ответа POST /api/turn: номер закоммиченного хода.
+type chatTurnResponse struct {
+	TurnID int64 `json:"turn_id"`
+}
+
 // ForwardChat пересылает реплику из Telegram в чат loopback-сервера
-// (Telegram → loopback, локальный порт 8720).
-func (b *TelegramBot) ForwardChat(ctx context.Context, text string) error {
+// (Telegram → loopback, локальный порт 8720) и возвращает номер хода.
+// Пустой ответ без turn_id — не ошибка: вызывающий сообщит игроку честно.
+func (b *TelegramBot) ForwardChat(ctx context.Context, text string) (int64, error) {
 	slug := getActiveSlug()
 	if slug == "" {
-		return ErrNoActiveWorld
+		return 0, ErrNoActiveWorld
 	}
 	body, err := json.Marshal(map[string]string{"world": slug, "text": text})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		strings.TrimSuffix(b.localBase, "/")+chatPath, bytes.NewReader(body))
 	if err != nil {
-		return err
+		return 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := b.local.Do(req)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("webapi: forward chat: status %d", resp.StatusCode)
+		return 0, fmt.Errorf("webapi: forward chat: status %d", resp.StatusCode)
 	}
-	return nil
+	var out chatTurnResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil && !errors.Is(err, io.EOF) {
+		return 0, err
+	}
+	return out.TurnID, nil
 }
 
 // telegramUpdate — одно обновление long poll getUpdates (Telegram Bot API).
+// Update может нести сообщение (message) или нажатие inline-кнопки
+// (callback_query) — оба обрабатываются, пока чат свой.
 type telegramUpdate struct {
-	UpdateID int64            `json:"update_id"`
-	Message  *telegramMessage `json:"message"`
+	UpdateID      int64                  `json:"update_id"`
+	Message       *telegramMessage       `json:"message"`
+	CallbackQuery *telegramCallbackQuery `json:"callback_query"`
+}
+
+// telegramCallbackQuery — нажатие inline-кнопки (W3). ID — идентификатор
+// callback-запроса для answerCallbackQuery, Data — callback_data кнопки.
+type telegramCallbackQuery struct {
+	ID      string           `json:"id"`
+	Data    string           `json:"data"`
+	Message *telegramMessage `json:"message"`
 }
 
 // telegramMessage — входящее сообщение бота.
 type telegramMessage struct {
-	Text string `json:"text"`
+	Text string        `json:"text"`
+	Chat *telegramChat `json:"chat"`
+}
+
+// telegramChat — чат сообщения Telegram Bot API. Бот отвечает только своему
+// chat_id (W2): чужой чат игнорируется, но offset всё равно двигается.
+type telegramChat struct {
+	ID int64 `json:"id"`
 }
 
 // GetUpdates выполняет один исходящий запрос getUpdates (long poll). Подписка
@@ -405,22 +447,22 @@ func (b *TelegramBot) GetUpdates(ctx context.Context, offset int64) ([]telegramU
 }
 
 // PollOnce забирает одну пачку обновлений и пересылает реплики в чат loopback.
-// Возвращает следующий offset для продолжения long poll.
+// Возвращает следующий offset для продолжения long poll. Ошибка передачи одной
+// реплики (loopback или Telegram) не роняет цикл — канал продолжает опрос.
 func (b *TelegramBot) PollOnce(ctx context.Context, offset int64) (int64, error) {
 	updates, err := b.GetUpdates(ctx, offset)
 	if err != nil {
 		return offset, err
 	}
 	for _, u := range updates {
-		if u.Message != nil && u.Message.Text != "" {
-			if err := b.ForwardChat(ctx, u.Message.Text); err != nil {
-				if !errors.Is(err, ErrNoActiveWorld) {
-					return offset, err
-				}
-				// Мир ещё не выбран: не останавливаем long poll, а просим
-				// выбрать мир в Атласе. Ошибка отправки подсказки не важнее
-				// самого цикла подписки.
-				_ = b.SendChat(ctx, "Сначала выберите мир в Атласе.")
+		switch {
+		case u.CallbackQuery != nil:
+			if b.fromOwnCallback(u.CallbackQuery) {
+				b.relayCallback(ctx, u.CallbackQuery)
+			}
+		case u.Message != nil:
+			if b.fromOwnChat(u.Message) {
+				b.relayChat(ctx, u.Message.Text)
 			}
 		}
 		if u.UpdateID >= offset {
@@ -428,6 +470,135 @@ func (b *TelegramBot) PollOnce(ctx context.Context, offset int64) (int64, error)
 		}
 	}
 	return offset, nil
+}
+
+// fromOwnChatID сообщает, что чат — настроенный chat_id бота. Общий страж для
+// сообщений и callback-запросов (W2/W3): чужой чат игнорируется молча.
+func (b *TelegramBot) fromOwnChatID(chat *telegramChat) bool {
+	if chat == nil {
+		return false
+	}
+	return strconv.FormatInt(chat.ID, 10) == strings.TrimSpace(b.cfg.TelegramChatID)
+}
+
+// fromOwnChat сообщает, что сообщение пришло из настроенного chat_id бота и не
+// пусто. Чужой чат и сообщение без чата игнорируются молча (W2): кто бы ни нашёл
+// бота, движок он не дёргает.
+func (b *TelegramBot) fromOwnChat(m *telegramMessage) bool {
+	if m == nil || strings.TrimSpace(m.Text) == "" {
+		return false
+	}
+	return b.fromOwnChatID(m.Chat)
+}
+
+// fromOwnCallback сообщает, что callback-запрос пришёл из настроенного chat_id
+// бота (W3). Чужой чат игнорируется молча — тот же страж, что и для сообщений.
+func (b *TelegramBot) fromOwnCallback(q *telegramCallbackQuery) bool {
+	if q == nil || q.Message == nil {
+		return false
+	}
+	return b.fromOwnChatID(q.Message.Chat)
+}
+
+// signalDataPrefix и сигналы сцены в callback_data inline-кнопок.
+const (
+	signalDataPrefix = "signal:"
+	signalLike       = "like"
+	signalDislike    = "dislike"
+)
+
+// parseSignalData разбирает callback_data "signal:<scene_id>:like|dislike".
+// Неизвестные данные возвращают ok=false — бот молча их игнорирует (W3).
+func parseSignalData(data string) (sceneID int64, kind string, ok bool) {
+	rest := strings.TrimPrefix(data, signalDataPrefix)
+	if rest == data {
+		return 0, "", false
+	}
+	idStr, kind, ok := strings.Cut(rest, ":")
+	if !ok {
+		return 0, "", false
+	}
+	sceneID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || sceneID <= 0 {
+		return 0, "", false
+	}
+	if kind != signalLike && kind != signalDislike {
+		return 0, "", false
+	}
+	return sceneID, kind, true
+}
+
+// relayCallback обрабатывает нажатие inline-кнопки лайк/дизлайк (W3): сигнал
+// уходит в loopback POST /api/scene/{id}/signal, а игроку — короткий ответ
+// answerCallbackQuery («принято»/«ошибка»). Клавиатура остаётся, новое сообщение
+// не отправляется — мир не отвечает второй раз и ничего не дублируется.
+func (b *TelegramBot) relayCallback(ctx context.Context, q *telegramCallbackQuery) {
+	sceneID, kind, ok := parseSignalData(q.Data)
+	if !ok {
+		return
+	}
+	if err := b.loopbackJSON(ctx, http.MethodPost,
+		chatSignalPrefix+strconv.FormatInt(sceneID, 10)+"/signal",
+		chatSignalRequest{Kind: kind}, nil); err != nil {
+		_ = b.answerCallback(ctx, q.ID, "ошибка")
+		return
+	}
+	_ = b.answerCallback(ctx, q.ID, "принято")
+}
+
+// answerCallback — одно исходящее answerCallbackQuery (Telegram Bot API): текст
+// всплывает как короткое уведомление, не создавая нового сообщения в чате.
+func (b *TelegramBot) answerCallback(ctx context.Context, callbackID, text string) error {
+	if b.cfg.TelegramToken == "" {
+		return ErrTelegramNotConfigured
+	}
+	u := b.telegramBase + "/bot/" + b.cfg.TelegramToken + "/answerCallbackQuery"
+	form := url.Values{}
+	form.Set("callback_query_id", callbackID)
+	form.Set("text", text)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, strings.NewReader(form.Encode()))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := b.telegram.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("webapi: telegram answerCallbackQuery: status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// relayChat передаёт одну реплику в мир и возвращает ответ мира в Telegram.
+// Ошибки loopback и Telegram не роняют long poll: канал продолжает опрос, а
+// игроку при сбое приходит короткое честное сообщение вместо тишины.
+func (b *TelegramBot) relayChat(ctx context.Context, text string) {
+	if strings.HasPrefix(strings.TrimSpace(text), "/") {
+		b.handleCommand(ctx, text)
+		return
+	}
+
+	turnID, err := b.ForwardChat(ctx, text)
+	switch {
+	case errors.Is(err, ErrNoActiveWorld):
+		_ = b.SendChat(ctx, "Сначала выберите мир в Атласе.")
+		return
+	case err != nil:
+		_ = b.SendChat(ctx, "Не получилось передать реплику миру, попробуйте ещё раз.")
+		return
+	case turnID == 0:
+		_ = b.SendChat(ctx, "Мир принял реплику, но не вернул номер хода.")
+		return
+	}
+
+	item, found, err := b.turnReply(ctx, turnID)
+	if err != nil || !found || strings.TrimSpace(item.ReplyText) == "" {
+		return
+	}
+	_ = b.sendReply(ctx, item.ReplyText, item.SceneID)
 }
 
 // Poll — цикл исходящего long poll: подписка на Telegram без входящих сокетов.
@@ -672,6 +843,12 @@ func readServerFrame(br *bufio.Reader) (byte, []byte, error) {
 
 // sendTelegram — одно исходящее сообщение в Telegram (sendMessage).
 func (b *TelegramBot) sendTelegram(ctx context.Context, text string) error {
+	return b.sendTelegramMessage(ctx, text, "")
+}
+
+// sendTelegramMessage — исходящее sendMessage с опциональной inline-клавиатурой
+// (reply_markup). Текст уходит без parse_mode.
+func (b *TelegramBot) sendTelegramMessage(ctx context.Context, text, keyboard string) error {
 	if b.cfg.TelegramToken == "" || b.cfg.TelegramChatID == "" {
 		return ErrTelegramNotConfigured
 	}
@@ -679,6 +856,9 @@ func (b *TelegramBot) sendTelegram(ctx context.Context, text string) error {
 	form := url.Values{}
 	form.Set("chat_id", b.cfg.TelegramChatID)
 	form.Set("text", text)
+	if keyboard != "" {
+		form.Set("reply_markup", keyboard)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u, strings.NewReader(form.Encode()))
 	if err != nil {
 		return err
@@ -693,4 +873,106 @@ func (b *TelegramBot) sendTelegram(ctx context.Context, text string) error {
 		return fmt.Errorf("webapi: telegram sendMessage: status %d", resp.StatusCode)
 	}
 	return nil
+}
+
+// maxTelegramText — верхняя граница одного сообщения Telegram. Режем с запасом
+// под лимит 4096, чтобы служебные поля не переполнили запрос.
+const maxTelegramText = 4000
+
+// turnReply читает GET /api/state и возвращает строку хода turnID. Если хода в
+// журнале уже нет (устарел), found=false — ответ не отправляется.
+func (b *TelegramBot) turnReply(ctx context.Context, turnID int64) (item chatTurnItem, found bool, err error) {
+	slug := getActiveSlug()
+	if slug == "" {
+		return chatTurnItem{}, false, ErrNoActiveWorld
+	}
+	u := strings.TrimSuffix(b.localBase, "/") + chatStatePath + "?world=" + url.QueryEscape(slug)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return chatTurnItem{}, false, err
+	}
+	resp, err := b.local.Do(req)
+	if err != nil {
+		return chatTurnItem{}, false, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return chatTurnItem{}, false, fmt.Errorf("webapi: chat state: status %d", resp.StatusCode)
+	}
+	var state chatStateResponse
+	if err := json.NewDecoder(resp.Body).Decode(&state); err != nil {
+		return chatTurnItem{}, false, err
+	}
+	for _, t := range state.Turns {
+		if t.TurnID == turnID {
+			return t, true, nil
+		}
+	}
+	return chatTurnItem{}, false, nil
+}
+
+// sendReply отправляет ответ мира в Telegram: длинные ответы режутся на
+// сообщения по границам абзацев, клавиатура сигналов сцены прикрепляется к
+// последнему сообщению. Ошибку Telegram бот терпит (W3 добавит обработчик).
+func (b *TelegramBot) sendReply(ctx context.Context, text string, sceneID int64) error {
+	chunks := splitReply(text)
+	if len(chunks) == 0 {
+		return nil
+	}
+	for i, chunk := range chunks {
+		var keyboard string
+		if sceneID > 0 && i == len(chunks)-1 {
+			keyboard = sceneKeyboard(sceneID)
+		}
+		if err := b.sendTelegramMessage(ctx, chunk, keyboard); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// sceneKeyboard строит inline-клавиатуру сигналов сцены (лайк/дизлайк).
+// Обработчик callback_data приедет в W3; W1 лишь прикрепляет клавиатуру.
+func sceneKeyboard(sceneID int64) string {
+	mk, err := json.Marshal(map[string]any{
+		"inline_keyboard": [][]map[string]string{
+			{
+				{"text": "👍", "callback_data": fmt.Sprintf("signal:%d:like", sceneID)},
+				{"text": "👎", "callback_data": fmt.Sprintf("signal:%d:dislike", sceneID)},
+			},
+		},
+	})
+	if err != nil {
+		return ""
+	}
+	return string(mk)
+}
+
+// splitReply режет текст на куски не длиннее maxTelegramText по границам
+// абзацев (перевод строки), а внутри абзаца — по границе слова; слово не рвётся.
+func splitReply(text string) []string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return nil
+	}
+	if len(text) <= maxTelegramText {
+		return []string{text}
+	}
+	var out []string
+	rest := text
+	for len(rest) > maxTelegramText {
+		cut := strings.LastIndex(rest[:maxTelegramText], "\n")
+		if cut <= 0 {
+			cut = strings.LastIndex(rest[:maxTelegramText], " ")
+		}
+		if cut <= 0 {
+			cut = maxTelegramText
+		}
+		out = append(out, strings.TrimSpace(rest[:cut]))
+		rest = strings.TrimSpace(rest[cut:])
+	}
+	if rest != "" {
+		out = append(out, rest)
+	}
+	return out
 }
