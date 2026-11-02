@@ -13,7 +13,8 @@
     "economy_mods": ["экономика", "режим переигровки"],
     "magic": ["Гефест", "режим переигровки"],
     "hero_birth": ["пачка", "режим переигровки"],
-    "censorship": ["цензура ковки", "режим переигровки"]
+    "censorship": ["цензура ковки", "режим переигровки"],
+    "source_book": ["привязка фанфика"]
   },
   "world_fields": {
     "frozen": ["description", "social_order", "economy_mods", "magic", "censorship"],

@@ -22,7 +22,7 @@
 | GET | `/mcp.html` | — | `mcp.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/api/atlas/worlds` | — | `{"active":"…","worlds":[{"slug","title","active","characters","places","paths","entities","sessions"}]}` | `method_not_allowed`, `internal` |
 | GET | `/api/atlas/birth` | — | `{"genres":[…],"social_orders":[…],"travel_modes":[…],"economy_mods":[…],"ratings":[…],"langs":[…]}` — канонические перечни анкеты рождения | `method_not_allowed`, `internal` |
-| POST | `/api/atlas/worlds/birth` | анкета рождения (14 ключей) | `{"status":"ok","world":{"slug","title"}}` | `method_not_allowed`, `bad_request`, `conflict`, `internal` |
+| POST | `/api/atlas/worlds/birth` | анкета рождения (15 ключей) | `{"status":"ok","world":{"slug","title"}}` | `method_not_allowed`, `bad_request`, `conflict`, `internal` |
 | POST | `/api/atlas/worlds/active` | `{"world":"<slug>"}` | `{"status":"ok","active":"<slug>"}` | `method_not_allowed`, `bad_request` |
 | POST | `/api/atlas/worlds/replay` | анкета переигровки (тот же `slug`) | `{"status":"ok","world":{"slug","title"}}` | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
 | DELETE | `/api/atlas/worlds/delete` | query `world=<slug>&confirm=<slug>` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
@@ -107,7 +107,7 @@ HTTP-код плюс тело:
 ## Анкета рождения (Атлас)
 
 POST `/api/atlas/worlds/birth` и POST `/api/atlas/worlds/replay` принимают
-анкету рождения — ровно 14 ключей (слаг латиницей и 13 смысловых полей,
+анкету рождения — ровно 15 ключей (слаг латиницей и 14 смысловых полей,
 T-02-01):
 
 ```text
@@ -125,6 +125,7 @@ economy_mods
 magic
 hero_birth
 censorship
+source_book
 ```
 
 Мировые поля правятся только здесь и только до рождения (T-08-04, T-08-05).

@@ -29,9 +29,10 @@ var Fields = []string{
 	"magic",
 	"hero_birth",
 	"censorship",
+	"source_book",
 }
 
-// Ancketa — анкета рождения: ровно 14 смысловых полей (B-01.2).
+// Ancketa — анкета рождения: 15 полей — слаг и четырнадцать смысловых (B-01.2).
 type Ancketa struct {
 	Slug        string   `json:"slug"`
 	Title       string   `json:"title"`
@@ -47,6 +48,7 @@ type Ancketa struct {
 	Magic       string   `json:"magic"`
 	HeroBirth   string   `json:"hero_birth"`
 	Censorship  string   `json:"censorship"`
+	SourceBook  string   `json:"source_book,omitempty"`
 }
 
 // Data — перечни анкеты из data/ancketa.json (шаг 2).
@@ -125,6 +127,12 @@ func Validate(a *Ancketa) error {
 		if !contains(data.Genres, g) {
 			fields = append(fields, FieldError{Field: "genres", Reason: fmt.Sprintf("жанр вне канонического списка: %q", g)})
 		}
+	}
+
+	if isFanfic := contains(a.Genres, "фанфик"); isFanfic && a.SourceBook == "" {
+		fields = append(fields, FieldError{Field: "source_book", Reason: "фанфик требует книгу-источник"})
+	} else if !isFanfic && a.SourceBook != "" {
+		fields = append(fields, FieldError{Field: "source_book", Reason: "книга-источник допустима только при жанре «фанфик»"})
 	}
 
 	if a.SocialOrder == "" {

@@ -18,7 +18,7 @@ const (
 	worldTunablesPath = "/api/world/tunables"
 )
 
-// frozenWorldFields — 14 ключей анкеты рождения из T-02-01 (UI-04.5). После
+// frozenWorldFields — 15 ключей анкеты рождения из T-02-01 (UI-04.5). После
 // рождения эти поля не редактируются: маршрутов записи на них нет.
 var frozenWorldFields = []string{
 	"slug",
@@ -35,6 +35,7 @@ var frozenWorldFields = []string{
 	"magic",
 	"hero_birth",
 	"censorship",
+	"source_book",
 }
 
 // tunableFields — настраиваемые параметры мира (UI-08.10, W-18.1); единственный

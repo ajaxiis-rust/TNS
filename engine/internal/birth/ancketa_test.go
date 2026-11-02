@@ -30,19 +30,19 @@ func TestAncketa(t *testing.T) {
 	want := []string{
 		"slug", "title", "description", "synopsis", "prologue", "lang",
 		"travel_mode", "genres", "world_rules", "social_order",
-		"economy_mods", "magic", "hero_birth", "censorship",
+		"economy_mods", "magic", "hero_birth", "censorship", "source_book",
 	}
 
-	// ровно 14 полей с ключами из шага 1
+	// ровно 15 полей с ключами из шага 1
 	got := jsonKeys((*Ancketa)(nil))
-	if len(got) != 14 {
-		t.Fatalf("полей в анкете: %d, want 14", len(got))
+	if len(got) != 15 {
+		t.Fatalf("полей в анкете: %d, want 15", len(got))
 	}
 	if !sameSet(got, want) {
 		t.Fatalf("ключи анкеты: %v, want %v", got, want)
 	}
-	if len(Fields) != 14 || !sameSet(Fields, want) {
-		t.Fatalf("Fields: %v, want ровно 14 ключей %v", Fields, want)
+	if len(Fields) != 15 || !sameSet(Fields, want) {
+		t.Fatalf("Fields: %v, want ровно 15 ключей %v", Fields, want)
 	}
 
 	// валидная анкета проходит
@@ -182,6 +182,44 @@ func TestAncketaRejectNoFiles(t *testing.T) {
 			t.Fatalf("причина отказа без поля или описания: %+v", f)
 		}
 	}
+}
+
+func TestAncketaSourceBook(t *testing.T) {
+	// фанфик без книги-источника отвергается полем source_book
+	a := validAncketa()
+	a.Genres = []string{"фанфик"}
+	a.SourceBook = ""
+	if err := Validate(a); err == nil || !hasFieldError(err, "source_book") {
+		t.Fatalf("фанфик без книги-источника: ожидалась ошибка поля source_book, получено %v", err)
+	}
+
+	// книга-источник без жанра «фанфик» отвергается полем source_book
+	a = validAncketa()
+	a.SourceBook = "garry-potter"
+	if err := Validate(a); err == nil || !hasFieldError(err, "source_book") {
+		t.Fatalf("книга-источник без фанфика: ожидалась ошибка поля source_book, получено %v", err)
+	}
+
+	// фанфик с книгой-источником проходит
+	a = validAncketa()
+	a.Genres = []string{"фанфик"}
+	a.SourceBook = "garry-potter"
+	if err := Validate(a); err != nil {
+		t.Fatalf("фанфик с книгой-источником отвергнут: %v", err)
+	}
+}
+
+func hasFieldError(err error, field string) bool {
+	var ve *ValidationError
+	if !errors.As(err, &ve) {
+		return false
+	}
+	for _, f := range ve.Fields {
+		if f.Field == field {
+			return true
+		}
+	}
+	return false
 }
 
 func jsonKeys(a any) []string {
