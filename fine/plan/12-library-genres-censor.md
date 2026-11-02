@@ -577,9 +577,13 @@ CREATE TABLE book_character_role (
 Проверки выполняются из `engine/`; общий гейт — `go test ./... -count=1`.
 Каждая задача закрывается только с зелёной проверкой.
 
+Нумерация: префикс задачи — номер файла плана. Волна P9 живёт в файле 10
+(`T-10-*`), P10 — в файле 11 (`T-11-*`), эта волна P11 — в файле 12
+(`T-12-*`). Префикс `T-11-*` занят задачей UI-редизайна P10 (`T-11-01`).
+
 ### P11.1. Канон и данные
 
-**T-11-01. Жанры 30.**
+**T-12-01. Жанры 30.**
 Файлы: `internal/birth/data/ancketa.json`, `internal/birth/ancketa_test.go`,
 `fine/04-spec/03-birth.md` (B-01.7, B-01 «Данные», «Приёмка»),
 `web/atlas.html`, `web/static/app.js`, `web/static/i18n.js`,
@@ -589,19 +593,19 @@ CREATE TABLE book_character_role (
 форма показывает 30 жанров по группам.
 Приёмка: `len(genres)==30`, все значения канонические.
 
-**T-11-02. Строи 18, экономики 8.**
+**T-12-02. Строи 18, экономики 8.**
 Файлы: те же данные и тест; спека B-01.9, B-01.10, B-02.9, B-02.10.
 Проверка: `go test ./internal/birth -count=1`.
 Приёмка: 18 и 8, значения совпадают с разделом 4.
 
-**T-11-03. Веса W1.**
+**T-12-03. Веса W1.**
 Файлы: `internal/birth/data/estates.json`, `internal/birth/pack_test.go`.
 Действия: добавить 7 строк; новый тест `TestEstatesCoverAllOrders` — для
 каждого строя из `ancketa.json` у каждого из 6 сословий есть вес 0.1..1.0.
 Проверка: `go test ./internal/birth -count=1`.
 Приёмка: ни один строй не даёт нейтральный 1.0 по умолчанию.
 
-**T-11-04. Поле `source_book`.**
+**T-12-04. Поле `source_book`.**
 Файлы: `internal/birth/ancketa.go`, `internal/birth/ancketa_test.go`,
 `internal/birth/data/consumers.json`, `internal/webapi/world_readonly.go`,
 спека B-01, B-02.
@@ -612,14 +616,14 @@ CREATE TABLE book_character_role (
 
 ### P11.2. Цензор
 
-**T-11-05. Реальный словарь и профиль рейтинга.**
+**T-12-05. Реальный словарь и профиль рейтинга.**
 Файлы: `packs/ru/stoplist.txt`, новый `packs/ru/stoplist_16.txt`,
 `internal/censor/censor.go`, `internal/censor/censor_test.go`.
 Действия: загрузчик `LoadStoplistProfile(packDir, rating)`; 16+ = база + 16+.
 Проверка: `go test ./internal/censor -count=1`; обычная проза проходит,
 брань отклоняется.
 
-**T-11-06. Детектор отказов.**
+**T-12-06. Детектор отказов.**
 Файлы: `packs/ru/refusals.txt`, новый `internal/censor/refusal.go`,
 `internal/censor/refusal_test.go`.
 Действия: проверка формы ответа, возврат совпавшей фразы.
@@ -627,7 +631,7 @@ CREATE TABLE book_character_role (
 Приёмка: «Извините, но я не могу помочь с этим запросом» — отказ; «Я не могу
 тебе помочь, брат» — не отказ.
 
-**T-11-07. Рейтинг при ковке.**
+**T-12-07. Рейтинг при ковке.**
 Файлы: `internal/workshop/forge_pipeline.go`, новый
 `internal/workshop/censor_profile.go`, `internal/workshop/horoscope.go`,
 `internal/webapi/*` (проводка при открытии мира), тесты.
@@ -635,7 +639,7 @@ CREATE TABLE book_character_role (
 16+ — расширенный словарь.
 Проверка: тест с фейковым слотом: при 18+ внешний провайдер не выбирается.
 
-**T-11-08. Лестница повторов и два прохода.**
+**T-12-08. Лестница повторов и два прохода.**
 Файлы: новый `internal/workshop/generate.go`, вызовы в `complement.go`,
 `compose.go`, `epoch.go`, `horoscope.go`, `pythia.go`, `style.go`; тесты.
 Действия: `GenerateWithRetry` с четырьмя шагами; двухпроходный режим для
@@ -645,21 +649,21 @@ CREATE TABLE book_character_role (
 
 ### P11.3. Ковка книги
 
-**T-11-09. Полка.**
+**T-12-09. Полка.**
 Файлы: новый `internal/library/library.go` (+тест), новый
 `internal/webapi/handlers_library.go`, `routes.go`, `ROUTES.md`.
 Действия: манифест с атомарной записью, импорт txt/fb2, удаление, статус.
 Проверка: `go test ./internal/library ./internal/webapi -count=1`.
 Приёмка: книга лежит в `world_db/library/`, мир не требуется.
 
-**T-11-10. Реестр книг.**
+**T-12-10. Реестр книг.**
 Файлы: `internal/db/schema/literary/0004_book.sql`,
 `internal/db/schema/literary/tables.txt`, `ARCHITECTURE.md`,
 `internal/workshop/book.go` (+тест).
 Проверка: миграция на старой базе; `PRAGMA table_info(bank_pool)` содержит
 `book_id`; старые миры открываются.
 
-**T-11-11. Задача `forge-book`.**
+**T-12-11. Задача `forge-book`.**
 Файлы: `cmd/tns65/main.go`, новый `internal/workshop/forge_book.go`,
 `internal/workshop/forge_input.go` (лимит чанка), `webapi/handlers_mcp.go`
 (прогресс), тесты.
@@ -669,20 +673,20 @@ CREATE TABLE book_character_role (
 прогресс 1.0; повторный запуск без дублей.
 Приёмка: `/api/mcp/forge` завершается `done`, не `error`.
 
-**T-11-12. Буст книги в композиции.**
+**T-12-12. Буст книги в композиции.**
 Файлы: `internal/turn/composition.go`, тест.
 Действия: множитель 3.0 для `book_id = source_book_id`.
 Проверка: две книги, привязанная выигрывает.
 
 ### P11.4. Привязка фанфика
 
-**T-11-13. `source_book` → `world_meta`.**
+**T-12-13. `source_book` → `world_meta`.**
 Файлы: `internal/birth/birth.go`, `internal/webapi/handlers_atlas.go`, тест.
 Действия: на рождении писать `source_book_id` и `source_book_name`; без книги
 при жанре «фанфик» — ошибка поля.
 Проверка: тест рождения с книгой и без.
 
-**T-11-14. Синхронная ковка после рождения.**
+**T-12-14. Синхронная ковка после рождения.**
 Файлы: `internal/webapi/handlers_atlas.go`, новый
 `internal/webapi/handlers_forge.go` (или расширение), `web/static/app.js`,
 `i18n.js`, `ROUTES.md`.
@@ -691,7 +695,7 @@ CREATE TABLE book_character_role (
 продолжение на сиде.
 Проверка: тест с фейковой ковкой; браузерный прогон.
 
-**T-11-15. Модалка фанфика.**
+**T-12-15. Модалка фанфика.**
 Файлы: `web/atlas.html`, `web/static/app.js`, `app.css`, `i18n.js`.
 Действия: галочка «фанфик» → модалка со списком полки, импортом и прогрессом;
 отмена снимает галочку.
@@ -699,31 +703,31 @@ CREATE TABLE book_character_role (
 
 ### P11.5. Мастер и модели
 
-**T-11-16. Карточка BGE-M3.**
+**T-12-16. Карточка BGE-M3.**
 Файлы: `web/static/app.js` (`MODEL_CATALOG`), `web/settings.html`,
 `i18n.js`, `internal/webapi/handlers_settings.go`, тесты.
 Действия: три карточки, рекомендация по RAM, установка в
 `world_db/models/embed/`, прогресс в карточке.
 Проверка: API-тест и браузер.
 
-**T-11-17. Запуск `:5002`.**
+**T-12-17. Запуск `:5002`.**
 Файлы: новый `internal/embedserver` (или расширение `models`),
 `internal/supervisor`, `handlers_settings.go`, тесты с фейковым сервером.
 Действия: старт с флагами, health, косинус-проверка, статус в UI.
 
-**T-11-18. Поставка `llama-server`.**
+**T-12-18. Поставка `llama-server`.**
 Файлы: `engine/scripts/install-llama.sh`, `DOCS/06-MODELS-AND-SEED.md`,
 опционально `.github/workflows/llama.yml`.
 Действия: закреплённый релиз, sha256, установка в `bin/`.
 Проверка: dry-run и `llama-server --version` после установки.
 
-**T-11-19. Супервизор.**
+**T-12-19. Супервизор.**
 Файлы: `internal/supervisor`, `internal/webapi` (статус), тесты.
 Действия: health, перезапуск с backoff, логи, занятость порта, остановка,
 смена модели с откатом.
 Проверка: фейковый сервер падает → перезапуск; порт занят → понятная ошибка.
 
-**T-11-20. Мастер.**
+**T-12-20. Мастер.**
 Файлы: `web/` (экран мастера), `state/first-run.json`, `app.js`, `i18n.js`,
 `handlers_settings.go`.
 Действия: шаги 0–4, идемпотентность, человеческие формулировки.
@@ -732,14 +736,14 @@ CREATE TABLE book_character_role (
 
 ### P11.6. Карта книги
 
-**T-11-21. Миграция 0005: карта книги.**
+**T-12-21. Миграция 0005: карта книги.**
 Файлы: `internal/db/schema/literary/0005_cast.sql`,
 `internal/db/schema/literary/tables.txt`, `ARCHITECTURE.md`,
 `internal/cast/store.go` (+тест).
 Действия: четыре таблицы из 5.9; уникальность `(book_id, ord)`.
 Проверка: миграция на базе без 0005; старые миры открываются.
 
-**T-11-22. Кандидаты и упоминания (quick).**
+**T-12-22. Кандидаты и упоминания (quick).**
 Файлы: новый `internal/cast/scan.go`, `internal/cast/lang.go` (профили
 языков), `internal/cast/scan_test.go`.
 Действия: скан по заглавным и по леммам (лемматизатор `gomorphy`), слияние
@@ -750,7 +754,7 @@ first/last; импорт готового списка имён файлом.
 запись.
 Приёмка: quick работает без слота.
 
-**T-11-23. Словарь описаний и извлечение по окну.**
+**T-12-23. Словарь описаний и извлечение по окну.**
 Файлы: `packs/ru/descriptions.json`, новый `internal/cast/describe.go`,
 `internal/cast/describe_test.go`; профили языков — заготовки en/de/fr/es.
 Действия: оси и леммы из 5.9; окно ±2 предложения; фильтр части речи;
@@ -760,7 +764,7 @@ first/last; импорт готового списка имён файлом.
 приписывается; повторный прогон не меняет результат.
 Приёмка: описания собираются без слота.
 
-**T-11-24. Роли по отрезкам.**
+**T-12-24. Роли по отрезкам.**
 Файлы: новый `internal/cast/roles.go` (+тест), закрытый список ролей,
 словарные маркеры ролей; `internal/workshop/generate.go` — только для
 спорных случаев.
@@ -769,7 +773,7 @@ first/last; импорт готового списка имён файлом.
 Проверка: синтетика «антагонист 1–2, союзник 3»; запрос по куску даёт
 правильную роль; без слота карта строится.
 
-**T-11-25. Промоушен и пустые карточки.**
+**T-12-25. Промоушен и пустые карточки.**
 Файлы: новый `internal/cast/promote.go`, `internal/webapi/handlers_atlas.go`
 (фанфик), `internal/turn/*` (пустая карточка по имени), тесты.
 Действия: топ-16 подтверждённых → `characters` мира-фанфика; пачка остаётся
@@ -777,7 +781,7 @@ first/last; импорт готового списка имён файлом.
 Проверка: 96 карточек пачки + 16 именных; пустая карточка отдаёт описание
 из книги.
 
-**T-11-26. Карта книги в интерфейсе.**
+**T-12-26. Карта книги в интерфейсе.**
 Файлы: `web/` (карточка книги на полке и в MCP), `app.js`, `i18n.js`,
 `handlers_library.go` (чтение карты).
 Действия: список героев с описаниями и ролями, прогресс quick/full.
@@ -838,28 +842,28 @@ first/last; импорт готового списка имён файлом.
 
 ### Задачи
 
-**T-11-27. Короткие фикстуры и потолки.**
+**T-12-27. Короткие фикстуры и потолки.**
 Файлы: `internal/workshop/testdata/cast.fb2`,
 `internal/workshop/forge_book_test.go`, `internal/cast/*_test.go`,
 `internal/testkit` (счётчик вызовов слота).
 Действия: потолки из раздела; фейковый слот и эмбеддер; проверка вызовов.
 Проверка: `go test ./internal/cast ./internal/workshop -count=1` быстрее 10 с.
 
-**T-11-28. Локальная модель в тестах.**
+**T-12-28. Локальная модель в тестах.**
 Файлы: `internal/cast/local_test.go` (`//go:build local`),
 `internal/workshop/local_test.go`, `engine/scripts/test-local.sh`.
 Действия: `TNS65_FB2_DIR`, самая маленькая книга, 2 куска, 3 героя,
 пропуск без модели, дедлайн 5 минут.
 Проверка: без модели — `SKIP`; с моделью — `PASS` за отведённое время.
 
-**T-11-29. Скачивание моделей для теста.**
+**T-12-29. Скачивание моделей для теста.**
 Файлы: `engine/scripts/test-local.sh` (ветка загрузки),
 `DOCS/06-MODELS-AND-SEED.md`.
 Действия: проверка BGE-M3 Q4 и генеративной 3B, явная загрузка с sha256,
 подъём серверов, запуск теста.
 Проверка: `test-local.sh --check` перечисляет отсутствующее и ничего не качает.
 
-**T-11-30. Бенчмарк книги.**
+**T-12-30. Бенчмарк книги.**
 Файлы: `engine/scripts/bench-book.sh`, `DOCS/05-DATABASES.md` (раздел
 производительности).
 Действия: время по шагам, вызовы слота, токены, временный каталог.
@@ -870,7 +874,7 @@ first/last; импорт готового списка имён файлом.
 Правило и таблица зеркал — §9. Три задачи закрывают волну: сверка,
 сводная правка документов и правка раннера.
 
-**T-11-31. `docs-check.sh`: сверка документов с кодом.**
+**T-12-31. `docs-check.sh`: сверка документов с кодом.**
 Файлы: новый `engine/scripts/docs-check.sh` (+ без тестов Go, проверка скриптовая).
 Действия:
 1. Читать канон из кода: `internal/birth/data/ancketa.json` (жанры, строи,
@@ -885,25 +889,28 @@ first/last; импорт готового списка имён файлом.
 4. Проверять миграции: у каждого файла `internal/db/schema/*/NNNN_*.sql` есть
    строка в реестре `engine/ARCHITECTURE.md`, и каждая строка реестра указывает
    на существующий файл.
-5. Проверять планы: у каждого заголовка `### T-XX-NN.` в `fine/plan/*.md` есть
-   строка в `99-LEDGER.md`, и наоборот (волны P0–P11).
+5. Проверять планы: у каждой строки задачи в `99-LEDGER.md` есть заголовок
+   `### T-XX-NN.` в `fine/plan/*.md`; один и тот же ID не повторяется между
+   файлами плана (журнал пополняется по мере закрытия задач).
 6. Проверять имена: полка везде `world_db/library/`, базы миров —
    `world_db/worlds/<slug>/{world.db,literary.db}`, `base.db` описан как
    неизменяемый.
-7. Флаги: `--root <dir>` (по умолчанию корень репозитория), `--self-test`
+7. Проверять вход в документацию: у каждого файла `DOCS/NN-*.md` есть строка в
+   таблице `DOCS/00-START-HERE.md`.
+8. Флаги: `--root <dir>` (по умолчанию корень репозитория), `--self-test`
    (копия документов во временном каталоге, внесённое расхождение, ожидается
    код 1).
 Проверка: `cd engine && bash scripts/docs-check.sh --self-test` → `self-test:
-ok (drift detected)`, exit 0. На текущем дереве до T-11-32 скрипт перечисляет
+ok (drift detected)`, exit 0. На текущем дереве до T-12-32 скрипт перечисляет
 известные расхождения и возвращает 1 — это ожидаемо.
 
-**T-11-32. Сводная сверка документов волны.**
+**T-12-32. Сводная сверка документов волны.**
 Файлы: `fine/04-spec/03-birth.md`, `fine/04-spec/05-workshop.md`,
 `fine/04-spec/02-models.md`, `fine/04-spec/08-ui.md`,
 `DOCS/05-DATABASES.md`, `DOCS/06-MODELS-AND-SEED.md`,
 `DOCS/09-QUICK-REFERENCE.md`, `DOCS/10-STATION-SETTINGS.md`,
-`engine/internal/webapi/ROUTES.md`, `engine/ARCHITECTURE.md`,
-`engine/scripts/gates.sh`.
+`engine/internal/webapi/ROUTES.md`, `engine/ARCHITECTURE.md`, `README.md`,
+`fine/plan/99-LEDGER.md`, `engine/scripts/gates.sh`.
 Действия:
 1. B-01/B-02: 15 полей, `source_book` необязателен и обязателен только для
    фанфика, перечни 30/18/8, рейтинг и маршрутизация.
@@ -917,13 +924,16 @@ ok (drift detected)`, exit 0. На текущем дереве до T-11-32 ск
 6. `DOCS/09-QUICK-REFERENCE.md`: канонные числа и таблица баз.
 7. `ROUTES.md`: новые маршруты полки, книг, карты и настроек моделей.
 8. `ARCHITECTURE.md`: каталоги `internal/cast`, `internal/library`, миграции
-   0004 и 0005.
-9. `gates.sh`: шаг 5 — `bash scripts/docs-check.sh`; падение гейта при
-   расхождении.
+   0004 и 0005, пакеты и контракты волны.
+9. `README.md`: полка книг, мастер первого запуска, что скачать (BGE-M3,
+   `llama-server`).
+10. `99-LEDGER.md`: датированная строка решений P11 и строка задачи.
+11. `gates.sh`: шаг 5 — `bash scripts/docs-check.sh`; падение гейта при
+    расхождении.
 Проверка: `cd engine && bash scripts/docs-check.sh` → exit 0 и ни одной строки
 `DRIFT:`; `bash scripts/gates.sh` → exit 0.
 
-**T-11-33. Раннер задач: документы в том же коммите.**
+**T-12-33. Раннер задач: документы в том же коммите.**
 Файлы: `/home/ajaxiis/.grok/workflows/tns65-task.rhai` (вне репозитория),
 `fine/plan/12-library-genres-censor.md` (пометка о выполнении).
 Действия:
@@ -966,8 +976,30 @@ ok (drift detected)`, exit 0. На текущем дереве до T-11-32 ск
 | Цензор, рейтинг, отказы | `packs/<lang>/stoplist*.txt`, `refusals.txt`, `internal/censor` | `fine/04-spec/05-workshop.md`, `DOCS/04-WORKSHOP.md`, `DOCS/09-QUICK-REFERENCE.md` |
 | Модели и супервизор | `internal/models`, `internal/supervisor`, `config.yaml` | `fine/04-spec/02-models.md` (MD-03, MD-08, MD-09), `DOCS/06-MODELS-AND-SEED.md`, `DOCS/10-STATION-SETTINGS.md` |
 | Жанры и мастер в интерфейсе | `web/atlas.html`, `web/static/i18n.js` | `fine/04-spec/08-ui.md` (UI-05, UI-08) |
+| Раскладка, пакеты, миграции, контракты | `internal/**`, `schema/**`, `tables.txt` | `engine/ARCHITECTURE.md` |
+| Пользовательский сценарий запуска | `cmd/tns65`, `web/`, `config.yaml` | `README.md`, `DOCS/00-START-HERE.md` |
+| Статус задач и журнал решений | коммиты и проверки задач | `fine/plan/99-LEDGER.md` |
 
-### 9.3. Что меняется в этой волне
+### 9.3. Общие документы проекта
+
+Три файла живут дольше одной волны и меняются каждой задачей, которая задевает
+их предмет.
+
+- `engine/ARCHITECTURE.md` — эталон раскладки: пакеты, направление импортов,
+  реестр миграций (номер, база, задача), контракты. Новый каталог, пакет,
+  миграция или контракт вписываются той же задачей; `docs-check.sh` сверяет
+  реестр миграций с файлами.
+- `README.md` — входная точка для человека: что это, как запустить, что
+  скачать, где документация. Меняется, когда меняется пользовательский
+  сценарий (полка книг, мастер первого запуска, три базы), а не при каждой
+  правке кода. Ссылки ведут в `DOCS/` и `engine/ARCHITECTURE.md`.
+- `fine/plan/99-LEDGER.md` — единственный источник статуса и журнал решений.
+  Каждая задача закрывается строкой со статусом, коммитом и датой. Каждое
+  архитектурное решение, принятое при планировании, вносится датированной
+  строкой «решение» до кода: так фиксируется то, что иначе осталось бы
+  пропущенным логическим шагом.
+
+### 9.4. Что меняется в этой волне
 
 - `fine/04-spec/03-birth.md` — B-01 (14 → 15 полей, один необязательный;
   30/18/8; `source_book`), B-02 (потребитель `source_book`, рейтинг).
@@ -986,6 +1018,9 @@ ok (drift detected)`, exit 0. На текущем дереве до T-11-32 ск
 - `engine/internal/webapi/ROUTES.md` — новые маршруты, чтение карты книги.
 - `engine/ARCHITECTURE.md` — каталоги `internal/cast`, `internal/library`,
   миграции 0004 и 0005.
+- `README.md` — раздел о полке книг, мастере первого запуска и моделях.
+- `fine/plan/99-LEDGER.md` — датированная строка решений P11 (2026-11-02) и
+  строки задач по мере закрытия.
 
 ## 10. Риски
 
@@ -1038,7 +1073,7 @@ ok (drift detected)`, exit 0. На текущем дереве до T-11-32 ск
 8. Карта хранится на языке книги; перевод на язык мира оставляем на потом?
 9. Раннер задач (`~/.grok/workflows/tns65-task.rhai`) сейчас запрещает любые
    правки под `fine/`. Разрешаем ему менять только документы, перечисленные в
-   «Правится» (T-11-33)? Без этого правки спеки при закрытии задач делает
+   «Правится» (T-12-33)? Без этого правки спеки при закрытии задач делает
    человек, и расхождение копится.
 
 ## 12. Что не входит в P11
