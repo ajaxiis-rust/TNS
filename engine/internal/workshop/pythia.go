@@ -65,11 +65,14 @@ func RunPythia(world *db.Handle, literary *db.Handle, day int) error {
 		return err
 	}
 
-	slot := slotForProvider(DefaultProvider)
-	if slot == nil {
+	if slotForProvider(DefaultProvider) == nil {
 		return errors.New("workshop: слот Пифии не подключён")
 	}
-	out, err := slot.Generate(context.Background(), PythiaRole, pythiaPrompt(birth, psychotype, turns))
+	out, err := GenerateWithRetry(context.Background(), literary, GenerateOptions{
+		Role:     PythiaRole,
+		Lang:     "ru",
+		Provider: DefaultProvider,
+	}, func(_ int, _ string) string { return pythiaPrompt(birth, psychotype, turns) })
 	if err != nil {
 		return err
 	}

@@ -209,11 +209,14 @@ func ForgeCardPrompt(p ComplementPayload) string {
 // forge_log (писатель forge). Карточка валидируется теми же правилами, что и
 // пачка P1 (три слоя, T-02-06); карточка без слоя отвергается.
 func RunForgeCard(literary *db.Handle, payload ComplementPayload) (string, error) {
-	slot := slotForProvider(DefaultProvider)
-	if slot == nil {
+	if slotForProvider(DefaultProvider) == nil {
 		return "", errors.New("workshop: слот ковки карточки не подключён")
 	}
-	out, err := slot.Generate(context.Background(), ForgeCardRole, ForgeCardPrompt(payload))
+	out, err := GenerateWithRetry(context.Background(), literary, GenerateOptions{
+		Role:     ForgeCardRole,
+		Lang:     "ru",
+		Provider: DefaultProvider,
+	}, func(_ int, _ string) string { return ForgeCardPrompt(payload) })
 	if err != nil {
 		return "", err
 	}

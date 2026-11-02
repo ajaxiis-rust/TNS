@@ -137,17 +137,20 @@ func ForgeEpoch(ctx context.Context, world *db.Handle, lit *db.Handle, source Re
 		return 0, err
 	}
 
-	slot := slotForProvider(DefaultProvider)
-	if slot == nil {
+	if slotForProvider(DefaultProvider) == nil {
 		return 0, errors.New("workshop: слот ковки справочника эпохи не подключён")
 	}
-	reference, err := slot.Generate(ctx, EpochRole, EpochPrompt(epoch, material))
+	reference, err := GenerateWithRetry(ctx, lit, GenerateOptions{
+		Role:     EpochRole,
+		Lang:     epochLang,
+		Provider: DefaultProvider,
+	}, func(_ int, _ string) string { return EpochPrompt(epoch, material) })
 	if err != nil {
 		return 0, err
 	}
 
 	// Авто-критик (W-19.3): справочник проходит ревью, текст моделью не меняется.
-	rec := sediment.Autocritic(ctx, slot, nil, sediment.SedimentRecord{CleanedText: reference})
+	rec := sediment.Autocritic(ctx, slotForProvider(DefaultProvider), nil, sediment.SedimentRecord{CleanedText: reference})
 	if rec.Verdict == sediment.VerdictDegraded {
 		return 0, errors.New("workshop: авто-критик не провёл ревью справочника эпохи")
 	}

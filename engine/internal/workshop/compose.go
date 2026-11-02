@@ -95,7 +95,11 @@ func Compose(ctx context.Context, lit *db.Handle, text string, fams []structural
 	}
 
 	for attempt := 0; attempt <= composeMaxRetries; attempt++ {
-		out, err := slot.Generate(ctx, ComposeRole, composePrompt(text))
+		out, err := GenerateWithRetry(ctx, lit, GenerateOptions{
+			Role:     ComposeRole,
+			Lang:     "ru",
+			Provider: DefaultProvider,
+		}, func(_ int, _ string) string { return composePrompt(text) })
 		if err != nil {
 			continue // тайм-аут/отказ слота.
 		}

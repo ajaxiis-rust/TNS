@@ -262,11 +262,14 @@ func StylizeClassic(ctx context.Context, lit *db.Handle, draft string) (int64, e
 	if draft = strings.TrimSpace(draft); draft == "" {
 		return 0, errors.New("workshop: стилизация без черновика")
 	}
-	slot := slotForProvider(DefaultProvider)
-	if slot == nil {
+	if slotForProvider(DefaultProvider) == nil {
 		return 0, errors.New("workshop: слот стилизации не подключён")
 	}
-	text, err := slot.Generate(ctx, StyleRole, styleForgePrompt(draft))
+	text, err := GenerateWithRetry(ctx, lit, GenerateOptions{
+		Role:     StyleRole,
+		Lang:     "ru",
+		Provider: DefaultProvider,
+	}, func(_ int, _ string) string { return styleForgePrompt(draft) })
 	if err != nil {
 		return 0, err
 	}

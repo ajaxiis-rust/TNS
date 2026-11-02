@@ -159,11 +159,14 @@ func RunHoroscopeForge(world *db.Handle, literary *db.Handle, payload HoroscopeP
 	if err != nil {
 		return 0, err
 	}
-	slot := slotForProvider(provider)
-	if slot == nil {
+	if slotForProvider(provider) == nil {
 		return 0, errors.New("workshop: слот ковки гороскопа не подключён")
 	}
-	out, err := slot.Generate(context.Background(), HoroscopeRole, HoroscopePrompt(payload))
+	out, err := GenerateWithRetry(context.Background(), literary, GenerateOptions{
+		Role:     HoroscopeRole,
+		Lang:     horoscopeLang,
+		Provider: provider,
+	}, func(_ int, _ string) string { return HoroscopePrompt(payload) })
 	if err != nil {
 		return 0, err
 	}
