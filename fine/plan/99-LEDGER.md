@@ -234,6 +234,51 @@ P8 — закрытая проводка T-10-15 (рождение мира на
 |---|---|---|---|---|---|---|
 | T-11-01 | UI-редизайн по референсам TrueNeverStory и каталог провайдеров | 11-ui-design.md | done | Ревью (попытка 1/3): CHECK_EXIT=0 (независимый прогон `cd engine && bash scripts/ui-check.sh release` — все 6 OK, EXIT=0); gates зелёные (GATES_EXIT=0, отчёт кодера). Scope ровно «Создаётся» (providers.js) + «Правится» (9 файлов), fine/ и RAW/ не тронут, PERFORMANCE.md не в коммит. 21 label и base URL каталога дословно по таблице плана и RAW; data-i18n/id/формы без потерь, i18n.js — только 3 новых ключа; логика JS и /api/... не менялись; mobile 480px в app.css и theme.css; assets plain static. Нюанс: settings.html фрагмент грузится через innerHTML (script не исполняется) — providers.js дополнительно подключён из index.html, тег в settings.html сохранён. Инварианты ui-lint зелёные; внешних CDN и секретов нет. | 4a8ce7d | 2026-10-31 |
 
+
+## P11 Канон, библиотека книг, цензор и мастер первого запуска — 33 задачи
+
+Норма волны — план `fine/plan/12-library-genres-censor.md` и решения владельца
+от 02.11.2026 (журнал решений). Проверки выполняются из `engine/`; общий гейт —
+`go test ./... -count=1`. Задачи закрываются по одной, порядок ведёт «Зависит от»
+(в плане 12 — порядок раздела 8); workflow `tns65-task`: кодер DeepSeek-pro →
+ревьюер MiMo-pro.
+
+| ID | Задача | Файл плана | Статус | Примечание | Коммит | Дата |
+|---|---|---|---|---|---|---|
+| T-12-01 | Жанры 30 | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-02 | Строи 18, экономики 8 | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-03 | Веса W1 | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-04 | Поле `source_book` | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-05 | Реальный словарь и профиль рейтинга | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-06 | Детектор отказов | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-07 | Рейтинг при ковке | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-08 | Лестница повторов и два прохода | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-09 | Полка | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-10 | Реестр книг | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-11 | Задача `forge-book` | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-12 | Буст книги в композиции | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-13 | `source_book` → `world_meta` | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-14 | Синхронная ковка после рождения | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-15 | Модалка фанфика | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-16 | Карточка BGE-M3 | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-17 | Запуск `:5002` | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-18 | Поставка `llama-server` | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-19 | Супервизор | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-20 | Мастер | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-21 | Миграция 0005: карта книги | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-22 | Кандидаты и упоминания (quick) | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-23 | Словарь описаний и извлечение по окну | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-24 | Роли по отрезкам | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-25 | Промоушен и пустые карточки | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-26 | Карта книги в интерфейсе | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-27 | Короткие фикстуры и потолки | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-28 | Локальная модель в тестах | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-29 | Скачивание моделей для теста | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-30 | Бенчмарк книги | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-31 | `docs-check.sh`: сверка документов с кодом | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-32 | Сводная сверка документов волны | 12-library-genres-censor.md | todo | — | — | — |
+| T-12-33 | Раннер задач: документы в том же коммите | 12-library-genres-censor.md | todo | — | — | — |
+
 ## Итог
 
 Всего задач: 178 (P0–P9 — 144, P10 — 1, P11 — 33). Закрыто: 145 (T-01-01…T-01-16, T-02-01…T-02-16, T-03-01…T-03-19, T-04-01…T-04-11, T-05-01…T-05-16, T-06-01…T-06-14, T-07-01…T-07-13, T-08-01…T-08-15, T-09-01…T-09-09, T-10-01…T-10-15, T-11-01 (P10); T-01-06/07/08 — Grok Build workflow «кодер DeepSeek → ревьюер MiMo»). Открыто: P11 (33, `12-library-genres-censor.md` — канон, полка книг, цензор, мастер, карта книги, документы; ждёт старта). Заблокировано: 1 (`blocked-dep` — T-03-18, ждёт готовности движка и UI; все вилки B-1…B-5 закрыты 20.10, B-1 — выбором готовой библиотеки).
