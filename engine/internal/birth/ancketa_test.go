@@ -103,6 +103,9 @@ func TestAncketaData(t *testing.T) {
 	if len(d.Ratings) != 2 {
 		t.Fatalf("рейтингов: %d, want 2", len(d.Ratings))
 	}
+	if !sameSet(d.Langs, []string{"ru", "en", "de", "fr", "es", "ja", "zh"}) {
+		t.Fatalf("языки: %v", d.Langs)
+	}
 	if !sameSet(d.TravelModes, []string{"реальная", "вымышленная", "смешанная"}) {
 		t.Fatalf("режимы походов: %v", d.TravelModes)
 	}

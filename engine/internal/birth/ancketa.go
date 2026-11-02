@@ -56,6 +56,7 @@ type Data struct {
 	TravelModes  []string `json:"travel_modes"`
 	EconomyMods  []string `json:"economy_mods"`
 	Ratings      []string `json:"ratings"`
+	Langs        []string `json:"langs"`
 }
 
 var (
