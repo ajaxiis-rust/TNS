@@ -412,17 +412,6 @@ legend {
   color: var(--muted);
 }
 
-.settings-theme-preview {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 8px 10px;
-  font-size: 0.7rem;
-  color: var(--fg-dim);
-  background: var(--panel-alt);
-  border: 1px dashed var(--border-strong);
-  border-radius: 6px;
-}
 
 /* --- Каталог провайдеров и списки ------------------------------------- */
 

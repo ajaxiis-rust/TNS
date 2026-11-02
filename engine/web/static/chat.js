@@ -109,6 +109,33 @@
     insertIntoLog(msg);
   }
 
+  // Пустая страница: без мира и без ходов лист остаётся листом, но с
+  // честной подсказкой вместо пустоты.
+  function clearEmpty() {
+    var box = byId("chat-empty");
+    if (box && box.parentNode) {
+      box.parentNode.removeChild(box);
+    }
+  }
+
+  function emptyNote(kind) {
+    clearEmpty();
+    var box = document.createElement("div");
+    box.className = "chat-empty";
+    box.id = "chat-empty";
+    var kicker = document.createElement("div");
+    kicker.className = "chat-empty__kicker";
+    kicker.textContent = kind === "no-world" ? "Пустая страница" : "Начало";
+    var text = document.createElement("p");
+    text.className = "chat-empty__text";
+    text.textContent = kind === "no-world"
+      ? "Мир ещё не выбран. Создайте мир в Атласе — и эта страница начнётся."
+      : "Скажите первое слово — история начнётся.";
+    box.appendChild(kicker);
+    box.appendChild(text);
+    chatLog.appendChild(box);
+  }
+
   function renderReturn(summary) {
     var box = byId("chat-return");
     if (!summary) {
@@ -173,6 +200,7 @@
   // возврате; сводка рисуется до первой реплики, действия сцены — внизу листа.
   function rebuildLog(data) {
     committedTurns = {};
+    clearEmpty();
     var nodes = chatLog.querySelectorAll(".chat-msg, .chat-return");
     nodes.forEach(function (node) {
       node.parentNode.removeChild(node);
@@ -260,6 +288,10 @@
     if (!text) {
       return;
     }
+    if (!activeSlug()) {
+      emptyNote("no-world");
+      return;
+    }
     if (chatInput) {
       chatInput.value = "";
     }
@@ -277,6 +309,7 @@
   function refresh() {
     var slug = activeSlug();
     if (!slug) {
+      emptyNote("no-world");
       return;
     }
     apiJSON("/api/state?world=" + encodeURIComponent(slug)).then(renderState).catch(function () {});

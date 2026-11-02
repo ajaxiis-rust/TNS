@@ -73,7 +73,6 @@
     settingsGeneralForm: "settings-general-form",
     settingsLang: "settings-lang",
     settingsTheme: "settings-theme",
-    settingsThemePreview: "settings-theme-preview",
     settingsServerHost: "settings-server-host",
     settingsServerPort: "settings-server-port",
     settingsRestartWarning: "settings-restart-warning",
@@ -1019,10 +1018,6 @@
     if (theme) {
       theme.value = normalizeTheme(resolveTheme());
       theme.addEventListener("change", applyTheme);
-      var preview = byId(IDS.settingsThemePreview);
-      if (preview) {
-        preview.textContent = theme.value;
-      }
     }
 
     var modelsBox = byId(IDS.settingsModels);
@@ -1140,10 +1135,6 @@
     var normalized = normalizeTheme(value);
     applyThemeClass(normalized);
     writeStoredTheme(normalized);
-    var preview = byId(IDS.settingsThemePreview);
-    if (preview) {
-      preview.textContent = normalized;
-    }
   }
 
   function loadSettingsData() {
