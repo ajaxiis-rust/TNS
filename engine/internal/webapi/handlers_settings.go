@@ -46,6 +46,7 @@ const (
 	settingsKeysPath           = "/api/settings/keys"
 	settingsChannelPath        = "/api/settings/channel"
 	settingsModelsInstallPath  = "/api/settings/models/install"
+	settingsModelsStatusPath   = "/api/settings/models/status"
 	settingsModelsRollbackPath = "/api/settings/models/rollback"
 )
 
@@ -268,8 +269,8 @@ func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		bindings = enrichBindings(meta, bindings)
-		models = readModelStatuses()
 	}
+	models = readModelStatuses()
 
 	webCfg := Config{Host: DefaultHost, Port: DefaultPort}
 	if cfg, err := LoadConfig(settingsConfigPath); err == nil {
@@ -944,7 +945,18 @@ func defaultFetchModelFile(ctx context.Context, source string, progress func(flo
 	if err != nil {
 		return nil, err
 	}
-	client := netgate.Client("huggingface.co")
+	// HF отдаёт файл редиректом на CDN (us.aws.cdn.hf.co, cdn-lfs…). Клиент без
+	// привязки к одному хосту, но по-прежнему только через белый список netgate;
+	// редирект разрешён лишь внутри домена Hugging Face.
+	client := netgate.Client("")
+	client.CheckRedirect = func(req *http.Request, _ []*http.Request) error {
+		host := strings.ToLower(req.URL.Hostname())
+		if host == "huggingface.co" || strings.HasSuffix(host, ".huggingface.co") ||
+			host == "hf.co" || strings.HasSuffix(host, ".hf.co") {
+			return nil
+		}
+		return netgate.ErrDeniedHost
+	}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -997,6 +1009,23 @@ func modelDirName(role string) string {
 
 func modelDir(role string) string { return filepath.Join(modelsRoot, modelDirName(role)) }
 
+// handleSettingsModelStatus — GET /api/settings/models/status: текущие задания
+// загрузки моделей (MD-08.2). Карточка модели опрашивает этот маршрут во время
+// установки и рисует прогресс внутри себя. role — необязательный фильтр.
+func handleSettingsModelStatus(w http.ResponseWriter, r *http.Request) {
+	role := strings.TrimSpace(r.URL.Query().Get("role"))
+	modelJobsMu.Lock()
+	jobs := make([]modelJobState, 0, len(modelJobs))
+	for _, j := range modelJobs {
+		if role == "" || j.Role == role {
+			jobs = append(jobs, j)
+		}
+	}
+	modelJobsMu.Unlock()
+	sort.Slice(jobs, func(i, j int) bool { return jobs[i].Role < jobs[j].Role })
+	writeJSON(w, http.StatusOK, map[string]any{"jobs": jobs})
+}
+
 // handleSettingsModelInstall — POST /api/settings/models/install: установка или
 // замена модели роли из HF по явному запросу (MD-08.1, MD-09.3). Байты кладутся
 // в world_db/models/<роль>/, привязка роли — в model_bindings хэндлом core.
@@ -1015,10 +1044,6 @@ func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 	role := strings.TrimSpace(req.Role)
 	source := strings.TrimSpace(req.Source)
 	modelRef := strings.TrimSpace(req.ModelRef)
-	if slug == "" {
-		writeError(w, http.StatusBadRequest, codeBadRequest, "world slug required")
-		return
-	}
 	if role == "" || modelRef == "" {
 		writeError(w, http.StatusBadRequest, codeBadRequest, "role and model_ref required")
 		return
@@ -1028,12 +1053,18 @@ func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h, err := db.OpenWriterAs(worldDBPath(slug), db.DBWorld, db.WriterCore, nil)
-	if err != nil {
-		writeError(w, http.StatusNotFound, codeNotFound, "world not found")
-		return
+	// Мир необязателен: файлы моделей живут в world_db/models/ и скачиваются до
+	// рождения мира. Привязка роли пишется только когда мир выбран.
+	var h *db.Handle
+	if slug != "" {
+		var err error
+		h, err = db.OpenWriterAs(worldDBPath(slug), db.DBWorld, db.WriterCore, nil)
+		if err != nil {
+			writeError(w, http.StatusNotFound, codeNotFound, "world not found")
+			return
+		}
+		defer h.Close()
 	}
-	defer h.Close()
 
 	setModelJob(role, "downloading", 0, "")
 	data, err := fetchModelFile(r.Context(), source, func(p float64) {
@@ -1056,13 +1087,15 @@ func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, codeInternal, "model install failed")
 		return
 	}
-	if err := writeSlotBindings(h, []slotBinding{{Role: role, ModelRef: modelRef, Provider: "local"}}); err != nil {
-		setModelJob(role, "error", 0, err.Error())
-		writeError(w, http.StatusInternalServerError, codeInternal, "binding write failed")
-		return
+	if h != nil {
+		if err := writeSlotBindings(h, []slotBinding{{Role: role, ModelRef: modelRef, Provider: "local"}}); err != nil {
+			setModelJob(role, "error", 0, err.Error())
+			writeError(w, http.StatusInternalServerError, codeInternal, "binding write failed")
+			return
+		}
 	}
 	setModelJob(role, "installed", 1, "")
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "model_ref": modelRef})
+	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "model_ref": modelRef, "bound": h != nil})
 }
 
 // installModelFile атомарно кладёт байты модели и манифест, а текущую версию

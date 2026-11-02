@@ -428,6 +428,87 @@ func TestModelInstallRollback(t *testing.T) {
 	}
 }
 
+// TestModelInstallWithoutWorld — файл модели скачивается до рождения мира:
+// каталог общий, привязка роли не пишется, ответ помечает bound=false.
+func TestModelInstallWithoutWorld(t *testing.T) {
+	oldRoot := modelsRoot
+	modelsRoot = filepath.Join(t.TempDir(), "models")
+	oldFetch := fetchModelFile
+	fetchModelFile = func(_ context.Context, _ string, progress func(float64)) ([]byte, error) {
+		progress(1)
+		return []byte("model-v1"), nil
+	}
+	t.Cleanup(func() {
+		modelsRoot = oldRoot
+		fetchModelFile = oldFetch
+	})
+
+	body, _ := json.Marshal(map[string]string{
+		"role":      "weaver",
+		"source":    "https://huggingface.co/org/model",
+		"model_ref": "org/model",
+	})
+	rr := mcpRequest(t, handleSettingsModelInstall, http.MethodPost, settingsModelsInstallPath, body, "application/json")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("install без мира: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	var out struct {
+		Status string `json:"status"`
+		Bound  bool   `json:"bound"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Status != "ok" || out.Bound {
+		t.Fatalf("install без мира = %+v, want ok/bound=false", out)
+	}
+	if _, err := os.Stat(filepath.Join(modelDir("weaver"), "current.json")); err != nil {
+		t.Fatalf("манифест модели не создан: %v", err)
+	}
+}
+
+// TestModelStatusEndpoint — карточка модели читает прогресс загрузки отдельным
+// маршрутом, пока POST установки ещё не вернулся.
+func TestModelStatusEndpoint(t *testing.T) {
+	modelJobsMu.Lock()
+	oldJobs := modelJobs
+	modelJobs = map[string]modelJobState{}
+	modelJobsMu.Unlock()
+	t.Cleanup(func() {
+		modelJobsMu.Lock()
+		modelJobs = oldJobs
+		modelJobsMu.Unlock()
+	})
+
+	setModelJob("weaver", "downloading", 0.42, "")
+	setModelJob("editor", "error", 0, "boom")
+
+	rr := mcpRequest(t, handleSettingsModelStatus, http.MethodGet, settingsModelsStatusPath, nil, "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: %d, want 200", rr.Code)
+	}
+	var out struct {
+		Jobs []modelJobState `json:"jobs"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Jobs) != 2 {
+		t.Fatalf("jobs = %+v, want 2", out.Jobs)
+	}
+	if out.Jobs[0].Role != "editor" || out.Jobs[0].Status != "error" {
+		t.Fatalf("jobs[0] = %+v", out.Jobs[0])
+	}
+
+	rr = mcpRequest(t, handleSettingsModelStatus, http.MethodGet, settingsModelsStatusPath+"?role=weaver", nil, "")
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Jobs) != 1 || out.Jobs[0].Role != "weaver" || out.Jobs[0].Progress != 0.42 {
+		t.Fatalf("jobs по роли = %+v", out.Jobs)
+	}
+}
+
 // TestModelRollbackIntegrity — откат на повреждённую прежнюю версию отвергается.
 func TestModelRollbackIntegrity(t *testing.T) {
 	seedSettingsWorld(t)

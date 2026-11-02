@@ -23,12 +23,13 @@ import (
 // T-02-12); удаление пишет событие world.deleted в журнал станка.
 
 const (
-	atlasScreenPath = "/atlas.html"
-	atlasWorldsPath = "/api/atlas/worlds"
-	atlasBirthPath  = "/api/atlas/worlds/birth"
-	atlasActivePath = "/api/atlas/worlds/active"
-	atlasReplayPath = "/api/atlas/worlds/replay"
-	atlasDeletePath = "/api/atlas/worlds/delete"
+	atlasScreenPath  = "/atlas.html"
+	atlasWorldsPath  = "/api/atlas/worlds"
+	atlasBirthPath   = "/api/atlas/worlds/birth"
+	atlasOptionsPath = "/api/atlas/birth"
+	atlasActivePath  = "/api/atlas/worlds/active"
+	atlasReplayPath  = "/api/atlas/worlds/replay"
+	atlasDeletePath  = "/api/atlas/worlds/delete"
 )
 
 // eventWorldDeleted — событие журнала станка при удалении мира (T-08-05,
@@ -98,6 +99,18 @@ type atlasWorldCard struct {
 type atlasListResponse struct {
 	Active string           `json:"active"`
 	Worlds []atlasWorldCard `json:"worlds"`
+}
+
+// handleAtlasBirthOptions — GET /api/atlas/birth: канонические перечни анкеты
+// рождения (жанры, строй, режимы походов, экономика, рейтинги, языки). Форма
+// берёт значения отсюда, поэтому не может разойтись с валидацией birth.
+func handleAtlasBirthOptions(w http.ResponseWriter, _ *http.Request) {
+	data, err := birth.LoadData()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, codeInternal, "birth options unavailable")
+		return
+	}
+	writeJSON(w, http.StatusOK, data)
 }
 
 // handleAtlasList — GET /api/atlas/worlds: готовые миры карточками.
@@ -276,6 +289,15 @@ func worldReady(slug string) bool {
 // writeBirthError переводит ошибки рождения в контракт ошибок webapi: невалидная
 // анкета — 400, повторный слаг — 409, мира для переигровки нет — 404.
 func writeBirthError(w http.ResponseWriter, err error) {
+	var ve *birth.ValidationError
+	if errors.As(err, &ve) && len(ve.Fields) > 0 {
+		fields := make([]errorField, 0, len(ve.Fields))
+		for _, f := range ve.Fields {
+			fields = append(fields, errorField{Field: f.Field, Reason: f.Reason})
+		}
+		writeFieldError(w, http.StatusBadRequest, codeBadRequest, err.Error(), fields)
+		return
+	}
 	var ee *birth.ExitError
 	if errors.As(err, &ee) {
 		switch ee.Code {

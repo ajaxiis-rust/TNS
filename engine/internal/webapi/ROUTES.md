@@ -21,6 +21,7 @@
 | GET | `/history.html` | — | `history.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/mcp.html` | — | `mcp.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/api/atlas/worlds` | — | `{"active":"…","worlds":[{"slug","title","active","characters","places","paths","entities","sessions"}]}` | `method_not_allowed`, `internal` |
+| GET | `/api/atlas/birth` | — | `{"genres":[…],"social_orders":[…],"travel_modes":[…],"economy_mods":[…],"ratings":[…],"langs":[…]}` — канонические перечни анкеты рождения | `method_not_allowed`, `internal` |
 | POST | `/api/atlas/worlds/birth` | анкета рождения (14 ключей) | `{"status":"ok","world":{"slug","title"}}` | `method_not_allowed`, `bad_request`, `conflict`, `internal` |
 | POST | `/api/atlas/worlds/active` | `{"world":"<slug>"}` | `{"status":"ok","active":"<slug>"}` | `method_not_allowed`, `bad_request` |
 | POST | `/api/atlas/worlds/replay` | анкета переигровки (тот же `slug`) | `{"status":"ok","world":{"slug","title"}}` | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
@@ -41,7 +42,8 @@
 | PUT | `/api/settings/config` | `{"host","port","paganel_enabled","scout_enabled","gen_addr","gen_model","gen_timeout","gen_max_tokens","gen_temperature","gen_retries","gen_concurrency","embed_addr","embed_model","embed_timeout","local","sampling"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | PUT | `/api/settings/keys` | `{"keys":{…}}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | PUT | `/api/settings/channel` | `{"edge","local","telegram_chat_id","telegram_token","clear_token"}` | `{"status":"ok","bot_running":bool,"warning":"…"}` | `method_not_allowed`, `bad_request`, `internal` |
-| POST | `/api/settings/models/install` | `{"world":"…","role":"…","source":"https://huggingface.co/…","model_ref":"…"}` | `{"status":"ok","model_ref":"…"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| POST | `/api/settings/models/install` | `{"world":"…","role":"…","source":"https://huggingface.co/…","model_ref":"…"}` — `world` может быть пустым: файл скачается без привязки роли | `{"status":"ok","model_ref":"…","bound":bool}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| GET | `/api/settings/models/status` | query `role=<роль>` (необязательно) | `{"jobs":[{"role","status","progress","error"}]}` — текущие загрузки для прогресса в карточке | `method_not_allowed` |
 | POST | `/api/settings/models/rollback` | `{"world":"…","role":"…"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
 | GET | `/api/providers` | — | `{"providers":[{name,key_set,model,quota,cost_millis}]}` — внешние слоты: ключ, модель, остаток лимита вызовов («недоступно» без лимита), стоимость по тарифу из журнала вызовов | `method_not_allowed` |
 | GET | `/api/monitor` | — | `{"slots":[…],"roles":[…],"machines":[…],"degradations":N,"journal_tail":[…]}` — пять блоков мониторинга, только чтение | `method_not_allowed` |
@@ -62,6 +64,7 @@ GET /atlas.html
 GET /history.html
 GET /mcp.html
 GET /api/atlas/worlds
+GET /api/atlas/birth
 POST /api/atlas/worlds/birth
 POST /api/atlas/worlds/active
 POST /api/atlas/worlds/replay
@@ -83,6 +86,7 @@ PUT /api/settings/config
 PUT /api/settings/keys
 PUT /api/settings/channel
 POST /api/settings/models/install
+GET /api/settings/models/status
 POST /api/settings/models/rollback
 GET /api/providers
 GET /api/monitor
@@ -93,11 +97,12 @@ GET /api/monitor
 HTTP-код плюс тело:
 
 ```json
-{"error":{"code":"…","message":"…"}}
+{"error":{"code":"…","message":"…","fields":[{"field":"…","reason":"…"}]}}
 ```
 
 Коды ошибок — константы в `routes.go`: `not_found`, `method_not_allowed`,
-`bad_request`, `conflict`, `internal`.
+`bad_request`, `conflict`, `internal`. Поле `fields` приходит у отказа анкеты
+рождения: форма подсвечивает конкретное поле и показывает причину.
 
 ## Анкета рождения (Атлас)
 

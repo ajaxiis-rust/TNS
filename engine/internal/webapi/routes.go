@@ -22,8 +22,16 @@ type errorBody struct {
 }
 
 type errorDetail struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code    string       `json:"code"`
+	Message string       `json:"message"`
+	Fields  []errorField `json:"fields,omitempty"`
+}
+
+// errorField — поле формы и причина отказа (анкета рождения). UI подсвечивает
+// поле и показывает причину рядом с ним.
+type errorField struct {
+	Field  string `json:"field"`
+	Reason string `json:"reason"`
 }
 
 // writeJSON пишет JSON-ответ с Content-Type.
@@ -36,6 +44,12 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 // writeError пишет ошибку по единому контракту (T-08-02, шаг 4).
 func writeError(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, errorBody{Error: errorDetail{Code: code, Message: message}})
+}
+
+// writeFieldError пишет ошибку полей: сообщение плюс перечень field/reason,
+// чтобы форма могла подсветить конкретные поля (анкета рождения).
+func writeFieldError(w http.ResponseWriter, status int, code, message string, fields []errorField) {
+	writeJSON(w, status, errorBody{Error: errorDetail{Code: code, Message: message, Fields: fields}})
 }
 
 // routeSpec — строка таблицы маршрутов: метод, путь и обработчик.
@@ -66,6 +80,7 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodGet, path: "/history.html", handle: handleHistoryScreen},
 		{method: http.MethodGet, path: "/mcp.html", handle: handleMcpScreen},
 		{method: http.MethodGet, path: "/api/atlas/worlds", handle: handleAtlasList},
+		{method: http.MethodGet, path: "/api/atlas/birth", handle: handleAtlasBirthOptions},
 		{method: http.MethodPost, path: "/api/atlas/worlds/birth", handle: handleAtlasBirth},
 		{method: http.MethodPost, path: "/api/atlas/worlds/active", handle: handleAtlasSwitch},
 		{method: http.MethodPost, path: "/api/atlas/worlds/replay", handle: handleAtlasReplay},
@@ -87,6 +102,7 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodPut, path: "/api/settings/keys", handle: handleSettingsKeys},
 		{method: http.MethodPut, path: "/api/settings/channel", handle: handleSettingsChannel},
 		{method: http.MethodPost, path: "/api/settings/models/install", handle: handleSettingsModelInstall},
+		{method: http.MethodGet, path: "/api/settings/models/status", handle: handleSettingsModelStatus},
 		{method: http.MethodPost, path: "/api/settings/models/rollback", handle: handleSettingsModelRollback},
 		{method: http.MethodGet, path: "/api/providers", handle: handleProviders},
 		{method: http.MethodGet, path: "/api/monitor", handle: handleMonitor},

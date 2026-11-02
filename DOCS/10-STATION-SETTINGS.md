@@ -44,7 +44,8 @@
 | LLM — ключ слота эмбеддинга | Настройки → LLM | `settings.toml` `llm_embed` | пусто | нет | наружу не отдаётся |
 | Провайдеры — ключ внешнего провайдера | Настройки → Провайдеры | `settings.toml` `<имя>` | пусто | нет | ключ не отдаётся; остаток лимита/стоимость — чтение журнала вызовов |
 | Провайдеры — пресеты реестра | Настройки → LLM (только чтение) | код `workshop.Presets()` | `local` | — | `local`/`gemini-flash`/`gemini-pro`; выбор пресета — `slots.default` |
-| Модели — установка/замена модели роли | Настройки → Модели | `world_db/models/<роль>/` + `model_bindings` (core) | — | нет | источник — только `https://huggingface.co`; загрузка по явному запросу |
+| Модели — установка/замена модели роли | Настройки → Модели | `world_db/models/<роль>/` + `model_bindings` (core) | — | нет | каталог карточек: одно нажатие, прогресс внутри карточки; файл можно скачать до рождения мира (тогда привязка роли появится позже) |
+| Модели — прогресс загрузки | Настройки → Модели (карточка) | память процесса | — | — | `GET /api/settings/models/status?role=…`; карточка опрашивает его во время установки |
 | Модели — откат модели | Настройки → Модели | `world_db/models/<роль>/previous.*` | — | нет | сверка sha256, привязка обновляется |
 | Роли — привязка слота (роль→провайдер/модель) | Настройки → Роли | `model_bindings` (core) | — | нет | |
 | Роли — температура | Настройки → Роли | `world_meta` `role.<роль>` (forge) | `0` | нет | JSON-состав роли |
@@ -148,7 +149,7 @@
 
 ## 7. Конфиг-секции вне интерфейса (defaults)
 
-`netgate.allowed_hosts` (по умолчанию): `generativelanguage.googleapis.com`, `huggingface.co`, `region1.v2.argotunnel.com`, `region2.v2.argotunnel.com`, `api.telegram.org`.
+`netgate.allowed_hosts` (по умолчанию): `generativelanguage.googleapis.com`, `huggingface.co`, `*.huggingface.co`, `*.hf.co`, `region1.v2.argotunnel.com`, `region2.v2.argotunnel.com`, `api.telegram.org`. Запись `*.example` разрешает сам домен и все его поддомены — так HF отдаёт файл модели редиректом на CDN.
 `ports.whitelist` (по умолчанию): `127.0.0.1:8720`, `127.0.0.1:5001`, `127.0.0.1:5002`.
 `composition` (по умолчанию): `w_family 0.28`, `w_secondary 0.18`, `w_technique 0.15`, `w_moral 0.12`, `w_mood 0.10`, `w_quality 0.10`, `w_freshness 0.07`, `family_only_penalty 0.10`, `inversion_boost 0.10`, `adjacent_penalty 0.15`.
 

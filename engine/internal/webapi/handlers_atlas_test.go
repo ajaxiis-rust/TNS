@@ -239,6 +239,41 @@ func TestAtlasBirth(t *testing.T) {
 	}
 }
 
+func TestAtlasBirthOptions(t *testing.T) {
+	rr := atlasRequest(t, NewHandler(Config{}), http.MethodGet, atlasOptionsPath, "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET %s: status = %d, want 200; body=%s", atlasOptionsPath, rr.Code, rr.Body.String())
+	}
+	var out birth.Data
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatalf("GET %s: bad JSON: %v", atlasOptionsPath, err)
+	}
+	if len(out.Genres) != 10 || len(out.SocialOrders) != 11 || len(out.TravelModes) != 3 || len(out.EconomyMods) != 4 {
+		t.Fatalf("перечни анкеты = %+v", out)
+	}
+	if len(out.Langs) != 7 {
+		t.Fatalf("языки = %v, want 7", out.Langs)
+	}
+}
+
+// TestAtlasBirthFieldErrors — причина отказа приходит перечнем field/reason,
+// чтобы форма подсветила конкретное поле.
+func TestAtlasBirthFieldErrors(t *testing.T) {
+	setupAtlas(t)
+	body := strings.Replace(atlasAncketaJSON("bad-genre"), `"genres":["фэнтези","хоррор"]`, `"genres":["неизвестный"]`, 1)
+	rr := atlasRequest(t, NewHandler(Config{}), http.MethodPost, atlasBirthPath, body)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("POST с неизвестным жанром: status = %d, want 400; body=%s", rr.Code, rr.Body.String())
+	}
+	var out errorBody
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatalf("bad error JSON: %v", err)
+	}
+	if len(out.Error.Fields) == 0 || out.Error.Fields[0].Field != "genres" {
+		t.Fatalf("fields = %+v, want genres", out.Error.Fields)
+	}
+}
+
 func TestAtlasSwitch(t *testing.T) {
 	dir := setupAtlas(t)
 	seedWorld(t, dir, "alpha-world", "Альфа-мир")
