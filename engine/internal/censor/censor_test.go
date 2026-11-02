@@ -236,3 +236,145 @@ func TestStoplistGolden(t *testing.T) {
 		}
 	}
 }
+
+// writePackFile пишет содержимое в файл каталога пакета dir.
+func writePackFile(t *testing.T, dir, name, content string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestLoadStoplistProfile — рейтинг 16+ расширяет базу файлом stoplist_16.txt,
+// остальные рейтинги (18+, пустой) используют только базу (T-12-05).
+func TestLoadStoplistProfile(t *testing.T) {
+	dir := t.TempDir()
+	writePackFile(t, dir, stoplistFile, "блядь\nхуй\n")
+	writePackFile(t, dir, stoplist16File, "дурак\nидиот\n")
+
+	base, err := LoadStoplist(dir)
+	if err != nil {
+		t.Fatalf("LoadStoplist: %v", err)
+	}
+	if len(base) != 2 {
+		t.Fatalf("база = %v, want ровно 2 леммы", base)
+	}
+
+	for _, rating := range []string{"18+", "", "0+"} {
+		got, err := LoadStoplistProfile(dir, rating)
+		if err != nil {
+			t.Fatalf("LoadStoplistProfile(%q): %v", rating, err)
+		}
+		if len(got) != len(base) {
+			t.Fatalf("профиль %q = %v, want только базу %v", rating, got, base)
+		}
+	}
+
+	got, err := LoadStoplistProfile(dir, "16+")
+	if err != nil {
+		t.Fatalf("LoadStoplistProfile(16+): %v", err)
+	}
+	if len(got) != 4 {
+		t.Fatalf("профиль 16+ = %v, want базу + 16+ (4 леммы)", got)
+	}
+	for _, want := range append([]string{"дурак", "идиот"}, base...) {
+		if !contains(got, want) {
+			t.Fatalf("профиль 16+ = %v, want содержит %q", got, want)
+		}
+	}
+}
+
+// TestLoadStoplistProfileMissing16 — при рейтинге 16+ отсутствие stoplist_16.txt
+// — ошибка, а не тихое ослабление словаря (fail-closed, T-12-05).
+func TestLoadStoplistProfileMissing16(t *testing.T) {
+	dir := t.TempDir()
+	writePackFile(t, dir, stoplistFile, "блядь\n")
+
+	if _, err := LoadStoplistProfile(dir, "16+"); err == nil {
+		t.Fatal("профиль 16+ без stoplist_16.txt собрался, want ошибка")
+	}
+	if got, err := LoadStoplistProfile(dir, "18+"); err != nil || len(got) != 1 {
+		t.Fatalf("профиль 18+ без stoplist_16.txt: got=%v err=%v, want базу", got, err)
+	}
+}
+
+// TestRealStoplistProfile — реальный словарь пакета: база больше не заглушка из
+// служебных слов, а файл 16+ существует и усиливает базу (T-12-05).
+func TestRealStoplistProfile(t *testing.T) {
+	root := findEngineRoot()
+	if root == "" {
+		t.Skip("корень движка не найден — пакет недоступен")
+	}
+	packDir := filepath.Join(root, "packs", "ru")
+
+	base, err := LoadStoplist(packDir)
+	if err != nil {
+		t.Fatalf("LoadStoplist: %v", err)
+	}
+	if len(base) == 0 {
+		t.Fatal("stoplist.txt пакета пуст")
+	}
+	for _, placeholder := range []string{"и", "в", "на", "с", "не", "что", "как"} {
+		if contains(base, placeholder) {
+			t.Fatalf("заглушка осталась в базе: %q", placeholder)
+		}
+	}
+
+	profile, err := LoadStoplistProfile(packDir, "16+")
+	if err != nil {
+		t.Fatalf("LoadStoplistProfile(16+): %v", err)
+	}
+	if len(profile) <= len(base) {
+		t.Fatalf("профиль 16+ (%d) не расширил базу (%d)", len(profile), len(base))
+	}
+}
+
+// TestRealProfileCensor — на реальном резиденте пакета: обычная проза проходит,
+// брань из базы отклоняется, слово 16+ ловится только в профиле 16+ (T-12-05).
+func TestRealProfileCensor(t *testing.T) {
+	root := findEngineRoot()
+	if root == "" {
+		t.Skip("корень движка не найден")
+	}
+	packDir := filepath.Join(root, "packs", "ru")
+	binary := packLemmatizerBinary(root, packDir)
+	if binary == "" {
+		t.Skip("манифест пакета не задаёт бинарник лемматизатора")
+	}
+	if _, err := os.Stat(binary); err != nil {
+		t.Skipf("бинарник лемматизатора недоступен: %v", err)
+	}
+
+	base, err := LoadStoplist(packDir)
+	if err != nil {
+		t.Fatalf("LoadStoplist: %v", err)
+	}
+	profile16, err := LoadStoplistProfile(packDir, "16+")
+	if err != nil {
+		t.Fatalf("LoadStoplistProfile(16+): %v", err)
+	}
+
+	client := lemmarpc.NewClient(binary, nil)
+	defer client.Close()
+
+	baseC := New(client, base)
+	profile16C := New(client, profile16)
+
+	prose := "Добрый человек идёт по лесной дороге домой."
+	for name, c := range map[string]*Checker{"база": baseC, "16+": profile16C} {
+		if ok, hits := c.Check(prose); !ok {
+			t.Fatalf("обычная проза заблокирована профилем %s: hits=%v", name, hits)
+		}
+	}
+
+	if ok, hits := baseC.Check("блядь и грязь кругом"); ok {
+		t.Fatalf("брань прошла базу: hits=%v", hits)
+	}
+
+	if ok, _ := baseC.Check("дурак идёт"); !ok {
+		t.Fatal("18+ (база) поймал слово из stoplist_16, want только в профиле 16+")
+	}
+	if ok, hits := profile16C.Check("дурак идёт"); ok {
+		t.Fatalf("16+ не поймал слово из stoplist_16: hits=%v", hits)
+	}
+}

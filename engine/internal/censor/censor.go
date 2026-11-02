@@ -23,6 +23,13 @@ type Lemmatizer interface {
 // stoplistFile — имя словарного файла пакета: по лемме в строке (T-01-08, шаг 6).
 const stoplistFile = "stoplist.txt"
 
+// stoplist16File — имя дополнительного словарного файла рейтинга 16+ (T-12-05):
+// усиленный словарь поверх базы.
+const stoplist16File = "stoplist_16.txt"
+
+// rating16Plus — рейтинг 16+: профиль усиливается файлом stoplist_16.txt (T-12-05).
+const rating16Plus = "16+"
+
 // Checker — словарный фильтр: лемматизатор и множество запретных лемм.
 type Checker struct {
 	lemmatizer Lemmatizer
@@ -146,7 +153,32 @@ func Check(text string, lang string) (bool, []string) {
 // LoadStoplist читает запретные леммы из stoplist.txt пакета (по лемме в строке,
 // T-01-08, шаг 6); пустые строки пропускаются.
 func LoadStoplist(packDir string) ([]string, error) {
-	f, err := os.Open(filepath.Join(packDir, stoplistFile))
+	return loadStoplistFile(filepath.Join(packDir, stoplistFile))
+}
+
+// LoadStoplistProfile читает профиль запретных лемм рейтинга rating (T-12-05).
+// База — stoplist.txt; рейтинг 16+ усиливается файлом stoplist_16.txt (база + 16+),
+// остальные рейтинги (18+) используют только базу. Отсутствие файла 16+ при
+// рейтинге 16+ — ошибка, а не тихое ослабление словаря (fail-closed).
+func LoadStoplistProfile(packDir, rating string) ([]string, error) {
+	base, err := LoadStoplist(packDir)
+	if err != nil {
+		return nil, err
+	}
+	if rating != rating16Plus {
+		return base, nil
+	}
+	extra, err := loadStoplistFile(filepath.Join(packDir, stoplist16File))
+	if err != nil {
+		return nil, err
+	}
+	return append(base, extra...), nil
+}
+
+// loadStoplistFile читает леммы из файла: по одной лемме в строке, пустые строки
+// пропускаются.
+func loadStoplistFile(path string) ([]string, error) {
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
