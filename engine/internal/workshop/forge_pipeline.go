@@ -91,8 +91,9 @@ func ForgeBankRecord(world *db.Handle, lit *db.Handle, m ForgeMaterial) (int64, 
 		return 0, err
 	}
 
-	// Шаг 2: Цензор при варке — на выходе ковки, до записи в банк.
-	if ok, hits := censorForge().Check(text); !ok {
+	// Шаг 2: Цензор при варке — на выходе ковки, до записи в банк. Профиль
+	// словаря выбирается по рейтингу мира (16+ — расширенный, 18+ — база).
+	if ok, hits := censorForWorld(world).Check(text); !ok {
 		return 0, fmt.Errorf("%w: %s", ErrCensorReject, strings.Join(hits, ", "))
 	}
 

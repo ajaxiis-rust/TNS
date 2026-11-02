@@ -14,6 +14,7 @@ import (
 	"tns65/internal/db"
 	"tns65/internal/journal"
 	"tns65/internal/models"
+	"tns65/internal/workshop"
 	web "tns65/web"
 )
 
@@ -235,7 +236,29 @@ func handleAtlasSwitch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setActiveSlug(slug)
+	wireWorldRating(slug)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "active": slug})
+}
+
+// wireWorldRating читает рейтинг цензуры мира и передаёт его мастерской при
+// открытии мира (T-12-07): 18+ — только локальный слот, 16+ — расширенный
+// словарь. Отказ чтения не отменяет открытие — рейтинг остаётся прежним.
+func wireWorldRating(slug string) {
+	d, err := db.OpenReader(worldDBPath(slug))
+	if err != nil {
+		return
+	}
+	defer d.Close()
+
+	var raw string
+	if err := d.QueryRow(`SELECT value FROM world_meta WHERE "key" = 'censorship'`).Scan(&raw); err != nil {
+		return
+	}
+	var rating string
+	if err := json.Unmarshal([]byte(raw), &rating); err != nil {
+		return
+	}
+	workshop.SetRating(rating)
 }
 
 // handleAtlasDelete — DELETE /api/atlas/worlds/delete?world=<slug>&confirm=<slug>:

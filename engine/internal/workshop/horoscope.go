@@ -91,14 +91,16 @@ func SetEmbedder(e models.Embedder) {
 	curEmbed = e
 }
 
-// censorForge возвращает текущего Цензора ковки; nil заменяется заводским.
+// censorForge возвращает текущего Цензора ковки; тестовая подмена (SetCensor)
+// имеет приоритет, иначе рейтинг активного мира выбирает профиль словаря
+// (16+ — расширенный, остальные — база; без рейтинга — база).
 func censorForge() Censor {
 	censorMu.RLock()
 	defer censorMu.RUnlock()
 	if curCensor != nil {
 		return curCensor
 	}
-	return censorAdapter{}
+	return censorForRating(ActiveRating())
 }
 
 // embedderForge возвращает текущего эмбеддера ковки; nil — эмбеддер не подключён.
@@ -151,7 +153,13 @@ func HoroscopePrompt(p HoroscopePayload) string {
 // (owner_table='horoscope_issue'; shared-векторы к литературной базе не
 // подключены, D-19.2). Возвращает id строки horoscope_issue.
 func RunHoroscopeForge(world *db.Handle, literary *db.Handle, payload HoroscopePayload) (int64, error) {
-	slot := slotForProvider(DefaultProvider)
+	// Рейтинг мира ограничивает пресет слота: 18+ — только локальный слот,
+	// внешние провайдеры для мира исключены (W-14.3, шаг 3).
+	provider, err := ProviderForWorld(world, DefaultProvider)
+	if err != nil {
+		return 0, err
+	}
+	slot := slotForProvider(provider)
 	if slot == nil {
 		return 0, errors.New("workshop: слот ковки гороскопа не подключён")
 	}
@@ -168,8 +176,9 @@ func RunHoroscopeForge(world *db.Handle, literary *db.Handle, payload HoroscopeP
 		return 0, err
 	}
 
-	// Цензура без исключений (W-13.9): тексты веток до записи.
-	cen := censorForge()
+	// Цензура без исключений (W-13.9): тексты веток до записи; профиль словаря
+	// выбирается по рейтингу мира (16+ — расширенный, 18+ — база).
+	cen := censorForWorld(world)
 	for _, b := range ho.Branches {
 		for _, text := range []string{b.Ref, b.Theme, b.ProbeText} {
 			if ok, hits := cen.Check(text); !ok {

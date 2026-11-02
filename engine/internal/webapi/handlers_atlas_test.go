@@ -18,6 +18,7 @@ import (
 	"tns65/internal/journal"
 	"tns65/internal/models"
 	"tns65/internal/testkit"
+	"tns65/internal/workshop"
 )
 
 // setupAtlas подменяет корень миров, base.db и эмбеддер на временные фикстуры и
@@ -300,6 +301,27 @@ func TestAtlasSwitch(t *testing.T) {
 	rr = atlasRequest(t, h, http.MethodPost, atlasActivePath, `{"world":"nope"}`)
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("POST несуществующего мира: status = %d, want 400", rr.Code)
+	}
+}
+
+// TestWireWorldRating — проводка при открытии мира: рейтинг цензуры из
+// world_meta.censorship передаётся мастерской (T-12-07).
+func TestWireWorldRating(t *testing.T) {
+	dir := setupAtlas(t)
+	seedWorld(t, dir, "alpha-world", "Альфа-мир")
+
+	oldPath := worldDBPath
+	worldDBPath = func(slug string) string {
+		return filepath.Join(dir, "worlds", slug, slug+".db")
+	}
+	t.Cleanup(func() { worldDBPath = oldPath })
+
+	workshop.SetRating("")
+	t.Cleanup(func() { workshop.SetRating("") })
+
+	wireWorldRating("alpha-world")
+	if got := workshop.ActiveRating(); got != "16+" {
+		t.Fatalf("ActiveRating после открытия мира = %q, want 16+", got)
 	}
 }
 
