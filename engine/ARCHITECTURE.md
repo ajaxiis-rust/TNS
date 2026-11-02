@@ -43,6 +43,7 @@
 | 0002_vectors | shared | T-01-04 |
 | 0001_init | literary | T-01-05 |
 | 0003_composition | literary | T-10-08 |
+| 0004_book | literary | T-12-10 |
 | 0001_init | world | T-01-06 |
 | 0003_workshop_queue | world | T-02-11 |
 | 0004_saw | world | T-03-06 |

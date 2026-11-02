@@ -66,14 +66,15 @@ func TestLiterarySchema(t *testing.T) {
 		}
 	}
 
-	// 3. Учёт миграций: user_version == 3 и schema_migrations ==
-	// [{1, "0001_init"}, {2, "0002_sediment_idempotency"}, {3, "0003_composition"}].
+	// 3. Учёт миграций: user_version == 4 и schema_migrations ==
+	// [{1, "0001_init"}, {2, "0002_sediment_idempotency"}, {3, "0003_composition"},
+	// {4, "0004_book"}].
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 3 {
-		t.Errorf("user_version = %d, want 3", uv)
+	if uv != 4 {
+		t.Errorf("user_version = %d, want 4", uv)
 	}
 
 	type migration struct {
@@ -94,7 +95,7 @@ func TestLiterarySchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_sediment_idempotency"}, {3, "0003_composition"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_sediment_idempotency"}, {3, "0003_composition"}, {4, "0004_book"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
@@ -160,6 +161,7 @@ func TestLiterarySchema(t *testing.T) {
 		"source_scene_id", "created_at",
 		"family_primary", "pattern_secondary", "technique", "moral_stance",
 		"inversion_flag", "usage_count",
+		"book_id",
 	}
 	if got := colsOf(t, w, "bank_pool"); !slices.Equal(got, wantCols) {
 		t.Errorf("bank_pool columns = %v, want %v", got, wantCols)
@@ -184,6 +186,36 @@ func TestLiterarySchema(t *testing.T) {
 	}
 	if fp != "escape_liberation" || ps != "rescue" || tech != "slow_revelation" || ms != "tragic" || inv != 1 || uc != 7 {
 		t.Errorf("composition row = (%q, %q, %q, %q, %d, %d)", fp, ps, tech, ms, inv, uc)
+	}
+
+	// 6a. Реестр книг (T-12-10): таблица book с колонками канона §5.3 и
+	// bank_pool.book_id, связывающий запись с книгой (NULL — старые записи и сид).
+	wantBookCols := []string{
+		"id", "shelf_id", "name", "lang", "genres", "rating",
+		"chapters", "status", "created_at",
+	}
+	if got := colsOf(t, w, "book"); !slices.Equal(got, wantBookCols) {
+		t.Errorf("book columns = %v, want %v", got, wantBookCols)
+	}
+
+	bookRes, err := w.Exec(`INSERT INTO book (shelf_id, name, lang, genres, rating, chapters, status, created_at) VALUES ('hp-1997', 'Гарри Поттер', 'ru', 'фэнтези', '16+', 17, 'ready', '2026-01-01T00:00:00Z')`)
+	if err != nil {
+		t.Fatalf("INSERT book: %v", err)
+	}
+	bookID, err := bookRes.LastInsertId()
+	if err != nil {
+		t.Fatalf("book LastInsertId: %v", err)
+	}
+
+	if _, err := w.Exec(`INSERT INTO bank_pool (kind, text, lang, tags, trust_level, origin, created_at, book_id) VALUES ('routine', 't', 'ru', 't', 2, 'forge-book:1:1', '2026-01-01T00:00:00Z', ?)`, bookID); err != nil {
+		t.Fatalf("INSERT bank_pool with book_id: %v", err)
+	}
+	var gotBookID int64
+	if err := w.QueryRow(`SELECT book_id FROM bank_pool WHERE origin = 'forge-book:1:1'`).Scan(&gotBookID); err != nil {
+		t.Fatalf("SELECT book_id: %v", err)
+	}
+	if gotBookID != bookID {
+		t.Errorf("bank_pool.book_id = %d, want %d", gotBookID, bookID)
 	}
 
 	// 7. Старая фикстура (схема до 0003) с записью банка: после миграции
@@ -228,5 +260,13 @@ func TestLiterarySchema(t *testing.T) {
 	}
 	if oldFP != "" || oldInv != 0 {
 		t.Errorf("old bank_pool row defaults = (%q, %d), want (\"\", 0)", oldFP, oldInv)
+	}
+	// Старая запись банка после миграции 0004 получает book_id = NULL (сид).
+	var oldBookNull int
+	if err := ow.QueryRow(`SELECT book_id IS NULL FROM bank_pool WHERE origin = 'old'`).Scan(&oldBookNull); err != nil {
+		t.Fatalf("old bank_pool book_id NULL scan: %v", err)
+	}
+	if oldBookNull != 1 {
+		t.Errorf("old bank_pool row book_id должен быть NULL")
 	}
 }

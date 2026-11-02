@@ -63,6 +63,7 @@ var writerMap = map[writerKey]Writer{
 	{DBBase, "vectors"}:    WriterBake,
 
 	// literary.db.
+	{DBLiterary, "book"}:            WriterForge,
 	{DBLiterary, "bank_pool"}:       WriterForge,
 	{DBLiterary, "lit_template"}:    WriterForge,
 	{DBLiterary, "horoscope_issue"}: WriterForge,

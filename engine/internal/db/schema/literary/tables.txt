@@ -1,5 +1,6 @@
 artifact
 bank_pool
+book
 forge_log
 horoscope_issue
 lit_template
