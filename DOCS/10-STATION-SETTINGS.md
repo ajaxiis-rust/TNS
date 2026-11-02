@@ -124,3 +124,17 @@
 `netgate.allowed_hosts` (по умолчанию): `generativelanguage.googleapis.com`, `huggingface.co`, `region1.v2.argotunnel.com`, `region2.v2.argotunnel.com`, `api.telegram.org`.
 `ports.whitelist` (по умолчанию): `127.0.0.1:8720`, `127.0.0.1:5001`, `127.0.0.1:5002`.
 `composition` (по умолчанию): `w_family 0.28`, `w_secondary 0.18`, `w_technique 0.15`, `w_moral 0.12`, `w_mood 0.10`, `w_quality 0.10`, `w_freshness 0.07`, `family_only_penalty 0.10`, `inversion_boost 0.10`, `adjacent_penalty 0.15`.
+
+## 8. Темы
+
+Три темы интерфейса, переключаются в **Настройки → General → Тема**:
+
+- **Тёмная** — по умолчанию.
+- **Светлая**.
+- **Своя** — собственный набор цветов.
+
+Хранение: `localStorage` `tns65.theme`; на сервере тема не хранится. Выбор ставит `data-theme` на `<html>` до первой отрисовки, поэтому вспышки чужой темы нет.
+
+Переопределение для скриншотов: параметр `?theme=dark|light|custom` в адресе — он сильнее сохранённого выбора.
+
+Правило: читаемая поверхность (страница текста, «бумага») остаётся бумажной во всех темах — в тёмной теме страница чтения не темнеет, иначе теряется метафора книги.
