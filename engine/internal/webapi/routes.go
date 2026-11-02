@@ -63,6 +63,7 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodGet, path: "/api/state", handle: handleChatState},
 		{method: http.MethodPost, path: "/api/scene/", handle: handleChatSignal},
 		{method: http.MethodGet, path: "/atlas.html", handle: handleAtlasScreen},
+		{method: http.MethodGet, path: "/history.html", handle: handleHistoryScreen},
 		{method: http.MethodGet, path: "/mcp.html", handle: handleMcpScreen},
 		{method: http.MethodGet, path: "/api/atlas/worlds", handle: handleAtlasList},
 		{method: http.MethodPost, path: "/api/atlas/worlds/birth", handle: handleAtlasBirth},

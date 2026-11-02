@@ -18,6 +18,7 @@
 | GET | `/api/state` | query `world=<slug>` | `{"world":"…","world_state":{…},"hero":{…},"system":{…},"return_summary":"…","return_news":[…],"turns":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | POST | `/api/scene/{id}/signal` | `{"kind":"like|dislike"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | GET | `/atlas.html` | — | `atlas.html` из embed | `method_not_allowed`, `not_found` |
+| GET | `/history.html` | — | `history.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/mcp.html` | — | `mcp.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/api/atlas/worlds` | — | `{"active":"…","worlds":[{"slug","title","active","characters","places","paths","entities","sessions"}]}` | `method_not_allowed`, `internal` |
 | POST | `/api/atlas/worlds/birth` | анкета рождения (14 ключей) | `{"status":"ok","world":{"slug","title"}}` | `method_not_allowed`, `bad_request`, `conflict`, `internal` |
@@ -58,6 +59,7 @@ POST /api/turn
 GET /api/state
 POST /api/scene/
 GET /atlas.html
+GET /history.html
 GET /mcp.html
 GET /api/atlas/worlds
 POST /api/atlas/worlds/birth

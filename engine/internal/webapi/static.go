@@ -35,3 +35,16 @@ func serveIndex(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
 }
+
+// handleHistoryScreen — GET /history.html: экран окна «Моя книга» из embed
+// (статика из бинарника). app.js загружает вкладку через fetch("/history.html").
+func handleHistoryScreen(w http.ResponseWriter, _ *http.Request) {
+	data, err := fs.ReadFile(web.FS, "history.html")
+	if err != nil {
+		writeError(w, http.StatusNotFound, codeNotFound, "history screen not found")
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
