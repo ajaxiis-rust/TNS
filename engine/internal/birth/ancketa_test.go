@@ -105,14 +105,32 @@ func TestAncketaData(t *testing.T) {
 	if !reflect.DeepEqual(d.Genres, wantGenres) {
 		t.Fatalf("жанры: %v\nwant: %v", d.Genres, wantGenres)
 	}
-	if len(d.SocialOrders) != 11 {
-		t.Fatalf("строёв: %d, want 11", len(d.SocialOrders))
+	wantSocialOrders := []string{
+		"нет", "феодализм", "демократия", "анархия", "теократия",
+		"коммунизм", "капитализм", "социализм", "трайбализм",
+		"рабовладение", "меркантилизм", "абсолютная монархия",
+		"конституционная монархия", "олигархия", "технократия",
+		"корпоратократия", "военная диктатура", "кастовая система",
+	}
+	if len(d.SocialOrders) != 18 {
+		t.Fatalf("строёв: %d, want 18", len(d.SocialOrders))
+	}
+	if !reflect.DeepEqual(d.SocialOrders, wantSocialOrders) {
+		t.Fatalf("строи: %v\nwant: %v", d.SocialOrders, wantSocialOrders)
 	}
 	if len(d.TravelModes) != 3 {
 		t.Fatalf("режимов походов: %d, want 3", len(d.TravelModes))
 	}
-	if len(d.EconomyMods) != 4 {
-		t.Fatalf("экономических модификаторов: %d, want 4", len(d.EconomyMods))
+	wantEconomyMods := []string{
+		"золотой стандарт", "серебряная экономика", "бартер",
+		"командная экономика", "фиатные деньги", "кредитная экономика",
+		"ресурсная экономика", "гильдейская",
+	}
+	if len(d.EconomyMods) != 8 {
+		t.Fatalf("экономических модификаторов: %d, want 8", len(d.EconomyMods))
+	}
+	if !reflect.DeepEqual(d.EconomyMods, wantEconomyMods) {
+		t.Fatalf("экономики: %v\nwant: %v", d.EconomyMods, wantEconomyMods)
 	}
 	if len(d.Ratings) != 2 {
 		t.Fatalf("рейтингов: %d, want 2", len(d.Ratings))
