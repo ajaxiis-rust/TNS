@@ -18,6 +18,7 @@ import (
 	"tns65/internal/db"
 	"tns65/internal/journal"
 	"tns65/internal/langpack"
+	"tns65/internal/netgate"
 	"tns65/internal/portgate"
 	"tns65/internal/supervisor"
 	"tns65/internal/swarm"
@@ -133,6 +134,15 @@ func run() int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+
+	// T-01-11: белый список наружных хостов — единственный путь внешнего HTTP
+	// (провайдер, HF, Telegram). Без загрузки список пуст и любой выход наружу
+	// получает netgate.deny.
+	if err := netgate.Load("config.yaml"); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	netgate.SetLogger(logger)
 
 	wl, err := portgate.LoadWhitelist("config.yaml")
 	if err != nil {

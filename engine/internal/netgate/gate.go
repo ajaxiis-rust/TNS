@@ -23,10 +23,12 @@ var ErrDeniedHost = errors.New("netgate: denied host")
 // происходят до соединения и этим тайм-аутом не ограничены.
 const dialTimeout = 30 * time.Second
 
-// hostSet — белый список: точные имена хостов и диапазоны host/cidr.
+// hostSet — белый список: точные имена хостов, суффиксы `*.example` и
+// диапазоны host/cidr.
 type hostSet struct {
-	names map[string]struct{}
-	cidrs []netip.Prefix
+	names    map[string]struct{}
+	suffixes []string
+	cidrs    []netip.Prefix
 }
 
 func newHostSet() hostSet {
@@ -34,7 +36,7 @@ func newHostSet() hostSet {
 }
 
 // add вносит одну запись конфигурации: `host` — точное имя (без регистра),
-// `host/cidr` — диапазон адресов.
+// `*.example` — сам example и все его поддомены, `host/cidr` — диапазон адресов.
 func (s *hostSet) add(entry string) {
 	entry = strings.TrimSpace(entry)
 	if entry == "" {
@@ -46,6 +48,10 @@ func (s *hostSet) add(entry string) {
 		}
 		return
 	}
+	if strings.HasPrefix(entry, "*.") {
+		s.suffixes = append(s.suffixes, strings.ToLower(strings.TrimSuffix(entry[1:], ".")))
+		return
+	}
 	s.names[strings.ToLower(strings.TrimSuffix(entry, "."))] = struct{}{}
 }
 
@@ -55,6 +61,11 @@ func (s hostSet) allows(host string) bool {
 	host = strings.ToLower(strings.TrimSuffix(host, "."))
 	if _, ok := s.names[host]; ok {
 		return true
+	}
+	for _, suffix := range s.suffixes {
+		if host == strings.TrimPrefix(suffix, ".") || strings.HasSuffix(host, suffix) {
+			return true
+		}
 	}
 	if addr, err := netip.ParseAddr(host); err == nil {
 		for _, p := range s.cidrs {
@@ -230,6 +241,8 @@ func readAllowedHosts(path string) (hostSet, error) {
 		if i := strings.IndexByte(item, '#'); i >= 0 {
 			item = strings.TrimSpace(item[:i])
 		}
+		// YAML допускает кавычки вокруг значений с «*»: "*.hf.co".
+		item = strings.Trim(item, "\"'")
 		hs.add(item)
 	}
 	if err := sc.Err(); err != nil {

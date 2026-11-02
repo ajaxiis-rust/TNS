@@ -65,6 +65,41 @@ func TestDeny(t *testing.T) {
 	}
 }
 
+func TestWildcardSuffix(t *testing.T) {
+	hs := newHostSet()
+	hs.add("*.hf.co")
+	hs.add("*.huggingface.co")
+
+	cases := map[string]bool{
+		"us.aws.cdn.hf.co":       true,
+		"hf.co":                  true,
+		"cdn-lfs.huggingface.co": true,
+		"evil-hf.co":             false,
+		"huggingface.co.evil":    false,
+	}
+	for host, want := range cases {
+		if got := hs.allows(host); got != want {
+			t.Fatalf("allows(%q) = %v, want %v", host, got, want)
+		}
+	}
+}
+
+func TestLoadQuotedWildcard(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "config.yaml")
+	body := "netgate:\n  allowed_hosts:\n    - huggingface.co\n    - \"*.hf.co\"\n"
+	if err := os.WriteFile(cfg, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hs, err := readAllowedHosts(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hs.allows("huggingface.co") || !hs.allows("us.aws.cdn.hf.co") {
+		t.Fatalf("quoted wildcard not loaded: %+v", hs)
+	}
+}
+
 func TestLocalHook(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
