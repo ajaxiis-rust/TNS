@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title data-i18n="app.title">TNS65</title>
+  <script src="/static/theme-init.js"></script>
   <link rel="stylesheet" href="/static/theme.css">
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/names.js" defer></script>
@@ -14,7 +15,15 @@
 </head>
 <body>
   <nav class="menu-bar" id="menu-bar" aria-label="Основное меню">
-    <span class="menu-bar__name" data-i18n="app.title">TNS65</span>
+    <div class="menu-bar__brand">
+      <svg class="menu-bar__mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"></path>
+        <path d="M12 3v2M12 19v2M3 12h2M19 12h2"></path>
+      </svg>
+      <span class="menu-bar__wordmark">TNS</span>
+      <span class="menu-bar__version">v0.65</span>
+    </div>
     <div class="menu-bar__tabs">
       <button class="tab" id="tab-atlas" data-view="atlas" data-i18n="menu.atlas"></button>
       <button class="tab" id="tab-history" data-view="history" data-i18n="menu.history"></button>
@@ -22,21 +31,30 @@
       <button class="tab" id="tab-settings" data-view="settings" data-i18n="menu.settings"></button>
       <button class="tab tab-chat" id="tab-chat" data-view="chat" data-i18n="menu.chat" hidden></button>
     </div>
+    <div class="menu-bar__status">
+      <span class="menu-bar__status-chip"><i aria-hidden="true"></i><span data-i18n="menu.engine">движок онлайн</span></span>
+    </div>
   </nav>
 
   <main class="views" id="views">
     <section class="view view-chat" id="view-chat" aria-label="Чат">
       <div class="chat">
         <div class="state-panel" id="state-panel" aria-label="Мир, герой и система">
-          <div class="state" id="world-panel" data-i18n="panel.world"></div>
-          <div class="state" id="hero-panel" data-i18n="panel.hero"></div>
-          <div class="state" id="system-panel" data-i18n="panel.system"></div>
+          <div class="state" id="world-panel"></div>
+          <div class="state" id="hero-panel"></div>
+          <div class="state" id="system-panel"></div>
         </div>
         <div class="chat-log" id="chat-log" aria-label="Журнал чата"></div>
-        <form class="chat-form" id="chat-form">
-          <input type="text" id="chat-input" autocomplete="off" placeholder="Твоя реплика миру…">
-          <button type="submit" id="chat-send" data-i18n="chat.send"></button>
-        </form>
+        <div class="composer">
+          <div class="composer-in">
+            <form class="input-row" id="chat-form">
+              <input type="text" id="chat-input" autocomplete="off">
+              <button type="submit" id="chat-send" class="send">
+                <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m4 11 16-7-6.5 16-3.2-6.4L4 11Z"/><path d="m10.3 13.6 3.4-3.4"/></svg>
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
     </section>
 

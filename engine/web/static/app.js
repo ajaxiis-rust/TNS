@@ -695,10 +695,16 @@
   var bookButton = document.createElement("button");
   bookButton.type = "button";
   bookButton.id = IDS.bookButton;
-  bookButton.className = "book-button";
-  bookButton.textContent = "BOOK";
+  bookButton.className = "book-btn";
+  bookButton.setAttribute("aria-label", (window.I18N && window.I18N["book.title"]) || "Моя книга");
+  bookButton.innerHTML = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 6.5C9.8 5 6.8 4.6 4 5v13c2.8-.4 5.8 0 8 1.5 2.2-1.5 5.2-1.9 8-1.5V5c-2.8-.4-5.8 0-8 1.5Z"/></svg>';
   bookButton.addEventListener("click", openBookWindow);
-  chatLog.appendChild(bookButton);
+  var composerDock = document.querySelector(".composer-in");
+  if (composerDock) {
+    composerDock.insertBefore(bookButton, composerDock.firstChild);
+  } else {
+    chatLog.appendChild(bookButton);
+  }
 
   var mcpLoaded = false;
   var mcpScriptLoaded = false;
@@ -817,18 +823,29 @@
       return;
     }
     box.innerHTML = items.map(function (item) {
-      var status = item.status || "queued";
-      if (status === "forging") {
-        status = status + " " + Math.round((item.progress || 0) * 100) + "%";
-      }
       var html = '<div class="mcp-book" data-id="' + escapeHTML(item.id || item.name) + '">';
       html += '<div class="mcp-book__name">' + escapeHTML(item.name) + ' <span class="mcp-book__format">' + escapeHTML(item.format) + "</span></div>";
-      html += '<div class="mcp-book__status">' + escapeHTML(status) + "</div>";
+      html += mcpSourceStatusPill(item.status, item.progress);
       html += '<div class="mcp-book__counters">' + (item.chapters || 0) + " " + (dict["mcp.books.chapters"] || "глав") + " · " + (item.templates || 0) + " " + (dict["mcp.books.templates"] || "шаблонов") + "</div>";
       html += '<button type="button" class="mcp-book__delete" data-action="delete-source" data-id="' + escapeHTML(item.id || item.name) + '">' + (dict["mcp.books.delete"] || "Удалить сырьё") + "</button>";
       html += "</div>";
       return html;
     }).join("");
+  }
+
+  // Пилюля статуса книги-источника: слово + точка в одном из четырёх состояний
+  // (ok/wait/err/off). Прогресс ковки остаётся в подписи, данные не меняются.
+  function mcpSourceStatusPill(status, progress) {
+    var base = status || "queued";
+    var label = (window.I18N && window.I18N["mcp.books.status." + base]) || base;
+    if (base === "forging") {
+      label = label + " " + Math.round((progress || 0) * 100) + "%";
+    }
+    var cls = base === "done" ? "status--ok"
+      : base === "error" ? "status--err"
+      : base === "forging" || base === "queued" ? "status--wait"
+      : "status--off";
+    return '<div class="mcp-book__status ' + cls + '">' + escapeHTML(label) + "</div>";
   }
 
   function submitMcpImport() {
@@ -996,10 +1013,11 @@
     bindSettingsSubmit(IDS.settingsChannelForm, submitChannel);
     bindSettingsSubmit(IDS.settingsAdvancedForm, submitSettingsAdvanced);
     bindSettingsNav();
+    bindChannelExtras();
 
     var theme = byId(IDS.settingsTheme);
     if (theme) {
-      theme.value = readStoredTheme();
+      theme.value = normalizeTheme(resolveTheme());
       theme.addEventListener("change", applyTheme);
       var preview = byId(IDS.settingsThemePreview);
       if (preview) {
@@ -1046,6 +1064,24 @@
     markActive("#" + SETTINGS_SECTIONS[0]);
   }
 
+  function bindChannelExtras() {
+    var peek = viewSettings.querySelector(".js-token-peek");
+    if (peek) {
+      peek.addEventListener("click", function () {
+        var input = peek.closest(".input-wrap").querySelector("input");
+        if (input) {
+          input.type = input.type === "password" ? "text" : "password";
+        }
+      });
+    }
+    var check = viewSettings.querySelector(".js-channel-check");
+    if (check) {
+      check.addEventListener("click", function () {
+        loadSettingsData();
+      });
+    }
+  }
+
   function bindSettingsSubmit(id, handler) {
     var form = byId(id);
     if (form) {
@@ -1064,6 +1100,21 @@
     }
   }
 
+  // Скриншот-параметр ?theme=dark|light|custom сильнее сохранённого выбора
+  // (DOCS/10-STATION-SETTINGS.md §8): он действует только на текущую сессию.
+  function readQueryTheme() {
+    try {
+      var q = new URLSearchParams(window.location.search).get("theme");
+      return q === "dark" || q === "light" || q === "custom" ? q : "";
+    } catch (err) {
+      return "";
+    }
+  }
+
+  function resolveTheme() {
+    return readQueryTheme() || readStoredTheme();
+  }
+
   function writeStoredTheme(value) {
     try {
       window.localStorage.setItem(THEME_STORAGE_KEY, value);
@@ -1072,21 +1123,26 @@
     }
   }
 
-  function applyThemeClass(value) {
-    document.body.classList.remove("theme-dark", "theme-light");
-    if (value === "dark" || value === "light") {
-      document.body.classList.add("theme-" + value);
+  function normalizeTheme(value) {
+    if (value === "default") {
+      return "dark";
     }
+    return value === "dark" || value === "light" || value === "custom" ? value : "dark";
+  }
+
+  function applyThemeClass(value) {
+    document.documentElement.dataset.theme = normalizeTheme(value);
   }
 
   function applyTheme() {
     var theme = byId(IDS.settingsTheme);
     var value = theme ? theme.value : readStoredTheme();
-    applyThemeClass(value);
-    writeStoredTheme(value);
+    var normalized = normalizeTheme(value);
+    applyThemeClass(normalized);
+    writeStoredTheme(normalized);
     var preview = byId(IDS.settingsThemePreview);
     if (preview) {
-      preview.textContent = value;
+      preview.textContent = normalized;
     }
   }
 
@@ -1664,7 +1720,7 @@
     }
   }
 
-  applyThemeClass(readStoredTheme());
+  applyThemeClass(resolveTheme());
   translate(document);
   showChat();
   subscribeMcpWS();

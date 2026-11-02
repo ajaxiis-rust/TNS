@@ -1,17 +1,27 @@
+<script src="/static/theme-init.js"></script>
+<link rel="stylesheet" href="/static/theme.css">
+<link rel="stylesheet" href="/static/app.css">
 <div class="settings">
   <nav class="settings-nav" id="settings-nav" aria-label="Разделы настроек">
-    <a href="#settings-section-general" data-i18n="settings.general">General</a>
-    <a href="#settings-section-llm" data-i18n="settings.llm">LLM</a>
-    <a href="#settings-section-providers" data-i18n="settings.providers">Провайдеры</a>
-    <a href="#settings-section-models" data-i18n="settings.models">Модели</a>
-    <a href="#settings-section-roles" data-i18n="settings.roles">Роли</a>
-    <a href="#settings-section-world" data-i18n="settings.world">World</a>
-    <a href="#settings-section-channel" data-i18n="settings.channel">Канал</a>
-    <a href="#settings-section-plugins" data-i18n="settings.plugins">Plugins</a>
-    <a href="#settings-section-advanced" data-i18n="settings.advanced">Advanced</a>
-    <a href="#settings-section-monitor" data-i18n="settings.monitor">Мониторинг</a>
+    <div class="settings-nav__title" data-i18n="menu.settings">Настройки</div>
+    <div class="settings-nav__group" data-i18n="settings.nav.group.main">Основное</div>
+    <a href="#settings-section-general"><span data-i18n="settings.general">General</span><span class="st st--ok" data-i18n="settings.nav.general">готово</span></a>
+    <div class="settings-nav__group" data-i18n="settings.nav.group.link">Связь</div>
+    <a href="#settings-section-channel"><span data-i18n="settings.channel">Канал</span><span class="st st--wait" data-i18n="settings.nav.channel">не настроен</span></a>
+    <div class="settings-nav__group" data-i18n="settings.nav.group.models">Модели и роли</div>
+    <a href="#settings-section-llm"><span data-i18n="settings.llm">LLM</span><span class="st" data-i18n="settings.nav.llm">local</span></a>
+    <a href="#settings-section-providers"><span data-i18n="settings.providers">Провайдеры</span><span class="st" data-i18n="settings.nav.providers">2</span></a>
+    <a href="#settings-section-models"><span data-i18n="settings.models">Модели</span><span class="st" data-i18n="settings.nav.models">3</span></a>
+    <a href="#settings-section-roles"><span data-i18n="settings.roles">Роли</span></a>
+    <div class="settings-nav__group" data-i18n="settings.nav.group.world">Мир</div>
+    <a href="#settings-section-world"><span data-i18n="settings.world">World</span><span class="st" data-i18n="settings.nav.world">выкл</span></a>
+    <div class="settings-nav__group" data-i18n="settings.nav.group.system">Система</div>
+    <a href="#settings-section-plugins"><span data-i18n="settings.plugins">Plugins</span><span class="st" data-i18n="settings.nav.plugins">нет</span></a>
+    <a href="#settings-section-advanced"><span data-i18n="settings.advanced">Advanced</span></a>
+    <a href="#settings-section-monitor"><span data-i18n="settings.monitor">Мониторинг</span><span class="st st--ok" data-i18n="settings.nav.monitor">онлайн</span></a>
   </nav>
 
+  <div class="settings-content">
   <section class="settings-section" id="settings-section-general" aria-label="General">
     <h2 data-i18n="settings.general">General</h2>
     <form class="settings-form" id="settings-general-form">
@@ -25,9 +35,9 @@
       <label class="settings-field">
         <span data-i18n="settings.general.theme">Тема</span>
         <select id="settings-theme">
-          <option value="default">default</option>
-          <option value="dark">dark</option>
-          <option value="light">light</option>
+          <option value="dark">Тёмная</option>
+          <option value="light">Светлая</option>
+          <option value="custom">Своя</option>
         </select>
       </label>
       <div class="settings-theme-preview" id="settings-theme-preview"></div>
@@ -54,6 +64,81 @@
       </label>
       <p class="settings-note" data-i18n="settings.general.vector_hint">Сохранённое предпочтение — живой контур пока не использует.</p>
       <button type="submit" id="settings-general-save" data-i18n="settings.save">Сохранить</button>
+    </form>
+  </section>
+
+  <section class="settings-section settings-section--channel" id="settings-section-channel" aria-label="Канал">
+    <h2 data-i18n="settings.channel">Канал</h2>
+    <form class="settings-form settings-form--channel" id="settings-channel-form">
+      <div class="channel-grid">
+        <section class="channel-panel">
+          <div class="channel-panel__head">
+            <h2 data-i18n="settings.channel.tunnel">Туннель</h2>
+            <span class="spacer"></span>
+            <span class="status status--off"><i></i><span data-i18n="settings.channel.status_off">выключен</span></span>
+          </div>
+          <p class="channel-panel__hint" data-i18n="settings.channel.tunnel_hint">Исходящее соединение к краю Cloudflare. Входящих портов нет.</p>
+          <label class="field">
+            <span data-i18n="settings.channel.type">Тип</span>
+            <b class="field--ro" data-i18n="settings.channel.type_cloudflared">cloudflared</b>
+          </label>
+          <label class="field">
+            <span data-i18n="settings.channel.edge">Край туннеля</span>
+            <input id="settings-channel-edge" placeholder="region1.v2.argotunnel.com">
+          </label>
+          <label class="field">
+            <span data-i18n="settings.channel.local">Локальный адрес (loopback)</span>
+            <input id="settings-channel-local" placeholder="127.0.0.1:8720">
+          </label>
+          <div class="status-row">
+            <span class="dot"></span>
+            <b data-i18n="settings.channel.tunnel_status_off">Не запущен</b>
+            <small data-i18n="settings.channel.tunnel_status_hint">scripts/tunnel.sh или tns65 tunnel --run</small>
+          </div>
+        </section>
+
+        <section class="channel-panel">
+          <div class="channel-panel__head">
+            <h2 data-i18n="settings.channel.telegram">Telegram</h2>
+            <span class="spacer"></span>
+            <span class="status status--off"><i></i><span data-i18n="settings.channel.status_off">выключен</span></span>
+          </div>
+          <label class="field">
+            <span data-i18n="settings.channel.token">Токен Telegram</span>
+            <div class="input-wrap">
+              <input id="settings-channel-token" type="password" autocomplete="off">
+              <button type="button" class="peek js-token-peek" aria-label="Показать токен"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </label>
+          <label class="field">
+            <span data-i18n="settings.channel.chat_id">Telegram chat_id</span>
+            <input id="settings-channel-chat-id">
+          </label>
+          <div class="status-row">
+            <span class="dot dot--ok"></span>
+            <b id="settings-channel-configured"></b>
+            <small data-i18n="settings.channel.telegram_status_hint">нужны токен и chat_id</small>
+          </div>
+          <div class="status-row">
+            <span class="dot"></span>
+            <b id="settings-channel-bot"></b>
+          </div>
+        </section>
+      </div>
+
+      <div class="channel-alert">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5"/><path d="M12 17.5v.5"/></svg>
+        <div class="channel-alert__body">
+          <b data-i18n="settings.channel.warning_title">Публичный доступ</b>
+          <p id="settings-channel-warning" data-i18n="settings.channel.warning">Публичный туннель не имеет аутентификации</p>
+        </div>
+      </div>
+      <p class="channel-storage" data-i18n="settings.channel.storage">Токен — settings.toml. Край, адрес и chat_id — config.yaml.</p>
+
+      <div class="settings-actions">
+        <button type="button" class="btn btn--ghost js-channel-check" data-i18n="settings.channel.check">Проверить</button>
+        <button type="submit" class="btn btn--primary" id="settings-channel-save" data-i18n="settings.save">Сохранить</button>
+      </div>
     </form>
   </section>
 
@@ -278,38 +363,6 @@
     </form>
   </section>
 
-  <section class="settings-section" id="settings-section-channel" aria-label="Канал">
-    <h2 data-i18n="settings.channel">Канал</h2>
-    <form class="settings-form" id="settings-channel-form">
-      <label class="settings-field">
-        <span data-i18n="settings.channel.edge">Край туннеля</span>
-        <input id="settings-channel-edge" placeholder="region1.v2.argotunnel.com">
-      </label>
-      <label class="settings-field">
-        <span data-i18n="settings.channel.local">Локальный адрес (loopback)</span>
-        <input id="settings-channel-local" placeholder="127.0.0.1:8720">
-      </label>
-      <label class="settings-field">
-        <span data-i18n="settings.channel.chat_id">Telegram chat_id</span>
-        <input id="settings-channel-chat-id">
-      </label>
-      <label class="settings-field">
-        <span data-i18n="settings.channel.token">Токен Telegram</span>
-        <input id="settings-channel-token" type="password" autocomplete="off">
-      </label>
-      <p class="settings-readonly">
-        <span data-i18n="settings.channel.configured">Канал</span>:
-        <span id="settings-channel-configured"></span>
-      </p>
-      <p class="settings-readonly">
-        <span data-i18n="settings.channel.bot">Бот</span>:
-        <span id="settings-channel-bot"></span>
-      </p>
-      <p class="settings-warning" id="settings-channel-warning" data-i18n="settings.channel.warning">Публичный туннель не имеет аутентификации</p>
-      <button type="submit" id="settings-channel-save" data-i18n="settings.save">Сохранить</button>
-    </form>
-  </section>
-
   <section class="settings-section" id="settings-section-plugins" aria-label="Plugins">
     <h2 data-i18n="settings.plugins">Plugins</h2>
     <div class="settings-plugins" id="settings-plugins"></div>
@@ -371,5 +424,6 @@
       <div class="monitor-body" id="monitor-journal"></div>
     </div>
   </section>
+  </div>
 </div>
 <script src="/static/providers.js"></script>

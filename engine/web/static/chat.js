@@ -3,9 +3,11 @@
 // Чат (T-08-15): реплика уходит в конвейер POST /api/turn, ответ мира приходит
 // порциями по WS-топику turn.stream, панель мир/герой/система читается из
 // GET /api/state, сигналы сцены — лайк/дизлайк. Кнопку BOOK создаёт app.js
-// (T-07-10); сообщения вставляются перед ней.
+// (T-07-10); сообщения вставляются перед нижней строкой действий листа.
 (function () {
   var TURN_TOPIC = "turn.stream";
+  var THUMB_UP = "M7 10v10H4V10h3Zm0 0 4-7c1.4 0 2.2 1 2 2.4L12.5 9H19a2 2 0 0 1 2 2.3l-1 6A2 2 0 0 1 18 19H7";
+  var THUMB_DOWN = "M17 14V4h3v10h-3Zm0 0-4 7c-1.4 0-2.2-1-2-2.4l.5-3.6H5a2 2 0 0 1-2-2.3l1-6A2 2 0 0 1 6 5h11";
 
   function byId(id) {
     return document.getElementById(id);
@@ -16,6 +18,7 @@
   var chatInput = byId("chat-input");
   var chatSend = byId("chat-send");
   var pending = false;
+  var pageActions = null;
 
   // turn_id ходов, уже показанных из состояния (канонический рендер).
   var committedTurns = {};
@@ -49,10 +52,20 @@
     });
   }
 
+  function pageActionsEl() {
+    if (!pageActions || !pageActions.parentNode) {
+      pageActions = document.createElement("div");
+      pageActions.className = "page-actions";
+      pageActions.hidden = true;
+      chatLog.appendChild(pageActions);
+    }
+    return pageActions;
+  }
+
   function insertIntoLog(node) {
-    var book = byId("book-button");
-    if (book && book.parentNode === chatLog) {
-      chatLog.insertBefore(node, book);
+    var actions = pageActionsEl();
+    if (actions && actions.parentNode === chatLog) {
+      chatLog.insertBefore(node, actions);
     } else {
       chatLog.appendChild(node);
     }
@@ -62,27 +75,37 @@
   function signalButton(sceneID, kind, label) {
     var btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = label;
+    btn.innerHTML = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="' +
+      (kind === "like" ? THUMB_UP : THUMB_DOWN) + '"/></svg>';
+    btn.appendChild(document.createTextNode(label));
     btn.addEventListener("click", function () {
       postJSON("/api/scene/" + sceneID + "/signal", { kind: kind }).catch(function () {});
     });
     return btn;
   }
 
-  function appendMessage(role, text, sceneID) {
+  function renderPageActions(sceneID) {
+    var box = pageActionsEl();
+    box.textContent = "";
+    if (!sceneID) {
+      box.hidden = true;
+      return;
+    }
+    var dict = window.I18N || {};
+    box.appendChild(signalButton(sceneID, "like", dict["chat.like"] || "Понравилось"));
+    box.appendChild(signalButton(sceneID, "dislike", dict["chat.dislike"] || "Мимо"));
+    box.hidden = false;
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+
+  function appendMessage(role, text) {
+    var dict = window.I18N || {};
     var msg = document.createElement("div");
     msg.className = "chat-msg chat-msg--" + role;
     var body = document.createElement("div");
     body.className = "chat-msg__text";
-    body.textContent = text;
+    body.textContent = role === "player" ? (text || dict["chat.you"] || "Ты") : text;
     msg.appendChild(body);
-    if (role === "world" && sceneID) {
-      var actions = document.createElement("div");
-      actions.className = "chat-msg__actions";
-      actions.appendChild(signalButton(sceneID, "like", "▲"));
-      actions.appendChild(signalButton(sceneID, "dislike", "▼"));
-      msg.appendChild(actions);
-    }
     insertIntoLog(msg);
   }
 
@@ -114,7 +137,7 @@
       if (ws.travel_mode) {
         label = label + " · " + ws.travel_mode;
       }
-      world.textContent = (dict["panel.world"] || "Мир") + ": " + label;
+      world.textContent = label;
     }
 
     var hero = byId("hero-panel");
@@ -130,15 +153,15 @@
       if (h.status) {
         parts.push(h.status);
       }
-      hero.textContent = (dict["panel.hero"] || "Герой") + (parts.length ? ": " + parts.join(" · ") : "");
+      hero.textContent = parts.join(" · ");
     }
 
     var system = byId("system-panel");
     if (system) {
       var s = data.system || {};
-      var text = dict["panel.system"] || "Система";
+      var text = "";
       if (s.session_id) {
-        text = text + ": " + (dict["chat.session"] || "сессия") + " " + s.session_id;
+        text = (dict["chat.session"] || "сессия") + " " + s.session_id;
       }
       system.textContent = text;
     }
@@ -147,7 +170,7 @@
   }
 
   // Канонический рендер журнала: состояние перечитывается после хода и при
-  // возврате; сводка рисуется до первой реплики, BOOK остаётся на месте.
+  // возврате; сводка рисуется до первой реплики, действия сцены — внизу листа.
   function rebuildLog(data) {
     committedTurns = {};
     var nodes = chatLog.querySelectorAll(".chat-msg, .chat-return");
@@ -157,12 +180,18 @@
 
     renderReturn(data.return_summary || "");
 
+    var lastSceneID = "";
     var turns = data.turns || [];
     turns.forEach(function (t) {
       committedTurns[t.turn_id] = true;
       appendMessage("player", t.player_text);
-      appendMessage("world", t.reply_text, t.scene_id);
+      appendMessage("world", t.reply_text);
+      if (t.scene_id) {
+        lastSceneID = t.scene_id;
+      }
     });
+
+    renderPageActions(lastSceneID);
   }
 
   // Живая доставка: порции WS дорисовывают пузырь ответа, пока ход ещё идёт.
@@ -254,6 +283,13 @@
   }
 
   function init() {
+    var dict = window.I18N || {};
+    if (chatInput) {
+      chatInput.placeholder = dict["chat.placeholder"] || "Твои слова — часть истории";
+    }
+    if (chatSend) {
+      chatSend.setAttribute("aria-label", dict["chat.send"] || "Отправить");
+    }
     if (chatForm) {
       chatForm.addEventListener("submit", submitTurn);
     }

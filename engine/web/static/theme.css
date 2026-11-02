@@ -1,56 +1,125 @@
-/* Норма вида (T-11-01): тёмная терминальная тема по умолчанию по референсам
-   TrueNeverStory — почти чёрный фон, моноширинный шрифт, тонкие рамки карточек,
-   пилюли-кнопки, статус-чипы. Светлые темы приводятся к той же системе
-   переменных; переключатель тем в настройках остаётся рабочим.
-   На ширине ≤ 480px разделы не требуют горизонтальной прокрутки. */
+/* Палитра (W1): значения из deep-ref, тёмная тема по умолчанию. Бумага остаётся
+   светлой во всех темах; data-theme ставится на <html> до первой отрисовки. */
 
 :root {
   color-scheme: dark;
-  --bg: #08090b;
-  --bg-elev: #0d0f12;
-  --panel: #101215;
-  --panel-alt: #15181d;
-  --fg: #e8e8ea;
-  --fg-dim: #a2a3aa;
-  --muted: #6f717a;
-  --border: #23262c;
-  --border-strong: #3a3e47;
-  --accent: #d9dbe0;
-  --accent-fg: #0a0b0d;
-  --ok: #48b87f;
-  --danger: #d9534f;
-  --warn: #d8b24a;
-  --focus: #6d8cff;
+
+  --sea: #0b1719;
+  --sea-2: #0f2226;
+  --card: #143238;
+  --card-2: #183a41;
+  --paper: #f3ecdf;
+  --paper-2: #e6dbc7;
+  --ink: #1c1914;
+  --cinnabar: #8f3b2b;
+  --cinnabar-2: #a64a37;
+  --brass: #a6844a;
+  --brass-2: #c9a86a;
+  --text: #f3ecdf;
+  --muted: #a5b6b8;
+  --line: rgba(166, 132, 74, 0.26);
+  --line-strong: rgba(166, 132, 74, 0.45);
+  --ok: #7fae88;
+  --wait: #c9a35c;
+  --err: #c66752;
+  --off: #7f9295;
+  --glow: rgba(20, 50, 56, 0.85);
+  --chrome: #091214;
+  --topbar-bg: rgba(11, 23, 25, 0.72);
+  --footer-bg: rgba(9, 18, 20, 0.55);
+  --hair: rgba(243, 236, 223, 0.06);
+  --chip: rgba(243, 236, 223, 0.06);
+  --alert-fg: #d9c9c2;
+  --dot: #33454a;
   --backdrop: rgba(0, 0, 0, 0.72);
+
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+
   --radius: 8px;
   --radius-pill: 999px;
-  --font-ui: ui-monospace, "SFMono-Regular", "JetBrains Mono", "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-  /* Прежние имена переменных вкладки «Настройки» остаются в силе. */
+  /* Прежние имена переменных остаются рабочими через псевдонимы. */
+  --bg: var(--sea);
+  --bg-elev: var(--sea-2);
+  --panel: var(--card);
+  --panel-alt: var(--card-2);
+  --fg: var(--text);
+  --fg-dim: var(--muted);
+  --border: var(--line);
+  --border-strong: var(--line-strong);
+  --accent: var(--brass-2);
+  --accent-fg: var(--sea);
+  --danger: var(--err);
+  --warn: var(--wait);
+  --focus: var(--brass-2);
+
   --settings-bg: var(--panel);
   --settings-fg: var(--fg);
   --settings-border: var(--border);
   --settings-accent: var(--focus);
 }
 
-body.theme-light {
+:root[data-theme="light"] {
   color-scheme: light;
-  --bg: #f3f3f4;
-  --bg-elev: #ffffff;
-  --panel: #ffffff;
-  --panel-alt: #f7f7f8;
-  --fg: #16171a;
-  --fg-dim: #4d4f57;
-  --muted: #7c7f88;
-  --border: #d6d7dc;
-  --border-strong: #b4b6bd;
-  --accent: #1c1e23;
-  --accent-fg: #f7f7f8;
-  --ok: #1f8f5f;
-  --danger: #b5302c;
-  --warn: #9a6b00;
-  --focus: #3a5bd9;
+  --sea: #e2dac9;
+  --sea-2: #f0e9da;
+  --card: #faf5e9;
+  --card-2: #efe6d4;
+  --paper: #fffdf7;
+  --paper-2: #f0e7d6;
+  --cinnabar: #9c4029;
+  --cinnabar-2: #b04b31;
+  --brass: #8a6a33;
+  --brass-2: #75561d;
+  --text: #1d1a15;
+  --muted: #6d6555;
+  --line: rgba(60, 48, 30, 0.16);
+  --line-strong: rgba(60, 48, 30, 0.30);
+  --ok: #3f7a4e;
+  --wait: #8a6526;
+  --err: #a8452f;
+  --off: #8a8578;
+  --glow: rgba(255, 255, 255, 0.9);
+  --chrome: #efe7d6;
+  --topbar-bg: rgba(248, 244, 234, 0.82);
+  --footer-bg: rgba(233, 226, 211, 0.8);
+  --hair: rgba(60, 48, 30, 0.10);
+  --chip: rgba(60, 48, 30, 0.07);
+  --alert-fg: #5a3a30;
+  --dot: #d6cdbb;
   --backdrop: rgba(24, 25, 28, 0.5);
+}
+
+:root[data-theme="custom"] {
+  color-scheme: dark;
+  --sea: #0e1626;
+  --sea-2: #13203a;
+  --card: #1a2b4a;
+  --card-2: #203352;
+  --paper: #eef2f7;
+  --paper-2: #dfe6ef;
+  --cinnabar: #b0472f;
+  --cinnabar-2: #c25a3e;
+  --brass: #8aa0c4;
+  --brass-2: #a8c0e2;
+  --text: #e7edf6;
+  --muted: #93a4bd;
+  --line: rgba(138, 160, 196, 0.28);
+  --line-strong: rgba(138, 160, 196, 0.45);
+  --ok: #6fb787;
+  --wait: #d3ab63;
+  --err: #d47a68;
+  --off: #8496ae;
+  --glow: rgba(40, 70, 130, 0.75);
+  --chrome: #0a1120;
+  --topbar-bg: rgba(10, 17, 32, 0.78);
+  --footer-bg: rgba(10, 17, 32, 0.6);
+  --hair: rgba(231, 237, 246, 0.07);
+  --chip: rgba(231, 237, 246, 0.07);
+  --alert-fg: #e0cfcb;
+  --dot: #2c3f5f;
+  --backdrop: rgba(6, 11, 22, 0.72);
 }
 
 /* --- Основа типографики и полей --------------------------------------- */
