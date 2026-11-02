@@ -248,7 +248,7 @@ func TestAtlasBirthOptions(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
 		t.Fatalf("GET %s: bad JSON: %v", atlasOptionsPath, err)
 	}
-	if len(out.Genres) != 10 || len(out.SocialOrders) != 11 || len(out.TravelModes) != 3 || len(out.EconomyMods) != 4 {
+	if len(out.Genres) != 30 || len(out.SocialOrders) != 11 || len(out.TravelModes) != 3 || len(out.EconomyMods) != 4 {
 		t.Fatalf("перечни анкеты = %+v", out)
 	}
 	if len(out.Langs) != 7 {

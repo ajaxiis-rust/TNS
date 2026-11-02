@@ -64,9 +64,9 @@ func TestAncketa(t *testing.T) {
 		t.Fatal("пустой синопсис не отвергнут")
 	}
 
-	// жанр вне десяти отвергнут
+	// жанр вне тридцати канонических отвергнут
 	a = validAncketa()
-	a.Genres = []string{"детектив"}
+	a.Genres = []string{"поэзия"}
 	if err := Validate(a); err == nil {
 		t.Fatal("жанр вне канонического списка не отвергнут")
 	}
@@ -88,8 +88,22 @@ func TestAncketaData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadData: %v", err)
 	}
-	if len(d.Genres) != 10 {
-		t.Fatalf("жанров: %d, want 10", len(d.Genres))
+	wantGenres := []string{
+		"фэнтези", "тёмное фэнтези", "городское фэнтези",
+		"научная фантастика", "космоопера", "киберпанк", "стимпанк",
+		"постапокалипсис", "LitRPG",
+		"мифология", "исторический", "альтернативная история",
+		"хоррор", "мистика", "триллер", "детектив",
+		"приключения", "морское приключение", "вестерн",
+		"любовный", "семейная сага", "подростковый", "драма",
+		"философский", "социальная фантастика", "антиутопия", "сатира", "юмор",
+		"фанфик", "современная проза",
+	}
+	if len(d.Genres) != 30 {
+		t.Fatalf("жанров: %d, want 30", len(d.Genres))
+	}
+	if !reflect.DeepEqual(d.Genres, wantGenres) {
+		t.Fatalf("жанры: %v\nwant: %v", d.Genres, wantGenres)
 	}
 	if len(d.SocialOrders) != 11 {
 		t.Fatalf("строёв: %d, want 11", len(d.SocialOrders))

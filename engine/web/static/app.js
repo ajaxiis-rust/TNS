@@ -43,6 +43,9 @@
     atlasBirthError: "atlas-birth-error",
     atlasSynopsisCount: "atlas-synopsis-count",
     atlasGenres: "atlas-birth-genres",
+    atlasGenresFrequent: "atlas-birth-genres-frequent",
+    atlasGenresGroups: "atlas-birth-genres-groups",
+    atlasGenresMore: "atlas-genres-more",
     atlasEconomy: "atlas-birth-economy-mods",
     atlasWizard: "atlas-wizard",
     atlasWizardSynopsis: "atlas-wizard-synopsis",
@@ -406,12 +409,108 @@
   function renderAtlasBirthOptions(data) {
     var genres = data.genres || [];
     var economy = data.economy_mods || [];
-    fillBirthChoices(IDS.atlasGenres, genres, ["фэнтези"]);
+    renderGenreChoices(genres);
     fillBirthChoices(IDS.atlasEconomy, economy, []);
     fillBirthSelect(IDS.atlasBirthSocialOrder, data.social_orders || [], "феодализм");
     fillBirthSelect(IDS.atlasBirthTravelMode, data.travel_modes || [], "вымышленная");
     fillBirthSelect(IDS.atlasBirthLang, data.langs || [], "ru", LANG_NAMES);
     fillBirthSelect(IDS.atlasBirthCensorship, data.ratings || [], "16+");
+  }
+
+  // Жанры приходят плоским списком из движка; в форме они собраны в группы
+  // (раздел 3 плана P11), а частые жанры вынесены быстрыми чипами над «ещё».
+  var GENRE_GROUPS = [
+    { key: "atlas.genre_group.fiction", items: ["фэнтези", "тёмное фэнтези", "городское фэнтези", "научная фантастика", "космоопера", "киберпанк", "стимпанк", "постапокалипсис", "LitRPG"] },
+    { key: "atlas.genre_group.myth", items: ["мифология", "исторический", "альтернативная история"] },
+    { key: "atlas.genre_group.tension", items: ["хоррор", "мистика", "триллер", "детектив"] },
+    { key: "atlas.genre_group.adventure", items: ["приключения", "морское приключение", "вестерн"] },
+    { key: "atlas.genre_group.people", items: ["любовный", "семейная сага", "подростковый", "драма"] },
+    { key: "atlas.genre_group.ideas", items: ["философский", "социальная фантастика", "антиутопия", "сатира", "юмор"] },
+    { key: "atlas.genre_group.form", items: ["фанфик", "современная проза"] }
+  ];
+  var FREQUENT_GENRES = ["фэнтези", "научная фантастика", "детектив", "приключения", "любовный", "хоррор", "исторический", "современная проза"];
+
+  function renderGenreChoices(genres) {
+    var dict = window.I18N || {};
+    var frequent = byId(IDS.atlasGenresFrequent);
+    if (frequent) {
+      frequent.innerHTML = FREQUENT_GENRES.map(function (genre) {
+        return '<button type="button" class="choice choice--quick" data-genre="' + escapeHTML(genre) + '">' +
+          escapeHTML(displayChoice(genre)) + "</button>";
+      }).join("");
+    }
+    var grouped = byId(IDS.atlasGenres);
+    if (grouped) {
+      grouped.innerHTML = GENRE_GROUPS.map(function (group) {
+        var title = dict[group.key] || group.key;
+        var chips = group.items.map(function (genre) {
+          var checked = genre === "фэнтези" ? " checked" : "";
+          return '<label class="choice"><input type="checkbox" value="' + escapeHTML(genre) + '"' + checked + '>' +
+            "<span>" + escapeHTML(displayChoice(genre)) + "</span></label>";
+        }).join("");
+        return '<div class="genre-group"><h3 class="genre-group__title">' + escapeHTML(title) + "</h3>" +
+          '<div class="choice-grid">' + chips + "</div></div>";
+      }).join("");
+    }
+    syncFrequentGenres();
+  }
+
+  function findGenreInput(genre) {
+    var grouped = byId(IDS.atlasGenres);
+    if (!grouped) {
+      return null;
+    }
+    var inputs = grouped.querySelectorAll('input[type="checkbox"]');
+    for (var i = 0; i < inputs.length; i++) {
+      if (inputs[i].value === genre) {
+        return inputs[i];
+      }
+    }
+    return null;
+  }
+
+  function syncFrequentGenres() {
+    var frequent = byId(IDS.atlasGenresFrequent);
+    if (!frequent) {
+      return;
+    }
+    frequent.querySelectorAll("[data-genre]").forEach(function (btn) {
+      var genre = btn.getAttribute("data-genre");
+      var input = findGenreInput(genre);
+      btn.classList.toggle("active", !!(input && input.checked));
+      btn.setAttribute("aria-pressed", input && input.checked ? "true" : "false");
+    });
+  }
+
+  function onFrequentGenreClick(event) {
+    var btn = event.target.closest("[data-genre]");
+    if (!btn) {
+      return;
+    }
+    var input = findGenreInput(btn.getAttribute("data-genre"));
+    if (!input) {
+      return;
+    }
+    input.checked = !input.checked;
+    syncFrequentGenres();
+  }
+
+  function toggleGenreGroups() {
+    var more = byId(IDS.atlasGenresMore);
+    var groups = byId(IDS.atlasGenresGroups);
+    if (!more) {
+      return;
+    }
+    var expanded = more.getAttribute("aria-expanded") === "true";
+    more.setAttribute("aria-expanded", String(!expanded));
+    if (groups) {
+      groups.hidden = expanded;
+    }
+    var dict = window.I18N || {};
+    var label = more.querySelector("[data-i18n]");
+    if (label) {
+      label.textContent = expanded ? (dict["atlas.genres_more"] || "Ещё жанры") : (dict["atlas.genres_less"] || "Свернуть");
+    }
   }
 
   function fillBirthSelect(id, values, selected, labels) {
@@ -472,6 +571,18 @@
       });
     }
     bindSlugAutofill();
+    var genresFrequent = byId(IDS.atlasGenresFrequent);
+    if (genresFrequent) {
+      genresFrequent.addEventListener("click", onFrequentGenreClick);
+    }
+    var genresGrouped = byId(IDS.atlasGenres);
+    if (genresGrouped) {
+      genresGrouped.addEventListener("change", syncFrequentGenres);
+    }
+    var genresMore = byId(IDS.atlasGenresMore);
+    if (genresMore) {
+      genresMore.addEventListener("click", toggleGenreGroups);
+    }
     var synopsis = byId(IDS.atlasBirthSynopsis);
     if (synopsis) {
       synopsis.addEventListener("input", updateSynopsisCount);

@@ -29,7 +29,13 @@
 
       <fieldset class="atlas-choice atlas-field--wide">
         <legend data-i18n="atlas.genres">Жанры</legend>
-        <div class="choice-grid" id="atlas-birth-genres"></div>
+        <div class="choice-grid choice-grid--frequent" id="atlas-birth-genres-frequent"></div>
+        <button type="button" class="genre-more" id="atlas-genres-more" aria-expanded="false">
+          <span data-i18n="atlas.genres_more">Ещё жанры</span>
+        </button>
+        <div class="genre-groups" id="atlas-birth-genres-groups" hidden>
+          <div id="atlas-birth-genres"></div>
+        </div>
         <small class="atlas-field__error" data-field-error="genres"></small>
       </fieldset>
 
