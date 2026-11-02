@@ -5,64 +5,86 @@
   </section>
 
   <section class="atlas-section atlas-birth-section" aria-label="Анкета рождения">
-    <h2 data-i18n="atlas.birth.title">Анкета рождения</h2>
-    <form class="atlas-form" id="atlas-birth-form">
-      <label class="atlas-field">
-        <span data-i18n="atlas.slug">Слаг мира (латиницей)</span>
-        <input id="atlas-birth-slug" name="slug" required>
-      </label>
-      <label class="atlas-field">
-        <span data-i18n="atlas.title">Заголовок мира</span>
-        <input id="atlas-birth-title" name="title">
-      </label>
+    <div class="atlas-section__head">
+      <h2 data-i18n="atlas.birth.title">Новый мир</h2>
+      <p class="atlas-section__hint" data-i18n="atlas.birth.hint">Название, пара предложений и жанр — этого достаточно. Остальное можно уточнить ниже.</p>
+    </div>
+    <form class="atlas-form atlas-birth" id="atlas-birth-form" novalidate>
       <label class="atlas-field atlas-field--wide">
-        <span data-i18n="atlas.description">Описание мира</span>
-        <textarea id="atlas-birth-description" name="description"></textarea>
-      </label>
-      <label class="atlas-field atlas-field--wide">
-        <span data-i18n="atlas.synopsis">Синопсис (1–3 предложения)</span>
-        <textarea id="atlas-birth-synopsis" name="synopsis"></textarea>
-      </label>
-      <label class="atlas-field atlas-field--wide">
-        <span data-i18n="atlas.prologue">Пролог</span>
-        <textarea id="atlas-birth-prologue" name="prologue"></textarea>
+        <span data-i18n="atlas.title">Название мира</span>
+        <input id="atlas-birth-title" name="title" autocomplete="off" placeholder="Тёмный мир">
       </label>
       <label class="atlas-field">
-        <span data-i18n="atlas.lang">Язык мира</span>
-        <input id="atlas-birth-lang" name="lang" value="ru">
+        <span data-i18n="atlas.slug">Адрес мира</span>
+        <input id="atlas-birth-slug" name="slug" required autocomplete="off" placeholder="dark-realm">
+        <small class="atlas-field__hint" data-i18n="atlas.slug_hint">Латиницей, заполняется из названия.</small>
+        <small class="atlas-field__error" data-field-error="slug"></small>
+      </label>
+      <label class="atlas-field atlas-field--wide">
+        <span data-i18n="atlas.synopsis">О чём история</span>
+        <textarea id="atlas-birth-synopsis" name="synopsis" rows="3" placeholder="Герой приходит в мир, где погас свет. Он ищет источник тьмы. Финал ещё не написан."></textarea>
+        <small class="atlas-field__hint"><span id="atlas-synopsis-count">0</span> <span data-i18n="atlas.synopsis_hint">из 1–3 предложений</span></small>
+        <small class="atlas-field__error" data-field-error="synopsis"></small>
+      </label>
+
+      <fieldset class="atlas-choice atlas-field--wide">
+        <legend data-i18n="atlas.genres">Жанры</legend>
+        <div class="choice-grid" id="atlas-birth-genres"></div>
+        <small class="atlas-field__error" data-field-error="genres"></small>
+      </fieldset>
+
+      <label class="atlas-field">
+        <span data-i18n="atlas.social_order">Строй мира</span>
+        <select id="atlas-birth-social-order" name="social_order"></select>
+        <small class="atlas-field__error" data-field-error="social_order"></small>
       </label>
       <label class="atlas-field">
         <span data-i18n="atlas.travel_mode">Режим походов</span>
-        <input id="atlas-birth-travel-mode" name="travel_mode" value="вымышленная">
+        <select id="atlas-birth-travel-mode" name="travel_mode"></select>
       </label>
       <label class="atlas-field">
-        <span data-i18n="atlas.genres">Жанры (через запятую)</span>
-        <input id="atlas-birth-genres" name="genres" value="фэнтези">
-      </label>
-      <label class="atlas-field atlas-field--wide">
-        <span data-i18n="atlas.world_rules">Правила мира (по одному на строку)</span>
-        <textarea id="atlas-birth-world-rules" name="world_rules"></textarea>
+        <span data-i18n="atlas.lang">Язык мира</span>
+        <select id="atlas-birth-lang" name="lang"></select>
       </label>
       <label class="atlas-field">
-        <span data-i18n="atlas.social_order">Социальный строй</span>
-        <input id="atlas-birth-social-order" name="social_order" value="феодализм">
+        <span data-i18n="atlas.censorship">Возрастной рейтинг</span>
+        <select id="atlas-birth-censorship" name="censorship"></select>
       </label>
-      <label class="atlas-field">
-        <span data-i18n="atlas.economy_mods">Экономические модификаторы (через запятую)</span>
-        <input id="atlas-birth-economy-mods" name="economy_mods">
-      </label>
-      <label class="atlas-field">
-        <span data-i18n="atlas.magic">Магия</span>
-        <input id="atlas-birth-magic" name="magic">
-      </label>
-      <label class="atlas-field">
-        <span data-i18n="atlas.hero_birth">Рождение героя</span>
-        <input id="atlas-birth-hero-birth" name="hero_birth">
-      </label>
-      <label class="atlas-field">
-        <span data-i18n="atlas.censorship">Цензура (16+/18+)</span>
-        <input id="atlas-birth-censorship" name="censorship" value="16+">
-      </label>
+
+      <details class="atlas-more atlas-field--wide">
+        <summary data-i18n="atlas.more">Ещё: описание, правила, магия, герой</summary>
+        <div class="atlas-form">
+          <label class="atlas-field atlas-field--wide">
+            <span data-i18n="atlas.description">Описание мира</span>
+            <textarea id="atlas-birth-description" name="description" rows="3" placeholder="Мир, где свет угас навсегда…"></textarea>
+          </label>
+          <label class="atlas-field atlas-field--wide">
+            <span data-i18n="atlas.prologue">Пролог</span>
+            <textarea id="atlas-birth-prologue" name="prologue" rows="2" placeholder="Короткая сцена до начала истории…"></textarea>
+          </label>
+          <label class="atlas-field atlas-field--wide">
+            <span data-i18n="atlas.world_rules">Правила мира</span>
+            <textarea id="atlas-birth-world-rules" name="world_rules" rows="3" placeholder="магия: требует крови&#10;мёртвые: не возвращаются"></textarea>
+            <small class="atlas-field__hint" data-i18n="atlas.world_rules_hint">По одному на строку, формат «название: описание».</small>
+            <small class="atlas-field__error" data-field-error="world_rules"></small>
+          </label>
+          <label class="atlas-field atlas-field--wide">
+            <span data-i18n="atlas.magic">Магия</span>
+            <textarea id="atlas-birth-magic" name="magic" rows="2" placeholder="Как устроена магия, чего она стоит…"></textarea>
+          </label>
+          <label class="atlas-field">
+            <span data-i18n="atlas.hero_birth">Рождение героя</span>
+            <input id="atlas-birth-hero-birth" name="hero_birth" placeholder="простолюдин, наследник, изгнанник…">
+          </label>
+
+          <fieldset class="atlas-choice atlas-field--wide">
+            <legend data-i18n="atlas.economy_mods">Экономика</legend>
+            <div class="choice-grid" id="atlas-birth-economy-mods"></div>
+          </fieldset>
+        </div>
+      </details>
+
+      <p class="atlas-form__error" id="atlas-birth-error" role="alert"></p>
       <button type="submit" id="atlas-birth-submit" data-i18n="atlas.birth.submit">Родить мир</button>
     </form>
   </section>

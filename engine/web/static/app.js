@@ -40,6 +40,10 @@
     atlasBirthHeroBirth: "atlas-birth-hero-birth",
     atlasBirthCensorship: "atlas-birth-censorship",
     atlasBirthSubmit: "atlas-birth-submit",
+    atlasBirthError: "atlas-birth-error",
+    atlasSynopsisCount: "atlas-synopsis-count",
+    atlasGenres: "atlas-birth-genres",
+    atlasEconomy: "atlas-birth-economy-mods",
     atlasWizard: "atlas-wizard",
     atlasWizardSynopsis: "atlas-wizard-synopsis",
     atlasWizardName: "atlas-wizard-name",
@@ -103,6 +107,7 @@
     settingsProviderKey: "settings-provider-key",
     settingsProviderSave: "settings-provider-save",
     settingsModels: "settings-models",
+    settingsModelsCurrent: "settings-models-current",
     settingsModelsForm: "settings-models-form",
     settingsModelRole: "settings-model-role",
     settingsModelSource: "settings-model-source",
@@ -118,6 +123,8 @@
     settingsRolePriority: "settings-role-priority",
     settingsRolesSave: "settings-roles-save",
     settingsWorldForm: "settings-world-form",
+    settingsWorldSelect: "settings-world-select",
+    settingsWorldOpen: "settings-world-open",
     settingsPaganelEnabled: "settings-paganel-enabled",
     settingsScoutEnabled: "settings-scout-enabled",
     settingsPaganelKey: "settings-paganel-key",
@@ -160,6 +167,8 @@
     modelCatalog: "model-catalog",
     modelCatalogGrid: "model-catalog-grid",
     modelCatalogHint: "model-catalog-hint",
+    modelCatalogNote: "model-catalog-note",
+    settingsInstalledModels: "settings-installed-models",
     modelFileBrowser: "model-file-browser",
     modelLocalPath: "model-local-path",
     modelLocalApply: "model-local-apply",
@@ -184,10 +193,38 @@
   var THEME_STORAGE_KEY = "tns65.theme";
 
   var MODEL_CATALOG = [
-    { role: "weaver", ref: "Llama-3.2-3B-Instruct", source: "huggingface.co/ggml-org/Llama-3.2-3B-Instruct-GGUF", label: "weaver · Llama 3.2 3B (GGUF)" },
-    { role: "pythia", ref: "Qwen2.5-7B-Instruct", source: "huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF", label: "pythia · Qwen 2.5 7B" },
-    { role: "editor", ref: "Llama-3.1-8B-Instruct", source: "huggingface.co/bartowski/Llama-3.1-8B-Instruct-GGUF", label: "editor · Llama 3.1 8B" },
-    { role: "analysis", ref: "Qwen2.5-3B-Instruct", source: "huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF", label: "analysis · Qwen 2.5 3B" }
+    {
+      role: "weaver",
+      ref: "Llama-3.2-3B-Instruct-Q4_K_M",
+      source: "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+      label: "Llama 3.2 3B",
+      size: "2,0 ГБ",
+      note: "Быстрая модель для живой прозы: меньше память, выше скорость."
+    },
+    {
+      role: "pythia",
+      ref: "Qwen2.5-7B-Instruct-Q4_K_M",
+      source: "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
+      label: "Qwen 2.5 7B",
+      size: "4,7 ГБ",
+      note: "Сильнее держит длинный контекст и русский язык."
+    },
+    {
+      role: "editor",
+      ref: "Meta-Llama-3.1-8B-Instruct-Q4_K_M",
+      source: "https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+      label: "Llama 3.1 8B",
+      size: "4,9 ГБ",
+      note: "Для редактуры глав и длинных сцен."
+    },
+    {
+      role: "analysis",
+      ref: "Qwen2.5-3B-Instruct-Q4_K_M",
+      source: "https://huggingface.co/bartowski/Qwen2.5-3B-Instruct-GGUF/resolve/main/Qwen2.5-3B-Instruct-Q4_K_M.gguf",
+      label: "Qwen 2.5 3B",
+      size: "1,9 ГБ",
+      note: "Для разбора сцен и служебных задач."
+    }
   ];
 
   function byId(id) {
@@ -288,7 +325,10 @@
       }).then(function (body) {
         if (!res.ok) {
           var msg = (body && body.error && body.error.message) || res.statusText;
-          throw new Error(msg);
+          var error = new Error(msg);
+          error.code = body && body.error ? body.error.code : "";
+          error.fields = body && body.error && body.error.fields ? body.error.fields : [];
+          throw error;
         }
         return body;
       });
@@ -322,10 +362,6 @@
     return el ? el.value.trim() : "";
   }
 
-  function splitList(text) {
-    return text.split(/[,;]+/).map(function (s) { return s.trim(); }).filter(Boolean);
-  }
-
   function splitLines(text) {
     return text.split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
   }
@@ -347,9 +383,75 @@
       translate(viewAtlas);
       bindAtlas();
       atlasLoaded = true;
+      loadAtlasBirthOptions();
       loadAtlasWorlds();
     }).catch(function (err) {
       viewAtlas.textContent = err.message;
+    });
+  }
+
+  // Канонические перечни анкеты приходят из движка: форма не может предложить
+  // жанр или строй, который birth отвергнет.
+  function loadAtlasBirthOptions() {
+    apiJSON("/api/atlas/birth").then(renderAtlasBirthOptions).catch(function (err) {
+      showAtlasBirthError((err && err.message) || String(err));
+    });
+  }
+
+  var LANG_NAMES = {
+    ru: "Русский", en: "English", de: "Deutsch", fr: "Français",
+    es: "Español", ja: "日本語", zh: "中文"
+  };
+
+  function renderAtlasBirthOptions(data) {
+    var genres = data.genres || [];
+    var economy = data.economy_mods || [];
+    fillBirthChoices(IDS.atlasGenres, genres, ["фэнтези"]);
+    fillBirthChoices(IDS.atlasEconomy, economy, []);
+    fillBirthSelect(IDS.atlasBirthSocialOrder, data.social_orders || [], "феодализм");
+    fillBirthSelect(IDS.atlasBirthTravelMode, data.travel_modes || [], "вымышленная");
+    fillBirthSelect(IDS.atlasBirthLang, data.langs || [], "ru", LANG_NAMES);
+    fillBirthSelect(IDS.atlasBirthCensorship, data.ratings || [], "16+");
+  }
+
+  function fillBirthSelect(id, values, selected, labels) {
+    var select = byId(id);
+    if (!select) {
+      return;
+    }
+    select.innerHTML = values.map(function (value) {
+      var label = labels && labels[value] ? labels[value] : displayChoice(value);
+      return '<option value="' + escapeHTML(value) + '"' +
+        (value === selected ? " selected" : "") + ">" + escapeHTML(label) + "</option>";
+    }).join("");
+  }
+
+  function fillBirthChoices(id, values, selected) {
+    var box = byId(id);
+    if (!box) {
+      return;
+    }
+    box.innerHTML = values.map(function (value) {
+      var checked = selected.indexOf(value) >= 0 ? " checked" : "";
+      return '<label class="choice"><input type="checkbox" value="' + escapeHTML(value) + '"' + checked + '>' +
+        "<span>" + escapeHTML(displayChoice(value)) + "</span></label>";
+    }).join("");
+  }
+
+  function displayChoice(value) {
+    if (!value) {
+      return "";
+    }
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  function checkedBirthChoices(id) {
+    var box = byId(id);
+    if (!box) {
+      return [];
+    }
+    return Array.prototype.map.call(box.querySelectorAll('input[type="checkbox"]:checked'), function (input) {
+      return input.value;
     });
   }
 
@@ -360,6 +462,19 @@
         event.preventDefault();
         submitAtlasBirth();
       });
+      form.addEventListener("reset", function () {
+        clearAtlasBirthErrors();
+        var slug = byId(IDS.atlasBirthSlug);
+        if (slug) {
+          slug.dataset.manual = "";
+        }
+        updateSynopsisCount();
+      });
+    }
+    bindSlugAutofill();
+    var synopsis = byId(IDS.atlasBirthSynopsis);
+    if (synopsis) {
+      synopsis.addEventListener("input", updateSynopsisCount);
     }
     var start = byId(IDS.atlasWizardStart);
     if (start) {
@@ -369,6 +484,127 @@
     if (worlds) {
       worlds.addEventListener("click", onAtlasWorldsClick);
     }
+    updateSynopsisCount();
+  }
+
+  // Слаг заполняется из названия, пока игрок не поправил его руками.
+  function bindSlugAutofill() {
+    var title = byId(IDS.atlasBirthTitle);
+    var slug = byId(IDS.atlasBirthSlug);
+    if (!title || !slug) {
+      return;
+    }
+    title.addEventListener("input", function () {
+      if (!slug.dataset.manual) {
+        slug.value = transliterateSlug(title.value);
+      }
+    });
+    slug.addEventListener("input", function () {
+      slug.dataset.manual = slug.value ? "1" : "";
+    });
+  }
+
+  var TRANSLIT = {
+    а: "a", б: "b", в: "v", г: "g", д: "d", е: "e", ё: "e", ж: "zh", з: "z",
+    и: "i", й: "y", к: "k", л: "l", м: "m", н: "n", о: "o", п: "p", р: "r",
+    с: "s", т: "t", у: "u", ф: "f", х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sch",
+    ъ: "", ы: "y", ь: "", э: "e", ю: "yu", я: "ya"
+  };
+
+  function transliterateSlug(text) {
+    return String(text || "").toLowerCase().split("").map(function (ch) {
+      if (TRANSLIT[ch] !== undefined) {
+        return TRANSLIT[ch];
+      }
+      if (/[a-z0-9]/.test(ch)) {
+        return ch;
+      }
+      return " ";
+    }).join("").trim().replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  function countSentences(text) {
+    var trimmed = String(text || "").trim();
+    if (!trimmed) {
+      return 0;
+    }
+    var matches = trimmed.match(/[.!?…]+(?=\s|$)/g);
+    return matches ? matches.length : 1;
+  }
+
+  function updateSynopsisCount() {
+    var box = byId(IDS.atlasSynopsisCount);
+    if (box) {
+      box.textContent = String(countSentences(fieldValue(IDS.atlasBirthSynopsis)));
+    }
+  }
+
+  function showAtlasBirthError(text) {
+    var box = byId(IDS.atlasBirthError);
+    if (box) {
+      box.textContent = text || "";
+      box.hidden = !text;
+    }
+  }
+
+  function setAtlasFieldError(field, reason) {
+    var box = document.querySelector('#atlas-birth-form [data-field-error="' + field + '"]');
+    if (box) {
+      box.textContent = reason || "";
+      box.hidden = !reason;
+    }
+    var input = document.getElementById("atlas-birth-" + field.replace(/_/g, "-"));
+    if (input) {
+      input.classList.toggle("is-invalid", !!reason);
+    }
+  }
+
+  function clearAtlasBirthErrors() {
+    showAtlasBirthError("");
+    var form = byId(IDS.atlasBirthForm);
+    if (!form) {
+      return;
+    }
+    form.querySelectorAll("[data-field-error]").forEach(function (node) {
+      node.textContent = "";
+      node.hidden = true;
+    });
+    form.querySelectorAll(".is-invalid").forEach(function (node) {
+      node.classList.remove("is-invalid");
+    });
+  }
+
+  function validateAtlasBirth(body) {
+    clearAtlasBirthErrors();
+    var ok = true;
+    function fail(field, reason) {
+      setAtlasFieldError(field, reason);
+      ok = false;
+    }
+    if (!body.slug) {
+      fail("slug", "Укажите адрес мира — он станет именем папки.");
+    } else if (!/^[a-z0-9-]+$/.test(body.slug)) {
+      fail("slug", "Только латиница, цифры и дефис.");
+    }
+    var sentences = countSentences(body.synopsis);
+    if (sentences === 0) {
+      fail("synopsis", "Расскажите, о чём история: 1–3 предложения.");
+    } else if (sentences > 3) {
+      fail("synopsis", "Слишком длинно: нужно 1–3 предложения.");
+    }
+    if (body.genres.length === 0) {
+      fail("genres", "Выберите хотя бы один жанр.");
+    }
+    if (!body.social_order) {
+      fail("social_order", "Выберите строй мира.");
+    }
+    for (var i = 0; i < body.world_rules.length; i++) {
+      if (body.world_rules[i].indexOf(":") <= 0) {
+        fail("world_rules", "Строка " + (i + 1) + ": нужен формат «название: описание».");
+        break;
+      }
+    }
+    return ok;
   }
 
   function loadAtlasWorlds() {
@@ -382,6 +618,7 @@
 
   function renderAtlasWorlds(data) {
     window.__activeSlug = data.active || "";
+    window.__activeWorldChecked = true;
     var box = byId(IDS.atlasWorlds);
     if (!box) {
       return;
@@ -431,14 +668,14 @@
     postJSON("/api/atlas/worlds/active", { world: slug }).then(function () {
       window.__activeSlug = slug;
       loadAtlasWorlds();
-    }).catch(atlasError);
+    }).catch(atlasActionError);
   }
 
   function playAtlasWorld(slug) {
     postJSON("/api/atlas/worlds/active", { world: slug }).then(function () {
       window.__activeSlug = slug;
       showChat();
-    }).catch(atlasError);
+    }).catch(atlasActionError);
   }
 
   function deleteAtlasWorld(slug) {
@@ -446,7 +683,11 @@
       return;
     }
     var path = "/api/atlas/worlds/delete?world=" + encodeURIComponent(slug) + "&confirm=" + encodeURIComponent(slug);
-    apiJSON(path, { method: "DELETE" }).then(loadAtlasWorlds).catch(atlasError);
+    apiJSON(path, { method: "DELETE" }).then(loadAtlasWorlds).catch(atlasActionError);
+  }
+
+  function atlasActionError(err) {
+    toast((err && err.message) || String(err), false);
   }
 
   function openAtlasWizard(slug) {
@@ -489,40 +730,59 @@
         wizard.hidden = true;
       }
       loadAtlasWorlds();
-    }).catch(atlasError);
+    }).catch(atlasActionError);
   }
 
   function submitAtlasBirth() {
     var body = {
       slug: fieldValue(IDS.atlasBirthSlug),
-      title: fieldValue(IDS.atlasBirthTitle),
+      title: fieldValue(IDS.atlasBirthTitle) || fieldValue(IDS.atlasBirthSlug),
       description: fieldValue(IDS.atlasBirthDescription),
       synopsis: fieldValue(IDS.atlasBirthSynopsis),
       prologue: fieldValue(IDS.atlasBirthPrologue),
       lang: fieldValue(IDS.atlasBirthLang) || "ru",
       travel_mode: fieldValue(IDS.atlasBirthTravelMode) || "вымышленная",
-      genres: splitList(fieldValue(IDS.atlasBirthGenres)),
+      genres: checkedBirthChoices(IDS.atlasGenres),
       world_rules: splitLines(fieldValue(IDS.atlasBirthWorldRules)),
       social_order: fieldValue(IDS.atlasBirthSocialOrder),
-      economy_mods: splitList(fieldValue(IDS.atlasBirthEconomyMods)),
+      economy_mods: checkedBirthChoices(IDS.atlasEconomy),
       magic: fieldValue(IDS.atlasBirthMagic),
       hero_birth: fieldValue(IDS.atlasBirthHeroBirth),
       censorship: fieldValue(IDS.atlasBirthCensorship) || "16+"
     };
+    if (!validateAtlasBirth(body)) {
+      return;
+    }
+    var btn = byId(IDS.atlasBirthSubmit);
+    var release = setBusy(btn);
     postJSON("/api/atlas/worlds/birth", body).then(function () {
       var form = byId(IDS.atlasBirthForm);
       if (form) {
         form.reset();
       }
+      var slug = byId(IDS.atlasBirthSlug);
+      if (slug) {
+        slug.dataset.manual = "";
+      }
+      loadAtlasBirthOptions();
       loadAtlasWorlds();
-    }).catch(atlasError);
+      showAtlasBirthError("");
+    }).catch(function (err) {
+      atlasError(err);
+    }).then(release);
   }
 
   function atlasError(err) {
-    var box = byId(IDS.atlasWorlds);
-    if (box) {
-      box.textContent = err.message;
+    clearAtlasBirthErrors();
+    var fields = (err && err.fields) || [];
+    if (fields.length > 0) {
+      fields.forEach(function (f) {
+        setAtlasFieldError(f.field, f.reason);
+      });
+      showAtlasBirthError("Проверьте отмеченные поля.");
+      return;
     }
+    showAtlasBirthError((err && err.message) || String(err));
   }
 
   var bookLoaded = false;
@@ -981,8 +1241,10 @@
   function loadSettingsView() {
     ensureThemeCSS();
     if (settingsLoaded) {
-      loadSettingsData();
-      loadMonitorData();
+      loadWorldChoices().then(function () {
+        loadSettingsData();
+        loadMonitorData();
+      });
       return;
     }
     fetch("/settings.html").then(function (res) {
@@ -995,10 +1257,101 @@
       translate(viewSettings);
       bindSettings();
       settingsLoaded = true;
-      loadSettingsData();
-      loadMonitorData();
+      loadWorldChoices().then(function () {
+        loadSettingsData();
+        loadMonitorData();
+      });
     }).catch(function (err) {
       viewSettings.textContent = err.message;
+    });
+  }
+
+  // Выбор мира прямо в Настройках: активный мир живёт в памяти webapi и после
+  // перезапуска ядра пуст, поэтому без этого списка разделы моделей и ролей
+  // выглядят пустыми, хотя миры есть.
+  function loadWorldChoices() {
+    return apiJSON("/api/atlas/worlds").then(function (data) {
+      window.__activeWorldChecked = true;
+      window.__activeSlug = data.active || "";
+      var select = byId(IDS.settingsWorldSelect);
+      if (!select) {
+        return;
+      }
+      var worlds = data.worlds || [];
+      if (worlds.length === 0) {
+        select.innerHTML = '<option value="">— нет миров —</option>';
+        return;
+      }
+      select.innerHTML = '<option value="">— выберите мир —</option>' + worlds.map(function (w) {
+        return '<option value="' + escapeHTML(w.slug) + '">' + escapeHTML(w.title || w.slug) + "</option>";
+      }).join("");
+      if (!window.__activeSlug && worlds.length === 1) {
+        window.__activeSlug = worlds[0].slug;
+        postJSON("/api/atlas/worlds/active", { world: worlds[0].slug }).catch(function () {
+          // Настройки уже открываются на этом мире; активный мир для чата
+          // выставится при следующем клике по карточке, если запрос не прошёл.
+        });
+      }
+      select.value = window.__activeSlug || "";
+    }).catch(function () {
+      var select = byId(IDS.settingsWorldSelect);
+      if (select) {
+        select.innerHTML = '<option value="">— нет миров —</option>';
+      }
+    });
+  }
+
+  // Подсказки к полям: всплывают при наведении на подпись (и при фокусе).
+  var FIELD_HINTS = {
+    "settings-lang": "Язык пакетов интерфейса. Сейчас доступен только русский.",
+    "settings-theme": "Тема применяется сразу и запоминается в этом браузере.",
+    "settings-server-host": "Адрес, на котором слушает движок. Только 127.0.0.1 или localhost.",
+    "settings-server-port": "Порт веб-интерфейса. После изменения нужен перезапуск движка.",
+    "settings-gen-addr": "Локальный генератор (llama.cpp): хост:порт, например 127.0.0.1:5001.",
+    "settings-gen-key": "API-ключ генератора, если он внешний. Хранится в settings.toml, в config не попадает.",
+    "settings-gen-model": "Модель генерации: реплики игрока, проза мира.",
+    "settings-gen-timeout": "Сколько ждать ответа генератора (например 30s).",
+    "settings-gen-max-tokens": "Предел длины ответа в токенах. 0 — без ограничения.",
+    "settings-gen-temperature": "0 — строго по замыслу мира, выше — свободнее и неожиданнее.",
+    "settings-gen-retries": "Сколько раз повторить запрос при сбое генератора.",
+    "settings-gen-concurrency": "Сколько запросов к генератору можно держать параллельно.",
+    "settings-emb-addr": "Локальный эмбеддинг-сервер (BGE-M3): хост:порт, по умолчанию 127.0.0.1:5002.",
+    "settings-emb-key": "API-ключ эмбеддинг-сервера, если он внешний.",
+    "settings-emb-model": "Модель эмбеддингов для памяти и поиска.",
+    "settings-provider-name": "Короткое имя провайдера, под ним хранится ключ.",
+    "settings-provider-key": "Ключ провайдера. Сохраняется в settings.toml с правами 0600.",
+    "settings-provider-base": "Базовый URL API провайдера, если он не из каталога.",
+    "settings-model-role": "Роль из раздела «Роли», для которой ставится модель.",
+    "settings-model-source": "Откуда качать: huggingface.co/организация/модель.",
+    "settings-model-ref": "Тег модели внутри источника, например Q4_K_M.",
+    "settings-role-name": "Код-имя роли (например, teller). Менять существующие не стоит.",
+    "settings-role-provider": "Провайдер из раздела «Провайдеры».",
+    "settings-role-model": "Ссылка на модель для этой роли.",
+    "settings-role-temperature": "Температура роли: 0 — детерминированно.",
+    "settings-role-prompts": "Дополнительные промпты роли, по одному на строку.",
+    "settings-role-priority": "Порядок применения роли: больше — важнее.",
+    "settings-paganel-key": "Ключ внешней модели для карты; нужен только для походов наружу.",
+    "settings-channel-edge": "Край туннеля Cloudflare: только имя хоста, без схемы и слешей.",
+    "settings-channel-local": "Куда смотрит туннель: локальный адрес веб-интерфейса.",
+    "settings-channel-token": "Токен бота от @BotFather. Хранится в settings.toml с правами 0600.",
+    "settings-channel-chat-id": "Ваш chat_id в Telegram. Бот отвечает только этому чату.",
+    "settings-memory-max": "Сколько записей памяти станка хранить.",
+    "settings-memory-similarity": "Порог похожести для поиска по памяти: 0..1.",
+    "settings-memory-halflife": "За сколько дней запись памяти «остывает» вдвое.",
+    "settings-global-luck": "Общая удача мира: множитель на случайные события.",
+    "settings-day-norm": "Норма километров в день для пути героя (20..30)."
+  };
+
+  function applyFieldHints(root) {
+    Object.keys(FIELD_HINTS).forEach(function (id) {
+      var field = byId(id);
+      if (!field) {
+        return;
+      }
+      var label = field.closest(".settings-field") || field.closest("label");
+      if (label && !label.hasAttribute("data-tip")) {
+        label.setAttribute("data-tip", FIELD_HINTS[id]);
+      }
     });
   }
 
@@ -1013,6 +1366,7 @@
     bindSettingsSubmit(IDS.settingsAdvancedForm, submitSettingsAdvanced);
     bindSettingsNav();
     bindChannelExtras();
+    applyFieldHints(viewSettings);
 
     var theme = byId(IDS.settingsTheme);
     if (theme) {
@@ -1031,12 +1385,60 @@
       });
     }
 
-    renderModelCatalog();
+    var rolesBox = byId(IDS.settingsRoles);
+    if (rolesBox) {
+      rolesBox.addEventListener("click", function (event) {
+        var card = event.target.closest(".settings-role[data-role]");
+        if (!card) {
+          return;
+        }
+        setValue(IDS.settingsRoleName, card.getAttribute("data-role") || "");
+        setValue(IDS.settingsRoleProvider, ensureOption(IDS.settingsRoleProvider, card.getAttribute("data-provider") || "local"));
+        setValue(IDS.settingsRoleModel, ensureOption(IDS.settingsRoleModel, card.getAttribute("data-model") || ""));
+        setValue(IDS.settingsRoleTemperature, card.getAttribute("data-temperature") || "0");
+        setValue(IDS.settingsRolePrompts, card.getAttribute("data-prompts") || "");
+        setValue(IDS.settingsRolePriority, card.getAttribute("data-priority") || "0");
+      });
+    }
+
+    var providerCatalog = byId("settings-provider-catalog");
+    if (providerCatalog) {
+      providerCatalog.addEventListener("change", function () {
+        if (providerCatalog.value) {
+          setValue(IDS.settingsProviderName, providerCatalog.value);
+        }
+      });
+    }
+
+    var worldSelect = byId(IDS.settingsWorldSelect);
+    if (worldSelect) {
+      worldSelect.addEventListener("change", function () {
+        var slug = worldSelect.value;
+        if (!slug) {
+          return;
+        }
+        worldSelect.disabled = true;
+        postJSON("/api/atlas/worlds/active", { world: slug }).then(function () {
+          window.__activeSlug = slug;
+          window.__activeWorldChecked = true;
+          return loadSettingsData();
+        }).then(loadMonitorData).catch(settingsError).then(function () {
+          worldSelect.disabled = false;
+        });
+      });
+    }
+    var worldOpen = byId(IDS.settingsWorldOpen);
+    if (worldOpen) {
+      worldOpen.addEventListener("click", function () {
+        atlasTab.click();
+      });
+    }
+
+    renderModelCatalog([]);
     var grid = byId(IDS.modelCatalogGrid);
     if (grid) {
       grid.addEventListener("click", onModelCatalogClick);
     }
-    bindModelFileBrowser();
   }
 
   function bindSettingsNav() {
@@ -1072,19 +1474,101 @@
     var check = viewSettings.querySelector(".js-channel-check");
     if (check) {
       check.addEventListener("click", function () {
-        loadSettingsData();
+        var release = setBusy(check);
+        loadSettingsData().then(function () {
+          var form = byId(IDS.settingsChannelForm);
+          if (form) {
+            formResult(form, "Проверено: настройки перечитаны из конфига", true);
+          }
+        }).catch(function (err) {
+          var form = byId(IDS.settingsChannelForm);
+          if (form) {
+            formResult(form, (err && err.message) || String(err), false);
+          }
+        }).then(release);
       });
     }
   }
 
+  // Каждая форма настроек обязана отвечать: кнопка блокируется на время
+  // запроса, результат — строка под формой (успех или текст ошибки).
   function bindSettingsSubmit(id, handler) {
     var form = byId(id);
-    if (form) {
-      form.addEventListener("submit", function (event) {
-        event.preventDefault();
-        handler();
-      });
+    if (!form) {
+      return;
     }
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var btn = form.querySelector('button[type="submit"]');
+      var release = setBusy(btn);
+      var job;
+      try {
+        job = Promise.resolve(handler());
+      } catch (err) {
+        job = Promise.reject(err);
+      }
+      job.then(function () {
+        formResult(form, savedText(), true);
+      }).catch(function (err) {
+        formResult(form, (err && err.message) || String(err), false);
+      }).then(release);
+    });
+  }
+
+  function setBusy(btn) {
+    if (!btn || btn.dataset.busy === "1") {
+      return function () {};
+    }
+    btn.dataset.busy = "1";
+    btn.disabled = true;
+    btn.classList.add("is-busy");
+    return function () {
+      btn.dataset.busy = "";
+      btn.disabled = false;
+      btn.classList.remove("is-busy");
+    };
+  }
+
+  function savedText() {
+    return (window.I18N && window.I18N["settings.saved"]) || "Сохранено";
+  }
+
+  function formResult(form, text, ok) {
+    if (!form) {
+      return;
+    }
+    var box = form.querySelector(".form-result");
+    if (!box) {
+      box = document.createElement("p");
+      box.className = "form-result";
+      form.appendChild(box);
+    }
+    box.textContent = (ok ? "\u2713 " : "\u2717 ") + text;
+    box.classList.toggle("form-result--ok", !!ok);
+    box.classList.toggle("form-result--err", !ok);
+    clearTimeout(form.__resultTimer);
+    form.__resultTimer = setTimeout(function () {
+      box.textContent = "";
+      box.classList.remove("form-result--ok", "form-result--err");
+    }, 6000);
+  }
+
+  // Плавающая плашка для ошибок загрузки и действий вне форм.
+  function toast(text, ok) {
+    var box = byId("tns-toast");
+    if (!box) {
+      box = document.createElement("div");
+      box.id = "tns-toast";
+      box.className = "tns-toast";
+      document.body.appendChild(box);
+    }
+    box.textContent = text;
+    box.classList.toggle("tns-toast--err", !ok);
+    box.classList.add("tns-toast--show");
+    clearTimeout(toast.__timer);
+    toast.__timer = setTimeout(function () {
+      box.classList.remove("tns-toast--show");
+    }, 5000);
   }
 
   function readStoredTheme() {
@@ -1138,13 +1622,29 @@
   }
 
   function loadSettingsData() {
-    var slug = activeSlugValue();
-    var path = slug ? "/api/settings?world=" + encodeURIComponent(slug) : "/api/settings";
-    apiJSON(path).then(renderSettings).then(loadProvidersData).catch(function (err) {
-      var box = byId(IDS.settingsEmbedDim);
-      if (box) {
-        box.textContent = err.message;
-      }
+    return ensureActiveWorld().then(function () {
+      var slug = activeSlugValue();
+      var path = slug ? "/api/settings?world=" + encodeURIComponent(slug) : "/api/settings";
+      return apiJSON(path).then(renderSettings).then(loadProvidersData).catch(settingsError);
+    });
+  }
+
+  // Настройки открываются и без визита в Атлас: активный мир подтягиваем сами,
+  // иначе разделы «Модели» и «Роли» выглядят пустыми при живом мире.
+  function ensureActiveWorld() {
+    if (window.__activeSlug) {
+      return Promise.resolve(window.__activeSlug);
+    }
+    if (window.__activeWorldChecked) {
+      return Promise.resolve("");
+    }
+    return apiJSON("/api/atlas/worlds").then(function (data) {
+      window.__activeWorldChecked = true;
+      window.__activeSlug = data.active || "";
+      return window.__activeSlug;
+    }).catch(function () {
+      window.__activeWorldChecked = true;
+      return "";
     });
   }
 
@@ -1300,9 +1800,60 @@
     renderChannel(data.channel || {});
     renderSettingsPresets(data.presets || []);
     renderSettingsBindings(data.bindings || [], hasWorld);
+    renderSettingsModelsCurrent(data.bindings || [], hasWorld);
+    var rolesForm = byId(IDS.settingsRolesForm);
+    if (rolesForm) {
+      rolesForm.hidden = !hasWorld;
+    }
     renderSettingsModels(data.models || [], hasWorld);
+    renderModelChoices(data.models || []);
+    renderRoleProviderChoices(data.presets || [], data.providers || []);
+    renderModelCatalog(data.models || []);
+    renderModelCatalogNote(hasWorld);
     renderSettingsPlugins();
     renderSettingsFlags(data.advanced ? data.advanced.feature_flags || [] : []);
+    updateSettingsStatuses(data, hasWorld);
+  }
+
+  function renderModelCatalogNote(hasWorld) {
+    var note = byId(IDS.modelCatalogNote);
+    if (!note) {
+      return;
+    }
+    note.hidden = hasWorld;
+    note.textContent = hasWorld
+      ? ""
+      : "Мир ещё не рождён: модель скачается сейчас, привязка роли появится после рождения мира.";
+  }
+
+  function updateSettingsStatuses(data, hasWorld) {
+    var dict = window.I18N || {};
+    setStatusText("settings-nav-general-status", "готово", "st--ok");
+    var channel = data.channel || {};
+    setStatusText("settings-nav-channel-status",
+      channel.telegram_configured ? (dict["settings.channel.configured_yes"] || "настроен") : (dict["settings.channel.configured_no"] || "не настроен"),
+      channel.telegram_configured ? "st--ok" : "st--wait");
+    var llm = data.llm || {};
+    setStatusText("settings-nav-llm-status", llm.local === false ? "внешний" : "локально", "");
+    var keyed = (data.providers || []).filter(function (p) { return p.key_set; }).length;
+    setStatusText("settings-nav-providers-status", keyed ? String(keyed) : "нет ключей", keyed ? "st--ok" : "");
+    var installed = (data.models || []).filter(function (m) { return m.status === "installed"; }).length;
+    setStatusText("settings-nav-models-status", installed ? String(installed) : "0", installed ? "st--ok" : "");
+    setStatusText("settings-nav-world-status", hasWorld ? "активен" : "нет мира", hasWorld ? "st--ok" : "st--wait");
+    setStatusText("settings-nav-plugins-status", "нет", "");
+    setStatusText("settings-nav-monitor-status", "онлайн", "st--ok");
+  }
+
+  function setStatusText(id, text, cls) {
+    var el = byId(id);
+    if (!el) {
+      return;
+    }
+    el.textContent = text;
+    el.classList.remove("st--ok", "st--wait", "st--err");
+    if (cls) {
+      el.classList.add(cls);
+    }
   }
 
   function renderLLMSettings(llm) {
@@ -1363,6 +1914,7 @@
   }
 
   function renderSettingsProviders(providers) {
+    fillProviderCatalog(providers);
     var box = byId(IDS.settingsProviders);
     if (!box) {
       return;
@@ -1377,11 +1929,14 @@
       var model = p.model ? escapeHTML(p.model) : unavailable;
       var quota = p.quota ? escapeHTML(p.quota) : unavailable;
       var cost = formatProviderCost(p.cost_millis);
-      return '<div class="settings-provider">' + escapeHTML(p.name) + " · " +
-        (p.key_set ? "ключ задан" : "без ключа") + " · " +
-        (dict["settings.providers.model"] || "Модель") + ": " + model + " · " +
-        (dict["settings.providers.quota"] || "Остаток лимита вызовов") + ": " + quota + " · " +
-        (dict["settings.providers.cost"] || "Стоимость по тарифу") + ": " + cost + "</div>";
+      return '<div class="settings-provider">' +
+        '<div class="settings-provider__head"><b>' + escapeHTML(p.name) + '</b>' +
+        '<span class="st ' + (p.key_set ? "st--ok" : "st--err") + '">' +
+        (p.key_set ? "ключ задан" : "без ключа") + '</span></div>' +
+        '<div class="settings-provider__row">' + (dict["settings.providers.model"] || "Модель") + ': <b>' + model + '</b></div>' +
+        '<div class="settings-provider__row">' + (dict["settings.providers.quota"] || "Остаток лимита") + ': ' + quota +
+        ' · ' + (dict["settings.providers.cost"] || "Стоимость") + ': ' + cost + '</div>' +
+        '</div>';
     }).join("");
   }
 
@@ -1406,18 +1961,42 @@
       return;
     }
     box.innerHTML = bindings.map(function (b) {
-      var html = '<div class="settings-role">' + escapeHTML(b.role) + " · " + escapeHTML(b.provider) + " · " + escapeHTML(b.model_ref || "");
-      if (b.temperature) {
-        html += " · t=" + escapeHTML(String(b.temperature));
-      }
-      if (b.prompts) {
-        html += " · " + escapeHTML(b.prompts);
-      }
-      if (b.priority) {
-        html += " · p=" + escapeHTML(String(b.priority));
-      }
-      html += "</div>";
+      var html = '<div class="settings-role" data-role="' + escapeHTML(b.role) +
+        '" data-provider="' + escapeHTML(b.provider || "local") +
+        '" data-model="' + escapeHTML(b.model_ref || "") +
+        '" data-temperature="' + escapeHTML(String(b.temperature || 0)) +
+        '" data-prompts="' + escapeHTML(b.prompts || "") +
+        '" data-priority="' + escapeHTML(String(b.priority || 0)) + '">' +
+        '<b>' + escapeHTML(b.role) + '</b>' +
+        '<span>' + escapeHTML(b.provider) + (b.model_ref ? ' · ' + escapeHTML(b.model_ref) : '') + '</span>' +
+        (b.temperature ? '<span class="chip">t=' + escapeHTML(String(b.temperature)) + '</span>' : '') +
+        (b.prompts ? '<span class="chip">' + escapeHTML(b.prompts) + '</span>' : '') +
+        (b.priority ? '<span class="chip">p=' + escapeHTML(String(b.priority)) + '</span>' : '') +
+        '</div>';
       return html;
+    }).join("");
+  }
+
+  // Что сейчас привязано к ролям — чтобы не искать это по форме установки.
+  function renderSettingsModelsCurrent(bindings, hasWorld) {
+    var box = byId(IDS.settingsModelsCurrent);
+    if (!box) {
+      return;
+    }
+    if (!hasWorld) {
+      box.innerHTML = '<p class="settings-empty">Мир не выбран — привязка ролей появится после рождения мира.</p>';
+      return;
+    }
+    if (!bindings || bindings.length === 0) {
+      box.innerHTML = '<p class="settings-empty">Ни одна роль пока не привязана к модели.</p>';
+      return;
+    }
+    box.innerHTML = bindings.map(function (b) {
+      return '<div class="settings-current__row"><span class="settings-current__role">' +
+        escapeHTML(b.role) + '</span><span>' + escapeHTML(b.provider) +
+        (b.model_ref ? ' · ' + escapeHTML(b.model_ref) : '') + '</span>' +
+        (b.temperature ? '<span class="chip">t=' + escapeHTML(String(b.temperature)) + '</span>' : '') +
+        '</div>';
     }).join("");
   }
 
@@ -1426,30 +2005,207 @@
     if (!box) {
       return;
     }
-    if (!hasWorld) {
-      renderNoWorldNote(box);
-      return;
-    }
     if (!models || models.length === 0) {
-      box.innerHTML = '<p class="settings-empty">—</p>';
+      box.innerHTML = '<p class="settings-empty">Модели ещё не скачаны. Выберите карточку выше.</p>';
       return;
     }
-    var dict = window.I18N || {};
     box.innerHTML = models.map(function (m) {
-      var html = '<div class="settings-model">' + escapeHTML(m.role) + " · " + escapeHTML(m.model_ref || "");
-      if (m.status) {
-        html += " · " + escapeHTML(m.status);
+      var pct = typeof m.progress === "number" ? Math.round(m.progress * 100) : 0;
+      var downloading = m.status === "downloading";
+      var status = m.status === "installed" ? "установлена" : (m.status || "—");
+      var html = '<div class="settings-model model-card' + (m.status === "installed" ? ' model-card--installed' : '') + '">';
+      html += '<div class="model-card__head"><span class="model-card__title">' + escapeHTML(m.role) + '</span>' +
+        '<span class="chip ' + (m.integrity_ok ? "chip--ok" : "chip--danger") + '">' +
+        (m.integrity_ok ? "целостность ок" : "целостность нарушена") + "</span></div>";
+      html += '<div class="model-card__meta">' + escapeHTML(m.model_ref || "") + "</div>";
+      html += '<div class="model-card__status' + (m.status === "error" ? " model-card__status--err" : "") + '">' +
+        escapeHTML(status) + " · " + pct + "%</div>";
+      if (downloading) {
+        html += '<div class="model-card__progress"><span style="width:' + pct + '%"></span></div>';
       }
-      if (typeof m.progress === "number") {
-        html += " · " + Math.round(m.progress * 100) + "%";
-      }
-      html += " · " + (m.integrity_ok ? "целостность ок" : "целостность нарушена");
-      if (m.has_previous) {
-        html += ' <button type="button" data-model-role="' + escapeHTML(m.role) + '">' + (dict["settings.models.rollback"] || "Откатить") + "</button>";
+      if (m.has_previous && hasWorld) {
+        html += '<div class="model-card__actions"><button type="button" data-model-role="' +
+          escapeHTML(m.role) + '">Откатить</button></div>';
       }
       html += "</div>";
       return html;
     }).join("");
+  }
+
+  // Набор известных ролей и установленных моделей для подсказок в формах.
+  function renderModelChoices(models) {
+    var list = byId(IDS.settingsInstalledModels);
+    if (list) {
+      list.innerHTML = (models || []).map(function (m) {
+        return '<option value="' + escapeHTML(m.model_ref || "") + '"></option>';
+      }).join("");
+    }
+    var select = byId(IDS.settingsRoleModel);
+    if (select) {
+      var current = select.value;
+      select.innerHTML = '<option value="">— не задана —</option>' + (models || []).map(function (m) {
+        var ref = m.model_ref || "";
+        return '<option value="' + escapeHTML(ref) + '">' + escapeHTML(ref) + "</option>";
+      }).join("");
+      select.value = current;
+    }
+  }
+
+  function renderRoleProviderChoices(presets, providers) {
+    var select = byId(IDS.settingsRoleProvider);
+    if (!select) {
+      return;
+    }
+    var names = ["local"];
+    (presets || []).forEach(function (p) {
+      if (p.provider && names.indexOf(p.provider) < 0) {
+        names.push(p.provider);
+      }
+    });
+    (providers || []).forEach(function (p) {
+      if (p.name && names.indexOf(p.name) < 0) {
+        names.push(p.name);
+      }
+    });
+    var current = select.value;
+    select.innerHTML = names.map(function (name) {
+      return '<option value="' + escapeHTML(name) + '">' + escapeHTML(name) + "</option>";
+    }).join("");
+    select.value = current || "local";
+  }
+
+  function fillProviderCatalog(providers) {
+    var select = byId("settings-provider-catalog");
+    if (!select) {
+      return;
+    }
+    select.innerHTML = '<option value="">— Выберите провайдера —</option>' +
+      (providers || []).map(function (p) {
+        return '<option value="' + escapeHTML(p.name) + '">' + escapeHTML(p.name) + "</option>";
+      }).join("");
+  }
+
+  function renderModelCatalog(installed) {
+    var grid = byId(IDS.modelCatalogGrid);
+    if (!grid) {
+      return;
+    }
+    var byRole = {};
+    (installed || []).forEach(function (m) {
+      byRole[m.role] = m;
+    });
+    grid.innerHTML = MODEL_CATALOG.map(function (m) {
+      var current = byRole[m.role];
+      var isInstalled = !!current;
+      var status = isInstalled
+        ? "Установлена: " + (current.model_ref || m.ref)
+        : "Не установлена";
+      return '<article class="model-card' + (isInstalled ? " model-card--installed" : "") + '"' +
+        ' data-catalog-role="' + escapeHTML(m.role) + '"' +
+        ' data-catalog-source="' + escapeHTML(m.source) + '"' +
+        ' data-catalog-ref="' + escapeHTML(m.ref) + '">' +
+        '<div class="model-card__head"><span class="model-card__title">' + escapeHTML(m.label) + "</span>" +
+        '<span class="chip">' + escapeHTML(m.size) + "</span></div>" +
+        '<div class="model-card__meta">роль: ' + escapeHTML(m.role) + " · Q4_K_M</div>" +
+        '<p class="model-card__meta">' + escapeHTML(m.note) + "</p>" +
+        '<div class="model-card__status" data-model-status>' + escapeHTML(status) + "</div>" +
+        '<div class="model-card__progress" hidden><span></span></div>' +
+        '<div class="model-card__percent" hidden></div>' +
+        '<div class="model-card__actions"><button type="button" data-model-install>' +
+        (isInstalled ? "Переустановить" : "Установить") + "</button></div>" +
+        "</article>";
+    }).join("");
+  }
+
+  function onModelCatalogClick(event) {
+    var btn = event.target.closest("button[data-model-install]");
+    if (!btn) {
+      return;
+    }
+    installModelFromCard(btn.closest(".model-card"));
+  }
+
+  function installModelFromCard(card) {
+    if (!card) {
+      return;
+    }
+    var role = card.getAttribute("data-catalog-role") || "";
+    var source = card.getAttribute("data-catalog-source") || "";
+    var ref = card.getAttribute("data-catalog-ref") || "";
+    if (!role || !source || !ref) {
+      return;
+    }
+    var btn = card.querySelector("button[data-model-install]");
+    var release = setBusy(btn);
+    setCardProgress(card, 0, "Загрузка…");
+    var stopPolling = startModelProgressPoll(role, card);
+    postJSON("/api/settings/models/install", {
+      world: activeSlugValue(),
+      role: role,
+      source: source,
+      model_ref: ref
+    }).then(function (res) {
+      setCardProgress(card, 1, res && res.bound === false
+        ? "Скачана. Привяжите роль после рождения мира."
+        : "Установлена и привязана.");
+      return loadSettingsData();
+    }).catch(function (err) {
+      setCardProgress(card, 0, (err && err.message) || String(err), true);
+    }).then(function () {
+      stopPolling();
+      release();
+    });
+  }
+
+  function startModelProgressPoll(role, card) {
+    var stopped = false;
+    var timer = setInterval(function () {
+      if (stopped) {
+        return;
+      }
+      apiJSON("/api/settings/models/status?role=" + encodeURIComponent(role)).then(function (data) {
+        var job = (data.jobs || [])[0];
+        if (!job) {
+          return;
+        }
+        if (job.status === "downloading") {
+          setCardProgress(card, job.progress || 0, "Загрузка…");
+        } else if (job.status === "error") {
+          setCardProgress(card, job.progress || 0, job.error || "Ошибка загрузки", true);
+          stopped = true;
+          clearInterval(timer);
+        }
+      }).catch(function () {
+        // Опрос прогресса не должен ломать саму установку.
+      });
+    }, 500);
+    return function () {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }
+
+  function setCardProgress(card, progress, text, isError) {
+    var bar = card.querySelector(".model-card__progress");
+    var fill = bar ? bar.querySelector("span") : null;
+    var percent = card.querySelector(".model-card__percent");
+    var status = card.querySelector("[data-model-status]");
+    var pct = Math.max(0, Math.min(100, Math.round((progress || 0) * 100)));
+    if (bar) {
+      bar.hidden = false;
+    }
+    if (fill) {
+      fill.style.width = pct + "%";
+    }
+    if (percent) {
+      percent.hidden = false;
+      percent.textContent = pct + "%";
+    }
+    if (status && text) {
+      status.textContent = text;
+      status.classList.toggle("model-card__status--err", !!isError);
+    }
+    card.classList.toggle("model-card--error", !!isError);
   }
 
   function renderNoWorldNote(box) {
@@ -1481,67 +2237,23 @@
     }).join("");
   }
 
-  function modelSourceURL(path) {
-    return "https" + "://" + path;
-  }
-
-  function renderModelCatalog() {
-    var grid = byId(IDS.modelCatalogGrid);
-    if (!grid) {
-      return;
+  // Если значение пришло из старой привязки и его нет среди текущих опций,
+  // добавляем его: иначе сохранение роли молча затрёт модель пустым значением.
+  function ensureOption(id, value) {
+    var select = byId(id);
+    if (!select || !value) {
+      return value;
     }
-    grid.innerHTML = MODEL_CATALOG.map(function (m) {
-      return '<button type="button" data-catalog-role="' + escapeHTML(m.role) +
-        '" data-catalog-source="' + escapeHTML(m.source) +
-        '" data-catalog-ref="' + escapeHTML(m.ref) + '">' +
-        escapeHTML(m.label) + "</button>";
-    }).join("");
-  }
-
-  function onModelCatalogClick(event) {
-    var btn = event.target.closest("button[data-catalog-role]");
-    if (!btn) {
-      return;
+    var exists = Array.prototype.some.call(select.options, function (option) {
+      return option.value === value;
+    });
+    if (!exists) {
+      var option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      select.appendChild(option);
     }
-    setValue(IDS.settingsModelRole, btn.getAttribute("data-catalog-role") || "");
-    setValue(IDS.settingsModelRef, btn.getAttribute("data-catalog-ref") || "");
-    setValue(IDS.settingsModelSource, modelSourceURL(btn.getAttribute("data-catalog-source") || ""));
-    var hint = byId(IDS.modelCatalogHint);
-    if (hint) {
-      var dict = window.I18N || {};
-      hint.textContent = (dict["settings.models.catalog.selected"] || "Выбрано") + ": " +
-        (btn.getAttribute("data-catalog-role") || "") + " · " + (btn.getAttribute("data-catalog-ref") || "");
-    }
-  }
-
-  function bindModelFileBrowser() {
-    var pick = byId(IDS.modelLocalPick);
-    var file = byId(IDS.modelLocalFile);
-    if (pick && file) {
-      pick.addEventListener("click", function () {
-        file.click();
-      });
-    }
-    if (file) {
-      file.addEventListener("change", function () {
-        var name = file.files && file.files.length ? file.files[0].name : "";
-        setValue(IDS.modelLocalPath, name);
-        var selected = byId(IDS.modelLocalSelected);
-        if (selected) {
-          var dict = window.I18N || {};
-          selected.textContent = name || (dict["settings.models.local_empty"] || "Файл не выбран");
-        }
-      });
-    }
-    var apply = byId(IDS.modelLocalApply);
-    if (apply) {
-      apply.addEventListener("click", function () {
-        var path = fieldValue(IDS.modelLocalPath);
-        if (path) {
-          setValue(IDS.settingsModelRef, path);
-        }
-      });
-    }
+    return value;
   }
 
   function setValue(id, value) {
@@ -1565,12 +2277,12 @@
 
   function submitSettingsGeneral() {
     var vectorSearch = byId(IDS.settingsVectorSearch) ? byId(IDS.settingsVectorSearch).checked : false;
-    putJSON("/api/settings/config", {
+    return putJSON("/api/settings/config", {
       host: fieldValue(IDS.settingsServerHost),
       port: parseInt(fieldValue(IDS.settingsServerPort), 10) || 0
     }).then(function () {
       return putJSON("/api/settings/keys", { keys: { external_vector_search: vectorSearch ? "true" : "false" } });
-    }).then(loadSettingsData).catch(settingsError);
+    }).then(loadSettingsData);
   }
 
   function submitSettingsLLM() {
@@ -1602,11 +2314,11 @@
         return loadSettingsData();
       }
       return putJSON("/api/settings/keys", { keys: keys }).then(loadSettingsData);
-    }).catch(settingsError);
+    });
   }
 
   function submitSettingsWorld() {
-    putJSON("/api/settings/config", {
+    return putJSON("/api/settings/config", {
       paganel_enabled: byId(IDS.settingsPaganelEnabled) ? byId(IDS.settingsPaganelEnabled).checked : false,
       scout_enabled: byId(IDS.settingsScoutEnabled) ? byId(IDS.settingsScoutEnabled).checked : false
     }).then(function () {
@@ -1615,7 +2327,7 @@
         return loadSettingsData();
       }
       return putJSON("/api/settings/keys", { keys: { paganel: key } }).then(loadSettingsData);
-    }).catch(settingsError);
+    });
   }
 
   function submitChannel() {
@@ -1628,11 +2340,11 @@
     if (token) {
       body.telegram_token = token;
     }
-    putJSON("/api/settings/channel", body).then(loadSettingsData).catch(settingsError);
+    return putJSON("/api/settings/channel", body).then(loadSettingsData);
   }
 
   function submitSettingsAdvanced() {
-    putJSON("/api/world/tunables", {
+    return putJSON("/api/world/tunables", {
       world: activeSlugValue(),
       tunables: {
         globalLuck: parseFloat(fieldValue(IDS.settingsGlobalLuck)) || 0,
@@ -1641,18 +2353,18 @@
         halfLifeDays: parseFloat(fieldValue(IDS.settingsMemoryHalflife)) || 0,
         dayNormKm: parseFloat(fieldValue(IDS.settingsDayNorm)) || 25
       }
-    }).then(loadSettingsData).catch(settingsError);
+    }).then(loadSettingsData);
   }
 
   function submitSettingsProvider() {
     var name = fieldValue(IDS.settingsProviderName);
     var key = fieldValue(IDS.settingsProviderKey);
     if (!name || !key) {
-      return;
+      throw new Error("Укажите имя провайдера и ключ");
     }
     var body = { keys: {} };
     body.keys[name] = key;
-    putJSON("/api/settings/keys", body).then(loadSettingsData).catch(settingsError);
+    return putJSON("/api/settings/keys", body).then(loadSettingsData);
   }
 
   function submitSettingsModel() {
@@ -1660,16 +2372,19 @@
     var source = fieldValue(IDS.settingsModelSource);
     var ref = fieldValue(IDS.settingsModelRef);
     if (!role || !source || !ref) {
-      return;
+      throw new Error("Заполните роль, ссылку и название модели");
     }
-    postJSON("/api/settings/models/install", {
+    if (source.indexOf("https://") !== 0 && source.indexOf("http://") !== 0) {
+      source = "https://" + source.replace(/^\/+/, "");
+    }
+    return postJSON("/api/settings/models/install", {
       world: activeSlugValue(),
       role: role,
       source: source,
       model_ref: ref
     }).then(function () {
       loadSettingsData();
-    }).catch(settingsError);
+    });
   }
 
   function rollbackSettingsModel(role) {
@@ -1681,7 +2396,7 @@
       role: role
     }).then(function () {
       loadSettingsData();
-    }).catch(settingsError);
+    });
   }
 
   function submitSettingsRoles() {
@@ -1689,9 +2404,9 @@
     var provider = fieldValue(IDS.settingsRoleProvider);
     var model = fieldValue(IDS.settingsRoleModel);
     if (!role || !provider) {
-      return;
+      throw new Error("Укажите роль и провайдера");
     }
-    putJSON("/api/settings/bindings", {
+    return putJSON("/api/settings/bindings", {
       world: activeSlugValue(),
       bindings: [{
         role: role,
@@ -1701,14 +2416,11 @@
         prompts: fieldValue(IDS.settingsRolePrompts),
         priority: parseInt(fieldValue(IDS.settingsRolePriority), 10) || 0
       }]
-    }).then(loadSettingsData).catch(settingsError);
+    }).then(loadSettingsData);
   }
 
   function settingsError(err) {
-    var box = byId(IDS.settingsEmbedDim);
-    if (box) {
-      box.textContent = err.message;
-    }
+    toast((err && err.message) || String(err), false);
   }
 
   applyThemeClass(resolveTheme());

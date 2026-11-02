@@ -5,23 +5,30 @@
   <nav class="settings-nav" id="settings-nav" aria-label="Разделы настроек">
     <div class="settings-nav__title" data-i18n="menu.settings">Настройки</div>
     <div class="settings-nav__group" data-i18n="settings.nav.group.main">Основное</div>
-    <a href="#settings-section-general"><span data-i18n="settings.general">General</span><span class="st st--ok" data-i18n="settings.nav.general">готово</span></a>
+    <a href="#settings-section-general"><span data-i18n="settings.general">General</span><span class="st st--ok" id="settings-nav-general-status" data-i18n="settings.nav.general">готово</span></a>
     <div class="settings-nav__group" data-i18n="settings.nav.group.link">Связь</div>
-    <a href="#settings-section-channel"><span data-i18n="settings.channel">Канал</span><span class="st st--wait" data-i18n="settings.nav.channel">не настроен</span></a>
+    <a href="#settings-section-channel"><span data-i18n="settings.channel">Канал</span><span class="st st--wait" id="settings-nav-channel-status" data-i18n="settings.nav.channel">не настроен</span></a>
     <div class="settings-nav__group" data-i18n="settings.nav.group.models">Модели и роли</div>
-    <a href="#settings-section-llm"><span data-i18n="settings.llm">LLM</span><span class="st" data-i18n="settings.nav.llm">local</span></a>
-    <a href="#settings-section-providers"><span data-i18n="settings.providers">Провайдеры</span><span class="st" data-i18n="settings.nav.providers">2</span></a>
-    <a href="#settings-section-models"><span data-i18n="settings.models">Модели</span><span class="st" data-i18n="settings.nav.models">3</span></a>
+    <a href="#settings-section-llm"><span data-i18n="settings.llm">LLM</span><span class="st" id="settings-nav-llm-status" data-i18n="settings.nav.llm">local</span></a>
+    <a href="#settings-section-providers"><span data-i18n="settings.providers">Провайдеры</span><span class="st" id="settings-nav-providers-status" data-i18n="settings.nav.providers">0</span></a>
+    <a href="#settings-section-models"><span data-i18n="settings.models">Модели</span><span class="st" id="settings-nav-models-status" data-i18n="settings.nav.models">0</span></a>
     <a href="#settings-section-roles"><span data-i18n="settings.roles">Роли</span></a>
     <div class="settings-nav__group" data-i18n="settings.nav.group.world">Мир</div>
-    <a href="#settings-section-world"><span data-i18n="settings.world">World</span><span class="st" data-i18n="settings.nav.world">выкл</span></a>
+    <a href="#settings-section-world"><span data-i18n="settings.world">World</span><span class="st" id="settings-nav-world-status" data-i18n="settings.nav.world">нет мира</span></a>
     <div class="settings-nav__group" data-i18n="settings.nav.group.system">Система</div>
-    <a href="#settings-section-plugins"><span data-i18n="settings.plugins">Plugins</span><span class="st" data-i18n="settings.nav.plugins">нет</span></a>
+    <a href="#settings-section-plugins"><span data-i18n="settings.plugins">Plugins</span><span class="st" id="settings-nav-plugins-status" data-i18n="settings.nav.plugins">нет</span></a>
     <a href="#settings-section-advanced"><span data-i18n="settings.advanced">Advanced</span></a>
-    <a href="#settings-section-monitor"><span data-i18n="settings.monitor">Мониторинг</span><span class="st st--ok" data-i18n="settings.nav.monitor">онлайн</span></a>
+    <a href="#settings-section-monitor"><span data-i18n="settings.monitor">Мониторинг</span><span class="st st--ok" id="settings-nav-monitor-status" data-i18n="settings.nav.monitor">онлайн</span></a>
   </nav>
 
   <div class="settings-content">
+  <div class="settings-worldbar">
+    <label class="settings-field">
+      <span data-i18n="settings.worldbar.label">Мир настроек</span>
+      <select id="settings-world-select"></select>
+    </label>
+    <button type="button" class="btn btn--ghost" id="settings-world-open" data-i18n="settings.worldbar.open">Открыть Атлас</button>
+  </div>
   <section class="settings-section" id="settings-section-general" aria-label="General">
     <h2 data-i18n="settings.general">General</h2>
     <form class="settings-form" id="settings-general-form">
@@ -40,28 +47,33 @@
           <option value="custom">Своя</option>
         </select>
       </label>
-      <label class="settings-field">
-        <span data-i18n="settings.general.host">Хост сервера</span>
-        <input id="settings-server-host" value="127.0.0.1">
-      </label>
-      <label class="settings-field">
-        <span data-i18n="settings.general.port">Порт</span>
-        <input id="settings-server-port" type="number" min="1" max="65535" value="8720">
-      </label>
-      <p class="settings-warning" id="settings-restart-warning" data-i18n="settings.general.restart">Изменение порта требует перезапуска станка.</p>
-      <p class="settings-readonly">
-        <span data-i18n="settings.general.dbpath">Путь базы</span>:
-        <span id="settings-db-path"></span>
-      </p>
-      <p class="settings-readonly">
-        <span data-i18n="settings.general.auth">Аутентификация</span>:
-        <span id="settings-auth"></span>
-      </p>
-      <label class="settings-field settings-field--check">
-        <input id="settings-vector-search" type="checkbox">
-        <span data-i18n="settings.general.vector">Внешний векторный поиск</span>
-      </label>
-      <p class="settings-note" data-i18n="settings.general.vector_hint">Сохранённое предпочтение — живой контур пока не использует.</p>
+      <details class="settings-details">
+        <summary data-i18n="settings.general.system">Системные параметры</summary>
+        <div class="settings-form__inner">
+          <label class="settings-field">
+            <span data-i18n="settings.general.host">Хост сервера</span>
+            <input id="settings-server-host" value="127.0.0.1">
+          </label>
+          <label class="settings-field">
+            <span data-i18n="settings.general.port">Порт</span>
+            <input id="settings-server-port" type="number" min="1" max="65535" value="8720">
+          </label>
+          <p class="settings-warning" id="settings-restart-warning" data-i18n="settings.general.restart">Изменение порта требует перезапуска станка.</p>
+          <p class="settings-readonly">
+            <span data-i18n="settings.general.dbpath">Путь базы</span>:
+            <span id="settings-db-path"></span>
+          </p>
+          <p class="settings-readonly">
+            <span data-i18n="settings.general.auth">Аутентификация</span>:
+            <span id="settings-auth"></span>
+          </p>
+          <label class="settings-field settings-field--check">
+            <input id="settings-vector-search" type="checkbox">
+            <span data-i18n="settings.general.vector">Внешний векторный поиск</span>
+          </label>
+          <p class="settings-note" data-i18n="settings.general.vector_hint">Сохранённое предпочтение — живой контур пока не использует.</p>
+        </div>
+      </details>
       <button type="submit" id="settings-general-save" data-i18n="settings.save">Сохранить</button>
     </form>
   </section>
@@ -144,60 +156,11 @@
   <section class="settings-section" id="settings-section-llm" aria-label="LLM">
     <h2 data-i18n="settings.llm">LLM</h2>
     <form class="settings-form" id="settings-llm-form">
-      <fieldset class="settings-fieldset">
-        <legend data-i18n="settings.llm.generation">Слот генерации (:5001)</legend>
-        <label class="settings-field">
-          <span data-i18n="settings.llm.addr">Адрес</span>
-          <input id="settings-gen-addr" value=":5001">
-        </label>
-        <label class="settings-field">
-          <span data-i18n="settings.llm.key">Ключ</span>
-          <input id="settings-gen-key" type="password" autocomplete="off">
-        </label>
-        <label class="settings-field">
-          <span data-i18n="settings.llm.model">Модель</span>
-          <input id="settings-gen-model">
-        </label>
-        <label class="settings-field">
-          <span data-i18n="settings.llm.timeout">Тайм-аут</span>
-          <input id="settings-gen-timeout" value="30s">
-        </label>
-        <label class="settings-field">
-          <span data-i18n="settings.llm.max_tokens">Максимум токенов</span>
-          <input id="settings-gen-max-tokens" type="number" min="0" value="0">
-        </label>
-        <label class="settings-field">
-          <span data-i18n="settings.llm.temperature">Температура</span>
-          <input id="settings-gen-temperature" type="number" step="0.1" value="0">
-        </label>
-        <label class="settings-field">
-          <span data-i18n="settings.llm.retries">Повторы</span>
-          <input id="settings-gen-retries" type="number" min="0" value="0">
-        </label>
-        <label class="settings-field">
-          <span data-i18n="settings.llm.concurrency">Конкурентность</span>
-          <input id="settings-gen-concurrency" type="number" min="1" value="1">
-        </label>
-      </fieldset>
-      <fieldset class="settings-fieldset">
-        <legend data-i18n="settings.llm.embedding">Слот эмбеддинга (:5002)</legend>
-        <label class="settings-field">
-          <span data-i18n="settings.llm.addr">Адрес</span>
-          <input id="settings-emb-addr" value=":5002">
-        </label>
-        <label class="settings-field">
-          <span data-i18n="settings.llm.key">Ключ</span>
-          <input id="settings-emb-key" type="password" autocomplete="off">
-        </label>
-        <label class="settings-field">
-          <span data-i18n="settings.llm.model">Модель</span>
-          <input id="settings-emb-model">
-        </label>
-        <label class="settings-field">
-          <span data-i18n="settings.llm.timeout">Тайм-аут</span>
-          <input id="settings-emb-timeout" value="30s">
-        </label>
-      </fieldset>
+      <label class="settings-field">
+        <span data-i18n="settings.llm.model">Модель генерации</span>
+        <input id="settings-gen-model" list="settings-installed-models" placeholder="Выберите установленную модель">
+        <datalist id="settings-installed-models"></datalist>
+      </label>
       <label class="settings-field settings-field--check">
         <input id="settings-llm-local" type="checkbox" checked>
         <span data-i18n="settings.llm.local">Локальные вычисления</span>
@@ -210,6 +173,61 @@
         </select>
       </label>
       <div class="settings-presets" id="settings-presets"></div>
+      <details class="settings-details">
+        <summary data-i18n="settings.llm.advanced">Адреса, ключи и лимиты</summary>
+        <div class="settings-form__inner">
+          <fieldset class="settings-fieldset">
+            <legend data-i18n="settings.llm.generation">Слот генерации (:5001)</legend>
+            <label class="settings-field">
+              <span data-i18n="settings.llm.addr">Адрес</span>
+              <input id="settings-gen-addr" value=":5001">
+            </label>
+            <label class="settings-field">
+              <span data-i18n="settings.llm.key">Ключ</span>
+              <input id="settings-gen-key" type="password" autocomplete="off">
+            </label>
+            <label class="settings-field">
+              <span data-i18n="settings.llm.timeout">Тайм-аут</span>
+              <input id="settings-gen-timeout" value="30s">
+            </label>
+            <label class="settings-field">
+              <span data-i18n="settings.llm.max_tokens">Максимум токенов</span>
+              <input id="settings-gen-max-tokens" type="number" min="0" value="0">
+            </label>
+            <label class="settings-field">
+              <span data-i18n="settings.llm.temperature">Температура</span>
+              <input id="settings-gen-temperature" type="number" step="0.1" value="0">
+            </label>
+            <label class="settings-field">
+              <span data-i18n="settings.llm.retries">Повторы</span>
+              <input id="settings-gen-retries" type="number" min="0" value="0">
+            </label>
+            <label class="settings-field">
+              <span data-i18n="settings.llm.concurrency">Конкурентность</span>
+              <input id="settings-gen-concurrency" type="number" min="1" value="1">
+            </label>
+          </fieldset>
+          <fieldset class="settings-fieldset">
+            <legend data-i18n="settings.llm.embedding">Слот эмбеддинга (:5002)</legend>
+            <label class="settings-field">
+              <span data-i18n="settings.llm.addr">Адрес</span>
+              <input id="settings-emb-addr" value=":5002">
+            </label>
+            <label class="settings-field">
+              <span data-i18n="settings.llm.key">Ключ</span>
+              <input id="settings-emb-key" type="password" autocomplete="off">
+            </label>
+            <label class="settings-field">
+              <span data-i18n="settings.llm.embed_model">Модель эмбеддинга</span>
+              <input id="settings-emb-model">
+            </label>
+            <label class="settings-field">
+              <span data-i18n="settings.llm.timeout">Тайм-аут</span>
+              <input id="settings-emb-timeout" value="30s">
+            </label>
+          </fieldset>
+        </div>
+      </details>
       <button type="submit" id="settings-llm-save" data-i18n="settings.save">Сохранить</button>
     </form>
   </section>
@@ -221,35 +239,10 @@
       <label class="settings-field">
         <span data-i18n="settings.providers.catalog.title">Быстрое добавление</span>
         <select id="settings-provider-catalog">
-          <option value="" selected>— Choose a provider to auto-fill —</option>
-          <optgroup label="Major Players">
-            <option value="openai" data-base-url="api.openai.com/v1">OpenAI — GPT-4o, o-series ($) | en de fr es ja zh ru</option>
-            <option value="anthropic" data-base-url="api.anthropic.com">Anthropic — Claude 4/3 ($) | en de fr es ja zh ru</option>
-            <option value="google" data-base-url="generativelanguage.googleapis.com/v1beta/openai">Google Gemini — 2.5/2.0 (free) | en de fr es ja zh ru ar ko hi</option>
-            <option value="cohere" data-base-url="api.cohere.com/v2">Cohere — Command A/R (free) | en de fr es ja zh ru</option>
-            <option value="mistral" data-base-url="api.mistral.ai/v1">Mistral AI — Large/Small, Codestral (free) | en de fr es ja zh ru</option>
-            <option value="together" data-base-url="api.together.xyz/v1">Together AI — Llama, Qwen, DeepSeek ($1 free) | en</option>
-            <option value="groq" data-base-url="api.groq.com/openai/v1">Groq — Ultra-fast Llama, Mixtral (free) | en</option>
-            <option value="fireworks" data-base-url="api.fireworks.ai/inference/v1">Fireworks AI — OSS inference (free) | en</option>
-            <option value="perplexity" data-base-url="api.perplexity.ai">Perplexity — Sonar search-augmented LLM ($) | en</option>
-          </optgroup>
-          <optgroup label="Chinese Providers (Free Tier)">
-            <option value="deepseek" data-base-url="api.deepseek.com/v1">DeepSeek — V3/R1 reasoning | en zh ru</option>
-            <option value="moonshot" data-base-url="api.moonshot.cn/v1">Moonshot (Kimi) — 128K context | en zh</option>
-            <option value="zhipu" data-base-url="open.bigmodel.cn/api/paas/v4">Zhipu (GLM) — GLM-4 family | en zh</option>
-            <option value="baichuan" data-base-url="api.baichuan-ai.com/v1">Baichuan — Baichuan 4 | en zh</option>
-            <option value="minimax" data-base-url="api.minimax.chat/v1">MiniMax — Text-01, 4M context | en zh</option>
-            <option value="sensenova" data-base-url="api.sensenova.cn/v1">SenseNova — SenseTime LLM | en zh</option>
-            <option value="01ai" data-base-url="api.lingyiwanwu.com/v1">01.AI (Yi) — Yi-Lightning | en zh</option>
-            <option value="alibaba" data-base-url="dashscope.aliyuncs.com/compatible-mode/v1">Alibaba (Qwen) — Qwen-MAX/Plus | en zh ru ja ko</option>
-            <option value="baidu" data-base-url="qianfan.baidubce.com/v2">Baidu (Ernie) — ERNIE 4.0/3.5 | en zh</option>
-            <option value="tencent" data-base-url="api.hunyuan.cloud.tencent.com/v1">Tencent (Hunyuan) — text + vision | en zh</option>
-            <option value="bytedance" data-base-url="ark.cn-beijing.volces.com/api/v3">ByteDance (Doubao) — Doubao 1.5 | en zh</option>
-            <option value="stepfun" data-base-url="api.stepfun.com/v1">StepFun — step-2, vision | en zh</option>
-          </optgroup>
+          <option value="" selected data-i18n="settings.providers.catalog.choose">— Выберите провайдера —</option>
         </select>
       </label>
-      <p class="settings-catalog__hint" id="settings-provider-catalog-hint" data-i18n="settings.providers.catalog.hint">Выберите провайдера — имя подставится в форму, base URL появится здесь.</p>
+      <p class="settings-catalog__hint" id="settings-provider-catalog-hint" data-i18n="settings.providers.catalog.hint">Выберите провайдера — имя подставится в форму. Ключ хранится в settings.toml.</p>
     </div>
     <form class="settings-form" id="settings-provider-form">
       <label class="settings-field">
@@ -266,76 +259,87 @@
   </section>
 
   <section class="settings-section" id="settings-section-models" aria-label="Модели">
-    <h2 data-i18n="settings.models">Модели</h2>
-    <div class="settings-models" id="settings-models"></div>
+    <div class="settings-section__head">
+      <h2 data-i18n="settings.models">Модели</h2>
+      <p class="settings-section__hint" data-i18n="settings.models.hint">Нажмите «Установить» — файл скачается на станок, прогресс виден в карточке.</p>
+    </div>
+    <div class="settings-current" id="settings-models-current"></div>
 
     <div class="model-catalog" id="model-catalog">
-      <h3 data-i18n="settings.models.catalog">Каталог для скачивания</h3>
-      <p class="model-catalog__hint" id="model-catalog-hint" data-i18n="settings.models.catalog.hint">Нажмите модель — поля формы заполнятся. Затем «Установить».</p>
+      <div class="model-catalog__head">
+        <h3 data-i18n="settings.models.catalog">Локальные модели</h3>
+        <span class="settings-note" data-i18n="settings.models.catalog.hint">GGUF для llama.cpp. Размер примерный.</span>
+      </div>
       <div class="model-catalog__grid" id="model-catalog-grid"></div>
+      <p class="model-catalog__note" id="model-catalog-note" hidden></p>
     </div>
 
-    <div class="file-browser" id="model-file-browser">
-      <h3 data-i18n="settings.models.local">Локальная модель</h3>
-      <div class="file-browser__path">
-        <label class="settings-field" style="flex:1 1 220px">
-          <span data-i18n="settings.models.local_path">Путь или имя GGUF</span>
-          <input id="model-local-path" placeholder="world_db/models/model.gguf">
+    <div class="settings-models" id="settings-models"></div>
+
+    <details class="settings-details">
+      <summary data-i18n="settings.models.custom">Своя модель по ссылке Hugging Face</summary>
+      <form class="settings-form" id="settings-models-form">
+        <label class="settings-field">
+          <span data-i18n="settings.models.role">Роль</span>
+          <input id="settings-model-role" list="settings-role-names" placeholder="weaver">
         </label>
-        <button type="button" class="btn-ghost" id="model-local-apply" data-i18n="settings.models.local_apply">Подставить</button>
-      </div>
-      <div class="file-browser__pick">
-        <input type="file" id="model-local-file" accept=".gguf,.bin,.safetensors,.pt,.pth">
-        <button type="button" class="btn-ghost" id="model-local-pick" data-i18n="settings.models.local_pick">Выбрать файл…</button>
-      </div>
-      <p class="file-browser__selected" id="model-local-selected" data-i18n="settings.models.local_empty">Файл не выбран</p>
-    </div>
-
-    <form class="settings-form" id="settings-models-form">
-      <label class="settings-field">
-        <span data-i18n="settings.models.role">Роль</span>
-        <input id="settings-model-role">
-      </label>
-      <label class="settings-field">
-        <span data-i18n="settings.models.source">Источник HF</span>
-        <input id="settings-model-source" placeholder="huggingface.co/…">
-      </label>
-      <label class="settings-field">
-        <span data-i18n="settings.models.ref">Модель</span>
-        <input id="settings-model-ref">
-      </label>
-      <button type="submit" id="settings-models-save" data-i18n="settings.models.install">Установить</button>
-    </form>
+        <label class="settings-field">
+          <span data-i18n="settings.models.source">Ссылка на файл</span>
+          <input id="settings-model-source" placeholder="https://huggingface.co/…/model.gguf">
+        </label>
+        <label class="settings-field">
+          <span data-i18n="settings.models.ref">Название модели</span>
+          <input id="settings-model-ref" placeholder="Llama-3.2-3B-Q4_K_M">
+        </label>
+        <button type="submit" id="settings-models-save" data-i18n="settings.models.install">Установить</button>
+      </form>
+    </details>
   </section>
 
   <section class="settings-section" id="settings-section-roles" aria-label="Роли">
-    <h2 data-i18n="settings.roles">Роли</h2>
+    <div class="settings-section__head">
+      <h2 data-i18n="settings.roles">Роли</h2>
+      <p class="settings-section__hint" data-i18n="settings.roles.hint">Какая роль какой моделью отвечает. Для большинства случаев достаточно провайдера и модели.</p>
+    </div>
     <div class="settings-roles" id="settings-roles"></div>
+    <datalist id="settings-role-names">
+      <option value="weaver"></option>
+      <option value="editor"></option>
+      <option value="editor_digest"></option>
+      <option value="compose"></option>
+      <option value="epoch"></option>
+      <option value="analysis"></option>
+    </datalist>
     <form class="settings-form" id="settings-roles-form">
       <label class="settings-field">
-        <span data-i18n="settings.roles.name">Роль (код-имя)</span>
-        <input id="settings-role-name">
+        <span data-i18n="settings.roles.name">Роль</span>
+        <input id="settings-role-name" list="settings-role-names" placeholder="weaver">
       </label>
       <label class="settings-field">
         <span data-i18n="settings.roles.provider">Провайдер</span>
-        <input id="settings-role-provider">
+        <select id="settings-role-provider"></select>
       </label>
       <label class="settings-field">
         <span data-i18n="settings.roles.model">Модель</span>
-        <input id="settings-role-model">
+        <select id="settings-role-model"></select>
       </label>
-      <label class="settings-field">
-        <span data-i18n="settings.roles.temperature">Температура</span>
-        <input id="settings-role-temperature" type="number" step="0.1" value="0">
-      </label>
-      <label class="settings-field">
-        <span data-i18n="settings.roles.prompts">Промпты</span>
-        <textarea id="settings-role-prompts" rows="3"></textarea>
-      </label>
-      <label class="settings-field">
-        <span data-i18n="settings.roles.priority">Приоритет</span>
-        <input id="settings-role-priority" type="number" value="0">
-      </label>
+      <details class="settings-details">
+        <summary data-i18n="settings.roles.advanced">Температура, промпты, приоритет</summary>
+        <div class="settings-form__inner">
+          <label class="settings-field">
+            <span data-i18n="settings.roles.temperature">Температура</span>
+            <input id="settings-role-temperature" type="number" step="0.1" value="0">
+          </label>
+          <label class="settings-field">
+            <span data-i18n="settings.roles.prompts">Промпты</span>
+            <textarea id="settings-role-prompts" rows="3"></textarea>
+          </label>
+          <label class="settings-field">
+            <span data-i18n="settings.roles.priority">Приоритет</span>
+            <input id="settings-role-priority" type="number" value="0">
+          </label>
+        </div>
+      </details>
       <button type="submit" id="settings-roles-save" data-i18n="settings.save">Сохранить</button>
     </form>
   </section>
@@ -353,10 +357,16 @@
           <input id="settings-scout-enabled" type="checkbox">
           <span data-i18n="settings.world.scout">походы наружу</span>
         </label>
-        <label class="settings-field">
-          <span data-i18n="settings.world.key">Ключ внешней модели</span>
-          <input id="settings-paganel-key" type="password" autocomplete="off">
-        </label>
+        <details class="settings-details">
+          <summary data-i18n="settings.world.advanced">Ключ внешней модели</summary>
+          <div class="settings-form__inner">
+            <label class="settings-field">
+              <span data-i18n="settings.world.key">Ключ внешней модели</span>
+              <input id="settings-paganel-key" type="password" autocomplete="off">
+            </label>
+            <p class="settings-note" data-i18n="settings.world.key_hint">Нужен только для походов наружу.</p>
+          </div>
+        </details>
       </div>
       <button type="submit" id="settings-world-save" data-i18n="settings.save">Сохранить</button>
     </form>
