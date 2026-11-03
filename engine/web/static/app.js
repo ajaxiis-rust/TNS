@@ -202,6 +202,7 @@
     wizardLibraryList: "wizard-library-list",
     wizardWorldForm: "wizard-world-form",
     wizardWorldTitle: "wizard-world-title",
+    wizardWorldSlug: "wizard-world-slug",
     wizardWorldSynopsis: "wizard-world-synopsis",
     wizardWorldSocial: "wizard-world-social",
     wizardWorldRating: "wizard-world-rating",
@@ -835,7 +836,7 @@
         updateSynopsisCount();
       });
     }
-    bindSlugAutofill();
+    bindSlugAutofill(IDS.atlasBirthTitle, IDS.atlasBirthSlug);
     var genresFrequent = byId(IDS.atlasGenresFrequent);
     if (genresFrequent) {
       genresFrequent.addEventListener("click", onFrequentGenreClick);
@@ -895,9 +896,9 @@
   }
 
   // Слаг заполняется из названия, пока игрок не поправил его руками.
-  function bindSlugAutofill() {
-    var title = byId(IDS.atlasBirthTitle);
-    var slug = byId(IDS.atlasBirthSlug);
+  function bindSlugAutofill(titleId, slugId) {
+    var title = byId(titleId);
+    var slug = byId(slugId);
     if (!title || !slug) {
       return;
     }
@@ -3159,12 +3160,58 @@
     });
   }
 
+  // Ошибки полей шага мира показываются у своих полей (T-13-05), а не одной
+  // строкой под формой.
+  function setWizardWorldFieldError(field, reason) {
+    var form = byId(IDS.wizardWorldForm);
+    if (!form) {
+      return;
+    }
+    var box = form.querySelector('[data-field-error="' + field + '"]');
+    if (box) {
+      box.textContent = reason || "";
+    }
+    var input = form.querySelector("#wizard-world-" + field.replace(/_/g, "-"));
+    if (input) {
+      input.classList.toggle("is-invalid", !!reason);
+    }
+  }
+
+  function clearWizardWorldErrors() {
+    var form = byId(IDS.wizardWorldForm);
+    if (!form) {
+      return;
+    }
+    form.querySelectorAll("[data-field-error]").forEach(function (node) {
+      node.textContent = "";
+    });
+    form.querySelectorAll(".is-invalid").forEach(function (node) {
+      node.classList.remove("is-invalid");
+    });
+  }
+
+  function wizardWorldSynopsisDefault(title) {
+    var tpl = window.I18N["wizard.world.synopsis_default"] || "Мир «%s» ждёт героя. История ещё не написана.";
+    return tpl.replace("%s", function () { return title; });
+  }
+
   function onWizardWorldSubmit(event) {
     event.preventDefault();
+    clearWizardWorldErrors();
     var title = fieldValue(IDS.wizardWorldTitle);
     if (!title) {
-      formResult(byId(IDS.wizardWorldForm), window.I18N["wizard.world.need_title"] || "Укажите название мира", false);
+      setWizardWorldFieldError("title", window.I18N["wizard.world.need_title"] || "Укажите название мира");
+      formResult(byId(IDS.wizardWorldForm), window.I18N["wizard.world.check_fields"] || "Проверьте отмеченные поля.", false);
       return;
+    }
+    var slug = fieldValue(IDS.wizardWorldSlug) || transliterateSlug(title);
+    if (!/^[a-z0-9-]+$/.test(slug)) {
+      setWizardWorldFieldError("slug", window.I18N["wizard.world.slug_bad"] || "Только латиница, цифры и дефис.");
+      formResult(byId(IDS.wizardWorldForm), window.I18N["wizard.world.check_fields"] || "Проверьте отмеченные поля.", false);
+      return;
+    }
+    if (byId(IDS.wizardWorldSlug)) {
+      byId(IDS.wizardWorldSlug).value = slug;
     }
     var genres = checkedBirthChoices(IDS.wizardWorldGenres);
     if (genres.length === 0) {
@@ -3172,7 +3219,8 @@
     }
     var body = {
       title: title,
-      synopsis: fieldValue(IDS.wizardWorldSynopsis),
+      slug: slug,
+      synopsis: fieldValue(IDS.wizardWorldSynopsis) || wizardWorldSynopsisDefault(title),
       lang: "ru",
       travel_mode: "вымышленная",
       genres: genres,
@@ -3181,9 +3229,9 @@
     };
     var release = setBusy(event.submitter);
     postJSON("/api/atlas/worlds/birth", body).then(function (res) {
-      var slug = res && res.world && res.world.slug;
-      if (slug) {
-        window.__activeSlug = slug;
+      var created = res && res.world && res.world.slug;
+      if (created) {
+        window.__activeSlug = created;
         window.__activeWorldChecked = true;
       }
       formResult(byId(IDS.wizardWorldForm), window.I18N["wizard.world.created"] || "Мир создан", true);
@@ -3192,6 +3240,14 @@
         nextBtn.hidden = false;
       }
     }).catch(function (err) {
+      var fields = (err && err.fields) || [];
+      if (fields.length > 0) {
+        fields.forEach(function (f) {
+          setWizardWorldFieldError(f.field, f.reason);
+        });
+        formResult(byId(IDS.wizardWorldForm), window.I18N["wizard.world.check_fields"] || "Проверьте отмеченные поля.", false);
+        return;
+      }
       formResult(byId(IDS.wizardWorldForm), (err && err.message) || String(err), false);
     }).then(function () {
       release();
@@ -3269,6 +3325,7 @@
     if (worldForm) {
       worldForm.addEventListener("submit", onWizardWorldSubmit);
     }
+    bindSlugAutofill(IDS.wizardWorldTitle, IDS.wizardWorldSlug);
   }
 
   applyThemeClass(resolveTheme());

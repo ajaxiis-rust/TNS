@@ -162,6 +162,13 @@
         <label>
           <span data-i18n="atlas.title">Название мира</span>
           <input type="text" id="wizard-world-title" required>
+          <small class="atlas-field__error" data-field-error="title"></small>
+        </label>
+        <label>
+          <span data-i18n="atlas.slug">Адрес мира</span>
+          <input type="text" id="wizard-world-slug" name="slug" autocomplete="off" placeholder="dark-realm">
+          <small class="atlas-field__hint" data-i18n="wizard.world.slug_hint">Латиницей, заполняется из названия.</small>
+          <small class="atlas-field__error" data-field-error="slug"></small>
         </label>
         <label>
           <span data-i18n="atlas.synopsis">О чём история</span>

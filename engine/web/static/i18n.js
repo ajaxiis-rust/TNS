@@ -339,6 +339,10 @@ window.I18N = {
   "wizard.world.hint": "Названия и жанра достаточно — остальное уточните позже.",
   "wizard.world.need_title": "Укажите название мира",
   "wizard.world.created": "Мир создан",
+  "wizard.world.slug_hint": "Латиницей, заполняется из названия — можно поправить.",
+  "wizard.world.slug_bad": "Только латиница, цифры и дефис.",
+  "wizard.world.check_fields": "Проверьте отмеченные поля.",
+  "wizard.world.synopsis_default": "Мир «%s» ждёт героя. История ещё не написана.",
   "wizard.done.title": "Готово",
   "wizard.done.hint": "Всё на месте. Настройки можно менять позже в «Настройках».",
   "wizard.done.start": "Начать играть"
