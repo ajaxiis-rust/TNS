@@ -10,12 +10,14 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"tns65/internal/birth"
 	"tns65/internal/db"
 	"tns65/internal/journal"
+	"tns65/internal/library"
 	"tns65/internal/models"
 	"tns65/internal/testkit"
 	"tns65/internal/workshop"
@@ -254,6 +256,53 @@ func TestAtlasBirthOptions(t *testing.T) {
 	}
 	if len(out.Langs) != 7 {
 		t.Fatalf("языки = %v, want 7", out.Langs)
+	}
+}
+
+// TestAtlasBirthFanficSourceBook — рождение фанфика через HTTP резолвит книгу
+// полки и пишет source_book_id/source_book_name в world_meta (T-12-13).
+func TestAtlasBirthFanficSourceBook(t *testing.T) {
+	dir := setupAtlas(t)
+	oldLib := libraryRoot
+	libraryRoot = dir
+	t.Cleanup(func() { libraryRoot = oldLib })
+
+	shelf := filepath.Join(dir, "library")
+	if err := library.Save(shelf, []library.Book{{
+		ID:        "garry-potter",
+		Name:      "Гарри Поттер",
+		Format:    "txt",
+		Lang:      "ru",
+		Status:    library.StatusImported,
+		CreatedAt: "2026-01-01T00:00:00Z",
+	}}); err != nil {
+		t.Fatalf("Save полки: %v", err)
+	}
+
+	body := strings.Replace(atlasAncketaJSON("fanfic-mir"),
+		`"genres":["фэнтези","хоррор"]`, `"genres":["фанфик"],"source_book":"garry-potter"`, 1)
+	rr := atlasRequest(t, NewHandler(Config{}), http.MethodPost, atlasBirthPath, body)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("POST %s: status = %d, want 200; body=%s", atlasBirthPath, rr.Code, rr.Body.String())
+	}
+
+	d, err := db.OpenReader(filepath.Join(dir, "worlds", "fanfic-mir", "fanfic-mir.db"))
+	if err != nil {
+		t.Fatalf("open world db: %v", err)
+	}
+	defer d.Close()
+	var idRaw, name string
+	if err := d.QueryRow(`SELECT value FROM world_meta WHERE "key" = 'source_book_id'`).Scan(&idRaw); err != nil {
+		t.Fatalf("source_book_id: %v", err)
+	}
+	if _, err := strconv.ParseInt(idRaw, 10, 64); err != nil {
+		t.Fatalf("source_book_id не число: %q", idRaw)
+	}
+	if err := d.QueryRow(`SELECT value FROM world_meta WHERE "key" = 'source_book_name'`).Scan(&name); err != nil {
+		t.Fatalf("source_book_name: %v", err)
+	}
+	if name != "Гарри Поттер" {
+		t.Fatalf("source_book_name = %q, want %q", name, "Гарри Поттер")
 	}
 }
 

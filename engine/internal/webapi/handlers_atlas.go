@@ -161,6 +161,7 @@ func atlasBirthConfig(a birth.Ancketa, isekai bool) birth.Config {
 		WorldsRoot: root,
 		PacksRoot:  "packs",
 		BaseDBPath: base,
+		LibraryDir: libraryDir(),
 		Embed:      atlasEmbed,
 		Logger:     atlasLogger,
 		Isekai:     isekai,

@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"tns65/internal/db"
 	"tns65/internal/journal"
+	"tns65/internal/library"
 	"tns65/internal/models"
 	"tns65/internal/structural"
 	"tns65/internal/workshop"
@@ -44,6 +46,7 @@ type Config struct {
 	PackCalls      *int            // тестовый счётчик вызовов генерации пачки (T-02-09).
 	Isekai         bool            // переигровка в том же мире (T-02-12).
 	BaseDBPath     string          // путь к замороженной базе языка; пусто — db.BaseRoot/base.<lang>.db.
+	LibraryDir     string          // каталог полки книг; пусто — <WorldsRoot>/library.
 	Embed          models.Embedder // эмбеддер векторов смысла; nil — клиент :5002.
 	EmbedURL       string          // адрес эмбеддера для клиента по умолчанию; пусто — 127.0.0.1:5002.
 	MatchThreshold float64         // порог косинусной близости якоря; 0 — 0.5.
@@ -93,6 +96,10 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 	if packsRoot == "" {
 		packsRoot = "packs"
 	}
+	libraryDir := cfg.LibraryDir
+	if libraryDir == "" {
+		libraryDir = filepath.Join(root, "library")
+	}
 
 	// Шаг 1: валидация до создания каталога — единственная точка входа рождения
 	// (T-02-09): без неё не стартует ни один шаг цепочки — ни базы, ни пачка, ни
@@ -126,6 +133,13 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 	// Язык анкеты — по установленным базам (TUN-2, T-10-03): отказ кодом 2 с
 	// перечнем полей до создания каталога мира, тот же контракт, что у Validate.
 	if fe := validateLangForConfig(a, cfg); fe != nil {
+		return nil, &ExitError{Code: ExitInvalid, Err: &ValidationError{Fields: []FieldError{*fe}}}
+	}
+
+	// Книга-источник фанфика резолвится по id полки до создания каталога (P11
+	// §5.5): id не найден — отказ кодом 2 с полем source_book.
+	sourceBook, fe := resolveSourceBook(a, libraryDir)
+	if fe != nil {
 		return nil, &ExitError{Code: ExitInvalid, Err: &ValidationError{Fields: []FieldError{*fe}}}
 	}
 
@@ -181,6 +195,7 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 		packCalls:      cfg.PackCalls,
 		packsRoot:      packsRoot,
 		baseDBPath:     baseDBPath,
+		sourceBook:     sourceBook,
 		embedder:       embedder,
 		matchThreshold: cfg.MatchThreshold,
 		gazetteerPath:  gazetteerPath,
@@ -211,6 +226,7 @@ type builder struct {
 	packCalls      *int
 	packsRoot      string
 	baseDBPath     string
+	sourceBook     library.Book
 	embedder       models.Embedder
 	matchThreshold float64
 	gazetteerPath  string
@@ -306,7 +322,59 @@ func (b *builder) writeWorldMeta() error {
 			return err
 		}
 	}
-	return nil
+	// Привязка фанфика (P11 §5.5): книга полки регистрируется в реестре
+	// literary.db, а в world_meta пишутся source_book_id и source_book_name.
+	return b.writeSourceBookBinding(h)
+}
+
+// writeSourceBookBinding пишет привязку книги-источника фанфика тем же хэндлом
+// forge, что и остальные ключи world_meta. Без книги-источника (жанр не фанфик)
+// ничего не делает.
+func (b *builder) writeSourceBookBinding(world *db.Handle) error {
+	if b.sourceBook.ID == "" {
+		return nil
+	}
+	lit, err := db.OpenWriterAs(b.literaryDB, db.DBLiterary, db.WriterForge, b.logger)
+	if err != nil {
+		return err
+	}
+	defer lit.Close()
+
+	id, err := workshop.InsertBook(lit, workshop.Book{
+		ShelfID: b.sourceBook.ID,
+		Name:    b.sourceBook.Name,
+		Lang:    b.a.Lang,
+		Status:  library.StatusReady,
+	})
+	if err != nil {
+		return err
+	}
+	if _, err := world.Exec("world_meta",
+		`INSERT INTO world_meta ("key", value) VALUES (?, ?)`, "source_book_id", strconv.FormatInt(id, 10)); err != nil {
+		return err
+	}
+	_, err = world.Exec("world_meta",
+		`INSERT INTO world_meta ("key", value) VALUES (?, ?)`, "source_book_name", b.sourceBook.Name)
+	return err
+}
+
+// resolveSourceBook резолвит книгу-источник фанфика по id полки (P11 §5.5).
+// Пустое значение — книги нет, не ошибка; id не найден в манифесте полки —
+// ошибка поля source_book. Возвращает запись полки для привязки при рождении.
+func resolveSourceBook(a *Ancketa, libraryDir string) (library.Book, *FieldError) {
+	if a.SourceBook == "" {
+		return library.Book{}, nil
+	}
+	books, err := library.Load(libraryDir)
+	if err != nil {
+		return library.Book{}, &FieldError{Field: "source_book", Reason: "полка книг недоступна: " + err.Error()}
+	}
+	for _, bk := range books {
+		if bk.ID == a.SourceBook {
+			return bk, nil
+		}
+	}
+	return library.Book{}, &FieldError{Field: "source_book", Reason: "книга полки не найдена: " + a.SourceBook}
 }
 
 // registrySHA256 — отпечаток канонического реестра семей base/archetypes.json.

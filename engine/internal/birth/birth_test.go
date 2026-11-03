@@ -8,10 +8,12 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
 	"tns65/internal/db"
+	"tns65/internal/library"
 	"tns65/internal/models"
 	"tns65/internal/testkit"
 )
@@ -308,6 +310,94 @@ func assertLangRejected(t *testing.T, worldsRoot string, a *Ancketa, wantReason 
 	worldDir := filepath.Join(worldsRoot, "worlds", a.Slug)
 	if _, statErr := os.Stat(worldDir); !os.IsNotExist(statErr) {
 		t.Fatalf("каталог мира создан при невалидном языке: %v", statErr)
+	}
+}
+
+// TestBirthSourceBookBinding — рождение фанфика с книгой-источником: world_meta
+// получает source_book_id и source_book_name, а реестр literary.db — строку
+// книги с полочным id (P11 §5.5, T-12-13).
+func TestBirthSourceBookBinding(t *testing.T) {
+	dir := t.TempDir()
+
+	// Полка с книгой-источником.
+	shelf := filepath.Join(dir, "library")
+	book := library.Book{
+		ID:        "garry-potter",
+		Name:      "Гарри Поттер",
+		Format:    "txt",
+		Lang:      "ru",
+		Status:    library.StatusImported,
+		CreatedAt: "2026-01-01T00:00:00Z",
+	}
+	if err := library.Save(shelf, []library.Book{book}); err != nil {
+		t.Fatalf("Save полки: %v", err)
+	}
+
+	a := validAncketa()
+	a.Genres = []string{"фанфик"}
+	a.SourceBook = "garry-potter"
+
+	res, err := Birth(a, Config{WorldsRoot: dir, BaseDBPath: testBaseDB(t, dir), Embed: testkit.NewFakeEmbed()})
+	if err != nil {
+		t.Fatalf("Birth с книгой-источником: %v", err)
+	}
+
+	worldDB := openReader(t, res.WorldDB)
+	var idRaw, name string
+	if err := worldDB.QueryRow(`SELECT value FROM world_meta WHERE "key" = 'source_book_id'`).Scan(&idRaw); err != nil {
+		t.Fatalf("source_book_id в world_meta: %v", err)
+	}
+	bookID, err := strconv.ParseInt(idRaw, 10, 64)
+	if err != nil {
+		t.Fatalf("source_book_id не число: %q", idRaw)
+	}
+	if err := worldDB.QueryRow(`SELECT value FROM world_meta WHERE "key" = 'source_book_name'`).Scan(&name); err != nil {
+		t.Fatalf("source_book_name в world_meta: %v", err)
+	}
+	if name != "Гарри Поттер" {
+		t.Fatalf("source_book_name = %q, want %q", name, "Гарри Поттер")
+	}
+
+	// Реестр литературной базы содержит книгу с полочным id и совпадающим id.
+	litDB := openReader(t, res.LiteraryDB)
+	var shelfID, bookName string
+	if err := litDB.QueryRow(`SELECT shelf_id, name FROM book WHERE id = ?`, bookID).Scan(&shelfID, &bookName); err != nil {
+		t.Fatalf("книга в реестре по id %d: %v", bookID, err)
+	}
+	if shelfID != "garry-potter" || bookName != "Гарри Поттер" {
+		t.Fatalf("реестр: shelf_id=%q name=%q, want garry-potter/Гарри Поттер", shelfID, bookName)
+	}
+}
+
+// TestBirthSourceBookRequired — фанфик без книги-источника (или с id, которого
+// нет на полке) отвергается ошибкой поля source_book (P11 §5.5, T-12-13).
+func TestBirthSourceBookRequired(t *testing.T) {
+	dir := t.TempDir()
+
+	// Фанфик с пустой книгой-источником.
+	a := validAncketa()
+	a.Genres = []string{"фанфик"}
+	a.SourceBook = ""
+	_, err := Birth(a, Config{WorldsRoot: dir, BaseDBPath: testBaseDB(t, dir), Embed: testkit.NewFakeEmbed()})
+	var ee *ExitError
+	if !errors.As(err, &ee) || ee.Code != ExitInvalid {
+		t.Fatalf("фанфик без книги: код отказа %v, want ExitInvalid; err=%v", ee, err)
+	}
+	if !hasFieldError(err, "source_book") {
+		t.Fatalf("фанфик без книги: ожидалось поле source_book, получено %v", err)
+	}
+
+	// Фанфик с id, которого нет на полке.
+	a = validAncketa()
+	a.Genres = []string{"фанфик"}
+	a.SourceBook = "net-takogo"
+	_, err = Birth(a, Config{WorldsRoot: dir, BaseDBPath: testBaseDB(t, dir), Embed: testkit.NewFakeEmbed()})
+	ee = nil
+	if !errors.As(err, &ee) || ee.Code != ExitInvalid {
+		t.Fatalf("фанфик с отсутствующей книгой: код отказа %v, want ExitInvalid; err=%v", ee, err)
+	}
+	if !hasFieldError(err, "source_book") {
+		t.Fatalf("фанфик с отсутствующей книгой: ожидалось поле source_book, получено %v", err)
 	}
 }
 
