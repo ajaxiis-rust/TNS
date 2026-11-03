@@ -72,17 +72,17 @@
     padding: 8px 0;
   }
   .wizard-check__dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--fg-dim, #9aa0a6);
-    flex: 0 0 auto;
+    flex: 0 0 14px;
+    text-align: center;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--fg-dim, #9aa0a6);
   }
   .wizard-check--ok .wizard-check__dot {
-    background: var(--ok, #9ece6a);
+    color: var(--ok, #9ece6a);
   }
   .wizard-check--warn .wizard-check__dot {
-    background: var(--warn, #e0af68);
+    color: var(--warn, #e0af68);
   }
   .wizard form label {
     display: block;
@@ -166,7 +166,7 @@
     <p data-i18n="wizard.subtitle">Пять коротких шагов — и можно играть.</p>
     <nav class="wizard__stepper" aria-label="Шаги мастера">
       <ol>
-        <li data-wizard-step="0"><button type="button" class="wizard__step" data-wizard-goto="0"><span data-i18n="wizard.step0">Станция</span></button></li>
+        <li data-wizard-step="0"><button type="button" class="wizard__step" data-wizard-goto="0"><span data-i18n="wizard.step0">Компьютер</span></button></li>
         <li data-wizard-step="1"><button type="button" class="wizard__step" data-wizard-goto="1"><span data-i18n="wizard.step1">Модель</span></button></li>
         <li data-wizard-step="2"><button type="button" class="wizard__step" data-wizard-goto="2"><span data-i18n="wizard.step2">Библиотека</span></button></li>
         <li data-wizard-step="3"><button type="button" class="wizard__step" data-wizard-goto="3"><span data-i18n="wizard.step3">Мир</span></button></li>
@@ -175,7 +175,7 @@
     </nav>
 
     <section class="wizard-step" data-wizard-step-panel="0">
-      <h2 data-i18n="wizard.station.title">Проверяю станцию</h2>
+      <h2 data-i18n="wizard.station.title">Проверяю компьютер</h2>
       <p class="wizard-hint" data-i18n="wizard.station.hint">Что уже есть и что понадобится для игры.</p>
       <ul id="wizard-station"></ul>
       <div class="wizard-engine" id="wizard-engine">
@@ -200,7 +200,7 @@
 
     <section class="wizard-step" data-wizard-step-panel="1" hidden>
       <h2 data-i18n="wizard.model.title">Модель для понимания смысла</h2>
-      <p class="wizard-hint" data-i18n="wizard.model.hint">BGE-M3 превращает текст в векторы. Выберите вариант по памяти станка и установите.</p>
+      <p class="wizard-hint" data-i18n="wizard.model.hint">BGE-M3 превращает текст в векторы. Выберите вариант по характеристикам компьютера (объём памяти, видеокарта) и установите.</p>
       <div class="model-catalog__grid" id="wizard-model-cards"></div>
       <div class="wizard-actions">
         <button type="button" class="btn btn--ghost" data-wizard-back="0" data-i18n="wizard.back">Назад</button>
@@ -257,7 +257,7 @@
           <span data-i18n="atlas.genres">Жанры</span>
           <div class="choice-grid" id="wizard-world-genres"></div>
         </label>
-        <button type="submit" class="btn btn--primary" data-i18n="atlas.birth.submit">Родить мир</button>
+        <button type="submit" class="btn btn--primary" data-i18n="atlas.birth.submit">Создать мир</button>
       </form>
       <div class="wizard-actions">
         <button type="button" class="btn btn--ghost" data-wizard-back="2" data-i18n="wizard.back">Назад</button>

@@ -1828,7 +1828,7 @@
     "settings-channel-local": "Куда смотрит туннель: локальный адрес веб-интерфейса.",
     "settings-channel-token": "Токен бота от @BotFather. Хранится в settings.toml с правами 0600.",
     "settings-channel-chat-id": "Ваш chat_id в Telegram. Бот отвечает только этому чату.",
-    "settings-memory-max": "Сколько записей памяти станка хранить.",
+    "settings-memory-max": "Сколько записей памяти движка хранить.",
     "settings-memory-similarity": "Порог похожести для поиска по памяти: 0..1.",
     "settings-memory-halflife": "За сколько дней запись памяти «остывает» вдвое.",
     "settings-global-luck": "Общая удача мира: множитель на случайные события.",
@@ -3352,7 +3352,7 @@
     });
     setHTMLIfChanged(box, rows.map(function (r) {
       return '<li class="wizard-check ' + (r.ok ? "wizard-check--ok" : "wizard-check--warn") + '">' +
-        '<span class="wizard-check__dot"></span>' + escapeHTML(r.text) + "</li>";
+        '<span class="wizard-check__dot" aria-hidden="true">' + (r.ok ? "✓" : "✗") + "</span>" + escapeHTML(r.text) + "</li>";
     }).join(""));
     renderWizardEngine(server);
   }
