@@ -467,6 +467,80 @@ func TestModelInstallWithoutWorld(t *testing.T) {
 	}
 }
 
+// TestEmbedModelInstallsIntoEmbedDir — «Проверка» T-12-16: карточка BGE-M3
+// ставит эмбеддинг-модель в world_db/models/embed/.
+func TestEmbedModelInstallsIntoEmbedDir(t *testing.T) {
+	oldRoot := modelsRoot
+	modelsRoot = filepath.Join(t.TempDir(), "models")
+	oldFetch := fetchModelFile
+	fetchModelFile = func(_ context.Context, _ string, progress func(float64)) ([]byte, error) {
+		progress(1)
+		return []byte("bge-m3"), nil
+	}
+	t.Cleanup(func() {
+		modelsRoot = oldRoot
+		fetchModelFile = oldFetch
+	})
+
+	body, _ := json.Marshal(map[string]string{
+		"role":      "embed",
+		"source":    "https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q8_0.gguf",
+		"model_ref": "bge-m3-Q8_0",
+	})
+	rr := mcpRequest(t, handleSettingsModelInstall, http.MethodPost, settingsModelsInstallPath, body, "application/json")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("install embed: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	manifestPath := filepath.Join(modelDir("embed"), "current.json")
+	raw, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatalf("эмбеддинг-модель не легла в world_db/models/embed/: %v", err)
+	}
+	var m modelManifest
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	if m.Role != "embed" || m.ModelRef != "bge-m3-Q8_0" {
+		t.Fatalf("манифест = %+v, want embed/bge-m3-Q8_0", m)
+	}
+}
+
+// TestSettingsReportsRamGB — рекомендация по RAM (T-12-16): ответ настроек
+// отдаёт объём памяти станка для подсветки подходящего варианта BGE-M3.
+func TestSettingsReportsRamGB(t *testing.T) {
+	seedSettingsWorld(t)
+	rr := mcpRequest(t, handleSettingsGet, http.MethodGet, settingsPath, nil, "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET settings: status = %d", rr.Code)
+	}
+	var out settingsResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.RamGB < 0 {
+		t.Fatalf("ram_gb = %f, want >= 0", out.RamGB)
+	}
+}
+
+// TestParseMemTotalKB — разбор строки MemTotal из /proc/meminfo.
+func TestParseMemTotalKB(t *testing.T) {
+	cases := []struct {
+		line string
+		want float64
+	}{
+		{"MemTotal: 16440624 kB", 16440624},
+		{"MemTotal:  8388608 kB", 8388608},
+		{"MemTotal: 16777216 kB", 16777216},
+		{"MemTotal: неизвестно", 0},
+		{"", 0},
+	}
+	for _, c := range cases {
+		if got := parseMemTotalKB(c.line); got != c.want {
+			t.Errorf("parseMemTotalKB(%q) = %f, want %f", c.line, got, c.want)
+		}
+	}
+}
+
 // TestModelStatusEndpoint — карточка модели читает прогресс загрузки отдельным
 // маршрутом, пока POST установки ещё не вернулся.
 func TestModelStatusEndpoint(t *testing.T) {

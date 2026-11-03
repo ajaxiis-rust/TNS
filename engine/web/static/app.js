@@ -237,6 +237,33 @@
       label: "Qwen 2.5 3B",
       size: "1,9 ГБ",
       note: "Для разбора сцен и служебных задач."
+    },
+    {
+      role: "embed",
+      ref: "bge-m3-Q4_K_M",
+      source: "https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q4_K_M.gguf",
+      label: "BGE-M3 Q4_K_M",
+      size: "438 МБ",
+      note: "Эмбеддинг-модель для векторов смысла (dim 1024).",
+      ram: "RAM < 8 ГБ"
+    },
+    {
+      role: "embed",
+      ref: "bge-m3-Q8_0",
+      source: "https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q8_0.gguf",
+      label: "BGE-M3 Q8_0",
+      size: "634 МБ",
+      note: "Эмбеддинг-модель для векторов смысла (dim 1024).",
+      ram: "RAM 8–16 ГБ"
+    },
+    {
+      role: "embed",
+      ref: "bge-m3-F16",
+      source: "https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-F16.gguf",
+      label: "BGE-M3 F16",
+      size: "1,16 ГБ",
+      note: "Эмбеддинг-модель для векторов смысла (dim 1024).",
+      ram: "RAM ≥ 16 ГБ"
     }
   ];
 
@@ -2165,7 +2192,7 @@
     renderSettingsModels(data.models || [], hasWorld);
     renderModelChoices(data.models || []);
     renderRoleProviderChoices(data.presets || [], data.providers || []);
-    renderModelCatalog(data.models || []);
+    renderModelCatalog(data.models || [], data.ram_gb);
     renderModelCatalogNote(hasWorld);
     renderSettingsPlugins();
     renderSettingsFlags(data.advanced ? data.advanced.feature_flags || [] : []);
@@ -2442,7 +2469,7 @@
       }).join("");
   }
 
-  function renderModelCatalog(installed) {
+  function renderModelCatalog(installed, ramGB) {
     var grid = byId(IDS.modelCatalogGrid);
     if (!grid) {
       return;
@@ -2451,20 +2478,30 @@
     (installed || []).forEach(function (m) {
       byRole[m.role] = m;
     });
+    var recommended = recommendedEmbedRef(ramGB);
+    var dict = window.I18N || {};
     grid.innerHTML = MODEL_CATALOG.map(function (m) {
       var current = byRole[m.role];
-      var isInstalled = !!current;
+      var isInstalled = !!current && (!current.model_ref || current.model_ref === m.ref);
       var status = isInstalled
         ? "Установлена: " + (current.model_ref || m.ref)
         : "Не установлена";
+      var ram = m.ram
+        ? '<div class="model-card__meta">' + (dict["settings.models.ram"] || "RAM") + ": " + escapeHTML(m.ram) + "</div>"
+        : "";
+      var badge = m.ref === recommended
+        ? '<span class="chip chip--ok">' + (dict["settings.models.recommended"] || "рекомендуется") + "</span>"
+        : "";
       return '<article class="model-card' + (isInstalled ? " model-card--installed" : "") + '"' +
         ' data-catalog-role="' + escapeHTML(m.role) + '"' +
         ' data-catalog-source="' + escapeHTML(m.source) + '"' +
         ' data-catalog-ref="' + escapeHTML(m.ref) + '">' +
         '<div class="model-card__head"><span class="model-card__title">' + escapeHTML(m.label) + "</span>" +
         '<span class="chip">' + escapeHTML(m.size) + "</span></div>" +
-        '<div class="model-card__meta">роль: ' + escapeHTML(m.role) + " · Q4_K_M</div>" +
+        '<div class="model-card__meta">роль: ' + escapeHTML(m.role) + "</div>" +
         '<p class="model-card__meta">' + escapeHTML(m.note) + "</p>" +
+        ram +
+        badge +
         '<div class="model-card__status" data-model-status>' + escapeHTML(status) + "</div>" +
         '<div class="model-card__progress" hidden><span></span></div>' +
         '<div class="model-card__percent" hidden></div>' +
@@ -2472,6 +2509,18 @@
         (isInstalled ? "Переустановить" : "Установить") + "</button></div>" +
         "</article>";
     }).join("");
+  }
+
+  function recommendedEmbedRef(ramGB) {
+    if (typeof ramGB === "number" && ramGB > 0) {
+      if (ramGB < 8) {
+        return "bge-m3-Q4_K_M";
+      }
+      if (ramGB >= 16) {
+        return "bge-m3-F16";
+      }
+    }
+    return "bge-m3-Q8_0";
   }
 
   function onModelCatalogClick(event) {

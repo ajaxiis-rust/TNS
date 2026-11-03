@@ -139,6 +139,7 @@ type settingsResponse struct {
 	Presets            []settingsPreset   `json:"presets"`
 	Providers          []settingsProvider `json:"providers"`
 	Models             []modelStatus      `json:"models"`
+	RamGB              float64            `json:"ram_gb"`
 }
 
 // channelSettings — исходящий канал станка (T-08-03, F-04.3/F-04.4): край
@@ -316,6 +317,7 @@ func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 		Presets:   presets,
 		Providers: providers,
 		Models:    models,
+		RamGB:     hostRAMGB(),
 	})
 }
 
@@ -1248,6 +1250,36 @@ func modelIntegrityOK(dir string, m modelManifest) bool {
 
 func nowSettingsUTC() string {
 	return time.Now().UTC().Format(time.RFC3339)
+}
+
+// hostRAMGB — объём оперативной памяти станка в гигабайтах для подсказки, какой
+// вариант BGE-M3 предложить (MD-03.2, UI-08). Читает /proc/meminfo; на системах
+// без него (Windows, macOS) возвращает 0 — «неизвестно», карточка тогда не
+// подсвечивает рекомендацию.
+func hostRAMGB() float64 {
+	raw, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return 0
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if strings.HasPrefix(line, "MemTotal:") {
+			return parseMemTotalKB(line) / (1024 * 1024)
+		}
+	}
+	return 0
+}
+
+// parseMemTotalKB разбирает строку «MemTotal: 16440624 kB» в килобайты.
+func parseMemTotalKB(line string) float64 {
+	fields := strings.Fields(line)
+	if len(fields) < 2 {
+		return 0
+	}
+	kb, err := strconv.ParseFloat(fields[1], 64)
+	if err != nil {
+		return 0
+	}
+	return kb
 }
 
 // readWorldMeta читает world_meta как карту «ключ → значение» (только чтение).
