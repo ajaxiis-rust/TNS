@@ -38,6 +38,8 @@
 | LLM — адрес эмбеддинга (`llm.embed_addr`) | Настройки → LLM | `config.yaml` `llm.embed_addr` | `:5002` | да | BGE-M3 |
 | LLM — модель эмбеддинга (`llm.embed_model`) | Настройки → LLM | `config.yaml` `llm.embed_model` | `` | да | |
 | LLM — тайм-аут эмбеддинга (`llm.embed_timeout`) | Настройки → LLM | `config.yaml` `llm.embed_timeout` | `30s` | да | |
+| LLM — путь `llama-server` (`llm.llama_server_path`) | Мастер, шаг 0 → «Движок»; Настройки → LLM (чтение) | `config.yaml` `llm.llama_server_path` | пусто | да | пусто — автоопределение: конфиг → `bin/` → PATH → типовые сборки; путь проверяется запуском `--version` (T-13-06) |
+| Движок — обнаружение и установка llama.cpp | Мастер, шаг 0 → «Движок» | — (`GET /api/settings/llama/detect`, `POST …/scan`) | — | нет | найденный бинарник показывается с путём и версией; скачивание — только при пустом обнаружении; без хостов GitHub в netgate установка отвечает 409 и мастер показывает команду скрипта |
 | LLM — локальные вычисления (`llm.local`) | Настройки → LLM | `config.yaml` `llm.local` | `true` | да | |
 | LLM — семплирование (`llm.sampling`) | Настройки → LLM | `config.yaml` `llm.sampling` | `greedy` | да | `greedy`/`top_p` |
 | LLM — ключ слота генерации | Настройки → LLM | `settings.toml` `llm_gen` | пусто | нет | наружу не отдаётся (только `key_set`) |

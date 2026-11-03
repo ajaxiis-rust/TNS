@@ -196,6 +196,14 @@
     wizardStep3Next: "wizard-step3-next",
     wizardStep4Done: "wizard-step4-done",
     wizardStation: "wizard-station",
+    wizardEngine: "wizard-engine",
+    wizardEngineResult: "wizard-engine-result",
+    wizardEnginePath: "wizard-engine-path",
+    wizardEnginePathSave: "wizard-engine-path-save",
+    wizardEngineScan: "wizard-engine-scan",
+    wizardEngineInstall: "wizard-engine-install",
+    wizardEngineFound: "wizard-engine-found",
+    wizardEngineHint: "wizard-engine-hint",
     wizardModelCards: "wizard-model-cards",
     wizardLibraryForm: "wizard-library-form",
     wizardLibraryFile: "wizard-library-file",
@@ -3018,8 +3026,9 @@
       return;
     }
     var dict = window.I18N || {};
+    var server = station.llama_server || {};
     var rows = [
-      { ok: !!station.llama_server, text: dict["wizard.station.llama"] || "llama-server на месте" },
+      { ok: !!server.found, text: wizardLlamaText(server) },
       { ok: station.gen_port_free !== false, text: dict["wizard.station.gen_port"] || "Порт генератора :5001 свободен" },
       { ok: station.embed_port_free !== false, text: dict["wizard.station.embed_port"] || "Порт эмбеддера :5002 свободен" },
       {
@@ -3031,6 +3040,199 @@
       return '<li class="wizard-check ' + (r.ok ? "wizard-check--ok" : "wizard-check--warn") + '">' +
         '<span class="wizard-check__dot"></span>' + escapeHTML(r.text) + "</li>";
     }).join("");
+    renderWizardEngine(server);
+  }
+
+  // formatPercentText подставляет значения в шаблон с %s.
+  function formatPercentText(tpl, values) {
+    var i = 0;
+    return String(tpl).replace(/%s/g, function () {
+      var value = i < values.length ? values[i] : "";
+      i += 1;
+      return String(value);
+    });
+  }
+
+  // wizardLlamaText — строка шага 0: решённый путь и версия вместо «на месте».
+  function wizardLlamaText(server) {
+    var dict = window.I18N || {};
+    if (server && server.found) {
+      return formatPercentText(dict["wizard.station.llama_found"] || "llama-server: %s (версия %s)",
+        [server.path, server.version || "—"]);
+    }
+    return dict["wizard.station.llama_missing"] || "llama-server не найден";
+  }
+
+  // renderWizardEngine — блок «Движок» шага 0: найденное, ручной путь, поиск по
+  // диску и установка (кнопка видна только когда ничего не нашли, T-13-06).
+  function renderWizardEngine(server) {
+    var box = byId(IDS.wizardEngine);
+    if (!box) {
+      return;
+    }
+    var dict = window.I18N || {};
+    var found = !!(server && server.found);
+    var result = byId(IDS.wizardEngineResult);
+    if (result) {
+      result.textContent = found
+        ? formatPercentText(dict["wizard.engine.found"] || "Найден: %s (версия %s)",
+          [server.path, server.version || "—"])
+        : (dict["wizard.engine.missing"] || "llama-server не найден");
+      result.classList.toggle("is-missing", !found);
+    }
+    var input = byId(IDS.wizardEnginePath);
+    if (input && found && server.path) {
+      input.value = server.path;
+    }
+    var install = byId(IDS.wizardEngineInstall);
+    if (install) {
+      install.hidden = found;
+    }
+    if (found) {
+      var hint = byId(IDS.wizardEngineHint);
+      if (hint) {
+        hint.hidden = true;
+        hint.textContent = "";
+      }
+      var list = byId(IDS.wizardEngineFound);
+      if (list) {
+        list.hidden = true;
+        list.innerHTML = "";
+      }
+    }
+  }
+
+  // renderLlamaScan — найденные на диске пути предлагаются для «Указать путь».
+  function renderLlamaScan(paths) {
+    var list = byId(IDS.wizardEngineFound);
+    if (!list) {
+      return;
+    }
+    var dict = window.I18N || {};
+    list.hidden = false;
+    if (!paths || paths.length === 0) {
+      list.innerHTML = '<li class="wizard-empty">' + escapeHTML(dict["wizard.engine.scan_empty"] || "Ничего не нашлось") + "</li>";
+      return;
+    }
+    list.innerHTML = paths.map(function (path) {
+      return '<li><button type="button" class="btn btn--ghost" data-llama-pick="' + escapeHTML(path) + '">' +
+        escapeHTML(path) + "</button></li>";
+    }).join("");
+  }
+
+  // refreshWizardStation перечитывает шаг 0 после обнаружения, ручного пути и
+  // установки — путь и версия появляются без перезагрузки страницы (T-13-08).
+  function refreshWizardStation() {
+    return apiJSON(FIRST_RUN_PATH).then(function (data) {
+      var state = data || {};
+      var station = state.station || {};
+      renderWizardSteps(state.steps || {});
+      renderWizardStation(station);
+      renderWizardModels(station);
+    }).catch(function () {
+      // Перечитать не удалось — экран мастера остаётся на прежнем состоянии.
+    });
+  }
+
+  function saveLlamaPath(path) {
+    var release = setBusy(byId(IDS.wizardEnginePathSave));
+    return postJSON("/api/settings/llama/detect", { path: path || "" })
+      .then(function () {
+        return refreshWizardStation();
+      })
+      .catch(function (err) {
+        toast((err && err.message) || String(err), false);
+      })
+      .then(function () {
+        release();
+      });
+  }
+
+  function scanLlamaDisk() {
+    var release = setBusy(byId(IDS.wizardEngineScan));
+    postJSON("/api/settings/llama/scan", {})
+      .then(function (data) {
+        renderLlamaScan((data && data.paths) || []);
+      })
+      .catch(function (err) {
+        toast((err && err.message) || String(err), false);
+      })
+      .then(function () {
+        release();
+      });
+  }
+
+  // llamaStageText — стадии установки скриптом поставки.
+  function llamaStageText(stage) {
+    var dict = window.I18N || {};
+    switch (stage) {
+      case "download":
+        return dict["wizard.engine.stage_download"] || "Скачивание…";
+      case "verify":
+        return dict["wizard.engine.stage_verify"] || "Проверка sha256…";
+      case "done":
+        return dict["wizard.engine.stage_done"] || "Готово";
+      case "failed":
+        return dict["wizard.engine.stage_failed"] || "Ошибка установки";
+      default:
+        return "";
+    }
+  }
+
+  // startLlamaInstallPoll опрашивает стадию установки, пока POST не ответил.
+  function startLlamaInstallPoll(hint) {
+    var stopped = false;
+    var timer = setInterval(function () {
+      if (stopped) {
+        return;
+      }
+      apiJSON("/api/settings/llama/detect").then(function (data) {
+        var install = (data && data.install) || {};
+        var text = llamaStageText(install.stage);
+        if (hint && text) {
+          hint.hidden = false;
+          hint.textContent = text;
+        }
+      }).catch(function () {
+        // Стадию узнать не удалось — установка продолжится, таймер не мешает.
+      });
+    }, 1000);
+    return function () {
+      stopped = true;
+      clearInterval(timer);
+    };
+  }
+
+  function installLlamaEngine() {
+    var release = setBusy(byId(IDS.wizardEngineInstall));
+    var hint = byId(IDS.wizardEngineHint);
+    var stopPolling = startLlamaInstallPoll(hint);
+    postJSON("/api/settings/llama/install", {})
+      .then(function () {
+        if (hint) {
+          hint.hidden = true;
+          hint.textContent = "";
+        }
+        return refreshWizardStation();
+      })
+      .catch(function (err) {
+        // 409 — хостов GitHub нет в белом списке netgate: вместо кнопки
+        // скачивания подсказываем ручной запуск скрипта поставки.
+        if (err && err.code === "conflict" && hint) {
+          hint.hidden = false;
+          hint.textContent = (window.I18N || {})["wizard.engine.manual"] || "Скачайте вручную: bash engine/scripts/install-llama.sh";
+          var install = byId(IDS.wizardEngineInstall);
+          if (install) {
+            install.hidden = true;
+          }
+          return;
+        }
+        toast((err && err.message) || String(err), false);
+      })
+      .then(function () {
+        stopPolling();
+        release();
+      });
   }
 
   function renderWizardModels(station) {
@@ -3119,6 +3321,19 @@
       return '<li><span>' + escapeHTML(b.name || b.id) + "</span>" +
         '<span class="chip">' + escapeHTML(b.status || "") + "</span></li>";
     }).join("");
+  }
+
+  function onWizardLlamaPick(event) {
+    var btn = event.target.closest("button[data-llama-pick]");
+    if (!btn) {
+      return;
+    }
+    var path = btn.getAttribute("data-llama-pick") || "";
+    var input = byId(IDS.wizardEnginePath);
+    if (input) {
+      input.value = path;
+    }
+    saveLlamaPath(path);
   }
 
   function onWizardModelClick(event) {
@@ -3312,6 +3527,24 @@
     var step4Done = byId(IDS.wizardStep4Done);
     if (step4Done) {
       step4Done.addEventListener("click", wizardDone);
+    }
+    var engineSave = byId(IDS.wizardEnginePathSave);
+    if (engineSave) {
+      engineSave.addEventListener("click", function () {
+        saveLlamaPath(fieldValue(IDS.wizardEnginePath));
+      });
+    }
+    var engineScan = byId(IDS.wizardEngineScan);
+    if (engineScan) {
+      engineScan.addEventListener("click", scanLlamaDisk);
+    }
+    var engineInstall = byId(IDS.wizardEngineInstall);
+    if (engineInstall) {
+      engineInstall.addEventListener("click", installLlamaEngine);
+    }
+    var engineFound = byId(IDS.wizardEngineFound);
+    if (engineFound) {
+      engineFound.addEventListener("click", onWizardLlamaPick);
     }
     var modelGrid = byId(IDS.wizardModelCards);
     if (modelGrid) {

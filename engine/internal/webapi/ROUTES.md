@@ -47,7 +47,11 @@
 | POST | `/api/settings/models/install` | `{"world":"…","role":"…","source":"https://huggingface.co/…","model_ref":"…"}` — `world` может быть пустым: файл скачается без привязки роли | `{"status":"ok","model_ref":"…","bound":bool}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | GET | `/api/settings/models/status` | query `role=<роль>` (необязательно) | `{"jobs":[{"role","status","progress","error"}]}` — текущие загрузки для прогресса в карточке | `method_not_allowed` |
 | POST | `/api/settings/models/rollback` | `{"world":"…","role":"…"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
-| GET | `/api/first-run` | — | `{"complete":bool,"steps":{"0":{"done":bool,"at":"…"},…},"station":{"llama_server":bool,"gen_port_free":bool,"embed_port_free":bool,"embed_model":"…","ram_gb":N}}` — состояние мастера первого запуска и проверка станции | `method_not_allowed` |
+| GET | `/api/settings/llama/detect` | — | `{"found":bool,"path":"…","version":"…","source":"config|instance|path|candidates","searched":["…"],"install":{"running":bool,"stage":"download|verify|done|failed","error":"…"}}` — обнаружение llama-server: конфиг → `bin/` экземпляра → PATH → типовые каталоги сборки, каждый кандидат проверяется `--version` | `method_not_allowed` |
+| POST | `/api/settings/llama/detect` | `{"path":"…"}` — пустой путь очищает `llm.llama_server_path` | `{"found":bool,"path","version","source":"config","searched":[…]}` — проверка ручного пути запуском `--version` и запись в конфиг | `method_not_allowed`, `bad_request`, `internal` |
+| POST | `/api/settings/llama/scan` | — | `{"paths":["…"]}` — ограниченный поиск по домашнему каталогу (глубина 5, тайм-аут 15 с), скрытые каталоги пропускаются | `method_not_allowed` |
+| POST | `/api/settings/llama/install` | — | `{"installed":true,"path","version","source":"detect|download"}` — сначала обнаружение (найдено — ответ без сети), при пустом результате запуск скрипта поставки; без хостов GitHub в netgate — 409 | `method_not_allowed`, `conflict`, `internal` |
+| GET | `/api/first-run` | — | `{"complete":bool,"steps":{"0":{"done":bool,"at":"…"},…},"station":{"llama_server":{"found":bool,"path":"…","version":"…","source":"…"},"gen_port_free":bool,"embed_port_free":bool,"embed_model":"…","ram_gb":N}}` — состояние мастера первого запуска и проверка станции | `method_not_allowed` |
 | PUT | `/api/first-run/step` | `{"step":"0|1|2|3|4"}` | `{"complete":bool,"steps":{…},"station":{…}}` — отметка шага пройденным, идемпотентно; шаг 4 завершает мастера | `method_not_allowed`, `bad_request`, `internal` |
 | GET | `/api/providers` | — | `{"providers":[{name,key_set,model,quota,cost_millis}]}` — внешние слоты: ключ, модель, остаток лимита вызовов («недоступно» без лимита), стоимость по тарифу из журнала вызовов | `method_not_allowed` |
 | GET | `/api/monitor` | — | `{"slots":[…],"roles":[…],"machines":[…],"degradations":N,"journal_tail":[…]}` — пять блоков мониторинга, только чтение | `method_not_allowed` |
@@ -97,6 +101,10 @@ PUT /api/settings/channel
 POST /api/settings/models/install
 GET /api/settings/models/status
 POST /api/settings/models/rollback
+GET /api/settings/llama/detect
+POST /api/settings/llama/detect
+POST /api/settings/llama/scan
+POST /api/settings/llama/install
 GET /api/first-run
 PUT /api/first-run/step
 GET /api/providers

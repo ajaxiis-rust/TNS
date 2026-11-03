@@ -8,6 +8,8 @@ netgate:
     - huggingface.co                      # HF — менеджер моделей (MD-09.1)
     - "*.huggingface.co"                  # CDN LFS: HF отдаёт файл редиректом
     - "*.hf.co"                           # Xet/CDN: us.aws.cdn.hf.co и другие
+    - github.com                          # поставка llama.cpp (T-13-06, T-12-18)
+    - objects.githubusercontent.com       # ассеты релизов GitHub (редирект LFS)
     - region1.v2.argotunnel.com           # край туннеля cloudflared (F-04.3)
     - region2.v2.argotunnel.com           # край туннеля cloudflared (F-04.3)
     - api.telegram.org                    # Telegram Bot API (F-04.4, T-08-03)
@@ -42,6 +44,9 @@ llm:
   embed_addr: ":5002"
   embed_model: ""
   embed_timeout: 30s
+  # Путь к llama-server; пусто — автоопределение (bin/ → PATH → сборки,
+  # T-13-06). Заполняется визардом и ручной проверкой пути.
+  llama_server_path: ""
   local: true
   sampling: greedy
 

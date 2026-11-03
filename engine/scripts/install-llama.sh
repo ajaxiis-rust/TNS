@@ -23,11 +23,12 @@ SHA_WIN_ARM64="f43d15a78ebac6d7ce96cb16a75469c094cfc328684b3889396bac26447749d4"
 
 usage() {
     cat <<EOF
-usage: $0 [--dry-run] [--bin-dir DIR]
+usage: $0 [--check] [--dry-run] [--bin-dir DIR]
 
 Скачивает закреплённый релиз llama.cpp ($LLAMA_RELEASE), сверяет sha256 и
 ставит llama-server в DIR (по умолчанию engine/bin/).
 
+  --check        сухая проверка без сети: код 0 — llama-server уже стоит
   --dry-run      только показать план, ничего не скачивать
   --bin-dir DIR  каталог установки (по умолчанию engine/bin/)
   -h, --help     эта справка
@@ -83,9 +84,10 @@ sha256_check() {
 }
 
 main() {
-    local dry=0 bin_dir="$ENGINE_ROOT/bin"
+    local dry=0 check=0 bin_dir="$ENGINE_ROOT/bin"
     while [ "$#" -gt 0 ]; do
         case "$1" in
+            --check) check=1 ;;
             --dry-run) dry=1 ;;
             --bin-dir) [ "$#" -ge 2 ] || usage 2; bin_dir="$2"; shift ;;
             -h|--help) usage 0 ;;
@@ -101,6 +103,16 @@ main() {
     fi
     bin_name="llama-server"
     [ "${asset##*.}" = "zip" ] && bin_name="llama-server.exe"
+
+    if [ "$check" = 1 ]; then
+        if [ -x "${bin_dir}/${bin_name}" ]; then
+            echo "llama-server на месте: ${bin_dir}/${bin_name}"
+            "${bin_dir}/${bin_name}" --version || true
+            exit 0
+        fi
+        echo "llama-server не установлен: ${bin_dir}/${bin_name}"
+        exit 1
+    fi
 
     if [ "$dry" = 1 ]; then
         echo "dry-run: релиз $LLAMA_RELEASE"

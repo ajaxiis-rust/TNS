@@ -66,14 +66,27 @@
 
 ```sh
 engine/scripts/install-llama.sh            # скачать и установить в engine/bin/
+engine/scripts/install-llama.sh --check    # сухая проверка: бинарник уже стоит?
 engine/scripts/install-llama.sh --dry-run  # только показать план
 ```
 
 Скрипт скачивает закреплённый релиз llama.cpp (`b12063`) с GitHub, сверяет
 sha256 ассета и кладёт `llama-server` вместе с общими библиотеками плоско в
 `engine/bin/` (RUNPATH `$ORIGIN` находит `libllama*.so` рядом с бинарником).
-Проверка: `engine/bin/llama-server --version`. Обновление — правка
-`LLAMA_RELEASE` и таблицы sha256 в том же скрипте.
+`--check` работает без сети: код 0 — бинарник уже на месте (печатает версию),
+код 1 — его нет. Проверка: `engine/bin/llama-server --version`. Обновление —
+правка `LLAMA_RELEASE` и таблицы sha256 в том же скрипте.
+
+Скачивание — крайняя мера: шаг 0 мастера и `POST /api/settings/llama/install`
+сначала ищут уже установленный `llama-server` — значение `llm.llama_server_path`
+из `config.yaml`, затем `bin/llama-server` экземпляра, затем `PATH`, затем
+типовые каталоги сборки (`~/llama.cpp/build/bin/`, `~/src/llama.cpp/build/bin/`,
+`/opt/llama.cpp/build/bin/`, `~/.local/bin/`, `/usr/local/bin/`). Каждый
+кандидат проверяется запуском `--version` (тайм-аут 5 с). Найденный путь
+записывается в `llm.llama_server_path`, скачивание пропускается. Скачивание
+требует `github.com` и `objects.githubusercontent.com` в `netgate.allowed_hosts`:
+без них маршрут установки отвечает 409, а мастер показывает команду ручного
+запуска скрипта.
 
 ### 2.2. Локальные модели теста — `test-local.sh`
 

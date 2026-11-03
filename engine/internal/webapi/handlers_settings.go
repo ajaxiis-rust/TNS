@@ -1391,13 +1391,15 @@ type firstRunState struct {
 	UpdatedAt string                       `json:"updated_at,omitempty"`
 }
 
-// firstRunStation — итог шага 0 «Проверяю станцию».
+// firstRunStation — итог шага 0 «Проверяю станцию». llama_server несёт
+// решённый путь и версию (T-13-06): визард показывает, что нашлось, и скрывает
+// кнопку скачивания.
 type firstRunStation struct {
-	LlamaServer   bool    `json:"llama_server"`
-	GenPortFree   bool    `json:"gen_port_free"`
-	EmbedPortFree bool    `json:"embed_port_free"`
-	EmbedModel    string  `json:"embed_model"`
-	RamGB         float64 `json:"ram_gb"`
+	LlamaServer   llamaServerStatus `json:"llama_server"`
+	GenPortFree   bool              `json:"gen_port_free"`
+	EmbedPortFree bool              `json:"embed_port_free"`
+	EmbedModel    string            `json:"embed_model"`
+	RamGB         float64           `json:"ram_gb"`
 }
 
 // firstRunResponse — GET/PUT /api/first-run: состояние плюс проверка станции
@@ -1502,12 +1504,13 @@ func buildFirstRunResponse(st firstRunState) firstRunResponse {
 	}
 }
 
-// probeFirstRunStation собирает итог шага 0: есть ли llama-server, свободны ли
-// порты :5001/:5002, установлена ли модель эмбеддингов. Ошибки проверок дают
-// «ложь» — шаг 0 показывает игроку, чего не хватает, но не блокирует экран.
+// probeFirstRunStation собирает итог шага 0: найден ли llama-server (путь и
+// версия), свободны ли порты :5001/:5002, установлена ли модель эмбеддингов.
+// Ошибки проверок дают «ложь» — шаг 0 показывает игроку, чего не хватает, но не
+// блокирует экран.
 func probeFirstRunStation() firstRunStation {
 	st := firstRunStation{RamGB: hostRAMGB()}
-	st.LlamaServer = fileExists("bin/llama-server")
+	st.LlamaServer = llamaStationStatus()
 	st.GenPortFree = supervisor.CheckPortFree(5001) == nil
 	st.EmbedPortFree = supervisor.CheckPortFree(5002) == nil
 	for _, m := range readModelStatuses() {
@@ -1517,10 +1520,4 @@ func probeFirstRunStation() firstRunStation {
 		}
 	}
 	return st
-}
-
-// fileExists сообщает, что path существует и это не каталог.
-func fileExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir()
 }

@@ -105,6 +105,47 @@
     color: var(--fg-dim, #9aa0a6);
     padding: 8px 0;
   }
+  .wizard-engine {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border, #2a2d33);
+  }
+  .wizard-engine h3 {
+    font-size: 16px;
+    margin: 0 0 10px;
+  }
+  .wizard-engine__result {
+    margin: 0 0 10px;
+  }
+  .wizard-engine__result.is-missing {
+    color: var(--warn, #e0af68);
+  }
+  .wizard-engine label {
+    display: block;
+    margin-bottom: 10px;
+  }
+  .wizard-engine label > span {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--fg-dim, #9aa0a6);
+    font-size: 13px;
+  }
+  .wizard-engine input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border, #2a2d33);
+    border-radius: 8px;
+    background: var(--bg-2, #17191d);
+    color: var(--fg, #e8eaed);
+  }
+  .wizard-engine__actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  #wizard-engine-found li {
+    margin-top: 8px;
+  }
 </style>
 <div class="wizard">
   <div class="wizard__card">
@@ -124,6 +165,21 @@
       <h2 data-i18n="wizard.station.title">Проверяю станцию</h2>
       <p class="wizard-hint" data-i18n="wizard.station.hint">Что уже есть и что понадобится для игры.</p>
       <ul id="wizard-station"></ul>
+      <div class="wizard-engine" id="wizard-engine">
+        <h3 data-i18n="wizard.engine.title">Движок</h3>
+        <p class="wizard-engine__result" id="wizard-engine-result"></p>
+        <label>
+          <span data-i18n="wizard.engine.path">Указать путь к llama-server</span>
+          <input type="text" id="wizard-engine-path" autocomplete="off" placeholder="/usr/local/bin/llama-server">
+        </label>
+        <div class="wizard-engine__actions">
+          <button type="button" class="btn" id="wizard-engine-path-save" data-i18n="wizard.engine.path_save">Проверить путь</button>
+          <button type="button" class="btn" id="wizard-engine-scan" data-i18n="wizard.engine.scan">Искать на диске</button>
+          <button type="button" class="btn btn--primary" id="wizard-engine-install" data-i18n="wizard.engine.install" hidden>Установить llama.cpp</button>
+        </div>
+        <ul id="wizard-engine-found" hidden></ul>
+        <p class="wizard-hint" id="wizard-engine-hint" hidden></p>
+      </div>
       <div class="wizard-actions">
         <button type="button" class="btn btn--primary" id="wizard-step0-next" data-i18n="wizard.station.next">Всё в порядке, дальше</button>
       </div>
