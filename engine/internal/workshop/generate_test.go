@@ -133,3 +133,77 @@ func countRefusalLog(t *testing.T, lit *db.Handle, status string) int {
 	}
 	return n
 }
+
+// newCastLit открывает литературную базу для теста спорного случая роли.
+func newCastLit(t *testing.T) *db.Handle {
+	t.Helper()
+	dir := t.TempDir()
+	litPath := filepath.Join(dir, "literary.db")
+	newDB(t, litPath, "literary")
+	lit, err := db.OpenWriterAs(litPath, db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(literary): %v", err)
+	}
+	return lit
+}
+
+// TestResolveCastRole — спорный случай роли (P12 §5.9 п.5, T-12-24): слот
+// отвечает одной ролью из спорного списка; промпт несёт героя и роли.
+func TestResolveCastRole(t *testing.T) {
+	lit := newCastLit(t)
+	defer lit.Close()
+
+	slot := &ladderSlot{answers: []string{"союзник"}}
+	workshop.SetSlot(slot)
+	defer workshop.SetSlot(nil)
+
+	role, err := workshop.ResolveCastRole(context.Background(), lit, "Снейп",
+		"Снейп угрожал и спас Гарри.", []string{"антагонист", "союзник"})
+	if err != nil {
+		t.Fatalf("ResolveCastRole: %v", err)
+	}
+	if role != "союзник" {
+		t.Fatalf("роль = %q, want «союзник»", role)
+	}
+	if slot.calls != 1 {
+		t.Fatalf("вызовов слота = %d, want 1", slot.calls)
+	}
+	if !strings.Contains(slot.prompts[0], "Снейп") || !strings.Contains(slot.prompts[0], "антагонист") {
+		t.Fatalf("промпт без героя/ролей: %q", slot.prompts[0])
+	}
+}
+
+// TestResolveCastRoleRefusal — отказ слота оставляет маркеры (пустая роль).
+func TestResolveCastRoleRefusal(t *testing.T) {
+	lit := newCastLit(t)
+	defer lit.Close()
+
+	slot := &ladderSlot{answers: []string{"не могу помочь с этим запросом."}}
+	workshop.SetSlot(slot)
+	defer workshop.SetSlot(nil)
+
+	role, err := workshop.ResolveCastRole(context.Background(), lit, "Снейп",
+		"Снейп угрожал и спас Гарри.", []string{"антагонист", "союзник"})
+	if err != nil {
+		t.Fatalf("ResolveCastRole(отказ): %v", err)
+	}
+	if role != "" {
+		t.Fatalf("при отказе роль = %q, want пусто (маркеры остаются)", role)
+	}
+}
+
+// TestResolveCastRoleNoSlot — без слота спорный случай не зовёт модель.
+func TestResolveCastRoleNoSlot(t *testing.T) {
+	lit := newCastLit(t)
+	defer lit.Close()
+
+	workshop.SetSlot(nil)
+	role, err := workshop.ResolveCastRole(context.Background(), lit, "Снейп",
+		"Снейп угрожал и спас Гарри.", []string{"антагонист", "союзник"})
+	if err != nil {
+		t.Fatalf("ResolveCastRole(без слота): %v", err)
+	}
+	if role != "" {
+		t.Fatalf("без слота роль = %q, want пусто", role)
+	}
+}

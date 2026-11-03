@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"tns65/internal/censor"
 	"tns65/internal/db"
@@ -142,4 +143,43 @@ func writeRefusalLog(lit *db.Handle, role string) error {
 			refusalKind, refusalTask, role, now, now, "", version.Version)
 		return err
 	})
+}
+
+// CastRole — роль слота разбора спорного случая роли героя (P12 §5.9 п.5):
+// словарные маркеры дали ничью, слот решает по куску; отказ — маркеры остаются.
+const CastRole = "cast-role"
+
+// ResolveCastRole решает спорный случай роли слотом (P12 §5.9 п.5): промпт с
+// именем героя, текстом куска и спорными ролями; слот отвечает одной ролью из
+// закрытого списка. Отказ лестницы/пустой выход — пустая строка без ошибки, то
+// есть маркеры остаются. Допустимость роли проверяет вызывающий (закрытый
+// список живёт в cast).
+func ResolveCastRole(ctx context.Context, lit *db.Handle, name, chunkText string, tied []string) (string, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if slotForProvider(DefaultProvider) == nil {
+		return "", nil
+	}
+	out, err := GenerateWithRetry(ctx, lit, GenerateOptions{
+		Role:     CastRole,
+		Lang:     "ru",
+		Provider: DefaultProvider,
+	}, func(_ int, _ string) string { return castRolePrompt(name, chunkText, tied) })
+	if err != nil {
+		return "", nil // отказ слота — маркеры остаются (P12 §5.9 п.5).
+	}
+	return strings.TrimSpace(out), nil
+}
+
+// castRolePrompt строит промпт спорного случая роли: герой, кусок и спорные
+// роли из словаря. Слот должен ответить одной ролью из списка.
+func castRolePrompt(name, chunkText string, tied []string) string {
+	raw, _ := json.Marshal(map[string]any{
+		"task":  CastRole,
+		"hero":  name,
+		"chunk": chunkText,
+		"roles": tied,
+	})
+	return string(raw)
 }
