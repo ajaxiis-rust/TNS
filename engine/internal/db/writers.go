@@ -63,13 +63,17 @@ var writerMap = map[writerKey]Writer{
 	{DBBase, "vectors"}:    WriterBake,
 
 	// literary.db.
-	{DBLiterary, "book"}:            WriterForge,
-	{DBLiterary, "bank_pool"}:       WriterForge,
-	{DBLiterary, "lit_template"}:    WriterForge,
-	{DBLiterary, "horoscope_issue"}: WriterForge,
-	{DBLiterary, "forge_log"}:       WriterForge,
-	{DBLiterary, "artifact"}:        WriterForge,
-	{DBLiterary, "sediment_scene"}:  WriterSediment,
+	{DBLiterary, "book"}:                   WriterForge,
+	{DBLiterary, "book_chunk"}:             WriterForge,
+	{DBLiterary, "book_character"}:         WriterForge,
+	{DBLiterary, "book_character_mention"}: WriterForge,
+	{DBLiterary, "book_character_role"}:    WriterForge,
+	{DBLiterary, "bank_pool"}:              WriterForge,
+	{DBLiterary, "lit_template"}:           WriterForge,
+	{DBLiterary, "horoscope_issue"}:        WriterForge,
+	{DBLiterary, "forge_log"}:              WriterForge,
+	{DBLiterary, "artifact"}:               WriterForge,
+	{DBLiterary, "sediment_scene"}:         WriterSediment,
 
 	// world db: places, paths, world_meta — forge; остальное — core (D-09.7).
 	{DBWorld, "places"}:           WriterForge,

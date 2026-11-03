@@ -1,6 +1,10 @@
 artifact
 bank_pool
 book
+book_chunk
+book_character
+book_character_mention
+book_character_role
 forge_log
 horoscope_issue
 lit_template

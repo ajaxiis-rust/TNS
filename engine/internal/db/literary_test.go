@@ -66,15 +66,15 @@ func TestLiterarySchema(t *testing.T) {
 		}
 	}
 
-	// 3. Учёт миграций: user_version == 4 и schema_migrations ==
+	// 3. Учёт миграций: user_version == 5 и schema_migrations ==
 	// [{1, "0001_init"}, {2, "0002_sediment_idempotency"}, {3, "0003_composition"},
-	// {4, "0004_book"}].
+	// {4, "0004_book"}, {5, "0005_cast"}].
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 4 {
-		t.Errorf("user_version = %d, want 4", uv)
+	if uv != 5 {
+		t.Errorf("user_version = %d, want 5", uv)
 	}
 
 	type migration struct {
@@ -95,7 +95,7 @@ func TestLiterarySchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_sediment_idempotency"}, {3, "0003_composition"}, {4, "0004_book"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_sediment_idempotency"}, {3, "0003_composition"}, {4, "0004_book"}, {5, "0005_cast"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
@@ -218,6 +218,61 @@ func TestLiterarySchema(t *testing.T) {
 		t.Errorf("bank_pool.book_id = %d, want %d", gotBookID, bookID)
 	}
 
+	// 6b. Карта книги (T-12-21): четыре таблицы из P12 §5.9 и уникальность
+	// (book_id, ord) на book_chunk.
+	wantCastCols := map[string][]string{
+		"book_chunk": {
+			"id", "book_id", "ord", "chapter", "text_hash",
+		},
+		"book_character": {
+			"id", "book_id", "name", "aliases", "appearance", "description",
+			"traits", "confidence", "first_chunk", "last_chunk", "mentions",
+			"status", "created_at",
+		},
+		"book_character_mention": {
+			"character_id", "chunk_id", "count",
+		},
+		"book_character_role": {
+			"id", "character_id", "from_chunk", "to_chunk", "role",
+			"confidence", "evidence",
+		},
+	}
+	for tbl, want := range wantCastCols {
+		if got := colsOf(t, w, tbl); !slices.Equal(got, want) {
+			t.Errorf("%s columns = %v, want %v", tbl, got, want)
+		}
+	}
+
+	chunkRes, err := w.Exec(`INSERT INTO book_chunk (book_id, ord, chapter, text_hash) VALUES (?, 1, '1', 'h1')`, bookID)
+	if err != nil {
+		t.Fatalf("INSERT book_chunk: %v", err)
+	}
+	chunkID, err := chunkRes.LastInsertId()
+	if err != nil {
+		t.Fatalf("book_chunk LastInsertId: %v", err)
+	}
+	if _, err := w.Exec(`INSERT INTO book_chunk (book_id, ord, chapter, text_hash) VALUES (?, 1, '1', 'h1')`, bookID); err == nil {
+		t.Errorf("повторный кусок (book_id, ord) должен упасть по UNIQUE")
+	}
+
+	charRes, err := w.Exec(`INSERT INTO book_character (book_id, name, status, created_at) VALUES (?, 'Снейп', 'candidate', '2026-01-01T00:00:00Z')`, bookID)
+	if err != nil {
+		t.Fatalf("INSERT book_character: %v", err)
+	}
+	charID, err := charRes.LastInsertId()
+	if err != nil {
+		t.Fatalf("book_character LastInsertId: %v", err)
+	}
+	if _, err := w.Exec(`INSERT INTO book_character_mention (character_id, chunk_id, count) VALUES (?, ?, 3)`, charID, chunkID); err != nil {
+		t.Fatalf("INSERT book_character_mention: %v", err)
+	}
+	if _, err := w.Exec(`INSERT INTO book_character_mention (character_id, chunk_id, count) VALUES (?, ?, 4)`, charID, chunkID); err == nil {
+		t.Errorf("повторное упоминание (character_id, chunk_id) должно упасть по PK")
+	}
+	if _, err := w.Exec(`INSERT INTO book_character_role (character_id, from_chunk, to_chunk, role, confidence, evidence) VALUES (?, 1, 3, 'антагонист', 0.8, 'угрожал')`, charID); err != nil {
+		t.Fatalf("INSERT book_character_role: %v", err)
+	}
+
 	// 7. Старая фикстура (схема до 0003) с записью банка: после миграции
 	// деградационные дефолты family_primary='' и inversion_flag=0 (SCR-§4).
 	oldPath := filepath.Join(t.TempDir(), "literary-old.db")
@@ -268,5 +323,12 @@ func TestLiterarySchema(t *testing.T) {
 	}
 	if oldBookNull != 1 {
 		t.Errorf("old bank_pool row book_id должен быть NULL")
+	}
+	// После миграции 0005 старый мир открывается и получает таблицы карты книги.
+	if _, err := ow.Exec(`SELECT COUNT(*) FROM book_chunk`); err != nil {
+		t.Errorf("old fixture book_chunk после 0005: %v", err)
+	}
+	if _, err := ow.Exec(`SELECT COUNT(*) FROM book_character`); err != nil {
+		t.Errorf("old fixture book_character после 0005: %v", err)
 	}
 }
