@@ -415,6 +415,33 @@ func sourceFormat(name string) (string, bool) {
 	}
 }
 
+// SetForgeProgress обновляет прогресс карточки сырья мира (P11 §5.6, шаг 5):
+// статус forging и процент. Вызывается однозадачной задачей forge-book, чтобы
+// вкладка MCP показывала живой прогресс; ошибка записи ковку не гасит.
+func SetForgeProgress(slug, name string, progress float64) error {
+	items, err := readSourceManifest(slug)
+	if err != nil {
+		return err
+	}
+	changed := false
+	for i := range items {
+		if items[i].Name != name {
+			continue
+		}
+		items[i].Status = sourceStatusForging
+		items[i].Progress = progress
+		changed = true
+	}
+	if !changed {
+		return nil
+	}
+	if err := writeSourceManifest(slug, items); err != nil {
+		return err
+	}
+	broadcastMcp(slug, "forge")
+	return nil
+}
+
 // handleMcpForge — POST /api/mcp/forge: запускает ковку всех книг в очереди.
 // Каждая книга — отдельный однозадачный запуск через рой (ForgeBookSpec →
 // swarm.Launch), как forge-card (T-05-06); очередь мастерской не трогается.
@@ -452,6 +479,12 @@ func handleMcpForge(w http.ResponseWriter, r *http.Request) {
 	for i := range items {
 		if items[i].Status != sourceStatusQueued {
 			continue
+		}
+		items[i].Status = sourceStatusForging
+		items[i].Progress = 0
+		if err := writeSourceManifest(slug, items); err != nil {
+			writeError(w, http.StatusInternalServerError, codeInternal, "source manifest write failed")
+			return
 		}
 		spec := workshop.ForgeBookSpec(exe, workshop.ForgeBookPayload{
 			InputPath: filepath.Join(mcpSourcesDir(slug), items[i].Name),

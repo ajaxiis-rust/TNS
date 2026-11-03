@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 
@@ -20,6 +21,7 @@ import (
 	"tns65/internal/langpack"
 	"tns65/internal/netgate"
 	"tns65/internal/portgate"
+	"tns65/internal/structural"
 	"tns65/internal/supervisor"
 	"tns65/internal/swarm"
 	"tns65/internal/version"
@@ -433,14 +435,25 @@ func launchSwarmTask(args []string) error {
 
 // runSwarmTask — скрытая точка входа однозадачной задачи роя: первой строкой
 // stdout печатает рукопожатие, затем выполняет работу и печатает результат.
+// forge-card получает три аргумента (задача, литературная база, payload);
+// forge-book — два (задача, payload), базы открывает сам по слагу мира.
 func runSwarmTask(args []string) int {
 	hs, _ := json.Marshal(swarm.Handshake{Version: version.Version})
 	fmt.Println(string(hs))
-	if len(args) != 2 || args[0] != "forge-card" {
+	switch {
+	case len(args) == 3 && args[0] == "forge-card":
+		return runForgeCardTask(args[1], args[2])
+	case len(args) == 2 && args[0] == "forge-book":
+		return runForgeBookTask(args[1])
+	default:
 		return 2
 	}
+}
 
-	literary, err := db.OpenWriterAs(args[0], db.DBLiterary, db.WriterForge, nil)
+// runForgeCardTask выполняет задачу ковки карточки роя (T-05-02): литературная
+// база мира и payload заказа complement.
+func runForgeCardTask(literaryPath, payloadJSON string) int {
+	literary, err := db.OpenWriterAs(literaryPath, db.DBLiterary, db.WriterForge, nil)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -448,7 +461,7 @@ func runSwarmTask(args []string) int {
 	defer literary.Close()
 
 	var payload workshop.ComplementPayload
-	if err := json.Unmarshal([]byte(args[1]), &payload); err != nil {
+	if err := json.Unmarshal([]byte(payloadJSON), &payload); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
@@ -458,5 +471,60 @@ func runSwarmTask(args []string) int {
 		return 1
 	}
 	fmt.Print(card)
+	return 0
+}
+
+// runForgeBookTask выполняет задачу ковки книги (P11 §5.6): открывает базы мира
+// по слагу, загружает реестр семей и куёт книгу с прогрессом во вкладку MCP.
+func runForgeBookTask(payloadJSON string) int {
+	var payload workshop.ForgeBookPayload
+	if err := json.Unmarshal([]byte(payloadJSON), &payload); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	slug := payload.WorldSlug
+	if slug == "" {
+		fmt.Fprintln(os.Stderr, "tns65 forge-book: world slug required")
+		return 1
+	}
+
+	world, err := db.OpenWriterAs(
+		filepath.Join(db.WorldsRoot, "worlds", slug, slug+".db"), db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer world.Close()
+
+	lit, err := db.OpenWriterAs(
+		filepath.Join(db.WorldsRoot, "worlds", slug, "literary.db"), db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer lit.Close()
+
+	fams, _ := structural.LoadFamilies(filepath.Join(db.BaseRoot, "archetypes.json"))
+
+	name := filepath.Base(payload.InputPath)
+	_ = webapi.SetForgeProgress(slug, name, 0)
+
+	_, err = workshop.RunForgeBook(context.Background(), world, lit, payload.InputPath, workshop.ForgeBookOptions{
+		Families: fams,
+		Progress: func(done, total int) {
+			p := 0.0
+			if total > 0 {
+				p = float64(done) / float64(total)
+			}
+			if err := webapi.SetForgeProgress(slug, name, p); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+			}
+		},
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	fmt.Println("done")
 	return 0
 }

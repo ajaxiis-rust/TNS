@@ -49,13 +49,48 @@ type ParsedBook struct {
 	Chunks []Chunk  `json:"chunks"`
 }
 
-// ParseBookInput разбирает файл-вход ковки по расширению имени (шаг 1).
+// MaxChunkRunes — потолок длины чанка ковки (P11, T-12-11): глава длиннее
+// режется на куски, чтобы промпт слота compose и вектор чанка не раздувались.
+// Порядок величины — сцены по 2–4 тыс. токенов из W-15.
+const MaxChunkRunes = 4000
+
+// ParseBookInput разбирает файл-вход ковки по расширению имени (шаг 1) и
+// ограничивает длину чанков (лимит чанка).
 func ParseBookInput(path string) (*ParsedBook, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("workshop: читать вход ковки %s: %w", path, err)
 	}
-	return parseBook(path, data)
+	p, err := parseBook(path, data)
+	if err != nil {
+		return nil, err
+	}
+	p.Chunks = limitChunks(p.Chunks)
+	return p, nil
+}
+
+// limitChunks режет чанки длиннее MaxChunkRunes на куски, сохраняя заголовок
+// главы у каждого куска (P11, T-12-11).
+func limitChunks(chunks []Chunk) []Chunk {
+	out := make([]Chunk, 0, len(chunks))
+	for _, c := range chunks {
+		runes := []rune(c.Text)
+		if len(runes) <= MaxChunkRunes {
+			out = append(out, c)
+			continue
+		}
+		for start := 0; start < len(runes); start += MaxChunkRunes {
+			end := start + MaxChunkRunes
+			if end > len(runes) {
+				end = len(runes)
+			}
+			out = append(out, Chunk{
+				Chapter: c.Chapter,
+				Text:    strings.TrimSpace(string(runes[start:end])),
+			})
+		}
+	}
+	return out
 }
 
 // parseBook разбирает вход по имени файла: txt — напрямую в чанкер, fb2 —
