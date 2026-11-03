@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -30,39 +31,75 @@ var restartPause = []time.Duration{
 type child struct {
 	sup      *Supervisor
 	spec     Config
-	degraded int
+	degraded atomic.Int64
+	healthy  atomic.Bool
 
-	mu   sync.Mutex
-	proc Process
-	done chan struct{}
+	mu        sync.Mutex
+	proc      Process
+	logWriter io.Writer
+
+	done      chan struct{}
+	stopCh    chan struct{}
+	stopOnce  sync.Once
+	readyCh   chan struct{}
+	readyOnce sync.Once
 }
 
 func newChild(sup *Supervisor, spec Config) *child {
-	return &child{sup: sup, spec: spec, done: make(chan struct{})}
+	c := &child{
+		sup:     sup,
+		spec:    spec,
+		done:    make(chan struct{}),
+		stopCh:  make(chan struct{}),
+		readyCh: make(chan struct{}),
+	}
+	// Отдельный файл журнала ребёнка (state/journal/llama.log, T-12-19).
+	if spec.LogPath != "" {
+		if l, err := journal.New(spec.LogPath); err == nil {
+			c.logWriter = l
+		}
+	}
+	return c
 }
 
 // run — цикл надзора за одним ребёнком: старт → готовность → ожидание выхода →
-// лечение. Завершается по Stop (закрытие общего stopCh).
+// лечение. Завершается по Stop (общий stopCh) или по своей остановке (смена
+// модели, T-12-19).
 func (c *child) run() {
 	defer close(c.done)
 	for {
 		if c.stopped() {
 			return
 		}
+		c.healthy.Store(false)
 
-		stdout, err := journal.Pipe(c.spec.Name, c.sup.logger)
+		// Проверка занятости порта до старта: понятная ошибка вместо тихой
+		// неудачи llama-server (T-12-19).
+		if c.spec.Port != 0 {
+			if err := c.sup.checkPort(c.spec.Port); err != nil {
+				c.incDegraded()
+				c.logDegraded(err)
+				if !c.backoff() {
+					return
+				}
+				continue
+			}
+		}
+
+		writer := c.outputWriter()
+		stdout, err := journal.Pipe(c.spec.Name, writer)
 		if err != nil {
-			c.degraded++
+			c.incDegraded()
 			c.logDegraded(err)
 			if !c.backoff() {
 				return
 			}
 			continue
 		}
-		stderr, err := journal.Pipe(c.spec.Name, c.sup.logger)
+		stderr, err := journal.Pipe(c.spec.Name, writer)
 		if err != nil {
 			_ = closeWriter(stdout)
-			c.degraded++
+			c.incDegraded()
 			c.logDegraded(err)
 			if !c.backoff() {
 				return
@@ -74,7 +111,7 @@ func (c *child) run() {
 		if err != nil {
 			_ = closeWriter(stdout)
 			_ = closeWriter(stderr)
-			c.degraded++
+			c.incDegraded()
 			c.logDegraded(err)
 			if !c.backoff() {
 				return
@@ -87,6 +124,9 @@ func (c *child) run() {
 		go func() { waitCh <- proc.Wait() }()
 
 		ready, stopping := c.waitReady()
+		if ready {
+			c.healthy.Store(true)
+		}
 
 		var exitErr error
 		if !ready && !stopping {
@@ -99,6 +139,7 @@ func (c *child) run() {
 			// terminate() в обратном порядке — сам цикл процесс не останавливает.
 			exitErr = <-waitCh
 		}
+		c.healthy.Store(false)
 
 		_ = closeWriter(stdout)
 		_ = closeWriter(stderr)
@@ -109,7 +150,7 @@ func (c *child) run() {
 			return
 		}
 
-		c.degraded++
+		c.incDegraded()
 		c.logDegraded(exitErr)
 		if !c.backoff() {
 			return
@@ -123,18 +164,19 @@ func (c *child) run() {
 func (c *child) waitReady() (ready, stopping bool) {
 	deadline := c.sup.clock.Now().Add(c.spec.ReadyTimeout)
 	for {
-		select {
-		case <-c.sup.stopCh:
+		if c.stopped() {
 			return false, true
-		default:
 		}
 		if err := c.sup.ready(c.spec); err == nil {
+			c.markReady()
 			return true, false
 		}
 		if !c.sup.clock.Now().Before(deadline) {
 			return false, false
 		}
 		select {
+		case <-c.stopCh:
+			return false, true
 		case <-c.sup.stopCh:
 			return false, true
 		case <-c.sup.clock.After(c.spec.PollInterval):
@@ -142,13 +184,21 @@ func (c *child) waitReady() (ready, stopping bool) {
 	}
 }
 
-// backoff спит паузу перезапуска для текущего числа деградаций; false — надзиратель
-// остановлен и цикл завершается.
+// markReady сигналит о первой готовности ребёнка; используется SwitchModel для
+// ожидания health после старта с новыми аргументами.
+func (c *child) markReady() {
+	c.readyOnce.Do(func() { close(c.readyCh) })
+}
+
+// backoff спит паузу перезапуска для текущего числа деградаций; false — ребёнок
+// или надзиратель остановлены и цикл завершается.
 func (c *child) backoff() bool {
 	select {
+	case <-c.stopCh:
+		return false
 	case <-c.sup.stopCh:
 		return false
-	case <-c.sup.clock.After(pauseFor(c.degraded)):
+	case <-c.sup.clock.After(pauseFor(int(c.degraded.Load()))):
 		return true
 	}
 }
@@ -166,6 +216,7 @@ func pauseFor(n int) time.Duration {
 
 // terminate останавливает текущий процесс ребёнка и ждёт завершения его цикла.
 func (c *child) terminate() {
+	c.stop()
 	c.mu.Lock()
 	proc := c.proc
 	c.mu.Unlock()
@@ -175,15 +226,47 @@ func (c *child) terminate() {
 	<-c.done
 }
 
+// stop гасит цикл ребёнка (его собственный stopCh), не трогая надзирателя.
+func (c *child) stop() {
+	c.stopOnce.Do(func() { close(c.stopCh) })
+}
+
+// outputWriter — куда писать stdout/stderr ребёнка: отдельный файл, если задан
+// LogPath, иначе общий журнал надзирателя.
+func (c *child) outputWriter() io.Writer {
+	if c.logWriter != nil {
+		return c.logWriter
+	}
+	return c.sup.logger
+}
+
 func (c *child) setProc(p Process) {
 	c.mu.Lock()
 	c.proc = p
 	c.mu.Unlock()
 }
 
+func (c *child) incDegraded() { c.degraded.Add(1) }
+
+// snapshot — снимок состояния ребёнка для Status (T-12-19).
+func (c *child) snapshot() ChildStatus {
+	c.mu.Lock()
+	proc := c.proc
+	c.mu.Unlock()
+	return ChildStatus{
+		Name:     c.spec.Name,
+		Running:  proc != nil,
+		Healthy:  c.healthy.Load(),
+		Degraded: int(c.degraded.Load()),
+		Port:     c.spec.Port,
+	}
+}
+
 func (c *child) stopped() bool {
 	select {
 	case <-c.sup.stopCh:
+		return true
+	case <-c.stopCh:
 		return true
 	default:
 		return false

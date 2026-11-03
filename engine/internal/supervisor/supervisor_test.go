@@ -82,20 +82,34 @@ func (p *fakeProcess) isStopped() bool {
 
 // fakeRunner — тестовая фабрика процессов, считает запуски и порядок остановок.
 type fakeRunner struct {
-	mu       sync.Mutex
-	starts   []string
-	stops    []string
-	makeProc func(name string) *fakeProcess
+	mu        sync.Mutex
+	starts    []string
+	stops     []string
+	startArgs [][]string
+	stdout    io.Writer
+	stderr    io.Writer
+	makeProc  func(name string) *fakeProcess
 }
 
 func (r *fakeRunner) Start(spec Config, stdout, stderr io.Writer) (Process, error) {
-	_ = stdout
-	_ = stderr
 	p := r.makeProc(spec.Name)
 	r.mu.Lock()
 	r.starts = append(r.starts, spec.Name)
+	r.startArgs = append(r.startArgs, append([]string(nil), spec.Args...))
+	r.stdout = stdout
+	r.stderr = stderr
 	r.mu.Unlock()
 	return p, nil
+}
+
+// lastArgs — аргументы последнего запуска (nil, если запусков не было).
+func (r *fakeRunner) lastArgs() []string {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.startArgs) == 0 {
+		return nil
+	}
+	return append([]string(nil), r.startArgs[len(r.startArgs)-1]...)
 }
 
 func (r *fakeRunner) recordStop(name string) {
@@ -175,8 +189,8 @@ func TestRestart(t *testing.T) {
 
 	s.Stop()
 
-	if s.children[0].degraded < 1 {
-		t.Fatalf("счётчик деградаций = %d, want >= 1", s.children[0].degraded)
+	if s.children[0].degraded.Load() < 1 {
+		t.Fatalf("счётчик деградаций = %d, want >= 1", s.children[0].degraded.Load())
 	}
 
 	data, err := os.ReadFile(logPath)
@@ -365,4 +379,136 @@ func TestLoadChildren(t *testing.T) {
 		t.Fatalf("embed дефолты = %v/%v, want %v/%v",
 			embed.ReadyTimeout, embed.PollInterval, DefaultReadyTimeout, DefaultPollInterval)
 	}
+}
+
+// TestSwitchModel — «Действие» T-12-19: смена модели стоп → старт → health.
+func TestSwitchModel(t *testing.T) {
+	logger, _ := newTestLogger(t)
+
+	runner := &fakeRunner{}
+	runner.makeProc = func(name string) *fakeProcess {
+		return &fakeProcess{name: name, runner: runner, crashCh: make(chan error, 1), stopCh: make(chan struct{})}
+	}
+
+	s := New(logger, []Config{{Name: "llama", Cmd: "fake", Args: []string{"-m", "a.gguf"}}},
+		WithClock(newFakeClock()), WithRunner(runner),
+		WithReady(func(Config) error { return nil }))
+	go s.Run()
+	waitFor(t, func() bool { return runner.startCount() >= 1 })
+
+	if err := s.SwitchModel("llama", []string{"-m", "b.gguf"}); err != nil {
+		t.Fatalf("SwitchModel: %v", err)
+	}
+	if got := runner.lastArgs(); !reflect.DeepEqual(got, []string{"-m", "b.gguf"}) {
+		t.Fatalf("последние args = %v, want [-m b.gguf]", got)
+	}
+
+	s.Stop()
+}
+
+// TestSwitchModelRollback — смена модели с откатом на прежние аргументы при
+// провале health (T-12-19).
+func TestSwitchModelRollback(t *testing.T) {
+	logger, _ := newTestLogger(t)
+
+	runner := &fakeRunner{}
+	runner.makeProc = func(name string) *fakeProcess {
+		return &fakeProcess{name: name, runner: runner, crashCh: make(chan error, 1), stopCh: make(chan struct{})}
+	}
+
+	good := []string{"-m", "good.gguf"}
+	bad := []string{"-m", "bad.gguf"}
+	s := New(logger, []Config{{
+		Name:         "llama",
+		Cmd:          "fake",
+		Args:         good,
+		ReadyTimeout: 60 * time.Second,
+		PollInterval: time.Second,
+	}},
+		WithClock(newFakeClock()), WithRunner(runner),
+		WithReady(func(spec Config) error {
+			if len(spec.Args) >= 2 && spec.Args[1] == "bad.gguf" {
+				return errors.New("not ready")
+			}
+			return nil
+		}))
+	go s.Run()
+	waitFor(t, func() bool { return runner.startCount() >= 1 })
+
+	err := s.SwitchModel("llama", bad)
+	if err == nil {
+		t.Fatal("SwitchModel(bad) = nil, want error")
+	}
+	if got := runner.lastArgs(); !reflect.DeepEqual(got, good) {
+		t.Fatalf("после отката args = %v, want %v", got, good)
+	}
+
+	s.Stop()
+}
+
+// TestChildLogPath — логи ребёнка пишутся в отдельный файл (T-12-19).
+func TestChildLogPath(t *testing.T) {
+	logger, _ := newTestLogger(t)
+	llamaLog := filepath.Join(t.TempDir(), "state", "journal", "llama.log")
+
+	runner := &fakeRunner{}
+	runner.makeProc = func(name string) *fakeProcess {
+		return &fakeProcess{name: name, runner: runner, crashCh: make(chan error, 1), stopCh: make(chan struct{})}
+	}
+
+	s := New(logger, []Config{{Name: "llama", Cmd: "fake", LogPath: llamaLog}},
+		WithClock(newFakeClock()), WithRunner(runner),
+		WithReady(func(Config) error { return nil }))
+	go s.Run()
+	waitFor(t, func() bool { return runner.startCount() >= 1 })
+
+	runner.mu.Lock()
+	stdout := runner.stdout
+	runner.mu.Unlock()
+	if stdout == nil {
+		t.Fatal("stdout не передан фабрике")
+	}
+	if _, err := io.WriteString(stdout, "привет\n"); err != nil {
+		t.Fatalf("write stdout: %v", err)
+	}
+
+	s.Stop()
+
+	data, err := os.ReadFile(llamaLog)
+	if err != nil {
+		t.Fatalf("read llama.log: %v", err)
+	}
+	if !strings.Contains(string(data), "привет") {
+		t.Fatalf("llama.log не содержит строку ребёнка:\n%s", data)
+	}
+}
+
+// TestStatus — снимок состояния ребёнка надзирателя (T-12-19).
+func TestStatus(t *testing.T) {
+	logger, _ := newTestLogger(t)
+
+	runner := &fakeRunner{}
+	runner.makeProc = func(name string) *fakeProcess {
+		return &fakeProcess{name: name, runner: runner, crashCh: make(chan error, 1), stopCh: make(chan struct{})}
+	}
+
+	s := New(logger, []Config{{Name: "llama", Cmd: "fake"}},
+		WithClock(newFakeClock()), WithRunner(runner),
+		WithReady(func(Config) error { return nil }))
+	go s.Run()
+
+	waitFor(t, func() bool {
+		sts := s.Status()
+		return len(sts) == 1 && sts[0].Healthy
+	})
+
+	sts := s.Status()
+	if len(sts) != 1 {
+		t.Fatalf("Status = %d детей, want 1", len(sts))
+	}
+	if sts[0].Name != "llama" || !sts[0].Running {
+		t.Fatalf("Status[0] = %+v, want llama+running", sts[0])
+	}
+
+	s.Stop()
 }

@@ -14,6 +14,7 @@ import (
 	"tns65/internal/db"
 	"tns65/internal/geo"
 	"tns65/internal/models"
+	"tns65/internal/supervisor"
 )
 
 // seedSettingsWorld готовит мир alpha (через seedMcpWorld) и подменяет пути
@@ -44,6 +45,30 @@ func seedSettingsWorld(t *testing.T) {
 		settingsConfigPath = oldCfg
 		settingsTOMLPath = oldTOML
 	})
+}
+
+// TestSettingsSupervisorStatus — «статус» T-12-19: снимок надзирателя попадает
+// в ответ настроек, когда ядро передало провайдера.
+func TestSettingsSupervisorStatus(t *testing.T) {
+	seedSettingsWorld(t)
+
+	old := SupervisorStatus
+	SupervisorStatus = func() []supervisor.ChildStatus {
+		return []supervisor.ChildStatus{{Name: "llama", Running: true, Healthy: true, Degraded: 1, Port: 5001}}
+	}
+	t.Cleanup(func() { SupervisorStatus = old })
+
+	rr := mcpRequest(t, handleSettingsGet, http.MethodGet, settingsPath, nil, "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET %s: status = %d, want 200", settingsPath, rr.Code)
+	}
+	var resp settingsResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal settings: %v", err)
+	}
+	if len(resp.Supervisor) != 1 || resp.Supervisor[0].Name != "llama" || !resp.Supervisor[0].Healthy {
+		t.Fatalf("Supervisor = %+v, want llama+healthy", resp.Supervisor)
+	}
 }
 
 // TestSettingsSections — «Проверка» T-08-09: экран Настроек содержит все девять

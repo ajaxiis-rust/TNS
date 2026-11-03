@@ -28,6 +28,7 @@ import (
 	"tns65/internal/models"
 	"tns65/internal/netgate"
 	"tns65/internal/paganel"
+	"tns65/internal/supervisor"
 	"tns65/internal/workshop"
 	web "tns65/web"
 )
@@ -128,20 +129,21 @@ type llmSlotSettings struct {
 // settingsResponse — GET /api/settings: станочные настройки, мировые
 // переключатели, память NPC, удача мира, привязки слотов и модели.
 type settingsResponse struct {
-	World              string             `json:"world"`
-	Sections           []string           `json:"sections"`
-	EmbeddingDimension int                `json:"embedding_dimension"`
-	General            generalSettings    `json:"general"`
-	LLM                llmSettings        `json:"llm"`
-	WorldSection       worldSettings      `json:"world_section"`
-	Advanced           advancedSettings   `json:"advanced"`
-	Channel            channelSettings    `json:"channel"`
-	Bindings           []slotBinding      `json:"bindings"`
-	Presets            []settingsPreset   `json:"presets"`
-	Providers          []settingsProvider `json:"providers"`
-	Models             []modelStatus      `json:"models"`
-	RamGB              float64            `json:"ram_gb"`
-	Embedder           embedserver.Status `json:"embedder"`
+	World              string                   `json:"world"`
+	Sections           []string                 `json:"sections"`
+	EmbeddingDimension int                      `json:"embedding_dimension"`
+	General            generalSettings          `json:"general"`
+	LLM                llmSettings              `json:"llm"`
+	WorldSection       worldSettings            `json:"world_section"`
+	Advanced           advancedSettings         `json:"advanced"`
+	Channel            channelSettings          `json:"channel"`
+	Bindings           []slotBinding            `json:"bindings"`
+	Presets            []settingsPreset         `json:"presets"`
+	Providers          []settingsProvider       `json:"providers"`
+	Models             []modelStatus            `json:"models"`
+	RamGB              float64                  `json:"ram_gb"`
+	Embedder           embedserver.Status       `json:"embedder"`
+	Supervisor         []supervisor.ChildStatus `json:"supervisor"`
 }
 
 // channelSettings — исходящий канал станка (T-08-03, F-04.3/F-04.4): край
@@ -313,15 +315,29 @@ func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 				KeySet:       keys["paganel"] != "",
 			},
 		},
-		Advanced:  buildAdvanced(meta),
-		Channel:   buildChannelSettings(tunCfg, keys),
-		Bindings:  bindings,
-		Presets:   presets,
-		Providers: providers,
-		Models:    models,
-		RamGB:     hostRAMGB(),
-		Embedder:  readEmbedderStatus(),
+		Advanced:   buildAdvanced(meta),
+		Channel:    buildChannelSettings(tunCfg, keys),
+		Bindings:   bindings,
+		Presets:    presets,
+		Providers:  providers,
+		Models:     models,
+		RamGB:      hostRAMGB(),
+		Embedder:   readEmbedderStatus(),
+		Supervisor: readSupervisorStatus(),
 	})
+}
+
+// SupervisorStatus возвращает снимок надзирателя; устанавливается ядром в
+// main.go. Пока не установлено — пустой срез (статус надзирателя недоступен).
+var SupervisorStatus func() []supervisor.ChildStatus
+
+// readSupervisorStatus — снимок детей надзирателя для UI (T-12-19): запущен ли
+// ребёнок, здоров ли и сколько раз он падал.
+func readSupervisorStatus() []supervisor.ChildStatus {
+	if SupervisorStatus == nil {
+		return nil
+	}
+	return SupervisorStatus()
 }
 
 // embedStatusTimeout — потолок времени на опрос эмбеддера из UI. Отказ на

@@ -28,6 +28,7 @@ type Config struct {
 	Args         []string
 	Port         int
 	HealthPath   string
+	LogPath      string
 	ReadyTimeout time.Duration
 	PollInterval time.Duration
 }
@@ -72,6 +73,9 @@ func WithRunner(r ProcessRunner) Option { return func(s *Supervisor) { s.runner 
 // WithReady подменяет проверку готовности (тест без живого health-эндпоинта).
 func WithReady(f ReadyFunc) Option { return func(s *Supervisor) { s.ready = f } }
 
+// WithPortCheck подменяет проверку занятости порта (тесты без реального сокета).
+func WithPortCheck(f func(int) error) Option { return func(s *Supervisor) { s.checkPort = f } }
+
 // Supervisor — ядро-надзиратель: запускает детей, лечит падения и останавливает
 // детей в обратном порядке (T-01-13).
 type Supervisor struct {
@@ -79,6 +83,8 @@ type Supervisor struct {
 	clock  Clock
 	runner ProcessRunner
 	ready  ReadyFunc
+
+	checkPort func(int) error
 
 	specs []Config
 
@@ -97,12 +103,13 @@ func New(logger *journal.Logger, specs []Config, opts ...Option) *Supervisor {
 		normalized[i] = normalize(spec)
 	}
 	s := &Supervisor{
-		logger: logger,
-		clock:  wallClock{},
-		runner: execRunner{},
-		ready:  defaultReady,
-		specs:  normalized,
-		stopCh: make(chan struct{}),
+		logger:    logger,
+		clock:     wallClock{},
+		runner:    execRunner{},
+		ready:     defaultReady,
+		checkPort: CheckPortFree,
+		specs:     normalized,
+		stopCh:    make(chan struct{}),
 	}
 	for _, o := range opts {
 		o(s)
@@ -274,6 +281,8 @@ func setField(c *Config, line string) error {
 		c.Port = n
 	case "health_path":
 		c.HealthPath = val
+	case "log_path":
+		c.LogPath = val
 	case "ready_timeout":
 		d, err := time.ParseDuration(val)
 		if err != nil {
