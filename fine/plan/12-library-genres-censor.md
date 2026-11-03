@@ -714,6 +714,7 @@ CREATE TABLE book_character_role (
 Файлы: новый `internal/embedserver` (или расширение `models`),
 `internal/supervisor`, `handlers_settings.go`, тесты с фейковым сервером.
 Действия: старт с флагами, health, косинус-проверка, статус в UI.
+Проверка: `cd engine && go test ./internal/embedserver ./internal/supervisor -count=1` (фейковый сервер).
 
 **T-12-18. Поставка `llama-server`.**
 Файлы: `engine/scripts/install-llama.sh`, `DOCS/06-MODELS-AND-SEED.md`,
