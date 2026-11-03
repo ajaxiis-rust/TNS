@@ -925,6 +925,7 @@ type modelStatus struct {
 	ModelRef    string  `json:"model_ref"`
 	Source      string  `json:"source"`
 	File        string  `json:"file"`
+	Size        int64   `json:"size"`
 	Status      string  `json:"status"`
 	Progress    float64 `json:"progress"`
 	IntegrityOK bool    `json:"integrity_ok"`
@@ -1221,7 +1222,7 @@ func handleSettingsModelStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	modelJobsMu.Unlock()
 	sort.Slice(jobs, func(i, j int) bool { return jobs[i].Role < jobs[j].Role })
-	models := readModelStatusesVerify(verify)
+	models := fillModelCardSizes(readModelStatusesVerify(verify))
 	if role != "" {
 		kept := models[:0]
 		for _, m := range models {

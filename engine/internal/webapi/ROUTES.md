@@ -45,8 +45,9 @@
 | PUT | `/api/settings/keys` | `{"keys":{…}}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | PUT | `/api/settings/channel` | `{"edge","local","telegram_chat_id","telegram_token","clear_token"}` | `{"status":"ok","bot_running":bool,"warning":"…"}` | `method_not_allowed`, `bad_request`, `internal` |
 | POST | `/api/settings/models/install` | `{"world":"…","role":"…","source":"https://huggingface.co/…","model_ref":"…"}` — `world` может быть пустым: файл скачается без привязки роли | `{"status":"ok","model_ref":"…","bound":bool}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
-| GET | `/api/settings/models/status` | query `role=<роль>` (необязательно) | `{"jobs":[{"role","status","progress","error"}]}` — текущие загрузки для прогресса в карточке | `method_not_allowed` |
+| GET | `/api/settings/models/status` | query `role=<роль>`, `verify=1` (полная сверка sha256) — необязательны | `{"jobs":[{"role","status","progress","error"}],"models":[{"role","model_ref","source","file","size","status","progress","integrity_ok","has_previous"}]}` — карточки установленных моделей (имя файла и размер) и текущие загрузки | `method_not_allowed` |
 | POST | `/api/settings/models/rollback` | `{"world":"…","role":"…"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
+| DELETE | `/api/settings/models/delete` | `{"role":"…"}` | `{"status":"ok","removed":["…"]}` — файлы модели, манифест и задание реестра сняты | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
 | GET | `/api/settings/llama/detect` | — | `{"found":bool,"path":"…","version":"…","source":"config|instance|path|candidates","searched":["…"],"install":{"running":bool,"stage":"download|verify|done|failed","error":"…"}}` — обнаружение llama-server: конфиг → `bin/` экземпляра → PATH → типовые каталоги сборки, каждый кандидат проверяется `--version` | `method_not_allowed` |
 | POST | `/api/settings/llama/detect` | `{"path":"…"}` — пустой путь очищает `llm.llama_server_path` | `{"found":bool,"path","version","source":"config","searched":[…]}` — проверка ручного пути запуском `--version` и запись в конфиг | `method_not_allowed`, `bad_request`, `internal` |
 | POST | `/api/settings/llama/scan` | — | `{"paths":["…"]}` — ограниченный поиск по домашнему каталогу (глубина 5, тайм-аут 15 с), скрытые каталоги пропускаются | `method_not_allowed` |
@@ -101,6 +102,7 @@ PUT /api/settings/channel
 POST /api/settings/models/install
 GET /api/settings/models/status
 POST /api/settings/models/rollback
+DELETE /api/settings/models/delete
 GET /api/settings/llama/detect
 POST /api/settings/llama/detect
 POST /api/settings/llama/scan

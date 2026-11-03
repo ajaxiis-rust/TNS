@@ -1863,6 +1863,11 @@
     var modelsBox = byId(IDS.settingsModels);
     if (modelsBox) {
       modelsBox.addEventListener("click", function (event) {
+        var del = event.target.closest("button[data-model-delete]");
+        if (del) {
+          deleteModelRole(del.getAttribute("data-model-delete"), del);
+          return;
+        }
         var btn = event.target.closest("button[data-model-role]");
         if (!btn) {
           return;
@@ -2504,14 +2509,23 @@
         '<span class="chip ' + (m.integrity_ok ? "chip--ok" : "chip--danger") + '">' +
         (m.integrity_ok ? "целостность ок" : "целостность нарушена") + "</span></div>";
       html += '<div class="model-card__meta">' + escapeHTML(m.model_ref || "") + "</div>";
+      html += modelFileMeta(m);
       html += '<div class="model-card__status' + (m.status === "error" ? " model-card__status--err" : "") + '">' +
         escapeHTML(status) + " · " + pct + "%</div>";
       if (downloading) {
         html += '<div class="model-card__progress"><span style="width:' + pct + '%"></span></div>';
       }
+      var actions = "";
       if (m.has_previous && hasWorld) {
-        html += '<div class="model-card__actions"><button type="button" data-model-role="' +
-          escapeHTML(m.role) + '">Откатить</button></div>';
+        actions += '<button type="button" data-model-role="' +
+          escapeHTML(m.role) + '">Откатить</button>';
+      }
+      if (!downloading) {
+        actions += '<button type="button" data-model-delete="' + escapeHTML(m.role) + '">' +
+          (window.I18N && window.I18N["settings.models.delete"] || "Удалить") + "</button>";
+      }
+      if (actions) {
+        html += '<div class="model-card__actions">' + actions + "</div>";
       }
       html += "</div>";
       return html;
@@ -2586,8 +2600,9 @@
       var current = byRole[m.role];
       var isInstalled = !!current && (!current.model_ref || current.model_ref === m.ref);
       var status = isInstalled
-        ? "Установлена: " + (current.model_ref || m.ref)
-        : "Не установлена";
+        ? (dict["settings.models.installed"] || "Установлена") + ": " + (current.model_ref || m.ref)
+        : (dict["settings.models.not_installed"] || "Не установлена");
+      var fileMeta = isInstalled ? modelFileMeta(current) : "";
       var ram = m.ram
         ? '<div class="model-card__meta">' + (dict["settings.models.ram"] || "RAM") + ": " + escapeHTML(m.ram) + "</div>"
         : "";
@@ -2601,6 +2616,7 @@
         '<div class="model-card__head"><span class="model-card__title">' + escapeHTML(m.label) + "</span>" +
         '<span class="chip">' + escapeHTML(m.size) + "</span></div>" +
         '<div class="model-card__meta">роль: ' + escapeHTML(m.role) + "</div>" +
+        fileMeta +
         '<p class="model-card__meta">' + escapeHTML(m.note) + "</p>" +
         ram +
         badge +
@@ -2608,7 +2624,11 @@
         '<div class="model-card__progress" hidden><span></span></div>' +
         '<div class="model-card__percent" hidden></div>' +
         '<div class="model-card__actions"><button type="button" data-model-install>' +
-        (isInstalled ? "Переустановить" : "Установить") + "</button></div>" +
+        (isInstalled ? (dict["settings.models.reinstall"] || "Переустановить")
+                     : (dict["settings.models.install"] || "Установить")) + "</button>" +
+        (isInstalled
+          ? '<button type="button" data-model-delete>' + (dict["settings.models.delete"] || "Удалить") + "</button>"
+          : "") + "</div>" +
         "</article>";
     }).join("");
   }
@@ -2626,6 +2646,11 @@
   }
 
   function onModelCatalogClick(event) {
+    var del = event.target.closest("button[data-model-delete]");
+    if (del) {
+      deleteModelRole(del.closest(".model-card").getAttribute("data-catalog-role"), del);
+      return;
+    }
     var btn = event.target.closest("button[data-model-install]");
     if (!btn) {
       return;
@@ -2893,6 +2918,57 @@
     }).then(function () {
       loadSettingsData();
     });
+  }
+
+  // modelFileMeta — строка карточки модели: имя файла и размер (T-13-03,
+  // шаг 2); без установленного файла строки нет.
+  function modelFileMeta(m) {
+    if (!m || !m.file) {
+      return "";
+    }
+    var dict = window.I18N || {};
+    var size = formatModelBytes(m.size);
+    return '<div class="model-card__meta">' + escapeHTML((dict["settings.models.file"] || "Файл") + ": " + m.file) +
+      (size ? " · " + escapeHTML(size) : "") + "</div>";
+  }
+
+  // formatModelBytes — размер файла модели для карточки.
+  function formatModelBytes(bytes) {
+    var n = Number(bytes) || 0;
+    if (n <= 0) {
+      return "";
+    }
+    var units = ["Б", "КБ", "МБ", "ГБ", "ТБ"];
+    var i = 0;
+    while (n >= 1024 && i < units.length - 1) {
+      n = n / 1024;
+      i += 1;
+    }
+    return (i === 0 ? String(Math.round(n)) : n.toFixed(1)) + " " + units[i];
+  }
+
+  // deleteModelRole — удаление модели роли (T-13-03): первый клик просит
+  // подтверждения, второй — удаляет без восстановления.
+  function deleteModelRole(role, btn) {
+    if (!role || !btn) {
+      return;
+    }
+    if (btn.dataset.confirm !== "1") {
+      btn.dataset.confirm = "1";
+      btn.textContent = (window.I18N && window.I18N["settings.models.delete_confirm"]) || "Удалить без восстановления";
+      return;
+    }
+    var release = setBusy(btn);
+    apiJSON("/api/settings/models/delete", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: role })
+    }).then(function () {
+      toast((window.I18N && window.I18N["settings.models.deleted"]) || "Модель удалена", true);
+      return loadSettingsData();
+    }).catch(function (err) {
+      toast((err && err.message) || String(err), false);
+    }).then(release);
   }
 
   function rollbackSettingsModel(role) {

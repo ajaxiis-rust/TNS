@@ -106,6 +106,7 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodPost, path: "/api/settings/models/install", handle: handleSettingsModelInstall},
 		{method: http.MethodGet, path: "/api/settings/models/status", handle: handleSettingsModelStatus},
 		{method: http.MethodPost, path: "/api/settings/models/rollback", handle: handleSettingsModelRollback},
+		{method: http.MethodDelete, path: "/api/settings/models/delete", handle: handleSettingsModelDelete},
 		{method: http.MethodGet, path: "/api/settings/llama/detect", handle: handleLlamaDetectGet},
 		{method: http.MethodPost, path: "/api/settings/llama/detect", handle: handleLlamaDetectPost},
 		{method: http.MethodPost, path: "/api/settings/llama/scan", handle: handleLlamaScan},
