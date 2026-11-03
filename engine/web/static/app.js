@@ -41,6 +41,16 @@
     atlasBirthCensorship: "atlas-birth-censorship",
     atlasBirthSubmit: "atlas-birth-submit",
     atlasBirthError: "atlas-birth-error",
+    atlasBirthFanfic: "atlas-birth-fanfic",
+    atlasBirthSourceBook: "atlas-birth-source-book",
+    fanficModal: "fanfic-modal",
+    fanficCancel: "fanfic-cancel",
+    fanficConfirm: "fanfic-confirm",
+    fanficShelf: "fanfic-shelf",
+    fanficImportForm: "fanfic-import-form",
+    fanficImportFile: "fanfic-import-file",
+    fanficImportSubmit: "fanfic-import-submit",
+    fanficProgress: "fanfic-progress",
     atlasSynopsisCount: "atlas-synopsis-count",
     atlasGenres: "atlas-birth-genres",
     atlasGenresFrequent: "atlas-birth-genres-frequent",
@@ -554,6 +564,181 @@
     });
   }
 
+  // Фанфик (T-12-15): галочка открывает модалку с полкой, импортом и прогрессом;
+  // отмена снимает галочку и очищает выбранную книгу-источник.
+  function isFanficChecked() {
+    var box = byId(IDS.atlasBirthFanfic);
+    return !!(box && box.checked);
+  }
+
+  function setSourceBook(id) {
+    var input = byId(IDS.atlasBirthSourceBook);
+    if (input) {
+      input.value = id || "";
+    }
+  }
+
+  function setFanficState(checked, openModal) {
+    var box = byId(IDS.atlasBirthFanfic);
+    if (box) {
+      box.checked = checked;
+    }
+    var genre = findGenreInput("фанфик");
+    if (genre) {
+      genre.checked = checked;
+    }
+    if (!checked) {
+      setSourceBook("");
+      closeFanficModal();
+    } else if (openModal) {
+      openFanficModal();
+    }
+    syncFrequentGenres();
+  }
+
+  function openFanficModal() {
+    var modal = byId(IDS.fanficModal);
+    if (modal) {
+      modal.hidden = false;
+    }
+    loadFanficShelf();
+  }
+
+  function closeFanficModal() {
+    var modal = byId(IDS.fanficModal);
+    if (modal) {
+      modal.hidden = true;
+    }
+  }
+
+  function cancelFanficModal() {
+    setFanficState(false, false);
+  }
+
+  function confirmFanficModal() {
+    if (!fieldValue(IDS.atlasBirthSourceBook)) {
+      toast((window.I18N && window.I18N["atlas.fanfic.pick"]) || "Выберите книгу или импортируйте её.", false);
+      return;
+    }
+    closeFanficModal();
+  }
+
+  function fanficStatusLabel(status, progress) {
+    var dict = window.I18N || {};
+    var base = status || "imported";
+    var label = dict["atlas.fanfic.status." + base] || base;
+    if (base === "forging") {
+      label = label + " " + Math.round((progress || 0) * 100) + "%";
+    }
+    return label;
+  }
+
+  function loadFanficShelf() {
+    apiJSON("/api/library").then(renderFanficShelf).catch(function (err) {
+      var shelf = byId(IDS.fanficShelf);
+      if (shelf) {
+        shelf.textContent = (err && err.message) || String(err);
+      }
+    });
+  }
+
+  function renderFanficShelf(data) {
+    var shelf = byId(IDS.fanficShelf);
+    if (!shelf) {
+      return;
+    }
+    var dict = window.I18N || {};
+    var books = (data && data.books) || [];
+    var selected = fieldValue(IDS.atlasBirthSourceBook);
+    if (books.length === 0) {
+      shelf.innerHTML = '<p class="fanfic-shelf__empty" data-i18n="atlas.fanfic.empty">' +
+        (dict["atlas.fanfic.empty"] || "Полка пуста — импортируйте книгу.") + "</p>";
+      return;
+    }
+    shelf.innerHTML = books.map(function (b) {
+      var isSelected = b.id === selected;
+      return '<button type="button" class="fanfic-book' + (isSelected ? " is-selected" : "") + '" data-book-id="' + escapeHTML(b.id) + '">' +
+        '<span class="fanfic-book__name">' + escapeHTML(b.name || b.id) + "</span>" +
+        '<span class="fanfic-book__meta">' + escapeHTML(b.format || "") + " · " + escapeHTML(fanficStatusLabel(b.status, b.progress)) + "</span>" +
+        "</button>";
+    }).join("");
+  }
+
+  function onFanficShelfClick(event) {
+    var btn = event.target.closest("[data-book-id]");
+    if (!btn) {
+      return;
+    }
+    var id = btn.getAttribute("data-book-id");
+    setSourceBook(id);
+    var shelf = byId(IDS.fanficShelf);
+    if (shelf) {
+      shelf.querySelectorAll(".fanfic-book").forEach(function (node) {
+        node.classList.toggle("is-selected", node.getAttribute("data-book-id") === id);
+      });
+    }
+  }
+
+  function submitFanficImport() {
+    var fileEl = byId(IDS.fanficImportFile);
+    var file = fileEl && fileEl.files ? fileEl.files[0] : null;
+    if (!file) {
+      return;
+    }
+    var progress = byId(IDS.fanficProgress);
+    var btn = byId(IDS.fanficImportSubmit);
+    var release = setBusy(btn);
+    if (progress) {
+      progress.hidden = false;
+      progress.textContent = (window.I18N && window.I18N["atlas.fanfic.importing"]) || "Импорт…";
+    }
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/library/import");
+    xhr.setRequestHeader("Accept", "application/json");
+    xhr.upload.onprogress = function (e) {
+      if (e.lengthComputable && progress) {
+        progress.textContent = ((window.I18N && window.I18N["atlas.fanfic.importing"]) || "Импорт…") +
+          " " + Math.round(e.loaded / e.total * 100) + "%";
+      }
+    };
+    xhr.onload = function () {
+      release();
+      var body = {};
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch (err) {
+        body = {};
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        var books = body.books || [];
+        if (books.length) {
+          setSourceBook(books[books.length - 1].id);
+        }
+        renderFanficShelf(body);
+        if (progress) {
+          progress.hidden = true;
+        }
+        if (fileEl) {
+          fileEl.value = "";
+        }
+      } else {
+        var msg = (body && body.error && body.error.message) || xhr.statusText;
+        if (progress) {
+          progress.textContent = msg;
+        }
+      }
+    };
+    xhr.onerror = function () {
+      release();
+      if (progress) {
+        progress.textContent = (window.I18N && window.I18N["atlas.fanfic.import_error"]) || "Ошибка импорта";
+      }
+    };
+    var form = new FormData();
+    form.append("file", file);
+    xhr.send(form);
+  }
+
   function bindAtlas() {
     var form = byId(IDS.atlasBirthForm);
     if (form) {
@@ -577,7 +762,38 @@
     }
     var genresGrouped = byId(IDS.atlasGenres);
     if (genresGrouped) {
-      genresGrouped.addEventListener("change", syncFrequentGenres);
+      genresGrouped.addEventListener("change", function (event) {
+        syncFrequentGenres();
+        var target = event.target;
+        if (target && target.type === "checkbox" && target.value === "фанфик") {
+          setFanficState(target.checked, true);
+        }
+      });
+    }
+    var fanfic = byId(IDS.atlasBirthFanfic);
+    if (fanfic) {
+      fanfic.addEventListener("change", function (event) {
+        setFanficState(event.target.checked, true);
+      });
+    }
+    var fanficCancel = byId(IDS.fanficCancel);
+    if (fanficCancel) {
+      fanficCancel.addEventListener("click", cancelFanficModal);
+    }
+    var fanficConfirm = byId(IDS.fanficConfirm);
+    if (fanficConfirm) {
+      fanficConfirm.addEventListener("click", confirmFanficModal);
+    }
+    var fanficShelf = byId(IDS.fanficShelf);
+    if (fanficShelf) {
+      fanficShelf.addEventListener("click", onFanficShelfClick);
+    }
+    var fanficImportForm = byId(IDS.fanficImportForm);
+    if (fanficImportForm) {
+      fanficImportForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        submitFanficImport();
+      });
     }
     var genresMore = byId(IDS.atlasGenresMore);
     if (genresMore) {
@@ -705,6 +921,10 @@
     }
     if (body.genres.length === 0) {
       fail("genres", "Выберите хотя бы один жанр.");
+    }
+    if (isFanficChecked() && !body.source_book) {
+      fail("source_book", "Выберите книгу-источник фанфика.");
+      openFanficModal();
     }
     if (!body.social_order) {
       fail("social_order", "Выберите строй мира.");
@@ -882,7 +1102,8 @@
       economy_mods: checkedBirthChoices(IDS.atlasEconomy),
       magic: fieldValue(IDS.atlasBirthMagic),
       hero_birth: fieldValue(IDS.atlasBirthHeroBirth),
-      censorship: fieldValue(IDS.atlasBirthCensorship) || "16+"
+      censorship: fieldValue(IDS.atlasBirthCensorship) || "16+",
+      source_book: fieldValue(IDS.atlasBirthSourceBook)
     };
     if (!validateAtlasBirth(body)) {
       return;

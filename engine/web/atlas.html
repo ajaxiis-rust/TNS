@@ -39,6 +39,13 @@
         <small class="atlas-field__error" data-field-error="genres"></small>
       </fieldset>
 
+      <label class="atlas-field atlas-field--check atlas-field--wide">
+        <input id="atlas-birth-fanfic" type="checkbox">
+        <span data-i18n="atlas.fanfic.checkbox">Фанфик — нужна книга-источник</span>
+      </label>
+      <small class="atlas-field__error" data-field-error="source_book"></small>
+      <input type="hidden" id="atlas-birth-source-book" name="source_book">
+
       <label class="atlas-field">
         <span data-i18n="atlas.social_order">Строй мира</span>
         <select id="atlas-birth-social-order" name="social_order"></select>
@@ -135,6 +142,25 @@
       <p class="atlas-graph-status" id="atlas-graph-status" data-i18n="atlas.graph.status">Связи между персонажами из социального графа.</p>
     </div>
   </section>
+
+  <div class="fanfic-modal" id="fanfic-modal" hidden>
+    <div class="fanfic-modal__header">
+      <h2 data-i18n="atlas.fanfic.title">Книга-источник фанфика</h2>
+      <button type="button" class="fanfic-modal__cancel" id="fanfic-cancel" data-i18n="atlas.fanfic.cancel">Отмена</button>
+    </div>
+    <div class="fanfic-modal__body">
+      <p class="fanfic-modal__hint" data-i18n="atlas.fanfic.hint">Выберите книгу с полки или импортируйте новую (txt/fb2).</p>
+      <div class="fanfic-shelf" id="fanfic-shelf"></div>
+      <form class="fanfic-import" id="fanfic-import-form">
+        <input type="file" id="fanfic-import-file" accept=".txt,.fb2">
+        <button type="submit" id="fanfic-import-submit" data-i18n="atlas.fanfic.import">Импорт</button>
+      </form>
+      <div class="fanfic-progress" id="fanfic-progress" hidden></div>
+    </div>
+    <div class="fanfic-modal__footer">
+      <button type="button" id="fanfic-confirm" data-i18n="atlas.fanfic.confirm">Выбрать</button>
+    </div>
+  </div>
 
   <script src="/static/map.js"></script>
   <script src="/static/graph.js"></script>

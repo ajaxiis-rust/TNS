@@ -2304,3 +2304,116 @@ body {
   color: var(--muted);
   border-color: var(--line);
 }
+
+/* --- Фанфик-модалка (атлас, T-12-15) ---------------------------------- */
+
+.fanfic-modal {
+  position: fixed;
+  top: 24px;
+  bottom: 24px;
+  left: 50%;
+  z-index: 40;
+  width: min(720px, calc(100vw - 32px));
+  padding: 18px;
+  overflow: auto;
+  transform: translateX(-50%);
+  background: var(--card, #143238);
+  border: 1px solid var(--line-strong, rgba(166, 132, 74, 0.45));
+  border-radius: 12px;
+}
+
+.fanfic-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border, #23262c);
+}
+
+.fanfic-modal__header h2 {
+  margin: 0;
+}
+
+.fanfic-modal__body {
+  margin-top: 12px;
+}
+
+.fanfic-modal__hint {
+  margin: 0 0 10px;
+  font-size: 0.74rem;
+  color: var(--fg-dim, #a2a3aa);
+}
+
+.fanfic-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 40vh;
+  overflow: auto;
+  margin-bottom: 12px;
+}
+
+.fanfic-shelf__empty {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--muted, #6f717a);
+}
+
+.fanfic-book {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  text-align: left;
+  font: inherit;
+  font-size: 0.78rem;
+  color: var(--fg, #e8e8ea);
+  background: var(--panel-alt, #15181d);
+  border: 1px solid var(--border, #23262c);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.fanfic-book:hover {
+  border-color: var(--fg-dim, #a2a3aa);
+}
+
+.fanfic-book.is-selected {
+  border-color: var(--line-strong, rgba(166, 132, 74, 0.45));
+  background: rgba(166, 132, 74, 0.12);
+}
+
+.fanfic-book__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fanfic-book__meta {
+  flex: 0 0 auto;
+  font-size: 0.68rem;
+  color: var(--muted, #6f717a);
+}
+
+.fanfic-import {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.fanfic-progress {
+  font-size: 0.72rem;
+  color: var(--wait, #c9a35c);
+}
+
+.fanfic-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border, #23262c);
+}
