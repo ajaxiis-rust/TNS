@@ -3,13 +3,16 @@ package webapi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"tns65/internal/birth"
+	"tns65/internal/cast"
 	"tns65/internal/db"
 	"tns65/internal/library"
 	"tns65/internal/testkit"
@@ -201,5 +204,87 @@ func TestAtlasForgeNoModel(t *testing.T) {
 	}
 	if !languageMarker(t, dir, "hp-world") {
 		t.Fatal("метка language_ready не поставлена")
+	}
+}
+
+// seedConfirmedCast кладёт в литературную базу мира подтверждённых героев книги-
+// источника (карта строится вне ковки — в тесте карту подставляем руками).
+func seedConfirmedCast(t *testing.T, dir, slug string, n int) int64 {
+	t.Helper()
+	sourceBookID, err := readSourceBookID(slug)
+	if err != nil {
+		t.Fatalf("readSourceBookID(%s): %v", slug, err)
+	}
+	if sourceBookID == 0 {
+		t.Fatalf("мир %s не фанфик: source_book_id = 0", slug)
+	}
+	lit, err := db.OpenWriterAs(filepath.Join(dir, "worlds", slug, "literary.db"), db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(literary): %v", err)
+	}
+	defer lit.Close()
+	for i := 1; i <= n; i++ {
+		if _, err := cast.InsertCharacter(lit, cast.BookCharacter{
+			BookID:      sourceBookID,
+			Name:        fmt.Sprintf("Герой %02d", i),
+			Description: fmt.Sprintf("описание %02d", i),
+			Mentions:    int64(i),
+			Status:      cast.StatusConfirmed,
+		}); err != nil {
+			t.Fatalf("InsertCharacter(%d): %v", i, err)
+		}
+	}
+	return sourceBookID
+}
+
+// TestAtlasForgePromotesFanfic — «Проверка» T-12-25: после ковки фанфика топ-16
+// подтверждённых попадают в characters именными NPC, пачка остаётся 96 карточек.
+func TestAtlasForgePromotesFanfic(t *testing.T) {
+	dir := setupForge(t)
+	reset := installFakeForge()
+	defer reset()
+
+	shelfID := importShelfBook(t, dir, "hp.txt",
+		"Глава 1. Встреча\nТекст первой главы.\n")
+	seedFanficWorld(t, dir, "hp-world", shelfID)
+	seedConfirmedCast(t, dir, "hp-world", 20)
+
+	h := NewHandler(Config{})
+	rr := forgeRequest(t, h, "hp-world")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("POST %s: status = %d, want 200; body=%s", atlasForgePath, rr.Code, rr.Body.String())
+	}
+
+	if n := worldCharacters(t, dir, "hp-world"); n != 112 {
+		t.Fatalf("characters = %d, want 112 (96 пачка + 16 именных)", n)
+	}
+
+	d, err := db.OpenReader(filepath.Join(dir, "worlds", "hp-world", "hp-world.db"))
+	if err != nil {
+		t.Fatalf("OpenReader(world): %v", err)
+	}
+	defer d.Close()
+
+	var named int
+	rows, err := d.Query(`SELECT name, card_json FROM characters WHERE name != ''`)
+	if err != nil {
+		t.Fatalf("SELECT named characters: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name, card string
+		if err := rows.Scan(&name, &card); err != nil {
+			t.Fatalf("scan named: %v", err)
+		}
+		named++
+		if !strings.Contains(card, "описание") {
+			t.Errorf("карточка %q без описания из книги: %s", name, card)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("named rows: %v", err)
+	}
+	if named != 16 {
+		t.Errorf("именных героев = %d, want 16", named)
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"tns65/internal/cast"
 	"tns65/internal/db"
 )
 
@@ -63,8 +64,9 @@ type gun struct {
 // memory_topics, реестр ружей — событиями events (карта писателей T-01-07).
 type Troupe struct {
 	db         *db.Handle
-	baseDBPath string // путь базы языка base.<lang>.db для пула имён (TUN-5).
-	lang       string // язык мира для выбора имён; пусто — пул пропущен.
+	baseDBPath string     // путь базы языка base.<lang>.db для пула имён (TUN-5).
+	lang       string     // язык мира для выбора имён; пусто — пул пропущен.
+	litDB      *db.Handle // литературная база мира для описаний по имени (T-12-25).
 }
 
 // NewTroupe возвращает Труппу над оперативной базой мира h (писатель core).
@@ -78,6 +80,14 @@ func NewTroupe(h *db.Handle) *Troupe {
 func (t *Troupe) WithNamePool(baseDBPath, lang string) *Troupe {
 	t.baseDBPath = baseDBPath
 	t.lang = lang
+	return t
+}
+
+// WithLiterary подключает литературную базу мира (T-12-25): пустая карточка
+// отдаёт описание героя из книги по имени (LT-06.2, P12 §5.9 п.7). nil — описания
+// не подставляются.
+func (t *Troupe) WithLiterary(lit *db.Handle) *Troupe {
+	t.litDB = lit
 	return t
 }
 
@@ -136,14 +146,29 @@ func (t *Troupe) Spawn(characterID int64) (NPC, error) {
 		}
 		name = picked
 	}
+	appearance := c.Appearance
+	if appearance == "" && name != "" {
+		// Пустая карточка по имени (T-12-25): описания в карточке нет —
+		// подставляется описание героя из книги (LT-06.2).
+		if desc, ok := t.BookDescription(name); ok {
+			appearance = desc
+		}
+	}
 	return NPC{
 		ID:        characterID,
 		Name:      name,
 		Role:      nonEmpty(c.Archetype, c.Voice),
-		Group:     c.Appearance,
-		Tags:      []string{c.Archetype, c.Voice, c.Appearance},
+		Group:     appearance,
+		Tags:      []string{c.Archetype, c.Voice, appearance},
 		Backstory: "", // предыстории при первом появлении нет (LT-16.1).
 	}, nil
+}
+
+// BookDescription возвращает описание героя книги по имени (регистронезависимо)
+// из литературной базы мира; литература не подключена или героя нет — ("", false).
+// Подстановка декоративная: ошибка чтения гасится в false (LT-06.2).
+func (t *Troupe) BookDescription(name string) (string, bool) {
+	return cast.DescriptionByName(t.litDB, name)
 }
 
 // assignPoolName назначает пустое имя карточки из пула базы языка и пишет его в

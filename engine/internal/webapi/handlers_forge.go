@@ -95,6 +95,10 @@ func handleAtlasForge(w http.ResponseWriter, r *http.Request) {
 		if err := forgeSourceBook(slug, sourceBookID, &out.Progress); err != nil {
 			out.Warning = "язык книги ещё готовится, играем на сиде: " + err.Error()
 			out.Progress = 0
+		} else if err := promoteFanficCast(slug, sourceBookID); err != nil {
+			// Промоушен героев не гасит открытие мира: без него пачка остаётся
+			// 96 карточек, именные герои появятся при повторной ковке (T-12-25).
+			out.Warning = "герои книги ещё готовятся: " + err.Error()
 		}
 	}
 

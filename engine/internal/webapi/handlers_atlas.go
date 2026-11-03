@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"tns65/internal/birth"
+	"tns65/internal/cast"
 	"tns65/internal/db"
 	"tns65/internal/journal"
 	"tns65/internal/models"
@@ -262,6 +263,69 @@ func wireWorldRating(slug string) {
 		return
 	}
 	workshop.SetRating(rating)
+}
+
+// fanficPromoteLimit — потолок промоушена фанфика: топ-16 подтверждённых героев
+// книги-источника в characters мира (P12 §5.9 п.7). Пачка остаётся 96 карточек,
+// именные герои — отдельный слой, как карточки доукомплектации.
+const fanficPromoteLimit = 16
+
+// promoteFanficCast — промоушен топ-16 подтверждённых героев книги-источника в
+// characters мира-фанфика (T-12-25). Психотип и сословие — по правилам пачки,
+// описание — из книги; подтверждённых нет — ничего не добавляется.
+func promoteFanficCast(slug string, bookID int64) error {
+	world, err := db.OpenWriterAs(worldDBPath(slug), db.DBWorld, db.WriterCore, atlasLogger)
+	if err != nil {
+		return err
+	}
+	defer world.Close()
+
+	lit, err := db.OpenWriterAs(litDBPath(slug), db.DBLiterary, db.WriterForge, atlasLogger)
+	if err != nil {
+		return err
+	}
+	defer lit.Close()
+
+	top, err := cast.PromoteTopConfirmed(lit, bookID, fanficPromoteLimit)
+	if err != nil {
+		return err
+	}
+	codes := birth.AllCodes()
+	estates, err := birth.LoadEstates()
+	if err != nil {
+		return err
+	}
+	if len(codes) == 0 || len(estates) == 0 {
+		return errors.New("webapi: пачка пуста (нет кодов психотипа или сословий)")
+	}
+	for i, c := range top {
+		card := promotedCard(c, i, codes, estates)
+		raw, err := json.Marshal(card)
+		if err != nil {
+			return err
+		}
+		if _, err := world.Exec("characters",
+			`INSERT INTO characters (name, psychotype, estate, card_json) VALUES (?, ?, ?, ?)`,
+			c.Name, card.Psychotype, card.Estate, string(raw)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// promotedCard собирает карточку именного героя: психотип и сословие — по
+// правилам пачки (детерминированный порядок кодов и сословий), описание — из
+// книги, тайны и предыстории нет (LT-16.1).
+func promotedCard(c cast.BookCharacter, i int, codes []birth.Code, estates []birth.Estate) birth.Card {
+	code := codes[i%len(codes)].String()
+	estate := estates[i%len(estates)].Estate
+	return birth.Card{
+		Psychotype: code,
+		Estate:     estate,
+		Appearance: c.DescriptionText(),
+		Weight:     1.0,
+		Layers:     birth.NewLayers(code, birth.DefaultMemoryParams()),
+	}
 }
 
 // handleAtlasDelete — DELETE /api/atlas/worlds/delete?world=<slug>&confirm=<slug>:

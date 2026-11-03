@@ -119,7 +119,7 @@ func (p *Pipeline) stages() []Stage {
 	return []Stage{
 		&returnStage{db: p.DB, clock: p.Clock, lastActive: p.LastActive},
 		&cutStage{logger: p.Logger},
-		&troupeStage{db: p.DB},
+		&troupeStage{db: p.DB, lit: p.LitDB},
 		&secretStage{db: p.DB},
 		&prepathStage{db: p.DB},
 		&compositionStage{lit: p.LitDB, world: p.DriftDB, logger: p.Logger},
@@ -248,7 +248,8 @@ func (s *cutStage) degrade(st *TurnState, err error) {
 // встречу фиксируется предпутём по названным именам (память реакций — в
 // memory_topics).
 type troupeStage struct {
-	db *db.Handle
+	db  *db.Handle
+	lit *db.Handle
 }
 
 func (*troupeStage) Name() string { return "troupe" }
@@ -256,6 +257,9 @@ func (*troupeStage) Name() string { return "troupe" }
 func (s *troupeStage) Run(_ context.Context, st *TurnState) error {
 	if st.Troupe == nil {
 		st.Troupe = NewTroupe(s.db)
+	}
+	if s.lit != nil {
+		st.Troupe = st.Troupe.WithLiterary(s.lit)
 	}
 	if s.db == nil {
 		return nil

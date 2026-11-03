@@ -3,8 +3,12 @@ package turn
 import (
 	"context"
 	"encoding/json"
+	"path/filepath"
 	"testing"
 	"time"
+
+	"tns65/internal/cast"
+	"tns65/internal/db"
 )
 
 func TestTroupe(t *testing.T) {
@@ -106,6 +110,79 @@ func TestTroupe(t *testing.T) {
 			t.Fatalf("ружей в реестре = %d, want 1", n)
 		}
 	})
+}
+
+// newTestLiterary создаёт литературную базу мира для тестов описаний по имени.
+func newTestLiterary(t *testing.T) *db.Handle {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "literary.db")
+	raw, err := db.OpenWriter(path)
+	if err != nil {
+		t.Fatalf("OpenWriter(literary): %v", err)
+	}
+	if err := db.Migrate(raw, "literary"); err != nil {
+		_ = raw.Close()
+		t.Fatalf("Migrate(literary): %v", err)
+	}
+	_ = raw.Close()
+	lit, err := db.OpenWriterAs(path, db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(literary): %v", err)
+	}
+	t.Cleanup(func() { _ = lit.Close() })
+
+	res, err := lit.Exec("book",
+		`INSERT INTO book (shelf_id, name, lang, genres, rating, chapters, status, created_at) VALUES ('hp-1997', 'Гарри Поттер', 'ru', 'фэнтези', '16+', 17, 'ready', '2026-01-01T00:00:00Z')`)
+	if err != nil {
+		t.Fatalf("INSERT book: %v", err)
+	}
+	if _, err := res.LastInsertId(); err != nil {
+		t.Fatalf("book LastInsertId: %v", err)
+	}
+	return lit
+}
+
+// TestTroupeBookDescription — «Проверка» T-12-25 (пустая карточка по имени):
+// пустая карточка отдаёт описание героя из книги, регистронезависимо.
+func TestTroupeBookDescription(t *testing.T) {
+	p, _ := newTestPipeline(t)
+	lit := newTestLiterary(t)
+	tr := NewTroupe(p.DB).WithLiterary(lit)
+
+	if _, err := cast.InsertCharacter(lit, cast.BookCharacter{
+		BookID:      1,
+		Name:        "Снейп",
+		Description: "мастер зелий",
+		Status:      cast.StatusConfirmed,
+	}); err != nil {
+		t.Fatalf("InsertCharacter(Снейп): %v", err)
+	}
+
+	// Пустая карточка (без внешности) с именем героя книги.
+	cardJSON, err := json.Marshal(card{})
+	if err != nil {
+		t.Fatalf("marshal card: %v", err)
+	}
+	if _, err := p.DB.Exec("characters",
+		`INSERT INTO characters (id, name, psychotype, estate, card_json) VALUES (10, 'Снейп', 'ENTJ', 'купец', ?)`,
+		string(cardJSON)); err != nil {
+		t.Fatalf("insert characters: %v", err)
+	}
+
+	npc, err := tr.Spawn(10)
+	if err != nil {
+		t.Fatalf("Spawn: %v", err)
+	}
+	if npc.Group != "мастер зелий" {
+		t.Errorf("внешность пустой карточки = %q, want «мастер зелий»", npc.Group)
+	}
+
+	if d, ok := tr.BookDescription("снейп"); !ok || d != "мастер зелий" {
+		t.Errorf("BookDescription(снейп) = (%q, %v), want («мастер зелий», true)", d, ok)
+	}
+	if _, ok := tr.BookDescription("Гарри"); ok {
+		t.Errorf("BookDescription(Гарри) нашёл отсутствующего героя")
+	}
 }
 
 // containsTag проверяет, что тег встречается в списке.
