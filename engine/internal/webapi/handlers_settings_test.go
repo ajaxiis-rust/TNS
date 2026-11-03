@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"tns65/internal/db"
@@ -832,5 +833,208 @@ func TestFirstRunNoFileHashing(t *testing.T) {
 	}
 	if _, ok := readModelManifest(modelDir("editor")); ok {
 		t.Fatal("битый файл попал в манифест роли")
+	}
+}
+
+// writeChildConfig пишет config.yaml для детей станции: путь llama-server и
+// адреса слотов.
+func writeChildConfig(t *testing.T, llamaPath, genAddr, embedAddr string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	body := "llm:\n" +
+		"  gen_addr: \"" + genAddr + "\"\n" +
+		"  embed_addr: \"" + embedAddr + "\"\n" +
+		"  llama_server_path: \"" + llamaPath + "\"\n"
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// writeChildModel кладёт файл модели и манифест-указатель роли.
+func writeChildModel(t *testing.T, role, file, previous string) string {
+	t.Helper()
+	dir := modelDir(role)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, file)
+	if err := os.WriteFile(path, []byte("gguf"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if previous != "" {
+		if err := os.WriteFile(filepath.Join(dir, previous), []byte("gguf"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m := modelManifest{Role: role, ModelRef: role, File: file, Previous: previous}
+	if err := writeModelManifest(dir, m); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// childEmbedder — подставной llama-server эмбеддера: первые четыре запроса
+// отдают одинаковый вектор (пулинг провален), дальше — bag-of-words.
+type childEmbedder struct {
+	mu    sync.Mutex
+	calls int
+}
+
+func newChildEmbedder(t *testing.T) *httptest.Server {
+	t.Helper()
+	fe := &childEmbedder{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/health":
+			w.WriteHeader(http.StatusOK)
+		case "/v1/embeddings":
+			var req struct {
+				Input []string `json:"input"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			text := ""
+			if len(req.Input) > 0 {
+				text = req.Input[0]
+			}
+			fe.mu.Lock()
+			fe.calls++
+			n := fe.calls
+			fe.mu.Unlock()
+			vec := childFlatVector()
+			if n > 4 {
+				vec = childBagVector(text)
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"data": []any{map[string]any{"embedding": vec}},
+			})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func childFlatVector() []float64 {
+	v := make([]float64, models.EmbedDim)
+	v[0] = 1
+	return v
+}
+
+func childBagVector(text string) []float64 {
+	vocab := []string{"кошка", "кот", "сидит", "окне", "грузовик", "едет", "шоссе", "на", "по"}
+	v := make([]float64, models.EmbedDim)
+	for _, w := range strings.Fields(text) {
+		for i, x := range vocab {
+			if w == x {
+				v[i]++
+			}
+		}
+	}
+	return v
+}
+
+// seedChildEnv подменяет каталог моделей и пути config.yaml на временные.
+func seedChildEnv(t *testing.T, cfg string) {
+	t.Helper()
+	oldRoot, oldCfg, oldLlama := modelsRoot, settingsConfigPath, llamaConfigPath
+	modelsRoot = filepath.Join(t.TempDir(), "models")
+	settingsConfigPath, llamaConfigPath = cfg, cfg
+	t.Cleanup(func() {
+		modelsRoot, settingsConfigPath, llamaConfigPath = oldRoot, oldCfg, oldLlama
+	})
+}
+
+// TestChildModelSpecs — «Проверка» T-13-07: дети :5002/:5001 собираются по
+// манифестам, bin — решённый обнаружением путь, а не зашитая строка.
+func TestChildModelSpecs(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), "bin", "llama-server")
+	writeFakeLlama(t, bin, "version: 7777 (stub)")
+	seedChildEnv(t, writeChildConfig(t, bin, ":5001", ":5002"))
+
+	embedFile := writeChildModel(t, "embed", "bge-m3-Q8_0.gguf", "")
+	genFile := writeChildModel(t, "weaver", "Llama-3.2-3B-Instruct-Q4_K_M.gguf", "")
+
+	children := ModelChildren()
+	if len(children) != 2 {
+		t.Fatalf("ModelChildren = %d детей, want 2: %+v", len(children), children)
+	}
+	embed, gen := children[0], children[1]
+	if embed.Name != "embed" || embed.Port != 5002 || embed.Cmd != bin {
+		t.Fatalf("эмбеддер = %+v, want embed :5002 %s", embed, bin)
+	}
+	if !strings.Contains(strings.Join(embed.Args, " "), embedFile) {
+		t.Fatalf("аргументы эмбеддера = %v, want файл %s", embed.Args, embedFile)
+	}
+	if gen.Name != "llama" || gen.Port != 5001 || gen.Cmd != bin {
+		t.Fatalf("генерация = %+v, want llama :5001 %s", gen, bin)
+	}
+	if len(gen.Args) < 2 || gen.Args[0] != "--model" || gen.Args[1] != genFile {
+		t.Fatalf("аргументы генерации = %v, want --model %s", gen.Args, genFile)
+	}
+}
+
+// TestChildStartAfterInstall — «Проверка» T-13-07: после установки модели
+// ребёнок роли стартует в рантайме с новым файлом, без перезапуска ядра.
+func TestChildStartAfterInstall(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), "bin", "llama-server")
+	writeFakeLlama(t, bin, "version: 7777 (stub)")
+	seedChildEnv(t, writeChildConfig(t, bin, ":5001", ":5002"))
+	genFile := writeChildModel(t, "weaver", "Llama-3.2-3B-Instruct-Q4_K_M.gguf", "")
+
+	var switched []supervisor.Config
+	oldSwitch := modelChildSwitch
+	modelChildSwitch = func(spec supervisor.Config) error {
+		switched = append(switched, spec)
+		return nil
+	}
+	t.Cleanup(func() { modelChildSwitch = oldSwitch })
+
+	if got := startInstalledModelChild("weaver"); got != "started" {
+		t.Fatalf("старт ребёнка = %q, want started", got)
+	}
+	if len(switched) != 1 {
+		t.Fatalf("переключений = %d, want 1", len(switched))
+	}
+	spec := switched[0]
+	if spec.Name != "llama" || spec.Port != 5001 || spec.HealthPath != "/health" {
+		t.Fatalf("ребёнок = %+v, want llama :5001 /health", spec)
+	}
+	if len(spec.Args) < 2 || spec.Args[1] != genFile {
+		t.Fatalf("аргументы = %v, want модель %s", spec.Args, genFile)
+	}
+}
+
+// TestChildEmbedRollback — «Проверка» T-13-07: провал косинус-проверки пулинга
+// после установки возвращает эмбеддер на прежний файл манифеста.
+func TestChildEmbedRollback(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), "bin", "llama-server")
+	writeFakeLlama(t, bin, "version: 7777 (stub)")
+	srv := newChildEmbedder(t)
+	addr := strings.TrimPrefix(srv.URL, "http://")
+	seedChildEnv(t, writeChildConfig(t, bin, ":5001", addr))
+
+	newFile := writeChildModel(t, "embed", "bge-m3-Q8_0.gguf", "bge-m3-Q4_K_M.gguf")
+	oldFile := filepath.Join(modelDir("embed"), "bge-m3-Q4_K_M.gguf")
+
+	var switched []supervisor.Config
+	oldSwitch := modelChildSwitch
+	modelChildSwitch = func(spec supervisor.Config) error {
+		switched = append(switched, spec)
+		return nil
+	}
+	t.Cleanup(func() { modelChildSwitch = oldSwitch })
+
+	if got := startInstalledModelChild("embed"); got != "rolled_back" {
+		t.Fatalf("старт эмбеддера = %q, want rolled_back", got)
+	}
+	if len(switched) != 2 {
+		t.Fatalf("переключений = %d, want 2 (новый файл → прежний)", len(switched))
+	}
+	if switched[0].Args[1] != newFile || switched[1].Args[1] != oldFile {
+		t.Fatalf("файлы = %q → %q, want %s → %s",
+			switched[0].Args[1], switched[1].Args[1], newFile, oldFile)
 	}
 }

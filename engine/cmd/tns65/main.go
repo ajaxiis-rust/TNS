@@ -199,7 +199,13 @@ func run() int {
 		webapi.StopTelegram()
 		return 1
 	}
+	// T-13-07, шаг 1: дети станции по установленным моделям добавляются до
+	// supervisor.New; их bin — решённый обнаружением путь llama-server.
+	children = appendModelChildren(children, webapi.ModelChildren())
 	sup := supervisor.New(logger, children)
+	runner := &childRunner{logger: logger, main: sup}
+	webapi.SupervisorStatus = runner.status
+	webapi.SetModelChildSwitch(runner.switchModel)
 	sup.Run()
 
 	// T-01-13, шаг 4: по SIGTERM и SIGINT дети гасятся в обратном порядке.
@@ -208,8 +214,92 @@ func run() int {
 	<-sig
 	webapi.StopTelegram()
 	webSrv.Close()
+	runner.stop()
 	sup.Stop()
 	return 0
+}
+
+// appendModelChildren добавляет детей по манифестам моделей, не дублируя
+// совпадающие по имени дети из config.yaml (T-13-07, шаг 1).
+func appendModelChildren(children, model []supervisor.Config) []supervisor.Config {
+	for _, spec := range model {
+		if childIn(children, spec.Name) {
+			continue
+		}
+		children = append(children, spec)
+	}
+	return children
+}
+
+// childIn сообщает, что в списке уже есть ребёнок с таким именем.
+func childIn(specs []supervisor.Config, name string) bool {
+	for _, spec := range specs {
+		if spec.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+// childRunner — надзиратель детей станции: основной плюс одиночные надзиратели
+// для моделей, установленных после старта ядра (T-13-07, шаг 2). Смена модели
+// идёт через SwitchModel: стоп → старт → health с откатом.
+type childRunner struct {
+	logger *journal.Logger
+	main   *supervisor.Supervisor
+
+	mu    sync.Mutex
+	extra []*supervisor.Supervisor
+}
+
+// switchModel переключает ребёнка роли; если ребёнка ещё нет — поднимает его
+// одиночным надзирателем, не перезапуская ядро.
+func (r *childRunner) switchModel(spec supervisor.Config) error {
+	if supervisorHasChild(r.main, spec.Name) {
+		return r.main.SwitchModel(spec.Name, spec.Args)
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, extra := range r.extra {
+		if supervisorHasChild(extra, spec.Name) {
+			return extra.SwitchModel(spec.Name, spec.Args)
+		}
+	}
+	extra := supervisor.New(r.logger, []supervisor.Config{spec})
+	extra.Run()
+	r.extra = append(r.extra, extra)
+	return nil
+}
+
+// status — снимок детей основного и одиночных надзирателей.
+func (r *childRunner) status() []supervisor.ChildStatus {
+	out := r.main.Status()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, extra := range r.extra {
+		out = append(out, extra.Status()...)
+	}
+	return out
+}
+
+// stop гасит одиночные надзиратели в обратном порядке запуска.
+func (r *childRunner) stop() {
+	r.mu.Lock()
+	extra := append([]*supervisor.Supervisor(nil), r.extra...)
+	r.mu.Unlock()
+	for i := len(extra) - 1; i >= 0; i-- {
+		extra[i].Stop()
+	}
+}
+
+// supervisorHasChild сообщает, есть ли у надзирателя ребёнок с таким именем.
+func supervisorHasChild(s *supervisor.Supervisor, name string) bool {
+	for _, st := range s.Status() {
+		if st.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 func runLang(args []string) error {

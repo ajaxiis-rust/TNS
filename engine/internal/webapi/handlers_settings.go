@@ -21,6 +21,7 @@ import (
 	"tns65/internal/db"
 	"tns65/internal/embedserver"
 	"tns65/internal/geo"
+	"tns65/internal/journal"
 	"tns65/internal/models"
 	"tns65/internal/paganel"
 	"tns65/internal/supervisor"
@@ -980,6 +981,228 @@ func modelDirName(role string) string {
 
 func modelDir(role string) string { return filepath.Join(modelsRoot, modelDirName(role)) }
 
+// Дети станции по установленным моделям (T-13-07): эмбеддер :5002 и генерация
+// :5001. Роль эмбеддинга фиксирована, роли генерации — в порядке приоритета
+// слота :5001.
+const (
+	embedModelRole = "embed"
+	genModelChild  = "llama"
+)
+
+var generationModelRoles = []string{"weaver", "pythia", "editor", "analysis"}
+
+// modelChildCheckTimeout — потолок health и косинус-проверки после установки.
+const modelChildCheckTimeout = 30 * time.Second
+
+// modelChildSwitch — переключение или запуск ребёнка станции в рантайме;
+// устанавливается ядром в main.go (T-13-07, шаг 2).
+var modelChildSwitch func(supervisor.Config) error
+
+// SetModelChildSwitch подключает переключение детей станции: без хука
+// установка модели детей не трогает.
+func SetModelChildSwitch(f func(supervisor.Config) error) { modelChildSwitch = f }
+
+// ModelChildren — резиденты станции по манифестам world_db/models/ (T-13-07,
+// шаг 1): Spec.Bin — решённый обнаружением путь llama-server (T-13-06), не
+// зашитая строка bin/llama-server. Без найденного бинарника детей нет.
+func ModelChildren() []supervisor.Config {
+	bin := detectLlamaServer().Path
+	if bin == "" {
+		return nil
+	}
+	llm := readLLMSettings(settingsConfigPath, readSettingsKeys(settingsTOMLPath))
+	children := make([]supervisor.Config, 0, 2)
+	if spec, ok := modelChildSpec(embedModelRole, bin, llm); ok {
+		children = append(children, spec)
+	}
+	if role := generationModelRole(); role != "" {
+		if spec, ok := modelChildSpec(role, bin, llm); ok {
+			children = append(children, spec)
+		}
+	}
+	return children
+}
+
+// modelCurrentFile — текущий файл роли по манифесту-указателю.
+func modelCurrentFile(role string) (string, bool) {
+	return modelManifestFile(role, func(m modelManifest) string { return m.File })
+}
+
+// modelPreviousFile — прежний файл роли из поля previous манифеста.
+func modelPreviousFile(role string) (string, bool) {
+	return modelManifestFile(role, func(m modelManifest) string { return m.Previous })
+}
+
+// modelManifestFile — существующий файл роли, выбранный из манифеста.
+func modelManifestFile(role string, pick func(modelManifest) string) (string, bool) {
+	dir := modelDir(role)
+	m, ok := readModelManifest(dir)
+	if !ok {
+		return "", false
+	}
+	name := pick(m)
+	if name == "" {
+		return "", false
+	}
+	file := filepath.Join(dir, name)
+	if info, err := os.Stat(file); err != nil || info.IsDir() {
+		return "", false
+	}
+	return file, true
+}
+
+// generationModelRole — роль генерации для слота :5001: первая установленная
+// из приоритетного списка, иначе любая установленная роль кроме эмбеддинга.
+func generationModelRole() string {
+	entries, err := os.ReadDir(modelsRoot)
+	if err != nil {
+		return ""
+	}
+	installed := make(map[string]bool, len(entries))
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		if _, ok := modelCurrentFile(e.Name()); ok {
+			installed[e.Name()] = true
+		}
+	}
+	for _, role := range generationModelRoles {
+		if installed[role] {
+			return role
+		}
+	}
+	for _, e := range entries {
+		if e.IsDir() && e.Name() != embedModelRole && installed[e.Name()] {
+			return e.Name()
+		}
+	}
+	return ""
+}
+
+// modelChildSpec — спецификация ребёнка роли: эмбеддер — через
+// embedserver.Spec.Child, генерация — флаги llama-server слота :5001.
+func modelChildSpec(role, bin string, llm llmSettings) (supervisor.Config, bool) {
+	file, ok := modelCurrentFile(role)
+	if !ok {
+		return supervisor.Config{}, false
+	}
+	return buildModelChildSpec(role, file, bin, llm), true
+}
+
+// buildModelChildSpec собирает ребёнка роли над конкретным файлом модели.
+func buildModelChildSpec(role, file, bin string, llm llmSettings) supervisor.Config {
+	if role == embedModelRole {
+		host, port := slotHostPort(llm.Embed.Addr, embedserver.DefaultPort)
+		return embedserver.Spec{Bin: bin, ModelPath: file, Host: host, Port: port}.Child()
+	}
+	host, port := slotHostPort(llm.Gen.Addr, 5001)
+	return supervisor.Config{
+		Name:       genModelChild,
+		Cmd:        bin,
+		Args:       []string{"--model", file, "--host", host, "--port", strconv.Itoa(port)},
+		Port:       port,
+		HealthPath: "/health",
+	}
+}
+
+// slotHostPort разбирает адрес слота (:5001) в loopback host и порт.
+func slotHostPort(addr string, defPort int) (string, int) {
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		return embedserver.DefaultHost, defPort
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil || port < 1 || port > 65535 {
+		return embedserver.DefaultHost, defPort
+	}
+	if host == "" {
+		host = embedserver.DefaultHost
+	}
+	return host, port
+}
+
+// startInstalledModelChild — после установки модели перезапускает ребёнка роли
+// без перезапуска ядра (T-13-07, шаг 2): health и, для эмбеддера, косинус
+// пулинга; провал проверки — откат на прежний файл манифеста. Возвращает
+// состояние ребёнка для ответа: started|rolled_back|failed, пусто — хука нет.
+func startInstalledModelChild(role string) string {
+	if modelChildSwitch == nil {
+		return ""
+	}
+	bin := detectLlamaServer().Path
+	if bin == "" {
+		return ""
+	}
+	llm := readLLMSettings(settingsConfigPath, readSettingsKeys(settingsTOMLPath))
+	spec, ok := modelChildSpec(role, bin, llm)
+	if !ok {
+		return ""
+	}
+	err := modelChildSwitch(spec)
+	if err == nil && role == embedModelRole {
+		err = checkEmbedChild(spec)
+	}
+	if err == nil {
+		logModelChild(role, "model.child.started", spec, "")
+		return "started"
+	}
+	logModelChild(role, "model.child.fail", spec, err.Error())
+	prev, ok := modelPreviousFile(role)
+	if !ok {
+		return "failed"
+	}
+	prevSpec := buildModelChildSpec(role, prev, bin, llm)
+	if switchErr := modelChildSwitch(prevSpec); switchErr != nil {
+		logModelChild(role, "model.child.fail", prevSpec, switchErr.Error())
+		return "failed"
+	}
+	if role == embedModelRole {
+		if checkErr := checkEmbedChild(prevSpec); checkErr != nil {
+			logModelChild(role, "model.child.fail", prevSpec, checkErr.Error())
+			return "failed"
+		}
+	}
+	logModelChild(role, "model.child.rolled_back", prevSpec, err.Error())
+	return "rolled_back"
+}
+
+// checkEmbedChild — health и косинус-проверка пулинга запущенного эмбеддера.
+func checkEmbedChild(spec supervisor.Config) error {
+	host := embedserver.DefaultHost
+	if len(spec.Args) > 0 {
+		for i := 0; i+1 < len(spec.Args); i++ {
+			if spec.Args[i] == "--host" {
+				host = spec.Args[i+1]
+				break
+			}
+		}
+	}
+	url := fmt.Sprintf("http://%s:%d", host, spec.Port)
+	ctx, cancel := context.WithTimeout(context.Background(), modelChildCheckTimeout)
+	defer cancel()
+	return embedserver.Check(ctx, url, modelLogger)
+}
+
+// logModelChild пишет событие запуска ребёнка модели в журнал движка.
+func logModelChild(role, event string, spec supervisor.Config, errMsg string) {
+	if modelLogger == nil {
+		return
+	}
+	fields := []journal.Field{
+		{Key: "role", Value: role},
+		{Key: "name", Value: spec.Name},
+		{Key: "port", Value: strconv.Itoa(spec.Port)},
+	}
+	if len(spec.Args) > 1 && spec.Args[0] == "--model" {
+		fields = append(fields, journal.Field{Key: "file", Value: spec.Args[1]})
+	}
+	if errMsg != "" {
+		fields = append(fields, journal.Field{Key: "error", Value: errMsg})
+	}
+	_ = modelLogger.Event("model", event, fields...)
+}
+
 // handleSettingsModelStatus — GET /api/settings/models/status: карточки
 // установленных моделей и текущие задания загрузки (MD-08.2). Карточка модели
 // опрашивает этот маршрут во время установки и рисует прогресс внутри себя.
@@ -1109,8 +1332,12 @@ func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// T-13-07, шаг 2: ребёнок роли поднимается сразу, без перезапуска ядра.
+	child := startInstalledModelChild(role)
 	setModelJob(role, "installed", 1, "")
-	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "model_ref": modelRef, "file": file, "bound": h != nil})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status": "ok", "model_ref": modelRef, "file": file, "bound": h != nil, "child": child,
+	})
 }
 
 // handleSettingsModelRollback — POST /api/settings/models/rollback: откат роли на
@@ -1399,7 +1626,26 @@ type firstRunStation struct {
 	GenPortFree   bool              `json:"gen_port_free"`
 	EmbedPortFree bool              `json:"embed_port_free"`
 	EmbedModel    string            `json:"embed_model"`
+	Children      []stationChild    `json:"children"`
 	RamGB         float64           `json:"ram_gb"`
+}
+
+// stationChild — живое состояние ребёнка станции (контракт §2, T-13-07):
+// имя, порт и готовность.
+type stationChild struct {
+	Name  string `json:"name"`
+	Port  int    `json:"port"`
+	Ready bool   `json:"ready"`
+}
+
+// stationChildren — дети надзирателя для GET /api/first-run и «Настроек».
+func stationChildren() []stationChild {
+	statuses := readSupervisorStatus()
+	out := make([]stationChild, 0, len(statuses))
+	for _, s := range statuses {
+		out = append(out, stationChild{Name: s.Name, Port: s.Port, Ready: s.Running && s.Healthy})
+	}
+	return out
 }
 
 // firstRunResponse — GET/PUT /api/first-run: состояние плюс проверка станции
@@ -1513,6 +1759,7 @@ func probeFirstRunStation() firstRunStation {
 	st.LlamaServer = llamaStationStatus()
 	st.GenPortFree = supervisor.CheckPortFree(5001) == nil
 	st.EmbedPortFree = supervisor.CheckPortFree(5002) == nil
+	st.Children = stationChildren()
 	for _, m := range readModelStatuses() {
 		if m.Role == "embed" && m.Status == "installed" {
 			st.EmbedModel = m.ModelRef
