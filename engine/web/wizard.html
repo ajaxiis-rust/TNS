@@ -1,0 +1,197 @@
+<style>
+  .wizard {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: var(--bg, #0f1115);
+    color: var(--fg, #e8eaed);
+    overflow: auto;
+    padding: 40px 24px;
+  }
+  .wizard__card {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+  .wizard__stepper {
+    margin: 20px 0 28px;
+  }
+  .wizard__stepper ol {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .wizard__stepper li {
+    padding: 8px 14px;
+    border: 1px solid var(--border, #2a2d33);
+    border-radius: 999px;
+    color: var(--fg-dim, #9aa0a6);
+    font-size: 13px;
+  }
+  .wizard__stepper li.is-current {
+    border-color: var(--accent, #7aa2f7);
+    color: var(--accent, #7aa2f7);
+  }
+  .wizard__stepper li.is-done {
+    border-color: var(--ok, #9ece6a);
+    color: var(--ok, #9ece6a);
+  }
+  .wizard-step h2 {
+    font-size: 22px;
+    margin: 0 0 8px;
+  }
+  .wizard-step .wizard-hint {
+    color: var(--fg-dim, #9aa0a6);
+    margin: 0 0 20px;
+  }
+  .wizard-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+  }
+  .wizard-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+  }
+  .wizard-check__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--fg-dim, #9aa0a6);
+    flex: 0 0 auto;
+  }
+  .wizard-check--ok .wizard-check__dot {
+    background: var(--ok, #9ece6a);
+  }
+  .wizard-check--warn .wizard-check__dot {
+    background: var(--warn, #e0af68);
+  }
+  .wizard form label {
+    display: block;
+    margin-bottom: 14px;
+  }
+  .wizard form label > span {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--fg-dim, #9aa0a6);
+    font-size: 13px;
+  }
+  .wizard input[type="text"],
+  .wizard textarea,
+  .wizard select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border, #2a2d33);
+    border-radius: 8px;
+    background: var(--bg-2, #17191d);
+    color: var(--fg, #e8eaed);
+  }
+  .wizard ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .wizard .choice-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+  }
+  .wizard-empty {
+    color: var(--fg-dim, #9aa0a6);
+    padding: 8px 0;
+  }
+</style>
+<div class="wizard">
+  <div class="wizard__card">
+    <h1 data-i18n="wizard.title">Мастер первого запуска</h1>
+    <p data-i18n="wizard.subtitle">Пять коротких шагов — и можно играть.</p>
+    <nav class="wizard__stepper">
+      <ol>
+        <li data-wizard-step="0" data-i18n="wizard.step0">Станция</li>
+        <li data-wizard-step="1" data-i18n="wizard.step1">Модель</li>
+        <li data-wizard-step="2" data-i18n="wizard.step2">Библиотека</li>
+        <li data-wizard-step="3" data-i18n="wizard.step3">Мир</li>
+        <li data-wizard-step="4" data-i18n="wizard.step4">Готово</li>
+      </ol>
+    </nav>
+
+    <section class="wizard-step" data-wizard-step-panel="0">
+      <h2 data-i18n="wizard.station.title">Проверяю станцию</h2>
+      <p class="wizard-hint" data-i18n="wizard.station.hint">Что уже есть и что понадобится для игры.</p>
+      <ul id="wizard-station"></ul>
+      <div class="wizard-actions">
+        <button type="button" class="btn btn--primary" id="wizard-step0-next" data-i18n="wizard.station.next">Всё в порядке, дальше</button>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-wizard-step-panel="1" hidden>
+      <h2 data-i18n="wizard.model.title">Модель для понимания смысла</h2>
+      <p class="wizard-hint" data-i18n="wizard.model.hint">BGE-M3 превращает текст в векторы. Выберите вариант по памяти станка и установите.</p>
+      <div class="model-catalog__grid" id="wizard-model-cards"></div>
+      <div class="wizard-actions">
+        <button type="button" class="btn btn--primary" id="wizard-step1-next" data-i18n="wizard.next">Дальше</button>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-wizard-step-panel="2" hidden>
+      <h2 data-i18n="wizard.library.title">Соберите библиотеку</h2>
+      <p class="wizard-hint" data-i18n="wizard.library.hint">Необязательно: добавьте свои книги (txt/fb2). Можно пропустить.</p>
+      <form id="wizard-library-form">
+        <label>
+          <span data-i18n="wizard.library.pick">Выберите файл книги</span>
+          <input type="file" id="wizard-library-file" accept=".txt,.fb2">
+        </label>
+        <button type="submit" class="btn" data-i18n="wizard.library.import">Импортировать</button>
+      </form>
+      <ul id="wizard-library-list"></ul>
+      <div class="wizard-actions">
+        <button type="button" class="btn btn--ghost" id="wizard-step2-skip" data-i18n="wizard.skip">Пропустить</button>
+        <button type="button" class="btn btn--primary" id="wizard-step2-next" data-i18n="wizard.next">Дальше</button>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-wizard-step-panel="3" hidden>
+      <h2 data-i18n="wizard.world.title">Создайте мир</h2>
+      <p class="wizard-hint" data-i18n="wizard.world.hint">Названия и жанра достаточно — остальное уточните позже.</p>
+      <form id="wizard-world-form">
+        <label>
+          <span data-i18n="atlas.title">Название мира</span>
+          <input type="text" id="wizard-world-title" required>
+        </label>
+        <label>
+          <span data-i18n="atlas.synopsis">О чём история</span>
+          <textarea id="wizard-world-synopsis" rows="2"></textarea>
+        </label>
+        <label>
+          <span data-i18n="atlas.social_order">Строй мира</span>
+          <select id="wizard-world-social"></select>
+        </label>
+        <label>
+          <span data-i18n="atlas.censorship">Возрастной рейтинг</span>
+          <select id="wizard-world-rating"></select>
+        </label>
+        <label>
+          <span data-i18n="atlas.genres">Жанры</span>
+          <div class="choice-grid" id="wizard-world-genres"></div>
+        </label>
+        <button type="submit" class="btn btn--primary" data-i18n="atlas.birth.submit">Родить мир</button>
+      </form>
+      <div class="wizard-actions">
+        <button type="button" class="btn btn--primary" id="wizard-step3-next" data-i18n="wizard.next" hidden>Дальше</button>
+      </div>
+    </section>
+
+    <section class="wizard-step" data-wizard-step-panel="4" hidden>
+      <h2 data-i18n="wizard.done.title">Готово</h2>
+      <p class="wizard-hint" data-i18n="wizard.done.hint">Всё на месте. Настройки можно менять позже в «Настройках».</p>
+      <div class="wizard-actions">
+        <button type="button" class="btn btn--primary" id="wizard-step4-done" data-i18n="wizard.done.start">Начать играть</button>
+      </div>
+    </section>
+  </div>
+</div>

@@ -1483,3 +1483,160 @@ func writeFileAtomic(path string, data []byte) error {
 	}
 	return os.Rename(tmpName, path)
 }
+
+// Мастер первого запуска (T-12-20): экран из embed, состояние state/first-run.json,
+// идемпотентные шаги 0–4. Файл состояния создаётся только после первого шага;
+// его отсутствие и означает «первый запуск». Пройденные шаги при повторном
+// запуске не переспрашиваются.
+
+const (
+	wizardScreenPath  = "/wizard.html"
+	firstRunPathRoute = "/api/first-run"
+	firstRunStepRoute = "/api/first-run/step"
+)
+
+// firstRunStatePath — путь состояния мастера; подменяется в тестах.
+var firstRunStatePath = "state/first-run.json"
+
+// firstRunStepSet — допустимые шаги мастера (0–4).
+var firstRunStepSet = map[string]bool{"0": true, "1": true, "2": true, "3": true, "4": true}
+
+// firstRunStepState — отметка одного шага мастера.
+type firstRunStepState struct {
+	Done bool   `json:"done"`
+	At   string `json:"at,omitempty"`
+}
+
+// firstRunState — состояние мастера: пройденные шаги и признак завершения.
+type firstRunState struct {
+	Complete  bool                         `json:"complete"`
+	Steps     map[string]firstRunStepState `json:"steps"`
+	UpdatedAt string                       `json:"updated_at,omitempty"`
+}
+
+// firstRunStation — итог шага 0 «Проверяю станцию».
+type firstRunStation struct {
+	LlamaServer   bool    `json:"llama_server"`
+	GenPortFree   bool    `json:"gen_port_free"`
+	EmbedPortFree bool    `json:"embed_port_free"`
+	EmbedModel    string  `json:"embed_model"`
+	RamGB         float64 `json:"ram_gb"`
+}
+
+// firstRunResponse — GET/PUT /api/first-run: состояние плюс проверка станции.
+type firstRunResponse struct {
+	Complete bool                         `json:"complete"`
+	Steps    map[string]firstRunStepState `json:"steps"`
+	Station  firstRunStation              `json:"station"`
+}
+
+// handleWizardScreen — GET /wizard.html: экран мастера первого запуска из embed.
+func handleWizardScreen(w http.ResponseWriter, _ *http.Request) {
+	data, err := fs.ReadFile(web.FS, "wizard.html")
+	if err != nil {
+		writeError(w, http.StatusNotFound, codeNotFound, "wizard screen not found")
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
+
+// handleFirstRunGet — GET /api/first-run: состояние мастера и проверка станции.
+func handleFirstRunGet(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, buildFirstRunResponse(readFirstRunState()))
+}
+
+// handleFirstRunStep — PUT /api/first-run/step: помечает шаг пройденным
+// (идемпотентно). Шаг 4 завершает мастера. Повторный вызов уже пройденного
+// шага — успех без изменений.
+func handleFirstRunStep(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Step string `json:"step"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "bad step body")
+		return
+	}
+	step := strings.TrimSpace(req.Step)
+	if !firstRunStepSet[step] {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "step must be one of 0..4")
+		return
+	}
+
+	st := readFirstRunState()
+	if st.Steps == nil {
+		st.Steps = map[string]firstRunStepState{}
+	}
+	if !st.Steps[step].Done {
+		st.Steps[step] = firstRunStepState{Done: true, At: nowSettingsUTC()}
+	}
+	if step == "4" {
+		st.Complete = true
+	}
+	st.UpdatedAt = nowSettingsUTC()
+	if err := writeFirstRunState(st); err != nil {
+		writeError(w, http.StatusInternalServerError, codeInternal, "first-run state write failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, buildFirstRunResponse(st))
+}
+
+// readFirstRunState читает state/first-run.json; отсутствующий или битый файл —
+// пустое состояние (первый запуск).
+func readFirstRunState() firstRunState {
+	data, err := os.ReadFile(firstRunStatePath)
+	if err != nil {
+		return firstRunState{Steps: map[string]firstRunStepState{}}
+	}
+	var st firstRunState
+	if json.Unmarshal(data, &st) != nil {
+		return firstRunState{Steps: map[string]firstRunStepState{}}
+	}
+	if st.Steps == nil {
+		st.Steps = map[string]firstRunStepState{}
+	}
+	return st
+}
+
+// writeFirstRunState пишет состояние атомарно, создавая каталог state/ при
+// необходимости (первый запуск до старта ядра каталог уже есть, но в тестах
+// путь указывает в t.TempDir()).
+func writeFirstRunState(st firstRunState) error {
+	data, err := json.MarshalIndent(st, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(firstRunStatePath), 0o755); err != nil {
+		return err
+	}
+	return writeFileAtomic(firstRunStatePath, append(data, '\n'))
+}
+
+// buildFirstRunResponse собирает ответ: состояние и проверка станции.
+func buildFirstRunResponse(st firstRunState) firstRunResponse {
+	return firstRunResponse{Complete: st.Complete, Steps: st.Steps, Station: probeFirstRunStation()}
+}
+
+// probeFirstRunStation собирает итог шага 0: есть ли llama-server, свободны ли
+// порты :5001/:5002, установлена ли модель эмбеддингов. Ошибки проверок дают
+// «ложь» — шаг 0 показывает игроку, чего не хватает, но не блокирует экран.
+func probeFirstRunStation() firstRunStation {
+	st := firstRunStation{RamGB: hostRAMGB()}
+	st.LlamaServer = fileExists("bin/llama-server")
+	st.GenPortFree = supervisor.CheckPortFree(5001) == nil
+	st.EmbedPortFree = supervisor.CheckPortFree(5002) == nil
+	for _, m := range readModelStatuses() {
+		if m.Role == "embed" && m.Status == "installed" {
+			st.EmbedModel = m.ModelRef
+			break
+		}
+	}
+	return st
+}
+
+// fileExists сообщает, что path существует и это не каталог.
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
+}

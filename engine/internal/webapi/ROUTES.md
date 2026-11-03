@@ -38,6 +38,7 @@
 | GET | `/api/mcp/lemmatizer` | — | `{"pack_id","name","lang","version","enabled","lemmatizer":{"kind","protocol","binary","dict"}}` | `method_not_allowed`, `not_found`, `internal` |
 | PUT | `/api/mcp/lemmatizer` | `{"enabled":bool}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | GET | `/settings.html` | — | `settings.html` из embed | `method_not_allowed`, `not_found` |
+| GET | `/wizard.html` | — | `wizard.html` из embed (мастер первого запуска) | `method_not_allowed`, `not_found` |
 | GET | `/api/settings` | query `world=<slug>` | `{"world":"…","sections":[…],"embedding_dimension":1024,"general":{…},"world":{…},"advanced":{…},"bindings":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | PUT | `/api/settings/bindings` | `{"world":"…","bindings":[{"role","model_ref","provider"}]}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | PUT | `/api/settings/config` | `{"host","port","paganel_enabled","scout_enabled","gen_addr","gen_model","gen_timeout","gen_max_tokens","gen_temperature","gen_retries","gen_concurrency","embed_addr","embed_model","embed_timeout","local","sampling"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
@@ -46,6 +47,8 @@
 | POST | `/api/settings/models/install` | `{"world":"…","role":"…","source":"https://huggingface.co/…","model_ref":"…"}` — `world` может быть пустым: файл скачается без привязки роли | `{"status":"ok","model_ref":"…","bound":bool}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | GET | `/api/settings/models/status` | query `role=<роль>` (необязательно) | `{"jobs":[{"role","status","progress","error"}]}` — текущие загрузки для прогресса в карточке | `method_not_allowed` |
 | POST | `/api/settings/models/rollback` | `{"world":"…","role":"…"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
+| GET | `/api/first-run` | — | `{"complete":bool,"steps":{"0":{"done":bool,"at":"…"},…},"station":{"llama_server":bool,"gen_port_free":bool,"embed_port_free":bool,"embed_model":"…","ram_gb":N}}` — состояние мастера первого запуска и проверка станции | `method_not_allowed` |
+| PUT | `/api/first-run/step` | `{"step":"0|1|2|3|4"}` | `{"complete":bool,"steps":{…},"station":{…}}` — отметка шага пройденным, идемпотентно; шаг 4 завершает мастера | `method_not_allowed`, `bad_request`, `internal` |
 | GET | `/api/providers` | — | `{"providers":[{name,key_set,model,quota,cost_millis}]}` — внешние слоты: ключ, модель, остаток лимита вызовов («недоступно» без лимита), стоимость по тарифу из журнала вызовов | `method_not_allowed` |
 | GET | `/api/monitor` | — | `{"slots":[…],"roles":[…],"machines":[…],"degradations":N,"journal_tail":[…]}` — пять блоков мониторинга, только чтение | `method_not_allowed` |
 | GET | `/api/library` | — | `{"books":[{id,name,author,format,lang,genres,rating,chapters,bytes,sha256,status,progress,created_at}]}` — полка книг со статусами, мир не требуется | `method_not_allowed`, `internal` |
@@ -85,6 +88,7 @@ PUT /api/mcp/coeffs
 GET /api/mcp/lemmatizer
 PUT /api/mcp/lemmatizer
 GET /settings.html
+GET /wizard.html
 GET /api/settings
 PUT /api/settings/bindings
 PUT /api/settings/config
@@ -93,6 +97,8 @@ PUT /api/settings/channel
 POST /api/settings/models/install
 GET /api/settings/models/status
 POST /api/settings/models/rollback
+GET /api/first-run
+PUT /api/first-run/step
 GET /api/providers
 GET /api/monitor
 GET /api/library

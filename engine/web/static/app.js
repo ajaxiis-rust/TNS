@@ -187,7 +187,25 @@
     modelLocalApply: "model-local-apply",
     modelLocalFile: "model-local-file",
     modelLocalPick: "model-local-pick",
-    modelLocalSelected: "model-local-selected"
+    modelLocalSelected: "model-local-selected",
+    wizardRoot: "wizard-root",
+    wizardStep0Next: "wizard-step0-next",
+    wizardStep1Next: "wizard-step1-next",
+    wizardStep2Skip: "wizard-step2-skip",
+    wizardStep2Next: "wizard-step2-next",
+    wizardStep3Next: "wizard-step3-next",
+    wizardStep4Done: "wizard-step4-done",
+    wizardStation: "wizard-station",
+    wizardModelCards: "wizard-model-cards",
+    wizardLibraryForm: "wizard-library-form",
+    wizardLibraryFile: "wizard-library-file",
+    wizardLibraryList: "wizard-library-list",
+    wizardWorldForm: "wizard-world-form",
+    wizardWorldTitle: "wizard-world-title",
+    wizardWorldSynopsis: "wizard-world-synopsis",
+    wizardWorldSocial: "wizard-world-social",
+    wizardWorldRating: "wizard-world-rating",
+    wizardWorldGenres: "wizard-world-genres"
   };
 
   var SETTINGS_SECTIONS = [
@@ -2829,9 +2847,358 @@
     toast((err && err.message) || String(err), false);
   }
 
+  // Мастер первого запуска (T-12-20): шаги 0–4, состояние state/first-run.json,
+  // идемпотентно — пройденные шаги при повторном запуске не переспрашиваются.
+  var WIZARD_STEPS = ["0", "1", "2", "3", "4"];
+  var FIRST_RUN_PATH = "/api/first-run";
+  var FIRST_RUN_STEP_PATH = "/api/first-run/step";
+
+  function checkFirstRun() {
+    return apiJSON(FIRST_RUN_PATH).then(function (data) {
+      if (data && data.complete === true) {
+        showChat();
+        return;
+      }
+      showWizard(data);
+    }).catch(function () {
+      // Узнать состояние не удалось — не блокируем игру, показываем чат.
+      showChat();
+    });
+  }
+
+  function showWizard(data) {
+    var overlay = byId(IDS.wizardRoot);
+    if (overlay) {
+      overlay.hidden = false;
+      renderWizard(data);
+      return;
+    }
+    fetch("/wizard.html").then(function (res) {
+      if (!res.ok) {
+        throw new Error("wizard not found");
+      }
+      return res.text();
+    }).then(function (html) {
+      var root = document.createElement("div");
+      root.id = IDS.wizardRoot;
+      root.innerHTML = html;
+      document.body.appendChild(root);
+      translate(root);
+      bindWizard();
+      renderWizard(data);
+    }).catch(function (err) {
+      toast(err.message, false);
+      showChat();
+    });
+  }
+
+  function renderWizard(data) {
+    var state = data || {};
+    var steps = state.steps || {};
+    renderWizardSteps(steps);
+    renderWizardStation(state.station || {});
+    renderWizardModels(state.station || {});
+    loadWizardWorldOptions();
+    showWizardStep(firstUndoneWizardStep(steps));
+  }
+
+  function firstUndoneWizardStep(steps) {
+    for (var i = 0; i < WIZARD_STEPS.length; i++) {
+      var s = WIZARD_STEPS[i];
+      if (!steps[s] || !steps[s].done) {
+        return s;
+      }
+    }
+    return "4";
+  }
+
+  function renderWizardSteps(steps) {
+    var root = byId(IDS.wizardRoot);
+    if (!root) {
+      return;
+    }
+    root.querySelectorAll("[data-wizard-step]").forEach(function (li) {
+      var n = li.getAttribute("data-wizard-step");
+      li.classList.toggle("is-done", !!(steps[n] && steps[n].done));
+    });
+  }
+
+  function showWizardStep(n) {
+    var root = byId(IDS.wizardRoot);
+    if (!root) {
+      return;
+    }
+    root.querySelectorAll("[data-wizard-step-panel]").forEach(function (panel) {
+      panel.hidden = panel.getAttribute("data-wizard-step-panel") !== n;
+    });
+    root.querySelectorAll("[data-wizard-step]").forEach(function (li) {
+      li.classList.toggle("is-current", li.getAttribute("data-wizard-step") === n);
+    });
+  }
+
+  function renderWizardStation(station) {
+    var box = byId(IDS.wizardStation);
+    if (!box) {
+      return;
+    }
+    var dict = window.I18N || {};
+    var rows = [
+      { ok: !!station.llama_server, text: dict["wizard.station.llama"] || "llama-server на месте" },
+      { ok: station.gen_port_free !== false, text: dict["wizard.station.gen_port"] || "Порт генератора :5001 свободен" },
+      { ok: station.embed_port_free !== false, text: dict["wizard.station.embed_port"] || "Порт эмбеддера :5002 свободен" },
+      {
+        ok: !!station.embed_model,
+        text: (dict["wizard.station.embed_model"] || "Модель смысла установлена") + (station.embed_model ? ": " + station.embed_model : "")
+      }
+    ];
+    box.innerHTML = rows.map(function (r) {
+      return '<li class="wizard-check ' + (r.ok ? "wizard-check--ok" : "wizard-check--warn") + '">' +
+        '<span class="wizard-check__dot"></span>' + escapeHTML(r.text) + "</li>";
+    }).join("");
+  }
+
+  function renderWizardModels(station) {
+    var grid = byId(IDS.wizardModelCards);
+    if (!grid) {
+      return;
+    }
+    var dict = window.I18N || {};
+    var cards = MODEL_CATALOG.filter(function (m) { return m.role === "embed"; });
+    var recommended = recommendedEmbedRef(station.ram_gb);
+    grid.innerHTML = cards.map(function (m) {
+      var badge = m.ref === recommended
+        ? '<span class="chip chip--ok">' + (dict["settings.models.recommended"] || "рекомендуется") + "</span>"
+        : "";
+      return '<article class="model-card" data-catalog-role="' + escapeHTML(m.role) + '"' +
+        ' data-catalog-source="' + escapeHTML(m.source) + '"' +
+        ' data-catalog-ref="' + escapeHTML(m.ref) + '">' +
+        '<div class="model-card__head"><span class="model-card__title">' + escapeHTML(m.label) + "</span>" +
+        '<span class="chip">' + escapeHTML(m.size) + "</span></div>" +
+        '<p class="model-card__meta">' + escapeHTML(m.note) + "</p>" +
+        badge +
+        '<div class="model-card__status" data-model-status>' + escapeHTML(dict["wizard.model.not_installed"] || "Не установлена") + "</div>" +
+        '<div class="model-card__progress" hidden><span></span></div>' +
+        '<div class="model-card__percent" hidden></div>' +
+        '<div class="model-card__actions"><button type="button" data-model-install>' + escapeHTML(dict["settings.models.install"] || "Установить") + "</button></div>" +
+        "</article>";
+    }).join("");
+  }
+
+  function installWizardModel(card) {
+    if (!card) {
+      return;
+    }
+    var role = card.getAttribute("data-catalog-role") || "";
+    var source = card.getAttribute("data-catalog-source") || "";
+    var ref = card.getAttribute("data-catalog-ref") || "";
+    if (!role || !source || !ref) {
+      return;
+    }
+    var btn = card.querySelector("button[data-model-install]");
+    var release = setBusy(btn);
+    setCardProgress(card, 0, "Загрузка…");
+    var stopPolling = startModelProgressPoll(role, card);
+    postJSON("/api/settings/models/install", {
+      world: "",
+      role: role,
+      source: source,
+      model_ref: ref
+    }).then(function () {
+      setCardProgress(card, 1, "Установлена");
+    }).catch(function (err) {
+      setCardProgress(card, 0, (err && err.message) || String(err), true);
+    }).then(function () {
+      stopPolling();
+      release();
+    });
+  }
+
+  function loadWizardWorldOptions() {
+    apiJSON("/api/atlas/birth").then(function (data) {
+      fillBirthSelect(IDS.wizardWorldSocial, data.social_orders || [], "феодализм");
+      fillBirthSelect(IDS.wizardWorldRating, data.ratings || [], "16+");
+      var box = byId(IDS.wizardWorldGenres);
+      if (box) {
+        box.innerHTML = (data.genres || []).map(function (g) {
+          return '<label class="choice"><input type="checkbox" value="' + escapeHTML(g) + '"' +
+            (g === "фэнтези" ? " checked" : "") + "><span>" + escapeHTML(displayChoice(g)) + "</span></label>";
+        }).join("");
+      }
+    }).catch(function () {
+      // Перечни не загрузились — форма останется пустой, но мастера не ломает.
+    });
+  }
+
+  function renderWizardLibrary(books) {
+    var list = byId(IDS.wizardLibraryList);
+    if (!list) {
+      return;
+    }
+    var dict = window.I18N || {};
+    if (!books || books.length === 0) {
+      list.innerHTML = '<li class="wizard-empty">' + escapeHTML(dict["wizard.library.empty"] || "Полка пуста") + "</li>";
+      return;
+    }
+    list.innerHTML = books.map(function (b) {
+      return '<li><span>' + escapeHTML(b.name || b.id) + "</span>" +
+        '<span class="chip">' + escapeHTML(b.status || "") + "</span></li>";
+    }).join("");
+  }
+
+  function onWizardModelClick(event) {
+    var btn = event.target.closest("button[data-model-install]");
+    if (btn) {
+      installWizardModel(btn.closest(".model-card"));
+    }
+  }
+
+  function onWizardLibrarySubmit(event) {
+    event.preventDefault();
+    var fileInput = byId(IDS.wizardLibraryFile);
+    var file = fileInput && fileInput.files && fileInput.files[0];
+    if (!file) {
+      toast(window.I18N["wizard.library.pick"] || "Выберите файл книги", false);
+      return;
+    }
+    var form = new FormData();
+    form.append("file", file);
+    var release = setBusy(event.submitter);
+    fetch("/api/library/import", {
+      method: "POST",
+      body: form,
+      headers: { Accept: "application/json" }
+    }).then(function (res) {
+      return res.json().then(function (body) {
+        if (!res.ok) {
+          throw new Error((body && body.error && body.error.message) || res.statusText);
+        }
+        return body;
+      });
+    }).then(function (data) {
+      renderWizardLibrary(data.books || []);
+      formResult(byId(IDS.wizardLibraryForm), window.I18N["wizard.library.imported"] || "Книга на полке", true);
+    }).catch(function (err) {
+      formResult(byId(IDS.wizardLibraryForm), (err && err.message) || String(err), false);
+    }).then(function () {
+      release();
+    });
+  }
+
+  function onWizardWorldSubmit(event) {
+    event.preventDefault();
+    var title = fieldValue(IDS.wizardWorldTitle);
+    if (!title) {
+      formResult(byId(IDS.wizardWorldForm), window.I18N["wizard.world.need_title"] || "Укажите название мира", false);
+      return;
+    }
+    var genres = checkedBirthChoices(IDS.wizardWorldGenres);
+    if (genres.length === 0) {
+      genres = ["фэнтези"];
+    }
+    var body = {
+      title: title,
+      synopsis: fieldValue(IDS.wizardWorldSynopsis),
+      lang: "ru",
+      travel_mode: "вымышленная",
+      genres: genres,
+      social_order: fieldValue(IDS.wizardWorldSocial) || "феодализм",
+      censorship: fieldValue(IDS.wizardWorldRating) || "16+"
+    };
+    var release = setBusy(event.submitter);
+    postJSON("/api/atlas/worlds/birth", body).then(function (res) {
+      var slug = res && res.world && res.world.slug;
+      if (slug) {
+        window.__activeSlug = slug;
+        window.__activeWorldChecked = true;
+      }
+      formResult(byId(IDS.wizardWorldForm), window.I18N["wizard.world.created"] || "Мир создан", true);
+      var nextBtn = byId(IDS.wizardStep3Next);
+      if (nextBtn) {
+        nextBtn.hidden = false;
+      }
+    }).catch(function (err) {
+      formResult(byId(IDS.wizardWorldForm), (err && err.message) || String(err), false);
+    }).then(function () {
+      release();
+    });
+  }
+
+  function wizardMarkStep(step, thenFn) {
+    return putJSON(FIRST_RUN_STEP_PATH, { step: step }).then(function (data) {
+      renderWizardSteps((data && data.steps) || {});
+      if (thenFn) {
+        thenFn(data);
+      }
+    }).catch(function (err) {
+      toast((err && err.message) || String(err), false);
+    });
+  }
+
+  function wizardNext(step, next) {
+    wizardMarkStep(step, function () {
+      showWizardStep(next);
+    });
+  }
+
+  function wizardDone() {
+    wizardMarkStep("4", function () {
+      var root = byId(IDS.wizardRoot);
+      if (root) {
+        root.hidden = true;
+      }
+      showChat();
+      if (window.Chat && typeof window.Chat.refresh === "function") {
+        window.Chat.refresh();
+      }
+    });
+  }
+
+  function bindWizard() {
+    var root = byId(IDS.wizardRoot);
+    if (!root) {
+      return;
+    }
+    var step0Next = byId(IDS.wizardStep0Next);
+    if (step0Next) {
+      step0Next.addEventListener("click", function () { wizardNext("0", "1"); });
+    }
+    var step1Next = byId(IDS.wizardStep1Next);
+    if (step1Next) {
+      step1Next.addEventListener("click", function () { wizardNext("1", "2"); });
+    }
+    var step2Skip = byId(IDS.wizardStep2Skip);
+    if (step2Skip) {
+      step2Skip.addEventListener("click", function () { wizardNext("2", "3"); });
+    }
+    var step2Next = byId(IDS.wizardStep2Next);
+    if (step2Next) {
+      step2Next.addEventListener("click", function () { wizardNext("2", "3"); });
+    }
+    var step3Next = byId(IDS.wizardStep3Next);
+    if (step3Next) {
+      step3Next.addEventListener("click", function () { wizardNext("3", "4"); });
+    }
+    var step4Done = byId(IDS.wizardStep4Done);
+    if (step4Done) {
+      step4Done.addEventListener("click", wizardDone);
+    }
+    var modelGrid = byId(IDS.wizardModelCards);
+    if (modelGrid) {
+      modelGrid.addEventListener("click", onWizardModelClick);
+    }
+    var libraryForm = byId(IDS.wizardLibraryForm);
+    if (libraryForm) {
+      libraryForm.addEventListener("submit", onWizardLibrarySubmit);
+    }
+    var worldForm = byId(IDS.wizardWorldForm);
+    if (worldForm) {
+      worldForm.addEventListener("submit", onWizardWorldSubmit);
+    }
+  }
+
   applyThemeClass(resolveTheme());
   translate(document);
-  showChat();
+  checkFirstRun();
   subscribeMcpWS();
   subscribeMonitorWS();
 })();
