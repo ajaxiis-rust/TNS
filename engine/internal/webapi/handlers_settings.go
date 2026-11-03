@@ -934,8 +934,11 @@ type modelStatus struct {
 
 // modelJobState — текущий статус загрузки модели (MD-08.2). Реестр живёт в
 // памяти процесса; загрузка идёт только по явному запросу владельца (MD-09.3).
+// ModelRef отличает вариант одной роли: у роли embed несколько квантований,
+// прогресс и ошибка показываются только на карточке скачиваемого варианта.
 type modelJobState struct {
 	Role     string  `json:"role"`
+	ModelRef string  `json:"model_ref"`
 	Status   string  `json:"status"`
 	Progress float64 `json:"progress"`
 	Error    string  `json:"error,omitempty"`
@@ -946,10 +949,10 @@ var (
 	modelJobs   = map[string]modelJobState{}
 )
 
-func setModelJob(role, status string, progress float64, errMsg string) {
+func setModelJob(role, modelRef, status string, progress float64, errMsg string) {
 	modelJobsMu.Lock()
 	defer modelJobsMu.Unlock()
-	modelJobs[role] = modelJobState{Role: role, Status: status, Progress: progress, Error: errMsg}
+	modelJobs[role] = modelJobState{Role: role, ModelRef: modelRef, Status: status, Progress: progress, Error: errMsg}
 }
 
 func modelJob(role string) (modelJobState, bool) {
@@ -961,13 +964,13 @@ func modelJob(role string) (modelJobState, bool) {
 
 // beginModelJob занимает роль под загрузку: одна активная установка на роль,
 // вторая параллельная получает отказ (T-13-02, шаг 6).
-func beginModelJob(role string) bool {
+func beginModelJob(role, modelRef string) bool {
 	modelJobsMu.Lock()
 	defer modelJobsMu.Unlock()
 	if j, ok := modelJobs[role]; ok && j.Status == "downloading" {
 		return false
 	}
-	modelJobs[role] = modelJobState{Role: role, Status: "downloading"}
+	modelJobs[role] = modelJobState{Role: role, ModelRef: modelRef, Status: "downloading"}
 	return true
 }
 
@@ -1300,14 +1303,20 @@ func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Одна активная загрузка на роль: вторая параллельная установка не гоняется
-	// на файлах роли (T-13-02, шаг 6).
-	if !beginModelJob(role) {
+	// на файлах роли (T-13-02, шаг 6). Название скачиваемого варианта — в
+	// тексте отказа, чтобы визард показал, какой именно файл уже качается.
+	if !beginModelJob(role, modelRef) {
+		active, _ := modelJob(role)
+		if active.ModelRef != "" {
+			writeError(w, http.StatusConflict, codeConflict, "already downloading "+active.ModelRef)
+			return
+		}
 		writeError(w, http.StatusConflict, codeConflict, "model download already running")
 		return
 	}
 	dir := modelDir(role)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		setModelJob(role, "error", 0, err.Error())
+		setModelJob(role, modelRef, "error", 0, err.Error())
 		writeError(w, http.StatusInternalServerError, codeInternal, "model dir create failed")
 		return
 	}
@@ -1318,17 +1327,17 @@ func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 		Logger: modelLogger,
 		Progress: func(p models.DownloadProgress) {
 			if p.Total > 0 {
-				setModelJob(role, "downloading", float64(p.Done)/float64(p.Total), "")
+				setModelJob(role, modelRef, "downloading", float64(p.Done)/float64(p.Total), "")
 			}
 		},
 	})
 	if err != nil {
-		setModelJob(role, "error", 0, err.Error())
+		setModelJob(role, modelRef, "error", 0, err.Error())
 		writeError(w, http.StatusInternalServerError, codeInternal, "model download failed")
 		return
 	}
 	if res.Size == 0 {
-		setModelJob(role, "error", 0, "empty model")
+		setModelJob(role, modelRef, "error", 0, "empty model")
 		writeError(w, http.StatusInternalServerError, codeInternal, "empty model")
 		return
 	}
@@ -1336,25 +1345,25 @@ func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 	// попадает в манифест, дальше статус-лист читает только размер.
 	if !modelIntegrityOK(dir, file, res.SHA256) {
 		_ = os.Remove(filepath.Join(dir, file))
-		setModelJob(role, "error", 0, "model integrity check failed")
+		setModelJob(role, modelRef, "error", 0, "model integrity check failed")
 		writeError(w, http.StatusInternalServerError, codeInternal, "model integrity check failed")
 		return
 	}
 	if err := installModelFile(role, modelRef, source, file, res.SHA256, res.Size); err != nil {
-		setModelJob(role, "error", 0, err.Error())
+		setModelJob(role, modelRef, "error", 0, err.Error())
 		writeError(w, http.StatusInternalServerError, codeInternal, "model install failed")
 		return
 	}
 	if h != nil {
 		if err := writeSlotBindings(h, []slotBinding{{Role: role, ModelRef: modelRef, Provider: "local"}}); err != nil {
-			setModelJob(role, "error", 0, err.Error())
+			setModelJob(role, modelRef, "error", 0, err.Error())
 			writeError(w, http.StatusInternalServerError, codeInternal, "binding write failed")
 			return
 		}
 	}
 	// T-13-07, шаг 2: ребёнок роли поднимается сразу, без перезапуска ядра.
 	child := startInstalledModelChild(role)
-	setModelJob(role, "installed", 1, "")
+	setModelJob(role, modelRef, "installed", 1, "")
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status": "ok", "model_ref": modelRef, "file": file, "bound": h != nil, "child": child,
 	})
@@ -1402,7 +1411,7 @@ func handleSettingsModelRollback(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, codeInternal, "binding write failed")
 		return
 	}
-	setModelJob(role, "rolled_back", 1, "")
+	setModelJob(role, m.ModelRef, "rolled_back", 1, "")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

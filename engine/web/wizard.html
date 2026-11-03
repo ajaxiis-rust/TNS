@@ -118,6 +118,23 @@
     color: var(--fg-dim, #9aa0a6);
     padding: 8px 0;
   }
+  .wizard-model-group {
+    margin-top: 20px;
+  }
+  .wizard-model-group__title {
+    font-size: 16px;
+    margin: 0 0 4px;
+  }
+  .wizard-model-group__hint {
+    color: var(--fg-dim, #9aa0a6);
+    font-size: 13px;
+    margin: 0 0 12px;
+  }
+  .wizard-model-group + .wizard-model-group {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border, #2a2d33);
+  }
   .wizard-engine {
     margin-top: 18px;
     padding-top: 16px;
@@ -199,9 +216,9 @@
     </section>
 
     <section class="wizard-step" data-wizard-step-panel="1" hidden>
-      <h2 data-i18n="wizard.model.title">Модель для понимания смысла</h2>
-      <p class="wizard-hint" data-i18n="wizard.model.hint">BGE-M3 превращает текст в векторы. Выберите вариант по характеристикам компьютера (объём памяти, видеокарта) и установите.</p>
-      <div class="model-catalog__grid" id="wizard-model-cards"></div>
+      <h2 data-i18n="wizard.model.title">Модели</h2>
+      <p class="wizard-hint" data-i18n="wizard.model.hint">Две группы: основная модель пишет прозу, эмбеддинг понимает смысл. Установите хотя бы одну основную модель и один эмбеддинг — остальное настраивается позже в «Настройках».</p>
+      <div id="wizard-model-cards"></div>
       <div class="wizard-actions">
         <button type="button" class="btn btn--ghost" data-wizard-back="0" data-i18n="wizard.back">Назад</button>
         <button type="button" class="btn btn--primary" id="wizard-step1-next" data-i18n="wizard.next">Дальше</button>

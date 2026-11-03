@@ -136,14 +136,14 @@ func TestModelDelete(t *testing.T) {
 
 	// Активная загрузка роли — отказ 409, файлы не трогаются.
 	install()
-	setModelJob(role, "downloading", 0.2, "")
+	setModelJob(role, "bge-m3-Q4_K_M", "downloading", 0.2, "")
 	if rr := del(); rr.Code != http.StatusConflict {
 		t.Fatalf("удаление при загрузке: status = %d, want 409; body=%s", rr.Code, rr.Body.String())
 	}
 	if _, err := os.Stat(filepath.Join(dir, file)); err != nil {
 		t.Fatalf("удаление при активной загрузке снесло файл модели: %v", err)
 	}
-	setModelJob(role, "installed", 1, "")
+	setModelJob(role, "bge-m3-Q4_K_M", "installed", 1, "")
 }
 
 // containsName сообщает, что в списке снятых файлов есть name.

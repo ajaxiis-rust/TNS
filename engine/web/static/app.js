@@ -248,6 +248,38 @@
       note: "Быстрая модель для живой прозы: меньше память, выше скорость."
     },
     {
+      role: "weaver",
+      ref: "Katarau-9B-Q4_K_M",
+      source: MODEL_SOURCE_SCHEME + "huggingface.co/katafiek/Katarau-9B-ru-RP-nsfw-GGUF/resolve/main/Katarau-9B-Q4_K_M.gguf",
+      label: "Katarau 9B (RP)",
+      size: "5,6 ГБ",
+      note: "Русская модель для ролевой прозы: живой язык, без цензуры."
+    },
+    {
+      role: "weaver",
+      ref: "Qwen3.5-9B-abliterated-Q4_K_M",
+      source: MODEL_SOURCE_SCHEME + "huggingface.co/mradermacher/Qwen3.5-9B-abliterated-i1-GGUF/resolve/main/Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf",
+      label: "Qwen 3.5 9B",
+      size: "5,6 ГБ",
+      note: "Сильная модель без цензуры: живой язык и длинный контекст."
+    },
+    {
+      role: "weaver",
+      ref: "Qwen3.5-4B-abliterated-Q4_K_M",
+      source: MODEL_SOURCE_SCHEME + "huggingface.co/mradermacher/Qwen3.5-4B-abliterated-GGUF/resolve/main/Qwen3.5-4B-abliterated.Q4_K_M.gguf",
+      label: "Qwen 3.5 4B",
+      size: "2,7 ГБ",
+      note: "Компактная модель без цензуры для быстрых сцен."
+    },
+    {
+      role: "weaver",
+      ref: "KAINE-Qwen3.5-4B-abliterated-Q4_K_M",
+      source: MODEL_SOURCE_SCHEME + "huggingface.co/kaineone/Qwen3.5-4B-abliterated-GGUF/resolve/main/KAINE-Qwen3.5-4B-abliterated.Q4_K_M.gguf",
+      label: "Qwen 3.5 4B KAINE",
+      size: "2,8 ГБ",
+      note: "Вариант 4B без цензуры: быстрее 9B, меньше памяти."
+    },
+    {
       role: "pythia",
       ref: "Qwen2.5-7B-Instruct-Q4_K_M",
       source: MODEL_SOURCE_SCHEME + "huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
@@ -2675,17 +2707,20 @@
         byRole[m.role] = m;
       }
     });
-    var jobByRole = {};
+    // Задание загрузки несёт role + model_ref: прогресс и ошибка рисуются
+    // только на карточке скачиваемого варианта, а не на всех карточках роли
+    // (T-13-11). Задание без model_ref (наследие) матчится по роли.
+    var jobByKey = {};
     (jobs || []).forEach(function (j) {
       if (j && j.role) {
-        jobByRole[j.role] = j;
+        jobByKey[j.model_ref ? j.role + "\u0000" + j.model_ref : j.role] = j;
       }
     });
     grid.querySelectorAll(".model-card").forEach(function (card) {
       var role = card.getAttribute("data-catalog-role") || "";
       var ref = card.getAttribute("data-catalog-ref") || "";
       var current = byRole[role];
-      var job = jobByRole[role];
+      var job = jobByKey[role + "\u0000" + ref] || jobByKey[role];
       if (job && job.status === "downloading") {
         setCardProgress(card, job.progress || 0,
           dict[prefix + ".downloading"] || "Загрузка…", false,
@@ -3378,7 +3413,8 @@
   }
 
   // renderWizardEngine — блок «Движок» шага 0: найденное, ручной путь, поиск по
-  // диску и установка (кнопка видна только когда ничего не нашли, T-13-06).
+  // диску и установка. Результат поиска живёт до следующего поиска и не
+  // сбрасывается живым опросом станции.
   function renderWizardEngine(server) {
     var box = byId(IDS.wizardEngine);
     if (!box) {
@@ -3402,20 +3438,17 @@
     if (input && found && server.path && document.activeElement !== input && input.value !== server.path) {
       input.value = server.path;
     }
+    // Кнопка «Установить» видна всегда: когда движок уже найден, установка
+    // просто перечитывает и сохраняет путь; когда не найден — скачивает скриптом.
     var install = byId(IDS.wizardEngineInstall);
     if (install) {
-      install.hidden = found;
+      install.hidden = false;
     }
     if (found) {
       var hint = byId(IDS.wizardEngineHint);
       if (hint) {
         hint.hidden = true;
         hint.textContent = "";
-      }
-      var list = byId(IDS.wizardEngineFound);
-      if (list) {
-        list.hidden = true;
-        list.innerHTML = "";
       }
     }
   }
@@ -3554,8 +3587,9 @@
       });
   }
 
-  // renderWizardModels рисует карточки моделей смысла один раз; живой статус
-  // потом переносится на них без перерисовки (T-13-08, шаг 1).
+  // renderWizardModels рисует карточки моделей один раз двумя группами:
+  // основная (генерация) и эмбеддинг. Живой статус потом переносится на
+  // карточки без перерисовки (T-13-08, шаг 1).
   function renderWizardModels(station, models) {
     var grid = byId(IDS.wizardModelCards);
     if (!grid) {
@@ -3563,9 +3597,27 @@
     }
     var dict = window.I18N || {};
     if (grid.getAttribute("data-catalog-drawn") !== "1") {
-      var cards = MODEL_CATALOG.filter(function (m) { return m.role === "embed"; });
       var recommended = recommendedEmbedRef(station && station.ram_gb);
-      grid.innerHTML = cards.map(function (m) {
+      var mainCards = MODEL_CATALOG.filter(function (m) { return m.role !== "embed"; });
+      var embedCards = MODEL_CATALOG.filter(function (m) { return m.role === "embed"; });
+      grid.innerHTML =
+        wizardModelGroup(dict["wizard.model.main.title"] || "Основная модель (генерация)",
+          dict["wizard.model.main.hint"] || "Пишет сцены и реплики; запускается на глубоких сценах.",
+          mainCards, recommended, dict, false) +
+        wizardModelGroup(dict["wizard.model.embed.title"] || "Эмбеддинг (модель смысла)",
+          dict["wizard.model.embed.hint"] || "BGE-M3 превращает текст в векторы и работает постоянно.",
+          embedCards, recommended, dict, true);
+      grid.setAttribute("data-catalog-drawn", "1");
+    }
+    applyModelStatuses(grid, models || [], [], "wizard.model");
+  }
+
+  function wizardModelGroup(title, hint, cards, recommended, dict, isEmbed) {
+    return '<div class="wizard-model-group' + (isEmbed ? " wizard-model-group--embed" : "") + '">' +
+      '<h3 class="wizard-model-group__title">' + escapeHTML(title) + "</h3>" +
+      '<p class="wizard-model-group__hint">' + escapeHTML(hint) + "</p>" +
+      '<div class="model-catalog__grid">' +
+      cards.map(function (m) {
         var badge = m.ref === recommended
           ? '<span class="chip chip--ok">' + (dict["settings.models.recommended"] || "рекомендуется") + "</span>"
           : "";
@@ -3575,6 +3627,7 @@
           ' data-catalog-ref="' + escapeHTML(m.ref) + '">' +
           '<div class="model-card__head"><span class="model-card__title">' + escapeHTML(m.label) + "</span>" +
           '<span class="chip">' + escapeHTML(m.size) + "</span></div>" +
+          '<div class="model-card__meta">роль: ' + escapeHTML(m.role) + "</div>" +
           '<p class="model-card__meta">' + escapeHTML(m.note) + "</p>" +
           '<div class="model-card__meta" data-model-file hidden></div>' +
           badge +
@@ -3583,10 +3636,8 @@
           '<div class="model-card__percent" hidden></div>' +
           '<div class="model-card__actions"><button type="button" data-model-install>' + escapeHTML(dict["settings.models.install"] || "Установить") + "</button></div>" +
           "</article>";
-      }).join("");
-      grid.setAttribute("data-catalog-drawn", "1");
-    }
-    applyModelStatuses(grid, models || [], [], "wizard.model");
+      }).join("") +
+      "</div></div>";
   }
 
   function installWizardModel(card) {

@@ -174,12 +174,12 @@ func TestModelInstallFileNaming(t *testing.T) {
 	}
 
 	// Вторая параллельная установка той же роли — 409.
-	setModelJob("weaver", "downloading", 0.3, "")
+	setModelJob("weaver", "org/m-v2", "downloading", 0.3, "")
 	rr = install(srcV2, "org/m-v2")
 	if rr.Code != http.StatusConflict {
 		t.Fatalf("параллельная установка: status = %d, want 409; body=%s", rr.Code, rr.Body.String())
 	}
-	setModelJob("weaver", "installed", 1, "")
+	setModelJob("weaver", "org/m-v2", "installed", 1, "")
 
 	// Старая раскладка читается как установленная; автопереименования нет.
 	legacy := modelDir("embed")

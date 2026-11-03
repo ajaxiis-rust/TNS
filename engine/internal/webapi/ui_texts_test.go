@@ -90,7 +90,7 @@ func TestWizardTextsForOwner(t *testing.T) {
 		`"wizard.world.title": "Создайте мир"`,
 		`"wizard.step0": "Компьютер"`,
 		`"wizard.station.title": "Проверяю компьютер"`,
-		`"wizard.model.hint": "BGE-M3 превращает текст в векторы. Выберите вариант по характеристикам компьютера (объём памяти, видеокарта) и установите."`,
+		`"wizard.model.hint": "Две группы: основная модель пишет прозу, эмбеддинг понимает смысл. Установите хотя бы одну основную модель и один эмбеддинг — остальное настраивается позже в «Настройках»."`,
 	} {
 		if !strings.Contains(dict, want) {
 			t.Errorf("i18n.js без строки %s", want)
@@ -101,7 +101,7 @@ func TestWizardTextsForOwner(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"Проверяю компьютер", "Создать мир", "характеристикам компьютера"} {
+	for _, want := range []string{"Проверяю компьютер", "Создать мир", "эмбеддинг понимает смысл"} {
 		if !strings.Contains(string(page), want) {
 			t.Errorf("wizard.html без зеркала %q", want)
 		}

@@ -561,8 +561,8 @@ func TestModelStatusEndpoint(t *testing.T) {
 		modelJobsMu.Unlock()
 	})
 
-	setModelJob("weaver", "downloading", 0.42, "")
-	setModelJob("editor", "error", 0, "boom")
+	setModelJob("weaver", "Llama-3.2-3B-Instruct-Q4_K_M", "downloading", 0.42, "")
+	setModelJob("editor", "", "error", 0, "boom")
 
 	rr := mcpRequest(t, handleSettingsModelStatus, http.MethodGet, settingsModelsStatusPath, nil, "")
 	if rr.Code != http.StatusOK {
@@ -579,6 +579,9 @@ func TestModelStatusEndpoint(t *testing.T) {
 	}
 	if out.Jobs[0].Role != "editor" || out.Jobs[0].Status != "error" {
 		t.Fatalf("jobs[0] = %+v", out.Jobs[0])
+	}
+	if out.Jobs[1].ModelRef != "Llama-3.2-3B-Instruct-Q4_K_M" {
+		t.Fatalf("jobs[1].model_ref = %q, want вариант модели", out.Jobs[1].ModelRef)
 	}
 
 	rr = mcpRequest(t, handleSettingsModelStatus, http.MethodGet, settingsModelsStatusPath+"?role=weaver", nil, "")
