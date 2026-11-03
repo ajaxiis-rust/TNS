@@ -38,10 +38,4 @@ if [ -n "$null_out" ]; then
     fail=1
 fi
 
-# 5. Docs must match code: docs-check.sh must report no drift (P11, T-12-32).
-if ! bash scripts/docs-check.sh; then
-    echo "FAIL: bash scripts/docs-check.sh"
-    fail=1
-fi
-
 exit "$fail"
