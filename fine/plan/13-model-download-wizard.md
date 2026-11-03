@@ -425,6 +425,45 @@
 - **Документы:** перечислены в «Правится».
 - **Исполнитель:** код.
 
+### T-13-11. Карточки вариантов одной роли: статус по варианту, не по роли
+- **Атомы:** MD-08.2 (статусная карточка), MD-08.3 (живой опрос T-13-08).
+- **Источник:** живой прогон владельца 2026-11-03 (TNS-GAME, бинарь волны):
+  клик «Установить» по одной карточке BGE-M3 зажёг «Загрузка…» на всех
+  карточках роли `embed`.
+- **Разрыв:** `MODEL_CATALOG` держит две карточки роли `embed`
+  (`bge-m3-Q4_K_M`, `bge-m3-Q8_0`, `web/static/app.js:289–303`); реестр
+  заданий `modelJobState` несёт только `{role,status,progress}`
+  (`handlers_settings.go:937–942`); матчинг в `applyModelStatuses` —
+  `jobByRole[role]` (`app.js:2678–2694`), живой опрос кормит его заданиями
+  (`app.js:3961`, `app.js:3978`). Роль одинакова у обоих вариантов →
+  «Загрузка…» и «Установлена» рисуются на всех карточках роли.
+- **Зависит от:** — (волна P12 закрыта; отдельная правка).
+- **Читать:** `web/static/app.js` (`MODEL_CATALOG`, `applyModelStatuses`,
+  `startModelProgressPoll`, `renderWizardModels`), `handlers_settings.go`
+  (`modelJobState`, `setModelJob`, статус-роут моделей).
+- **Правится:** `engine/internal/webapi/handlers_settings.go`,
+  `engine/internal/webapi/handlers_models_delete.go` (если clearModelJob
+  трогает поля), `engine/web/static/app.js`, `engine/internal/webapi/ROUTES.md`,
+  при необходимости `DOCS/06-MODELS-AND-SEED.md`.
+- **Писатель:** нет записи.
+- **Шаги:**
+  1. Бэкенд: `modelJobState` получает `ModelRef string` (`json:"model_ref"`),
+     `setModelJob` принимает ref из запроса установки; список статуса
+     `models` получает `model_ref` из манифеста (поле уже есть,
+     `model_files.go:41`).
+  2. Фронтенд: матчинг карточка↔задание и карточка↔установленная модель —
+     по `role` + `model_ref` (атрибут `data-catalog-ref`); задание без ref
+     (наследие) матчится по роли. Прогресс и «Загрузка…» — только на карточке
+     своего варианта; сосед остаётся «Установить»/«Не установлена».
+  3. Клики по второй карточке той же роли при активной загрузке — 409 уже
+     есть (single-flight по роли); тост показывает, что качается другой
+     вариант (`model_ref` в тексте).
+- **Проверка:** `cd engine && go test ./internal/webapi -run TestModelStatus
+  -count=1` → в jobs виден `model_ref`; `scripts/ui-check.sh release` → ok;
+  вручную: клик по Q4_K_M — у Q8_0 нет прогресса, и наоборот.
+- **Документы:** зеркало формы jobs/models в ROUTES.md.
+- **Исполнитель:** код.
+
 ## 4. Рекомендации (вне атомов, применять в задачах 01–08)
 
 - Перед стартом скачивания проверять свободное место на диске (`statfs`)
