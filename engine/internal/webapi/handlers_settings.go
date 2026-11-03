@@ -2,17 +2,13 @@ package webapi
 
 import (
 	"bufio"
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -26,7 +22,6 @@ import (
 	"tns65/internal/embedserver"
 	"tns65/internal/geo"
 	"tns65/internal/models"
-	"tns65/internal/netgate"
 	"tns65/internal/paganel"
 	"tns65/internal/supervisor"
 	"tns65/internal/workshop"
@@ -928,19 +923,11 @@ type modelStatus struct {
 	Role        string  `json:"role"`
 	ModelRef    string  `json:"model_ref"`
 	Source      string  `json:"source"`
+	File        string  `json:"file"`
 	Status      string  `json:"status"`
 	Progress    float64 `json:"progress"`
 	IntegrityOK bool    `json:"integrity_ok"`
 	HasPrevious bool    `json:"has_previous"`
-}
-
-// modelManifest — манифест установленной модели в world_db/models/<роль>/.
-type modelManifest struct {
-	Role        string `json:"role"`
-	ModelRef    string `json:"model_ref"`
-	Source      string `json:"source"`
-	SHA256      string `json:"sha256"`
-	InstalledAt string `json:"installed_at"`
 }
 
 // modelJobState — текущий статус загрузки модели (MD-08.2). Реестр живёт в
@@ -970,68 +957,16 @@ func modelJob(role string) (modelJobState, bool) {
 	return j, ok
 }
 
-// modelFetchFunc — загрузка байтов модели с прогрессом (0..1). Точка подмены в
-// тестах; в производстве — исходящее соединение к HF через netgate (MD-09.1/2).
-type modelFetchFunc func(ctx context.Context, source string, progress func(float64)) ([]byte, error)
-
-var fetchModelFile modelFetchFunc = defaultFetchModelFile
-
-func defaultFetchModelFile(ctx context.Context, source string, progress func(float64)) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, source, nil)
-	if err != nil {
-		return nil, err
-	}
-	// HF отдаёт файл редиректом на CDN (us.aws.cdn.hf.co, cdn-lfs…). Клиент без
-	// привязки к одному хосту, но по-прежнему только через белый список netgate;
-	// редирект разрешён лишь внутри домена Hugging Face.
-	client := netgate.Client("")
-	client.CheckRedirect = func(req *http.Request, _ []*http.Request) error {
-		host := strings.ToLower(req.URL.Hostname())
-		if host == "huggingface.co" || strings.HasSuffix(host, ".huggingface.co") ||
-			host == "hf.co" || strings.HasSuffix(host, ".hf.co") {
-			return nil
-		}
-		return netgate.ErrDeniedHost
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("webapi: model source status %d", resp.StatusCode)
-	}
-	var buf bytes.Buffer
-	total := resp.ContentLength
-	var read int64
-	tmp := make([]byte, 32*1024)
-	for {
-		n, err := resp.Body.Read(tmp)
-		if n > 0 {
-			_, _ = buf.Write(tmp[:n])
-			read += int64(n)
-			if total > 0 {
-				progress(float64(read) / float64(total))
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-	progress(1)
-	return buf.Bytes(), nil
-}
-
-// isHFSource сообщает, что источник модели — Hugging Face напрямую (MD-09.1).
-func isHFSource(source string) bool {
-	u, err := url.Parse(source)
-	if err != nil {
+// beginModelJob занимает роль под загрузку: одна активная установка на роль,
+// вторая параллельная получает отказ (T-13-02, шаг 6).
+func beginModelJob(role string) bool {
+	modelJobsMu.Lock()
+	defer modelJobsMu.Unlock()
+	if j, ok := modelJobs[role]; ok && j.Status == "downloading" {
 		return false
 	}
-	return u.Scheme == "https" && (u.Host == "huggingface.co" || strings.HasSuffix(u.Host, ".huggingface.co"))
+	modelJobs[role] = modelJobState{Role: role, Status: "downloading"}
+	return true
 }
 
 func modelDirName(role string) string {
@@ -1063,8 +998,9 @@ func handleSettingsModelStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleSettingsModelInstall — POST /api/settings/models/install: установка или
-// замена модели роли из HF по явному запросу (MD-08.1, MD-09.3). Байты кладутся
-// в world_db/models/<роль>/, привязка роли — в model_bindings хэндлом core.
+// замена модели роли из HF по явному запросу (MD-08.1, MD-09.3). Файл кладётся
+// в world_db/models/<роль>/ под исходным именем из URL; привязка роли — в
+// model_bindings хэндлом core.
 func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		World    string `json:"world"`
@@ -1088,12 +1024,16 @@ func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, codeBadRequest, "source must be a Hugging Face URL")
 		return
 	}
+	file, err := modelSourceName(source)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "source must name a model file")
+		return
+	}
 
 	// Мир необязателен: файлы моделей живут в world_db/models/ и скачиваются до
 	// рождения мира. Привязка роли пишется только когда мир выбран.
 	var h *db.Handle
 	if slug != "" {
-		var err error
 		h, err = db.OpenWriterAs(worldDBPath(slug), db.DBWorld, db.WriterCore, nil)
 		if err != nil {
 			writeError(w, http.StatusNotFound, codeNotFound, "world not found")
@@ -1102,23 +1042,40 @@ func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 		defer h.Close()
 	}
 
-	setModelJob(role, "downloading", 0, "")
-	data, err := fetchModelFile(r.Context(), source, func(p float64) {
-		setModelJob(role, "downloading", p, "")
+	// Одна активная загрузка на роль: вторая параллельная установка не гоняется
+	// на файлах роли (T-13-02, шаг 6).
+	if !beginModelJob(role) {
+		writeError(w, http.StatusConflict, codeConflict, "model download already running")
+		return
+	}
+	dir := modelDir(role)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		setModelJob(role, "error", 0, err.Error())
+		writeError(w, http.StatusInternalServerError, codeInternal, "model dir create failed")
+		return
+	}
+	res, err := fetchModelToFile(r.Context(), models.DownloadSpec{
+		URL:    source,
+		Dest:   filepath.Join(dir, file),
+		Client: modelDownloadClient(),
+		Logger: modelLogger,
+		Progress: func(p models.DownloadProgress) {
+			if p.Total > 0 {
+				setModelJob(role, "downloading", float64(p.Done)/float64(p.Total), "")
+			}
+		},
 	})
 	if err != nil {
 		setModelJob(role, "error", 0, err.Error())
 		writeError(w, http.StatusInternalServerError, codeInternal, "model download failed")
 		return
 	}
-	if len(data) == 0 {
+	if res.Size == 0 {
 		setModelJob(role, "error", 0, "empty model")
 		writeError(w, http.StatusInternalServerError, codeInternal, "empty model")
 		return
 	}
-	sum := sha256.Sum256(data)
-	sha := hex.EncodeToString(sum[:])
-	if err := installModelFile(role, modelRef, source, sha, data); err != nil {
+	if err := installModelFile(role, modelRef, source, file, res.SHA256, res.Size); err != nil {
 		setModelJob(role, "error", 0, err.Error())
 		writeError(w, http.StatusInternalServerError, codeInternal, "model install failed")
 		return
@@ -1131,41 +1088,12 @@ func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	setModelJob(role, "installed", 1, "")
-	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "model_ref": modelRef, "bound": h != nil})
-}
-
-// installModelFile атомарно кладёт байты модели и манифест, а текущую версию
-// сохраняет как прежнюю для отката (MD-08.3).
-func installModelFile(role, modelRef, source, sha string, data []byte) error {
-	dir := modelDir(role)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	cur := filepath.Join(dir, "current.bin")
-	curMan := filepath.Join(dir, "current.json")
-	prev := filepath.Join(dir, "previous.bin")
-	prevMan := filepath.Join(dir, "previous.json")
-	if _, err := os.Stat(cur); err == nil {
-		if err := os.Rename(cur, prev); err != nil {
-			return err
-		}
-		if err := os.Rename(curMan, prevMan); err != nil {
-			return err
-		}
-	}
-	if err := writeFileAtomic(cur, data); err != nil {
-		return err
-	}
-	manifest := modelManifest{Role: role, ModelRef: modelRef, Source: source, SHA256: sha, InstalledAt: nowSettingsUTC()}
-	raw, err := json.MarshalIndent(manifest, "", "  ")
-	if err != nil {
-		return err
-	}
-	return writeFileAtomic(curMan, raw)
+	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "model_ref": modelRef, "file": file, "bound": h != nil})
 }
 
 // handleSettingsModelRollback — POST /api/settings/models/rollback: откат роли на
-// прежнюю версию модели с проверкой целостности (MD-08.3).
+// прежнюю версию модели с проверкой целостности (MD-08.3). Файлы не
+// переименовываются: меняется поле previous манифеста.
 func handleSettingsModelRollback(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		World string `json:"world"`
@@ -1189,97 +1117,24 @@ func handleSettingsModelRollback(w http.ResponseWriter, r *http.Request) {
 	}
 	defer h.Close()
 
-	dir := modelDir(role)
-	prev := filepath.Join(dir, "previous.bin")
-	prevMan := filepath.Join(dir, "previous.json")
-	raw, err := os.ReadFile(prevMan)
-	if err != nil {
+	m, err := rollbackModelFile(role)
+	switch {
+	case errors.Is(err, errModelNoPrevious), errors.Is(err, errModelPreviousGone):
 		writeError(w, http.StatusConflict, codeConflict, "no previous model version")
 		return
-	}
-	var manifest modelManifest
-	if err := json.Unmarshal(raw, &manifest); err != nil {
-		writeError(w, http.StatusConflict, codeConflict, "bad previous manifest")
-		return
-	}
-	data, err := os.ReadFile(prev)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, codeInternal, "previous model read failed")
-		return
-	}
-	sum := sha256.Sum256(data)
-	if hex.EncodeToString(sum[:]) != manifest.SHA256 {
+	case errors.Is(err, errModelPrevIntegrity):
 		writeError(w, http.StatusConflict, codeConflict, "previous model integrity check failed")
 		return
-	}
-
-	cur := filepath.Join(dir, "current.bin")
-	curMan := filepath.Join(dir, "current.json")
-	if err := os.Rename(prev, cur); err != nil {
+	case err != nil:
 		writeError(w, http.StatusInternalServerError, codeInternal, "model rollback failed")
 		return
 	}
-	if err := os.Rename(prevMan, curMan); err != nil {
-		writeError(w, http.StatusInternalServerError, codeInternal, "model rollback failed")
-		return
-	}
-	if err := writeSlotBindings(h, []slotBinding{{Role: role, ModelRef: manifest.ModelRef, Provider: "local"}}); err != nil {
+	if err := writeSlotBindings(h, []slotBinding{{Role: role, ModelRef: m.ModelRef, Provider: "local"}}); err != nil {
 		writeError(w, http.StatusInternalServerError, codeInternal, "binding write failed")
 		return
 	}
 	setModelJob(role, "rolled_back", 1, "")
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
-
-// readModelStatuses читает карточки установленных моделей из world_db/models/.
-func readModelStatuses() []modelStatus {
-	entries, err := os.ReadDir(modelsRoot)
-	if err != nil {
-		return nil
-	}
-	out := []modelStatus{}
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		dir := filepath.Join(modelsRoot, e.Name())
-		raw, err := os.ReadFile(filepath.Join(dir, "current.json"))
-		if err != nil {
-			continue
-		}
-		var m modelManifest
-		if json.Unmarshal(raw, &m) != nil {
-			continue
-		}
-		st := modelStatus{
-			Role:        m.Role,
-			ModelRef:    m.ModelRef,
-			Source:      m.Source,
-			Status:      "installed",
-			Progress:    1,
-			IntegrityOK: modelIntegrityOK(dir, m),
-		}
-		if _, err := os.Stat(filepath.Join(dir, "previous.json")); err == nil {
-			st.HasPrevious = true
-		}
-		if j, ok := modelJob(m.Role); ok {
-			st.Status = j.Status
-			st.Progress = j.Progress
-		}
-		out = append(out, st)
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Role < out[j].Role })
-	return out
-}
-
-// modelIntegrityOK сверяет sha256 файла текущей модели с манифестом (MD-08.3).
-func modelIntegrityOK(dir string, m modelManifest) bool {
-	data, err := os.ReadFile(filepath.Join(dir, "current.bin"))
-	if err != nil {
-		return false
-	}
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:]) == m.SHA256
 }
 
 func nowSettingsUTC() string {

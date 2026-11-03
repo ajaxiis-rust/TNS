@@ -1,7 +1,6 @@
 package webapi
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -370,32 +369,25 @@ func TestModelInstallRollback(t *testing.T) {
 	seedSettingsWorld(t)
 	oldRoot := modelsRoot
 	modelsRoot = filepath.Join(t.TempDir(), "models")
-	oldFetch := fetchModelFile
 	content := "model-v1"
-	fetchModelFile = func(_ context.Context, _ string, progress func(float64)) ([]byte, error) {
-		progress(0.5)
-		return []byte(content), nil
-	}
-	t.Cleanup(func() {
-		modelsRoot = oldRoot
-		fetchModelFile = oldFetch
-	})
+	stubModelDownload(t, func() string { return content })
+	t.Cleanup(func() { modelsRoot = oldRoot })
 
-	install := func(modelRef string) *httptest.ResponseRecorder {
+	install := func(source, modelRef string) *httptest.ResponseRecorder {
 		body, _ := json.Marshal(map[string]string{
 			"world":     "alpha",
 			"role":      "weaver",
-			"source":    "https://huggingface.co/org/model",
+			"source":    source,
 			"model_ref": modelRef,
 		})
 		return mcpRequest(t, handleSettingsModelInstall, http.MethodPost, settingsModelsInstallPath, body, "application/json")
 	}
 
-	if rr := install("org/model"); rr.Code != http.StatusOK {
+	if rr := install("https://huggingface.co/org/model-v1.gguf", "org/model"); rr.Code != http.StatusOK {
 		t.Fatalf("install: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
 	}
 	content = "model-v2"
-	if rr := install("org/model-v2"); rr.Code != http.StatusOK {
+	if rr := install("https://huggingface.co/org/model-v2.gguf", "org/model-v2"); rr.Code != http.StatusOK {
 		t.Fatalf("replace: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
 	}
 
@@ -458,15 +450,8 @@ func TestModelInstallRollback(t *testing.T) {
 func TestModelInstallWithoutWorld(t *testing.T) {
 	oldRoot := modelsRoot
 	modelsRoot = filepath.Join(t.TempDir(), "models")
-	oldFetch := fetchModelFile
-	fetchModelFile = func(_ context.Context, _ string, progress func(float64)) ([]byte, error) {
-		progress(1)
-		return []byte("model-v1"), nil
-	}
-	t.Cleanup(func() {
-		modelsRoot = oldRoot
-		fetchModelFile = oldFetch
-	})
+	stubModelDownload(t, func() string { return "model-v1" })
+	t.Cleanup(func() { modelsRoot = oldRoot })
 
 	body, _ := json.Marshal(map[string]string{
 		"role":      "weaver",
@@ -487,7 +472,7 @@ func TestModelInstallWithoutWorld(t *testing.T) {
 	if out.Status != "ok" || out.Bound {
 		t.Fatalf("install без мира = %+v, want ok/bound=false", out)
 	}
-	if _, err := os.Stat(filepath.Join(modelDir("weaver"), "current.json")); err != nil {
+	if _, err := os.Stat(modelManifestPath(modelDir("weaver"))); err != nil {
 		t.Fatalf("манифест модели не создан: %v", err)
 	}
 }
@@ -497,15 +482,8 @@ func TestModelInstallWithoutWorld(t *testing.T) {
 func TestEmbedModelInstallsIntoEmbedDir(t *testing.T) {
 	oldRoot := modelsRoot
 	modelsRoot = filepath.Join(t.TempDir(), "models")
-	oldFetch := fetchModelFile
-	fetchModelFile = func(_ context.Context, _ string, progress func(float64)) ([]byte, error) {
-		progress(1)
-		return []byte("bge-m3"), nil
-	}
-	t.Cleanup(func() {
-		modelsRoot = oldRoot
-		fetchModelFile = oldFetch
-	})
+	stubModelDownload(t, func() string { return "bge-m3" })
+	t.Cleanup(func() { modelsRoot = oldRoot })
 
 	body, _ := json.Marshal(map[string]string{
 		"role":      "embed",
@@ -516,7 +494,7 @@ func TestEmbedModelInstallsIntoEmbedDir(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("install embed: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
 	}
-	manifestPath := filepath.Join(modelDir("embed"), "current.json")
+	manifestPath := modelManifestPath(modelDir("embed"))
 	raw, err := os.ReadFile(manifestPath)
 	if err != nil {
 		t.Fatalf("эмбеддинг-модель не легла в world_db/models/embed/: %v", err)
@@ -613,33 +591,30 @@ func TestModelRollbackIntegrity(t *testing.T) {
 	seedSettingsWorld(t)
 	oldRoot := modelsRoot
 	modelsRoot = filepath.Join(t.TempDir(), "models")
-	oldFetch := fetchModelFile
-	fetchModelFile = func(_ context.Context, _ string, progress func(float64)) ([]byte, error) {
-		progress(1)
-		return []byte("model-v1"), nil
-	}
-	t.Cleanup(func() {
-		modelsRoot = oldRoot
-		fetchModelFile = oldFetch
-	})
+	stubModelDownload(t, func() string { return "model-v1" })
+	t.Cleanup(func() { modelsRoot = oldRoot })
 
-	install := func(modelRef string) *httptest.ResponseRecorder {
+	install := func(source, modelRef string) *httptest.ResponseRecorder {
 		body, _ := json.Marshal(map[string]string{
 			"world": "alpha", "role": "weaver",
-			"source": "https://huggingface.co/org/model", "model_ref": modelRef,
+			"source": source, "model_ref": modelRef,
 		})
 		return mcpRequest(t, handleSettingsModelInstall, http.MethodPost, settingsModelsInstallPath, body, "application/json")
 	}
 
-	if rr := install("org/model"); rr.Code != http.StatusOK {
+	if rr := install("https://huggingface.co/org/model-v1.gguf", "org/model"); rr.Code != http.StatusOK {
 		t.Fatalf("install: status = %d", rr.Code)
 	}
-	if rr := install("org/model-v2"); rr.Code != http.StatusOK {
+	if rr := install("https://huggingface.co/org/model-v2.gguf", "org/model-v2"); rr.Code != http.StatusOK {
 		t.Fatalf("replace: status = %d", rr.Code)
 	}
 
-	prev := filepath.Join(modelDir("weaver"), "previous.bin")
-	if err := os.WriteFile(prev, []byte("повреждено"), 0o644); err != nil {
+	dir := modelDir("weaver")
+	m, ok := readModelManifest(dir)
+	if !ok || m.Previous == "" {
+		t.Fatalf("манифест = %+v, want прежнюю версию", m)
+	}
+	if err := os.WriteFile(filepath.Join(dir, m.Previous), []byte("повреждено"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
