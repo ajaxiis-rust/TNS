@@ -1,6 +1,9 @@
 package webapi
 
 import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -701,5 +704,133 @@ func TestDayNormKmTunable(t *testing.T) {
 	}
 	if out.Advanced.DayNormKm != 30 {
 		t.Fatalf("dayNormKm после записи = %v, want 30", out.Advanced.DayNormKm)
+	}
+}
+
+// TestFirstRunNoFileHashing — «Проверка» T-13-04: статус-лист читает только
+// манифесты и размеры файлов. В каталоге роли манифест валиден, а файл модели
+// заменён каталогом (чтение невозможно) — /api/first-run всё равно отвечает
+// installed; ?verify=1 на той же роли отвечает integrity_ok=false.
+func TestFirstRunNoFileHashing(t *testing.T) {
+	seedFirstRun(t)
+	oldRoot := modelsRoot
+	modelsRoot = filepath.Join(t.TempDir(), "models")
+	oldJobs := modelJobs
+	modelJobs = map[string]modelJobState{}
+	t.Cleanup(func() {
+		modelsRoot = oldRoot
+		modelJobsMu.Lock()
+		modelJobs = oldJobs
+		modelJobsMu.Unlock()
+	})
+
+	// seedModel кладёт манифест роли и её файл (asDir — файл заменён каталогом);
+	// sha256 в манифесте считается от shaOf, размер — от size.
+	seedModel := func(role, file string, content, shaOf []byte, size int64, asDir bool) {
+		t.Helper()
+		dir := modelDir(role)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(shaOf)
+		raw, err := json.Marshal(modelManifest{
+			Role: role, ModelRef: "org/" + role, Source: "https://huggingface.co/org/" + role,
+			File: file, SHA256: hex.EncodeToString(sum[:]), Size: size,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, modelManifestName), raw, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(dir, file)
+		if asDir {
+			if err := os.MkdirAll(filepath.Join(path, "chunk"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			return
+		}
+		if err := os.WriteFile(path, content, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// embed: файл модели заменён каталогом — прочитать его нельзя.
+	seedModel("embed", "bge-m3-Q8_0.gguf", []byte("bge"), []byte("bge"), 3, true)
+	// weaver: размер совпадает, содержимое другое — размерная проверка его
+	// пропускает, полная сверка sha256 — нет.
+	seedModel("weaver", "weaver-Q4_K_M.gguf", []byte("AAAA"), []byte("BBBB"), 4, false)
+
+	cards := map[string]modelStatus{}
+	for _, m := range getFirstRun(t).Models {
+		cards[m.Role] = m
+	}
+	if m, ok := cards["embed"]; !ok || m.Status != "installed" || m.File != "bge-m3-Q8_0.gguf" {
+		t.Fatalf("карточка embed в /api/first-run = %+v (есть=%v), want installed bge-m3-Q8_0.gguf", m, ok)
+	}
+	if m, ok := cards["weaver"]; !ok || m.Status != "installed" || !m.IntegrityOK {
+		t.Fatalf("карточка weaver в /api/first-run = %+v (есть=%v), want installed без чтения файла", m, ok)
+	}
+
+	readStatus := func(query string) map[string]modelStatus {
+		t.Helper()
+		rr := mcpRequest(t, handleSettingsModelStatus, http.MethodGet, settingsModelsStatusPath+query, nil, "")
+		if rr.Code != http.StatusOK {
+			t.Fatalf("GET %s%s: status = %d, want 200; body=%s", settingsModelsStatusPath, query, rr.Code, rr.Body.String())
+		}
+		var out struct {
+			Models []modelStatus `json:"models"`
+		}
+		if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+			t.Fatalf("bad JSON: %v", err)
+		}
+		byRole := map[string]modelStatus{}
+		for _, m := range out.Models {
+			byRole[m.Role] = m
+		}
+		return byRole
+	}
+
+	cheap := readStatus("")
+	if m, ok := cheap["weaver"]; !ok || !m.IntegrityOK {
+		t.Fatalf("статус без verify: weaver = %+v (есть=%v), want integrity_ok=true без чтения файла", m, ok)
+	}
+
+	full := readStatus("?verify=1")
+	if m, ok := full["embed"]; !ok || m.Status != "installed" || m.IntegrityOK {
+		t.Fatalf("?verify=1 embed = %+v (есть=%v), want installed integrity_ok=false", m, ok)
+	}
+	if m, ok := full["weaver"]; !ok || m.IntegrityOK {
+		t.Fatalf("?verify=1 weaver = %+v (есть=%v), want integrity_ok=false", m, ok)
+	}
+
+	// Полная сверка идёт сразу после скачивания: файл с чужим sha256 не
+	// попадает в манифест роли.
+	oldFetch := fetchModelToFile
+	fetchModelToFile = func(_ context.Context, spec models.DownloadSpec) (models.DownloadResult, error) {
+		if err := os.MkdirAll(filepath.Dir(spec.Dest), 0o755); err != nil {
+			return models.DownloadResult{}, err
+		}
+		data := []byte("rogue")
+		if err := os.WriteFile(spec.Dest, data, 0o644); err != nil {
+			return models.DownloadResult{}, err
+		}
+		return models.DownloadResult{
+			Path: spec.Dest, Size: int64(len(data)), SHA256: strings.Repeat("0", 64),
+		}, nil
+	}
+	t.Cleanup(func() { fetchModelToFile = oldFetch })
+
+	body, _ := json.Marshal(map[string]string{
+		"role":      "editor",
+		"source":    "https://huggingface.co/org/m/resolve/main/editor-Q4_K_M.gguf",
+		"model_ref": "org/editor",
+	})
+	rr := mcpRequest(t, handleSettingsModelInstall, http.MethodPost, settingsModelsInstallPath, body, "application/json")
+	if rr.Code != http.StatusInternalServerError {
+		t.Fatalf("установка битого файла: status = %d, want 500; body=%s", rr.Code, rr.Body.String())
+	}
+	if _, ok := readModelManifest(modelDir("editor")); ok {
+		t.Fatal("битый файл попал в манифест роли")
 	}
 }

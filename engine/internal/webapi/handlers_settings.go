@@ -980,11 +980,15 @@ func modelDirName(role string) string {
 
 func modelDir(role string) string { return filepath.Join(modelsRoot, modelDirName(role)) }
 
-// handleSettingsModelStatus — GET /api/settings/models/status: текущие задания
-// загрузки моделей (MD-08.2). Карточка модели опрашивает этот маршрут во время
-// установки и рисует прогресс внутри себя. role — необязательный фильтр.
+// handleSettingsModelStatus — GET /api/settings/models/status: карточки
+// установленных моделей и текущие задания загрузки (MD-08.2). Карточка модели
+// опрашивает этот маршрут во время установки и рисует прогресс внутри себя.
+// role — необязательный фильтр; целостность полным sha256 — только по
+// ?verify=1 (кнопка «Проверить», T-13-04).
 func handleSettingsModelStatus(w http.ResponseWriter, r *http.Request) {
-	role := strings.TrimSpace(r.URL.Query().Get("role"))
+	query := r.URL.Query()
+	role := strings.TrimSpace(query.Get("role"))
+	verify := query.Get("verify") == "1"
 	modelJobsMu.Lock()
 	jobs := make([]modelJobState, 0, len(modelJobs))
 	for _, j := range modelJobs {
@@ -994,7 +998,17 @@ func handleSettingsModelStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	modelJobsMu.Unlock()
 	sort.Slice(jobs, func(i, j int) bool { return jobs[i].Role < jobs[j].Role })
-	writeJSON(w, http.StatusOK, map[string]any{"jobs": jobs})
+	models := readModelStatusesVerify(verify)
+	if role != "" {
+		kept := models[:0]
+		for _, m := range models {
+			if m.Role == role {
+				kept = append(kept, m)
+			}
+		}
+		models = kept
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"jobs": jobs, "models": models})
 }
 
 // handleSettingsModelInstall — POST /api/settings/models/install: установка или
@@ -1073,6 +1087,14 @@ func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 	if res.Size == 0 {
 		setModelJob(role, "error", 0, "empty model")
 		writeError(w, http.StatusInternalServerError, codeInternal, "empty model")
+		return
+	}
+	// Полная сверка sha256 сразу после скачивания (T-13-04): битый файл не
+	// попадает в манифест, дальше статус-лист читает только размер.
+	if !modelIntegrityOK(dir, file, res.SHA256) {
+		_ = os.Remove(filepath.Join(dir, file))
+		setModelJob(role, "error", 0, "model integrity check failed")
+		writeError(w, http.StatusInternalServerError, codeInternal, "model integrity check failed")
 		return
 	}
 	if err := installModelFile(role, modelRef, source, file, res.SHA256, res.Size); err != nil {
@@ -1378,11 +1400,13 @@ type firstRunStation struct {
 	RamGB         float64 `json:"ram_gb"`
 }
 
-// firstRunResponse — GET/PUT /api/first-run: состояние плюс проверка станции.
+// firstRunResponse — GET/PUT /api/first-run: состояние плюс проверка станции
+// и карточки установленных моделей (без чтения файлов, T-13-04).
 type firstRunResponse struct {
 	Complete bool                         `json:"complete"`
 	Steps    map[string]firstRunStepState `json:"steps"`
 	Station  firstRunStation              `json:"station"`
+	Models   []modelStatus                `json:"models"`
 }
 
 // handleWizardScreen — GET /wizard.html: экран мастера первого запуска из embed.
@@ -1468,9 +1492,14 @@ func writeFirstRunState(st firstRunState) error {
 	return writeFileAtomic(firstRunStatePath, append(data, '\n'))
 }
 
-// buildFirstRunResponse собирает ответ: состояние и проверка станции.
+// buildFirstRunResponse собирает ответ: состояние, проверка станции и карточки
+// моделей. Карточки берутся дешёвым статус-листом — экран мастера опрашивает
+// маршрут каждые 2 с, полный sha256 остаётся за ?verify=1 (T-13-04).
 func buildFirstRunResponse(st firstRunState) firstRunResponse {
-	return firstRunResponse{Complete: st.Complete, Steps: st.Steps, Station: probeFirstRunStation()}
+	return firstRunResponse{
+		Complete: st.Complete, Steps: st.Steps,
+		Station: probeFirstRunStation(), Models: readModelStatuses(),
+	}
 }
 
 // probeFirstRunStation собирает итог шага 0: есть ли llama-server, свободны ли

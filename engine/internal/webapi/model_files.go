@@ -279,7 +279,14 @@ func rollbackModelFile(role string) (modelManifest, error) {
 }
 
 // readModelStatuses читает карточки установленных моделей из world_db/models/.
-func readModelStatuses() []modelStatus {
+// Целостность здесь дешёвая — манифест и размер файла: полный sha256 в
+// горячем пути не считается (T-13-04).
+func readModelStatuses() []modelStatus { return readModelStatusesVerify(false) }
+
+// readModelStatusesVerify — тот же статус-лист; verify=true дочитывает файл
+// роли и сверяет полный sha256 с манифестом (кнопка «Проверить» и проверка
+// сразу после скачивания, T-13-04).
+func readModelStatusesVerify(verify bool) []modelStatus {
 	entries, err := os.ReadDir(modelsRoot)
 	if err != nil {
 		return nil
@@ -289,7 +296,7 @@ func readModelStatuses() []modelStatus {
 		if !e.IsDir() {
 			continue
 		}
-		st, ok := modelStatusIn(filepath.Join(modelsRoot, e.Name()))
+		st, ok := modelStatusIn(filepath.Join(modelsRoot, e.Name()), verify)
 		if !ok {
 			continue
 		}
@@ -307,13 +314,14 @@ func readModelStatuses() []modelStatus {
 }
 
 // modelStatusIn собирает карточку роли по манифесту-указателю, а при его
-// отсутствии — по старой раскладке current.bin/current.json.
-func modelStatusIn(dir string) (modelStatus, bool) {
+// отсутствии — по старой раскладке current.bin/current.json. verify включает
+// полную сверку sha256, без него проверяются только манифест и размер.
+func modelStatusIn(dir string, verify bool) (modelStatus, bool) {
 	if m, ok := readModelManifest(dir); ok {
 		return modelStatus{
 			Role: m.Role, ModelRef: m.ModelRef, Source: m.Source, File: m.File,
 			Status: "installed", Progress: 1,
-			IntegrityOK: modelIntegrityOK(dir, m.File, m.SHA256),
+			IntegrityOK: modelStatusIntegrity(dir, m.File, m.SHA256, m.Size, verify),
 			HasPrevious: m.Previous != "",
 		}, true
 	}
@@ -324,8 +332,28 @@ func modelStatusIn(dir string) (modelStatus, bool) {
 	return modelStatus{
 		Role: m.Role, ModelRef: m.ModelRef, Source: m.Source, File: legacyModelFileName(m),
 		Status: "installed", Progress: 1,
-		IntegrityOK: modelIntegrityOK(dir, modelLegacyFile, m.SHA256),
+		IntegrityOK: modelStatusIntegrity(dir, modelLegacyFile, m.SHA256, m.Size, verify),
 	}, true
+}
+
+// modelStatusIntegrity — проверка целостности для карточки роли: с verify
+// файл читается и сверяется полный sha256, без него хватает размера (T-13-04).
+func modelStatusIntegrity(dir, file, want string, size int64, verify bool) bool {
+	if verify {
+		return modelIntegrityOK(dir, file, want)
+	}
+	return modelIntegrityCheap(dir, file, size)
+}
+
+// modelIntegrityCheap сверяет манифест с файлом без чтения содержимого: файл
+// на месте, это обычный файл, размер совпадает. Размер неизвестен (старая
+// раскладка или чужой манифест) — проверяется только наличие файла.
+func modelIntegrityCheap(dir, file string, size int64) bool {
+	info, err := os.Stat(filepath.Join(dir, file))
+	if err != nil || !info.Mode().IsRegular() {
+		return false
+	}
+	return size <= 0 || info.Size() == size
 }
 
 // modelIntegrityOK сверяет sha256 файла модели с манифестом (MD-08.3).
