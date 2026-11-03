@@ -905,14 +905,23 @@ first/last; импорт готового списка имён файлом.
 ok (drift detected)`, exit 0. На текущем дереве до T-12-32 скрипт перечисляет
 известные расхождения и возвращает 1 — это ожидаемо.
 
-**T-12-32. Сводная сверка документов волны.**
+**T-12-32. Сводная сверка документов волны: код диктует документацию.**
+Принцип: имена, пути, числа и схемы в документах берутся из кода — факт:
+оперативная база мира это файл `<slug>.db` в `world_db/worlds/<slug>/`
+(`paganel/geomodel.go`, `birth/worlds.go`); документ подгоняется под код,
+обратное запрещено.
 Файлы: `fine/04-spec/03-birth.md`, `fine/04-spec/05-workshop.md`,
 `fine/04-spec/02-models.md`, `fine/04-spec/08-ui.md`,
 `DOCS/05-DATABASES.md`, `DOCS/06-MODELS-AND-SEED.md`,
 `DOCS/09-QUICK-REFERENCE.md`, `DOCS/10-STATION-SETTINGS.md`,
 `engine/internal/webapi/ROUTES.md`, `engine/ARCHITECTURE.md`, `README.md`,
-`fine/plan/99-LEDGER.md`, `engine/scripts/gates.sh`.
+`fine/plan/99-LEDGER.md`, `engine/scripts/gates.sh`,
+`engine/scripts/docs-check.sh`.
 Действия:
+0. `docs-check.sh`: удалить диктат имён баз — проверки «устаревшее имя
+   world(name).db» и «устаревшее имя <slug>.db» (строки 165–168); гейт
+   сверяет числа, реестры миграций, ROUTES и ledger, а имена сущностей
+   навязывать коду запрещено.
 1. B-01/B-02: 15 полей, `source_book` необязателен и обязателен только для
    фанфика, перечни 30/18/8, рейтинг и маршрутизация.
 2. W-14: словарь, профиль рейтинга, отказы, двухпроходная генерация, поток
@@ -920,9 +929,10 @@ ok (drift detected)`, exit 0. На текущем дереве до T-12-32 ск
 3. MD-03/MD-08/MD-09: три квантования BGE-M3, `llama-server`, супервизор,
    поставка.
 4. UI-05/UI-08: жанры группами, карточка BGE-M3, мастер первого запуска.
-5. `DOCS/05-DATABASES.md`: полка, таблицы `book`, `book_chunk`,
-   `book_character*`, писатель `forge`.
-6. `DOCS/09-QUICK-REFERENCE.md`: канонные числа и таблица баз.
+5. `DOCS/05-DATABASES.md`: базы по факту кода — оперативная база мира
+   `<slug>.db` в `world_db/worlds/<slug>/`; полка `world_db/library/`,
+   таблицы `book`, `book_chunk`, `book_character*`, писатель `forge`.
+6. `DOCS/09-QUICK-REFERENCE.md`: канонные числа и таблица баз по коду.
 7. `ROUTES.md`: новые маршруты полки, книг, карты и настроек моделей.
 8. `ARCHITECTURE.md`: каталоги `internal/cast`, `internal/library`, миграции
    0004 и 0005, пакеты и контракты волны.
