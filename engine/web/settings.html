@@ -286,7 +286,7 @@
         </label>
         <label class="settings-field">
           <span data-i18n="settings.models.source">Ссылка на файл</span>
-          <input id="settings-model-source" placeholder="https://huggingface.co/…/model.gguf">
+          <input id="settings-model-source" placeholder="huggingface.co/…/model.gguf">
         </label>
         <label class="settings-field">
           <span data-i18n="settings.models.ref">Название модели</span>
@@ -303,14 +303,7 @@
       <p class="settings-section__hint" data-i18n="settings.roles.hint">Какая роль какой моделью отвечает. Для большинства случаев достаточно провайдера и модели.</p>
     </div>
     <div class="settings-roles" id="settings-roles"></div>
-    <datalist id="settings-role-names">
-      <option value="weaver"></option>
-      <option value="editor"></option>
-      <option value="editor_digest"></option>
-      <option value="compose"></option>
-      <option value="epoch"></option>
-      <option value="analysis"></option>
-    </datalist>
+    <datalist id="settings-role-names"></datalist>
     <form class="settings-form" id="settings-roles-form">
       <label class="settings-field">
         <span data-i18n="settings.roles.name">Роль</span>

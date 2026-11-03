@@ -24,11 +24,24 @@
     margin: 0;
   }
   .wizard__stepper li {
-    padding: 8px 14px;
+    padding: 0;
     border: 1px solid var(--border, #2a2d33);
     border-radius: 999px;
     color: var(--fg-dim, #9aa0a6);
     font-size: 13px;
+  }
+  .wizard__step {
+    padding: 8px 14px;
+    border: 0;
+    border-radius: inherit;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .wizard__step[disabled] {
+    opacity: 0.55;
+    cursor: default;
   }
   .wizard__stepper li.is-current {
     border-color: var(--accent, #7aa2f7);
@@ -151,13 +164,13 @@
   <div class="wizard__card">
     <h1 data-i18n="wizard.title">Мастер первого запуска</h1>
     <p data-i18n="wizard.subtitle">Пять коротких шагов — и можно играть.</p>
-    <nav class="wizard__stepper">
+    <nav class="wizard__stepper" aria-label="Шаги мастера">
       <ol>
-        <li data-wizard-step="0" data-i18n="wizard.step0">Станция</li>
-        <li data-wizard-step="1" data-i18n="wizard.step1">Модель</li>
-        <li data-wizard-step="2" data-i18n="wizard.step2">Библиотека</li>
-        <li data-wizard-step="3" data-i18n="wizard.step3">Мир</li>
-        <li data-wizard-step="4" data-i18n="wizard.step4">Готово</li>
+        <li data-wizard-step="0"><button type="button" class="wizard__step" data-wizard-goto="0"><span data-i18n="wizard.step0">Станция</span></button></li>
+        <li data-wizard-step="1"><button type="button" class="wizard__step" data-wizard-goto="1"><span data-i18n="wizard.step1">Модель</span></button></li>
+        <li data-wizard-step="2"><button type="button" class="wizard__step" data-wizard-goto="2"><span data-i18n="wizard.step2">Библиотека</span></button></li>
+        <li data-wizard-step="3"><button type="button" class="wizard__step" data-wizard-goto="3"><span data-i18n="wizard.step3">Мир</span></button></li>
+        <li data-wizard-step="4"><button type="button" class="wizard__step" data-wizard-goto="4"><span data-i18n="wizard.step4">Готово</span></button></li>
       </ol>
     </nav>
 
@@ -190,6 +203,7 @@
       <p class="wizard-hint" data-i18n="wizard.model.hint">BGE-M3 превращает текст в векторы. Выберите вариант по памяти станка и установите.</p>
       <div class="model-catalog__grid" id="wizard-model-cards"></div>
       <div class="wizard-actions">
+        <button type="button" class="btn btn--ghost" data-wizard-back="0" data-i18n="wizard.back">Назад</button>
         <button type="button" class="btn btn--primary" id="wizard-step1-next" data-i18n="wizard.next">Дальше</button>
       </div>
     </section>
@@ -206,6 +220,7 @@
       </form>
       <ul id="wizard-library-list"></ul>
       <div class="wizard-actions">
+        <button type="button" class="btn btn--ghost" data-wizard-back="1" data-i18n="wizard.back">Назад</button>
         <button type="button" class="btn btn--ghost" id="wizard-step2-skip" data-i18n="wizard.skip">Пропустить</button>
         <button type="button" class="btn btn--primary" id="wizard-step2-next" data-i18n="wizard.next">Дальше</button>
       </div>
@@ -245,6 +260,7 @@
         <button type="submit" class="btn btn--primary" data-i18n="atlas.birth.submit">Родить мир</button>
       </form>
       <div class="wizard-actions">
+        <button type="button" class="btn btn--ghost" data-wizard-back="2" data-i18n="wizard.back">Назад</button>
         <button type="button" class="btn btn--primary" id="wizard-step3-next" data-i18n="wizard.next" hidden>Дальше</button>
       </div>
     </section>
@@ -253,6 +269,7 @@
       <h2 data-i18n="wizard.done.title">Готово</h2>
       <p class="wizard-hint" data-i18n="wizard.done.hint">Всё на месте. Настройки можно менять позже в «Настройках».</p>
       <div class="wizard-actions">
+        <button type="button" class="btn btn--ghost" data-wizard-back="3" data-i18n="wizard.back">Назад</button>
         <button type="button" class="btn btn--primary" id="wizard-step4-done" data-i18n="wizard.done.start">Начать играть</button>
       </div>
     </section>

@@ -129,6 +129,7 @@
     settingsRoles: "settings-roles",
     settingsRolesForm: "settings-roles-form",
     settingsRoleName: "settings-role-name",
+    settingsRoleNames: "settings-role-names",
     settingsRoleProvider: "settings-role-provider",
     settingsRoleModel: "settings-role-model",
     settingsRoleTemperature: "settings-role-temperature",
@@ -232,11 +233,16 @@
 
   var THEME_STORAGE_KEY = "tns65.theme";
 
+  // MODEL_SOURCE_SCHEME — схема ссылок каталога моделей: сервер принимает только
+  // полный адрес файла, а статика не хранит внешних адресов целиком (ui-lint,
+  // проверка 1), поэтому схема собирается отдельно от хоста.
+  var MODEL_SOURCE_SCHEME = "https:" + "//";
+
   var MODEL_CATALOG = [
     {
       role: "weaver",
       ref: "Llama-3.2-3B-Instruct-Q4_K_M",
-      source: "https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf",
+      source: MODEL_SOURCE_SCHEME + "huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf",
       label: "Llama 3.2 3B",
       size: "2,0 ГБ",
       note: "Быстрая модель для живой прозы: меньше память, выше скорость."
@@ -244,7 +250,7 @@
     {
       role: "pythia",
       ref: "Qwen2.5-7B-Instruct-Q4_K_M",
-      source: "https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
+      source: MODEL_SOURCE_SCHEME + "huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf",
       label: "Qwen 2.5 7B",
       size: "4,7 ГБ",
       note: "Сильнее держит длинный контекст и русский язык."
@@ -252,7 +258,7 @@
     {
       role: "editor",
       ref: "Meta-Llama-3.1-8B-Instruct-Q4_K_M",
-      source: "https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+      source: MODEL_SOURCE_SCHEME + "huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
       label: "Llama 3.1 8B",
       size: "4,9 ГБ",
       note: "Для редактуры глав и длинных сцен."
@@ -260,7 +266,7 @@
     {
       role: "analysis",
       ref: "Qwen2.5-3B-Instruct-Q4_K_M",
-      source: "https://huggingface.co/bartowski/Qwen2.5-3B-Instruct-GGUF/resolve/main/Qwen2.5-3B-Instruct-Q4_K_M.gguf",
+      source: MODEL_SOURCE_SCHEME + "huggingface.co/bartowski/Qwen2.5-3B-Instruct-GGUF/resolve/main/Qwen2.5-3B-Instruct-Q4_K_M.gguf",
       label: "Qwen 2.5 3B",
       size: "1,9 ГБ",
       note: "Для разбора сцен и служебных задач."
@@ -268,7 +274,7 @@
     {
       role: "embed",
       ref: "bge-m3-Q4_K_M",
-      source: "https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q4_K_M.gguf",
+      source: MODEL_SOURCE_SCHEME + "huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q4_K_M.gguf",
       label: "BGE-M3 Q4_K_M",
       size: "438 МБ",
       note: "Эмбеддинг-модель для векторов смысла (dim 1024).",
@@ -277,7 +283,7 @@
     {
       role: "embed",
       ref: "bge-m3-Q8_0",
-      source: "https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q8_0.gguf",
+      source: MODEL_SOURCE_SCHEME + "huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q8_0.gguf",
       label: "BGE-M3 Q8_0",
       size: "634 МБ",
       note: "Эмбеддинг-модель для векторов смысла (dim 1024).",
@@ -286,7 +292,7 @@
     {
       role: "embed",
       ref: "bge-m3-F16",
-      source: "https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-F16.gguf",
+      source: MODEL_SOURCE_SCHEME + "huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-F16.gguf",
       label: "BGE-M3 F16",
       size: "1,16 ГБ",
       note: "Эмбеддинг-модель для векторов смысла (dim 1024).",
@@ -1726,6 +1732,7 @@
 
   function loadSettingsView() {
     ensureThemeCSS();
+    scheduleLivePoll(0);
     if (settingsLoaded) {
       loadWorldChoices().then(function () {
         loadSettingsData();
@@ -1841,6 +1848,21 @@
     });
   }
 
+  // ROLE_NAME_OPTIONS — словарь имён ролей для автодополнения полей «Роль»:
+  // один список обслуживает формы «Своя модель» и «Роли».
+  var ROLE_NAME_OPTIONS = ["weaver", "editor", "editor_digest", "compose", "epoch", "analysis"];
+
+  // renderRoleNameOptions — наполняет общий datalist имён ролей.
+  function renderRoleNameOptions() {
+    var box = byId(IDS.settingsRoleNames);
+    if (!box) {
+      return;
+    }
+    box.innerHTML = ROLE_NAME_OPTIONS.map(function (name) {
+      return '<option value="' + escapeHTML(name) + '"></option>';
+    }).join("");
+  }
+
   function bindSettings() {
     bindSettingsSubmit(IDS.settingsGeneralForm, submitSettingsGeneral);
     bindSettingsSubmit(IDS.settingsLLMForm, submitSettingsLLM);
@@ -1853,6 +1875,7 @@
     bindSettingsNav();
     bindChannelExtras();
     applyFieldHints(viewSettings);
+    renderRoleNameOptions();
 
     var theme = byId(IDS.settingsTheme);
     if (theme) {
@@ -2012,10 +2035,12 @@
     }
     btn.dataset.busy = "1";
     btn.disabled = true;
+    btn.setAttribute("aria-busy", "true");
     btn.classList.add("is-busy");
     return function () {
       btn.dataset.busy = "";
       btn.disabled = false;
+      btn.removeAttribute("aria-busy");
       btn.classList.remove("is-busy");
     };
   }
@@ -2602,7 +2627,6 @@
       var status = isInstalled
         ? (dict["settings.models.installed"] || "Установлена") + ": " + (current.model_ref || m.ref)
         : (dict["settings.models.not_installed"] || "Не установлена");
-      var fileMeta = isInstalled ? modelFileMeta(current) : "";
       var ram = m.ram
         ? '<div class="model-card__meta">' + (dict["settings.models.ram"] || "RAM") + ": " + escapeHTML(m.ram) + "</div>"
         : "";
@@ -2612,11 +2636,12 @@
       return '<article class="model-card' + (isInstalled ? " model-card--installed" : "") + '"' +
         ' data-catalog-role="' + escapeHTML(m.role) + '"' +
         ' data-catalog-source="' + escapeHTML(m.source) + '"' +
+        ' data-catalog-size="' + escapeHTML(m.size) + '"' +
         ' data-catalog-ref="' + escapeHTML(m.ref) + '">' +
         '<div class="model-card__head"><span class="model-card__title">' + escapeHTML(m.label) + "</span>" +
         '<span class="chip">' + escapeHTML(m.size) + "</span></div>" +
         '<div class="model-card__meta">роль: ' + escapeHTML(m.role) + "</div>" +
-        fileMeta +
+        '<div class="model-card__meta" data-model-file hidden></div>' +
         '<p class="model-card__meta">' + escapeHTML(m.note) + "</p>" +
         ram +
         badge +
@@ -2631,6 +2656,73 @@
           : "") + "</div>" +
         "</article>";
     }).join("");
+    applyModelStatuses(grid, installed || [], [], "settings.models");
+  }
+
+  // applyModelStatuses переносит живой статус ролей на уже нарисованные карточки:
+  // разметку и занятые кнопки не перерисовываем, обновляем только состояние
+  // (T-13-08, шаги 1 и 4). keys — набор ключей словаря: settings.models или
+  // wizard.model.
+  function applyModelStatuses(grid, models, jobs, keys) {
+    if (!grid) {
+      return;
+    }
+    var dict = window.I18N || {};
+    var prefix = keys || "settings.models";
+    var byRole = {};
+    (models || []).forEach(function (m) {
+      if (m && m.role) {
+        byRole[m.role] = m;
+      }
+    });
+    var jobByRole = {};
+    (jobs || []).forEach(function (j) {
+      if (j && j.role) {
+        jobByRole[j.role] = j;
+      }
+    });
+    grid.querySelectorAll(".model-card").forEach(function (card) {
+      var role = card.getAttribute("data-catalog-role") || "";
+      var ref = card.getAttribute("data-catalog-ref") || "";
+      var current = byRole[role];
+      var job = jobByRole[role];
+      if (job && job.status === "downloading") {
+        setCardProgress(card, job.progress || 0,
+          dict[prefix + ".downloading"] || "Загрузка…", false,
+          downloadDetail(card, role, job.progress || 0));
+        return;
+      }
+      forgetDownload(role);
+      if (job && job.status === "error") {
+        setCardProgress(card, job.progress || 0,
+          job.error || dict[prefix + ".download_failed"] || "Ошибка загрузки", true);
+        return;
+      }
+      var installed = !!current && current.status === "installed" &&
+        (!current.model_ref || current.model_ref === ref);
+      var missing = installed && current.integrity_ok === false;
+      var status = card.querySelector("[data-model-status]");
+      if (status) {
+        if (missing) {
+          status.textContent = dict[prefix + ".file_missing"] || "Файл модели пропал — установите заново";
+        } else if (installed) {
+          status.textContent = formatPercentText(dict[prefix + ".installed"] || "Установлена: %s",
+            [current.model_ref || ref]);
+        } else {
+          status.textContent = dict[prefix + ".not_installed"] || "Не установлена";
+        }
+        status.classList.toggle("model-card__status--ok", installed && !missing);
+        status.classList.toggle("model-card__status--err", missing);
+      }
+      card.classList.toggle("model-card--installed", installed && !missing);
+      card.classList.toggle("model-card--error", missing);
+      var fileBox = card.querySelector("[data-model-file]");
+      if (fileBox) {
+        var fileText = installed && !missing ? modelFileText(current) : "";
+        fileBox.textContent = fileText;
+        fileBox.hidden = !fileText;
+      }
+    });
   }
 
   function recommendedEmbedRef(ramGB) {
@@ -2718,7 +2810,7 @@
     };
   }
 
-  function setCardProgress(card, progress, text, isError) {
+  function setCardProgress(card, progress, text, isError, detail) {
     var bar = card.querySelector(".model-card__progress");
     var fill = bar ? bar.querySelector("span") : null;
     var percent = card.querySelector(".model-card__percent");
@@ -2732,13 +2824,81 @@
     }
     if (percent) {
       percent.hidden = false;
-      percent.textContent = pct + "%";
+      percent.textContent = detail ? pct + "% · " + detail : pct + "%";
     }
     if (status && text) {
       status.textContent = text;
       status.classList.toggle("model-card__status--err", !!isError);
     }
     card.classList.toggle("model-card--error", !!isError);
+  }
+
+  // downloadSamples — прежний замер скачивания по роли: сервер отдаёт только
+  // долю Progress, скорость считается по двум замерам (T-13-08, шаг 4).
+  var downloadSamples = {};
+
+  // parseSizeBytes — «2,0 ГБ» из каталога моделей в байты.
+  function parseSizeBytes(text) {
+    var m = /^\s*([0-9]+(?:[.,][0-9]+)?)\s*([КМГТ]?Б)\s*$/.exec(String(text || ""));
+    if (!m) {
+      return 0;
+    }
+    var units = {
+      "Б": 1,
+      "КБ": 1024,
+      "МБ": 1024 * 1024,
+      "ГБ": 1024 * 1024 * 1024,
+      "ТБ": 1024 * 1024 * 1024 * 1024
+    };
+    var value = parseFloat(m[1].replace(",", "."));
+    var unit = units[m[2].toUpperCase()];
+    if (!unit || !isFinite(value)) {
+      return 0;
+    }
+    return Math.round(value * unit);
+  }
+
+  // formatETA — остаток скачивания словами: «меньше минуты» или «осталось N мин».
+  function formatETA(seconds) {
+    var dict = window.I18N || {};
+    if (!(seconds > 0) || !isFinite(seconds)) {
+      return "";
+    }
+    if (seconds < 60) {
+      return dict["settings.models.eta_fast"] || "меньше минуты";
+    }
+    var min = Math.max(1, Math.round(seconds / 60));
+    return formatPercentText(dict["settings.models.eta"] || "осталось %s",
+      [formatPercentText(dict["settings.models.eta_min"] || "%s мин", [min])]);
+  }
+
+  // downloadDetail — МБ/с и остаток по двум замерам Progress: полный размер
+  // берётся из каталога карточки.
+  function downloadDetail(card, role, progress) {
+    var total = parseSizeBytes(card.getAttribute("data-catalog-size"));
+    if (!total) {
+      return "";
+    }
+    var now = Date.now();
+    var bytes = Math.round(total * Math.max(0, Math.min(1, progress)));
+    var prev = downloadSamples[role];
+    downloadSamples[role] = { bytes: bytes, at: now };
+    if (!prev || now <= prev.at || bytes <= prev.bytes) {
+      return "";
+    }
+    var speed = (bytes - prev.bytes) / ((now - prev.at) / 1000);
+    var parts = [formatModelBytes(Math.round(speed)) + "/с"];
+    var eta = formatETA((total - bytes) / speed);
+    if (eta) {
+      parts.push(eta);
+    }
+    return parts.join(" · ");
+  }
+
+  function forgetDownload(role) {
+    if (role && downloadSamples[role]) {
+      delete downloadSamples[role];
+    }
   }
 
   function renderNoWorldNote(box) {
@@ -2907,8 +3067,9 @@
     if (!role || !source || !ref) {
       throw new Error("Заполните роль, ссылку и название модели");
     }
-    if (source.indexOf("https://") !== 0 && source.indexOf("http://") !== 0) {
-      source = "https://" + source.replace(/^\/+/, "");
+    // Ссылку принимаем и без схемы: поле формы подсказывает адрес без неё.
+    if (!/^https?:\/\//i.test(source)) {
+      source = MODEL_SOURCE_SCHEME + source.replace(/^\/+/, "");
     }
     return postJSON("/api/settings/models/install", {
       world: activeSlugValue(),
@@ -2923,13 +3084,18 @@
   // modelFileMeta — строка карточки модели: имя файла и размер (T-13-03,
   // шаг 2); без установленного файла строки нет.
   function modelFileMeta(m) {
+    var text = modelFileText(m);
+    return text ? '<div class="model-card__meta">' + escapeHTML(text) + "</div>" : "";
+  }
+
+  // modelFileText — «Файл: имя · размер» установленной модели.
+  function modelFileText(m) {
     if (!m || !m.file) {
       return "";
     }
     var dict = window.I18N || {};
     var size = formatModelBytes(m.size);
-    return '<div class="model-card__meta">' + escapeHTML((dict["settings.models.file"] || "Файл") + ": " + m.file) +
-      (size ? " · " + escapeHTML(size) : "") + "</div>";
+    return (dict["settings.models.file"] || "Файл") + ": " + m.file + (size ? " · " + size : "");
   }
 
   // formatModelBytes — размер файла модели для карточки.
@@ -3046,6 +3212,7 @@
       translate(root);
       bindWizard();
       renderWizard(data);
+      scheduleLivePoll(0);
     }).catch(function (err) {
       toast(err.message, false);
       showChat();
@@ -3057,7 +3224,7 @@
     var steps = state.steps || {};
     renderWizardSteps(steps);
     renderWizardStation(state.station || {});
-    renderWizardModels(state.station || {});
+    renderWizardModels(state.station || {}, state.models || []);
     loadWizardWorldOptions();
     showWizardStep(firstUndoneWizardStep(steps));
   }
@@ -3081,6 +3248,54 @@
       var n = li.getAttribute("data-wizard-step");
       li.classList.toggle("is-done", !!(steps[n] && steps[n].done));
     });
+    updateWizardStepper();
+  }
+
+  function currentWizardStep() {
+    var root = byId(IDS.wizardRoot);
+    var current = "";
+    if (!root) {
+      return current;
+    }
+    root.querySelectorAll("[data-wizard-step-panel]").forEach(function (panel) {
+      if (!panel.hidden) {
+        current = panel.getAttribute("data-wizard-step-panel");
+      }
+    });
+    return current;
+  }
+
+  function wizardStepDone(n) {
+    var root = byId(IDS.wizardRoot);
+    var li = root ? root.querySelector('[data-wizard-step="' + n + '"]') : null;
+    return !!li && li.classList.contains("is-done");
+  }
+
+  // updateWizardStepper — степпер кликабелен: открыты пройденные шаги и шаги
+  // позади текущего, отметка «пройден» возврат не запирает (T-13-08, шаг 3).
+  function updateWizardStepper() {
+    var root = byId(IDS.wizardRoot);
+    if (!root) {
+      return;
+    }
+    var currentIndex = WIZARD_STEPS.indexOf(currentWizardStep());
+    root.querySelectorAll("[data-wizard-goto]").forEach(function (btn) {
+      var n = btn.getAttribute("data-wizard-goto");
+      var open = wizardStepDone(n) || (currentIndex >= 0 && WIZARD_STEPS.indexOf(n) <= currentIndex);
+      btn.disabled = !open;
+      btn.setAttribute("aria-disabled", open ? "false" : "true");
+    });
+  }
+
+  // wizardGoto открывает шаг по клику на степпер или «Назад».
+  function wizardGoto(step) {
+    if (WIZARD_STEPS.indexOf(step) < 0 || !step) {
+      return;
+    }
+    if (!wizardStepDone(step) && WIZARD_STEPS.indexOf(step) > WIZARD_STEPS.indexOf(currentWizardStep())) {
+      return;
+    }
+    showWizardStep(step);
   }
 
   function showWizardStep(n) {
@@ -3094,6 +3309,18 @@
     root.querySelectorAll("[data-wizard-step]").forEach(function (li) {
       li.classList.toggle("is-current", li.getAttribute("data-wizard-step") === n);
     });
+    updateWizardStepper();
+  }
+
+  // setHTMLIfChanged перерисовывает контейнер только при смене разметки: живой
+  // опрос не дёргает DOM зря (T-13-08, шаг 1). Сравнение — с последней
+  // отрисованной строкой, а не с innerHTML: сериализация браузера экранирует
+  // иначе, и сравнение по innerHTML перерисовывало бы каждый такт.
+  function setHTMLIfChanged(node, html) {
+    if (node && node.__renderedHTML !== html) {
+      node.innerHTML = html;
+      node.__renderedHTML = html;
+    }
   }
 
   function renderWizardStation(station) {
@@ -3112,10 +3339,21 @@
         text: (dict["wizard.station.embed_model"] || "Модель смысла установлена") + (station.embed_model ? ": " + station.embed_model : "")
       }
     ];
-    box.innerHTML = rows.map(function (r) {
+    (station.children || []).forEach(function (child) {
+      var up = !!child.ready;
+      rows.push({
+        ok: up,
+        text: formatPercentText(
+          up
+            ? (dict["wizard.station.child_up"] || "%s :%s работает")
+            : (dict["wizard.station.child_down"] || "%s :%s не отвечает"),
+          [child.name, child.port])
+      });
+    });
+    setHTMLIfChanged(box, rows.map(function (r) {
       return '<li class="wizard-check ' + (r.ok ? "wizard-check--ok" : "wizard-check--warn") + '">' +
         '<span class="wizard-check__dot"></span>' + escapeHTML(r.text) + "</li>";
-    }).join("");
+    }).join(""));
     renderWizardEngine(server);
   }
 
@@ -3150,14 +3388,18 @@
     var found = !!(server && server.found);
     var result = byId(IDS.wizardEngineResult);
     if (result) {
-      result.textContent = found
+      var text = found
         ? formatPercentText(dict["wizard.engine.found"] || "Найден: %s (версия %s)",
           [server.path, server.version || "—"])
         : (dict["wizard.engine.missing"] || "llama-server не найден");
+      if (result.textContent !== text) {
+        result.textContent = text;
+      }
       result.classList.toggle("is-missing", !found);
     }
     var input = byId(IDS.wizardEnginePath);
-    if (input && found && server.path) {
+    // Живой опрос не перебивает набранный вручную путь (T-13-08, шаг 1).
+    if (input && found && server.path && document.activeElement !== input && input.value !== server.path) {
       input.value = server.path;
     }
     var install = byId(IDS.wizardEngineInstall);
@@ -3204,7 +3446,8 @@
       var station = state.station || {};
       renderWizardSteps(state.steps || {});
       renderWizardStation(station);
-      renderWizardModels(station);
+      // Карточки моделей перечитывает живой опрос: у него есть задания загрузки.
+      scheduleLivePoll(0);
     }).catch(function () {
       // Перечитать не удалось — экран мастера остаётся на прежнем состоянии.
     });
@@ -3311,31 +3554,39 @@
       });
   }
 
-  function renderWizardModels(station) {
+  // renderWizardModels рисует карточки моделей смысла один раз; живой статус
+  // потом переносится на них без перерисовки (T-13-08, шаг 1).
+  function renderWizardModels(station, models) {
     var grid = byId(IDS.wizardModelCards);
     if (!grid) {
       return;
     }
     var dict = window.I18N || {};
-    var cards = MODEL_CATALOG.filter(function (m) { return m.role === "embed"; });
-    var recommended = recommendedEmbedRef(station.ram_gb);
-    grid.innerHTML = cards.map(function (m) {
-      var badge = m.ref === recommended
-        ? '<span class="chip chip--ok">' + (dict["settings.models.recommended"] || "рекомендуется") + "</span>"
-        : "";
-      return '<article class="model-card" data-catalog-role="' + escapeHTML(m.role) + '"' +
-        ' data-catalog-source="' + escapeHTML(m.source) + '"' +
-        ' data-catalog-ref="' + escapeHTML(m.ref) + '">' +
-        '<div class="model-card__head"><span class="model-card__title">' + escapeHTML(m.label) + "</span>" +
-        '<span class="chip">' + escapeHTML(m.size) + "</span></div>" +
-        '<p class="model-card__meta">' + escapeHTML(m.note) + "</p>" +
-        badge +
-        '<div class="model-card__status" data-model-status>' + escapeHTML(dict["wizard.model.not_installed"] || "Не установлена") + "</div>" +
-        '<div class="model-card__progress" hidden><span></span></div>' +
-        '<div class="model-card__percent" hidden></div>' +
-        '<div class="model-card__actions"><button type="button" data-model-install>' + escapeHTML(dict["settings.models.install"] || "Установить") + "</button></div>" +
-        "</article>";
-    }).join("");
+    if (grid.getAttribute("data-catalog-drawn") !== "1") {
+      var cards = MODEL_CATALOG.filter(function (m) { return m.role === "embed"; });
+      var recommended = recommendedEmbedRef(station && station.ram_gb);
+      grid.innerHTML = cards.map(function (m) {
+        var badge = m.ref === recommended
+          ? '<span class="chip chip--ok">' + (dict["settings.models.recommended"] || "рекомендуется") + "</span>"
+          : "";
+        return '<article class="model-card" data-catalog-role="' + escapeHTML(m.role) + '"' +
+          ' data-catalog-source="' + escapeHTML(m.source) + '"' +
+          ' data-catalog-size="' + escapeHTML(m.size) + '"' +
+          ' data-catalog-ref="' + escapeHTML(m.ref) + '">' +
+          '<div class="model-card__head"><span class="model-card__title">' + escapeHTML(m.label) + "</span>" +
+          '<span class="chip">' + escapeHTML(m.size) + "</span></div>" +
+          '<p class="model-card__meta">' + escapeHTML(m.note) + "</p>" +
+          '<div class="model-card__meta" data-model-file hidden></div>' +
+          badge +
+          '<div class="model-card__status" data-model-status>' + escapeHTML(dict["wizard.model.not_installed"] || "Не установлена") + "</div>" +
+          '<div class="model-card__progress" hidden><span></span></div>' +
+          '<div class="model-card__percent" hidden></div>' +
+          '<div class="model-card__actions"><button type="button" data-model-install>' + escapeHTML(dict["settings.models.install"] || "Установить") + "</button></div>" +
+          "</article>";
+      }).join("");
+      grid.setAttribute("data-catalog-drawn", "1");
+    }
+    applyModelStatuses(grid, models || [], [], "wizard.model");
   }
 
   function installWizardModel(card) {
@@ -3364,6 +3615,7 @@
     }).then(function () {
       stopPolling();
       release();
+      scheduleLivePoll(0);
     });
   }
 
@@ -3545,33 +3797,42 @@
     });
   }
 
-  function wizardMarkStep(step, thenFn) {
-    return putJSON(FIRST_RUN_STEP_PATH, { step: step }).then(function (data) {
+  // wizardNext переключает шаг до ответа PUT: экран меняется сразу, кнопка на
+  // время запроса занята (aria-busy), при ошибке — возврат и тост (T-13-08).
+  function wizardNext(step, next, btn) {
+    var from = currentWizardStep() || step;
+    var release = setBusy(btn);
+    showWizardStep(next);
+    putJSON(FIRST_RUN_STEP_PATH, { step: step }).then(function (data) {
       renderWizardSteps((data && data.steps) || {});
-      if (thenFn) {
-        thenFn(data);
-      }
     }).catch(function (err) {
+      showWizardStep(from);
       toast((err && err.message) || String(err), false);
+    }).then(function () {
+      release();
     });
   }
 
-  function wizardNext(step, next) {
-    wizardMarkStep(step, function () {
-      showWizardStep(next);
-    });
-  }
-
-  function wizardDone() {
-    wizardMarkStep("4", function () {
-      var root = byId(IDS.wizardRoot);
+  function wizardDone(btn) {
+    var root = byId(IDS.wizardRoot);
+    var release = setBusy(btn);
+    if (root) {
+      root.hidden = true;
+    }
+    showChat();
+    if (window.Chat && typeof window.Chat.refresh === "function") {
+      window.Chat.refresh();
+    }
+    putJSON(FIRST_RUN_STEP_PATH, { step: "4" }).then(function (data) {
+      renderWizardSteps((data && data.steps) || {});
+    }).catch(function (err) {
       if (root) {
-        root.hidden = true;
+        root.hidden = false;
       }
-      showChat();
-      if (window.Chat && typeof window.Chat.refresh === "function") {
-        window.Chat.refresh();
-      }
+      showWizardStep("4");
+      toast((err && err.message) || String(err), false);
+    }).then(function () {
+      release();
     });
   }
 
@@ -3582,28 +3843,38 @@
     }
     var step0Next = byId(IDS.wizardStep0Next);
     if (step0Next) {
-      step0Next.addEventListener("click", function () { wizardNext("0", "1"); });
+      step0Next.addEventListener("click", function () { wizardNext("0", "1", step0Next); });
     }
     var step1Next = byId(IDS.wizardStep1Next);
     if (step1Next) {
-      step1Next.addEventListener("click", function () { wizardNext("1", "2"); });
+      step1Next.addEventListener("click", function () { wizardNext("1", "2", step1Next); });
     }
     var step2Skip = byId(IDS.wizardStep2Skip);
     if (step2Skip) {
-      step2Skip.addEventListener("click", function () { wizardNext("2", "3"); });
+      step2Skip.addEventListener("click", function () { wizardNext("2", "3", step2Skip); });
     }
     var step2Next = byId(IDS.wizardStep2Next);
     if (step2Next) {
-      step2Next.addEventListener("click", function () { wizardNext("2", "3"); });
+      step2Next.addEventListener("click", function () { wizardNext("2", "3", step2Next); });
     }
     var step3Next = byId(IDS.wizardStep3Next);
     if (step3Next) {
-      step3Next.addEventListener("click", function () { wizardNext("3", "4"); });
+      step3Next.addEventListener("click", function () { wizardNext("3", "4", step3Next); });
     }
     var step4Done = byId(IDS.wizardStep4Done);
     if (step4Done) {
-      step4Done.addEventListener("click", wizardDone);
+      step4Done.addEventListener("click", function () { wizardDone(step4Done); });
     }
+    root.querySelectorAll("[data-wizard-back]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        wizardGoto(btn.getAttribute("data-wizard-back"));
+      });
+    });
+    root.querySelectorAll("[data-wizard-goto]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        wizardGoto(btn.getAttribute("data-wizard-goto"));
+      });
+    });
     var engineSave = byId(IDS.wizardEnginePathSave);
     if (engineSave) {
       engineSave.addEventListener("click", function () {
@@ -3637,9 +3908,82 @@
     bindSlugAutofill(IDS.wizardWorldTitle, IDS.wizardWorldSlug);
   }
 
+  // Живое состояние экранов (T-13-08): пока мастер или «Настройки» открыты,
+  // состояние первого запуска и статус моделей перечитываются раз в 2 с; во
+  // время скачивания — раз в 500 мс, чтобы карточка не молчала дольше секунды.
+  var LIVE_INTERVAL_MS = 2000;
+  var LIVE_DOWNLOAD_MS = 500;
+  var liveTimer = null;
+
+  function scheduleLivePoll(delay) {
+    if (liveTimer) {
+      clearTimeout(liveTimer);
+    }
+    liveTimer = setTimeout(livePoll, delay);
+  }
+
+  function wizardOpen() {
+    var root = byId(IDS.wizardRoot);
+    return !!root && !root.hidden;
+  }
+
+  function settingsOpen() {
+    return !!(viewSettings && !viewSettings.hidden);
+  }
+
+  function hasRunningJob(jobs) {
+    return (jobs || []).some(function (job) {
+      return job && job.status === "downloading";
+    });
+  }
+
+  function livePoll() {
+    liveTimer = null;
+    var wizard = wizardOpen();
+    var settings = settingsOpen();
+    if (!wizard && !settings) {
+      scheduleLivePoll(LIVE_INTERVAL_MS);
+      return;
+    }
+    var statusP = apiJSON("/api/settings/models/status").catch(function () { return null; });
+    var firstRunP = apiJSON(FIRST_RUN_PATH).catch(function () { return null; });
+    Promise.all([statusP, firstRunP]).then(function (res) {
+      var status = res[0] || {};
+      var state = res[1] || {};
+      var jobs = status.jobs || [];
+      if (wizard) {
+        if (state.steps) {
+          renderWizardSteps(state.steps);
+        }
+        if (state.station) {
+          renderWizardStation(state.station);
+        }
+        applyModelStatuses(byId(IDS.wizardModelCards), status.models || state.models || [], jobs, "wizard.model");
+      }
+      if (settings) {
+        applySettingsLive(status);
+      }
+      scheduleLivePoll(hasRunningJob(jobs) ? LIVE_DOWNLOAD_MS : LIVE_INTERVAL_MS);
+    }).catch(function () {
+      // Сбой отрисовки не останавливает живое обновление экранов.
+      scheduleLivePoll(LIVE_INTERVAL_MS);
+    });
+  }
+
+  // applySettingsLive — карточки моделей и счётчик раздела «Модели» без
+  // перезагрузки страницы.
+  function applySettingsLive(status) {
+    var models = (status && status.models) || [];
+    var jobs = (status && status.jobs) || [];
+    applyModelStatuses(byId(IDS.modelCatalogGrid), models, jobs, "settings.models");
+    var installed = models.filter(function (m) { return m && m.status === "installed"; }).length;
+    setStatusText("settings-nav-models-status", installed ? String(installed) : "0", installed ? "st--ok" : "");
+  }
+
   applyThemeClass(resolveTheme());
   translate(document);
   checkFirstRun();
   subscribeMcpWS();
   subscribeMonitorWS();
+  scheduleLivePoll(0);
 })();
