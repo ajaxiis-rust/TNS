@@ -678,6 +678,39 @@
     return label;
   }
 
+  function uniqueCastRoles(chars) {
+    var seen = {};
+    var out = [];
+    (chars || []).forEach(function (ch) {
+      (ch.roles || []).forEach(function (role) {
+        if (!seen[role]) {
+          seen[role] = true;
+          out.push(role);
+        }
+      });
+    });
+    return out;
+  }
+
+  function castSummary(cast, heroesKey, rolesKey) {
+    var dict = window.I18N || {};
+    cast = cast || {};
+    var chars = cast.characters || [];
+    var roles = uniqueCastRoles(chars);
+    var parts = [];
+    parts.push((dict[heroesKey] || "Героев") + ": " + chars.length);
+    if (roles.length) {
+      parts.push((dict[rolesKey] || "Роли") + ": " + roles.join(", "));
+    }
+    if (cast.quick) {
+      parts.push(dict["cast.quick"] || "quick");
+    }
+    if (cast.full) {
+      parts.push(dict["cast.full"] || "full");
+    }
+    return parts.join(" · ");
+  }
+
   function loadFanficShelf() {
     apiJSON("/api/library").then(renderFanficShelf).catch(function (err) {
       var shelf = byId(IDS.fanficShelf);
@@ -702,9 +735,11 @@
     }
     shelf.innerHTML = books.map(function (b) {
       var isSelected = b.id === selected;
+      var cast = castSummary(b.cast, "atlas.fanfic.heroes", "atlas.fanfic.roles");
       return '<button type="button" class="fanfic-book' + (isSelected ? " is-selected" : "") + '" data-book-id="' + escapeHTML(b.id) + '">' +
         '<span class="fanfic-book__name">' + escapeHTML(b.name || b.id) + "</span>" +
-        '<span class="fanfic-book__meta">' + escapeHTML(b.format || "") + " · " + escapeHTML(fanficStatusLabel(b.status, b.progress)) + "</span>" +
+        '<span class="fanfic-book__meta">' + escapeHTML(b.format || "") + " · " + escapeHTML(fanficStatusLabel(b.status, b.progress)) +
+        (cast ? " · " + escapeHTML(cast) : "") + "</span>" +
         "</button>";
     }).join("");
   }
@@ -1473,25 +1508,65 @@
   }
 
   function renderMcpSources(data) {
+    return apiJSON("/api/library").then(function (lib) {
+      return renderMcpSourcesWithCast(data, lib);
+    }).catch(function () {
+      return renderMcpSourcesWithCast(data, null);
+    });
+  }
+
+  function renderMcpSourcesWithCast(data, lib) {
     var dict = window.I18N || {};
     var box = byId(IDS.mcpBooks);
     if (!box) {
       return;
     }
+    var castByBase = {};
+    ((lib && lib.books) || []).forEach(function (b) {
+      castByBase[b.name] = b.cast;
+      castByBase[b.id] = b.cast;
+    });
     var items = data.sources || [];
     if (items.length === 0) {
       box.innerHTML = '<p data-i18n="mcp.books.empty">' + (dict["mcp.books.empty"] || "Книг пока нет.") + "</p>";
       return;
     }
     box.innerHTML = items.map(function (item) {
+      var base = item.name || item.id || "";
+      if (item.format && base.slice(-(item.format.length + 1)) === "." + item.format) {
+        base = base.slice(0, -(item.format.length + 1));
+      }
+      var cast = castByBase[base] || castByBase[item.name] || castByBase[item.id];
+      var castLine = castSummary(cast, "mcp.books.heroes", "mcp.books.roles");
       var html = '<div class="mcp-book" data-id="' + escapeHTML(item.id || item.name) + '">';
       html += '<div class="mcp-book__name">' + escapeHTML(item.name) + ' <span class="mcp-book__format">' + escapeHTML(item.format) + "</span></div>";
       html += mcpSourceStatusPill(item.status, item.progress);
       html += '<div class="mcp-book__counters">' + (item.chapters || 0) + " " + (dict["mcp.books.chapters"] || "глав") + " · " + (item.templates || 0) + " " + (dict["mcp.books.templates"] || "шаблонов") + "</div>";
+      if (castLine) {
+        html += '<div class="mcp-book__counters">' + escapeHTML(castLine) + "</div>";
+      }
+      html += mcpCastHeroes(cast);
       html += '<button type="button" class="mcp-book__delete" data-action="delete-source" data-id="' + escapeHTML(item.id || item.name) + '">' + (dict["mcp.books.delete"] || "Удалить сырьё") + "</button>";
       html += "</div>";
       return html;
     }).join("");
+  }
+
+  function mcpCastHeroes(cast) {
+    var chars = (cast && cast.characters) || [];
+    if (!chars.length) {
+      return "";
+    }
+    return '<div class="mcp-book__cast">' + chars.map(function (ch) {
+      var text = escapeHTML(ch.name);
+      if (ch.description) {
+        text += " — " + escapeHTML(ch.description);
+      }
+      if (ch.roles && ch.roles.length) {
+        text += " (" + escapeHTML(ch.roles.join(", ")) + ")";
+      }
+      return '<div class="mcp-book__hero">' + text + "</div>";
+    }).join("") + "</div>";
   }
 
   // Пилюля статуса книги-источника: слово + точка в одном из четырёх состояний

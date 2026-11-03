@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"tns65/internal/db"
 )
 
 // seedLibraryShelf подменяет libraryRoot на t.TempDir(), чтобы тесты не писали
@@ -107,5 +109,71 @@ func TestLibraryDeleteNotFound(t *testing.T) {
 	rr := mcpRequest(t, handleLibraryDelete, http.MethodDelete, libraryBooksPath+"no-such-id", nil, "")
 	if rr.Code != http.StatusNotFound {
 		t.Fatalf("DELETE unknown = %d, want 404: %s", rr.Code, rr.Body.String())
+	}
+}
+
+// TestLibraryListCast проверяет чтение карты книги (T-12-26): карточка полки
+// отдаёт число героев и их роли из литературной базы активного мира.
+func TestLibraryListCast(t *testing.T) {
+	seedMcpWorld(t)     // мир alpha + literary.db, подменяет litDBPath.
+	seedLibraryShelf(t) // полка в t.TempDir().
+	if rr := libraryMultipart(t, "hp.txt", "глава"); rr.Code != http.StatusOK {
+		t.Fatalf("import = %d, want 200: %s", rr.Code, rr.Body.String())
+	}
+
+	oldActive := getActiveSlug()
+	setActiveSlug("alpha")
+	t.Cleanup(func() { setActiveSlug(oldActive) })
+
+	lit, err := db.OpenWriterAs(litDBPath("alpha"), db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(literary): %v", err)
+	}
+	defer lit.Close()
+
+	res, err := lit.Exec("book",
+		`INSERT INTO book (shelf_id, name, lang, status, created_at) VALUES (?, ?, ?, ?, ?)`,
+		"hp", "hp", "ru", "ready", "2026-11-03T00:00:00Z")
+	if err != nil {
+		t.Fatalf("insert book: %v", err)
+	}
+	bookID, err := res.LastInsertId()
+	if err != nil {
+		t.Fatalf("book id: %v", err)
+	}
+
+	ch, err := lit.Exec("book_character",
+		`INSERT INTO book_character (book_id, name, description, status, created_at) VALUES (?, ?, ?, ?, ?)`,
+		bookID, "Снейп", "седой, холодный", "confirmed", "2026-11-03T00:00:00Z")
+	if err != nil {
+		t.Fatalf("insert character: %v", err)
+	}
+	charID, err := ch.LastInsertId()
+	if err != nil {
+		t.Fatalf("character id: %v", err)
+	}
+	if _, err := lit.Exec("book_character_role",
+		`INSERT INTO book_character_role (character_id, from_chunk, to_chunk, role, confidence, evidence) VALUES (?, ?, ?, ?, ?, ?)`,
+		charID, 1, 3, "антагонист", 1.0, ""); err != nil {
+		t.Fatalf("insert role: %v", err)
+	}
+
+	out := libraryList(t)
+	if len(out.Books) != 1 {
+		t.Fatalf("полка = %d книг, want 1", len(out.Books))
+	}
+	card := out.Books[0]
+	if !card.Cast.Quick || !card.Cast.Full {
+		t.Fatalf("cast quick/full = %v/%v, want true/true", card.Cast.Quick, card.Cast.Full)
+	}
+	if len(card.Cast.Characters) != 1 {
+		t.Fatalf("героев = %d, want 1", len(card.Cast.Characters))
+	}
+	hero := card.Cast.Characters[0]
+	if hero.Name != "Снейп" || hero.Description != "седой, холодный" {
+		t.Fatalf("герой = %+v, want Снейп/седой, холодный", hero)
+	}
+	if len(hero.Roles) != 1 || hero.Roles[0] != "антагонист" {
+		t.Fatalf("роли = %v, want [антагонист]", hero.Roles)
 	}
 }
