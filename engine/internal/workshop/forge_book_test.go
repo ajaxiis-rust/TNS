@@ -11,9 +11,63 @@ import (
 	"tns65/internal/workshop"
 )
 
-// TestForgeBook — «Проверка» T-12-11: фейковые слот и эмбеддер; 3 чанка → 3
-// записи bank_pool, 3 вектора, прогресс 1.0; повторный запуск без дублей.
-func TestForgeBook(t *testing.T) {
+// Потолки волны §8.1 (жёстко в тестовом коде, T-12-27): unit-тест не варит
+// больше двух кусков; полная книга в тесте — ошибка, а не медленный успех.
+const (
+	maxTestChunks = 2
+	maxSlotCalls  = 6
+)
+
+// castFixture — короткая фикстура fb2 (3 главы, ~4 КБ) с выдуманными именами и
+// маркерами описаний; один герой меняет роль между главами (T-12-27).
+const castFixture = "testdata/cast.fb2"
+
+// capTestChunks режет куски до потолка maxTestChunks и пишет в лог, если чанкер
+// вернул больше: полная книга в тесте — ошибка, а не медленный успех.
+func capTestChunks(t *testing.T, chunks []workshop.Chunk) []workshop.Chunk {
+	t.Helper()
+	if len(chunks) > maxTestChunks {
+		t.Logf("чанкер вернул %d кусков, режу до потолка %d", len(chunks), maxTestChunks)
+		chunks = chunks[:maxTestChunks]
+	}
+	return chunks
+}
+
+// writeChunksTXT кладёт куски во временный txt: RunForgeBook разбирает файл сам,
+// поэтому вход, обрезанный до потолка, записывается заново.
+func writeChunksTXT(t *testing.T, chunks []workshop.Chunk) string {
+	t.Helper()
+	var b []byte
+	for _, c := range chunks {
+		b = append(b, c.Chapter...)
+		b = append(b, '\n')
+		b = append(b, c.Text...)
+		b = append(b, '\n', '\n')
+	}
+	path := filepath.Join(t.TempDir(), "book.txt")
+	if err := os.WriteFile(path, b, 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	return path
+}
+
+// TestForgeBookCastFixture — «Проверка» T-12-27: короткая фикстура fb2 варится с
+// потолками — два куска, два вызова слота (≤ maxSlotCalls), фейковый эмбеддер
+// даёт два вектора; повторный запуск без дублей.
+func TestForgeBookCastFixture(t *testing.T) {
+	parsed, err := workshop.ParseBookInput(castFixture)
+	if err != nil {
+		t.Fatalf("ParseBookInput(cast.fb2): %v", err)
+	}
+	if len(parsed.Chunks) != 3 {
+		t.Fatalf("фикстура дала %d кусков, want 3 (три главы)", len(parsed.Chunks))
+	}
+	chunks := capTestChunks(t, parsed.Chunks)
+	if len(chunks) != maxTestChunks {
+		t.Fatalf("после потолка %d кусков, want %d", len(chunks), maxTestChunks)
+	}
+	input := writeChunksTXT(t, chunks)
+
 	dir := t.TempDir()
 	worldPath := filepath.Join(dir, "world.db")
 	litPath := filepath.Join(dir, "literary.db")
@@ -35,17 +89,12 @@ func TestForgeBook(t *testing.T) {
 	workshop.SetCensor(passCensor{})
 	defer workshop.SetCensor(nil)
 	slot := testkit.NewFakeSlot()
+	slot.SetCallLimit(maxSlotCalls)
 	workshop.SetSlot(slot)
 	defer workshop.SetSlot(nil)
-	workshop.SetEmbedder(testkit.NewFakeEmbed())
+	emb := testkit.NewFakeEmbed()
+	workshop.SetEmbedder(emb)
 	defer workshop.SetEmbedder(nil)
-
-	input := filepath.Join(dir, "book.txt")
-	if err := os.WriteFile(input, []byte(
-		"Глава 1. Встреча\nТекст первой главы.\nГлава 2. Погоня\nТекст второй главы.\nГлава 3. Развязка\nТекст третьей главы.\n",
-	), 0o644); err != nil {
-		t.Fatalf("WriteFile: %v", err)
-	}
 
 	slot.SetResponse(workshop.ComposeRole,
 		`{"family_primary":"","pattern_secondary":"","technique":"","moral_stance":"","inversion":false}`)
@@ -58,20 +107,26 @@ func TestForgeBook(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunForgeBook: %v", err)
 	}
-	if res.Chunks != 3 {
-		t.Fatalf("чанков = %d, want 3", res.Chunks)
+	if res.Chunks != maxTestChunks {
+		t.Fatalf("чанков = %d, want %d", res.Chunks, maxTestChunks)
 	}
 	if res.Progress != 1.0 {
 		t.Fatalf("прогресс = %v, want 1.0", res.Progress)
 	}
-	if lastDone != 3 || lastTotal != 3 {
-		t.Fatalf("колбэк прогресса = %d/%d, want 3/3", lastDone, lastTotal)
+	if lastDone != maxTestChunks || lastTotal != maxTestChunks {
+		t.Fatalf("колбэк прогресса = %d/%d, want %d/%d", lastDone, lastTotal, maxTestChunks, maxTestChunks)
 	}
-	if got := countBankPool(t, lit); got != 3 {
-		t.Fatalf("записей bank_pool = %d, want 3", got)
+	if got := slot.Calls(); got != maxTestChunks {
+		t.Fatalf("вызовов слота = %d, want %d (один на кусок)", got, maxTestChunks)
 	}
-	if got := countBankVectors(t, world); got != 3 {
-		t.Fatalf("векторов bank_pool = %d, want 3", got)
+	if got := emb.Calls(); got != maxTestChunks {
+		t.Fatalf("вызовов эмбеддера = %d, want %d (один вектор на кусок)", got, maxTestChunks)
+	}
+	if got := countBankPool(t, lit); got != maxTestChunks {
+		t.Fatalf("записей bank_pool = %d, want %d", got, maxTestChunks)
+	}
+	if got := countBankVectors(t, world); got != maxTestChunks {
+		t.Fatalf("векторов bank_pool = %d, want %d", got, maxTestChunks)
 	}
 
 	// Повторный запуск той же книги: тот же book_id, дублей банка и векторов нет.
@@ -84,11 +139,11 @@ func TestForgeBook(t *testing.T) {
 	if res2.BookID != res.BookID {
 		t.Fatalf("book_id повтора = %d, want %d", res2.BookID, res.BookID)
 	}
-	if got := countBankPool(t, lit); got != 3 {
-		t.Fatalf("записей bank_pool после повтора = %d, want 3", got)
+	if got := countBankPool(t, lit); got != maxTestChunks {
+		t.Fatalf("записей bank_pool после повтора = %d, want %d", got, maxTestChunks)
 	}
-	if got := countBankVectors(t, world); got != 3 {
-		t.Fatalf("векторов после повтора = %d, want 3", got)
+	if got := countBankVectors(t, world); got != maxTestChunks {
+		t.Fatalf("векторов после повтора = %d, want %d", got, maxTestChunks)
 	}
 }
 

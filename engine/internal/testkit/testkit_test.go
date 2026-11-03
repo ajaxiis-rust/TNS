@@ -99,6 +99,25 @@ func TestFakeSlot(t *testing.T) {
 	}
 }
 
+func TestFakeSlotCallLimit(t *testing.T) {
+	s := NewFakeSlot()
+	s.SetCallLimit(2)
+	s.SetResponse("weaver", "текст")
+
+	if _, err := s.Generate(context.Background(), "weaver", "промпт"); err != nil {
+		t.Fatalf("первый вызов: %v", err)
+	}
+	if _, err := s.Generate(context.Background(), "weaver", "промпт"); err != nil {
+		t.Fatalf("второй вызов: %v", err)
+	}
+	if _, err := s.Generate(context.Background(), "weaver", "промпт"); !errors.Is(err, ErrCallLimit) {
+		t.Fatalf("третий вызов = %v, want ErrCallLimit", err)
+	}
+	if s.Calls() != 3 {
+		t.Fatalf("Calls = %d, want 3 (потолок не глушит счётчик)", s.Calls())
+	}
+}
+
 func TestFakeEmbed(t *testing.T) {
 	e := NewFakeEmbed()
 	v1, err := e.Embed(context.Background(), "синопсис мира")
