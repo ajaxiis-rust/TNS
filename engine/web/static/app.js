@@ -730,6 +730,7 @@
   function renderAtlasWorlds(data) {
     window.__activeSlug = data.active || "";
     window.__activeWorldChecked = true;
+    window.__languageReady = window.__languageReady || {};
     var box = byId(IDS.atlasWorlds);
     if (!box) {
       return;
@@ -741,10 +742,14 @@
       return;
     }
     box.innerHTML = worlds.map(function (w) {
+      window.__languageReady[w.slug] = !!w.language_ready;
       var active = w.active ? ' <span class="atlas-card__active">' + (dict["atlas.active"] || "Активен") + "</span>" : "";
       var html = '<div class="atlas-card' + (w.active ? " atlas-card--active" : "") + '">';
       html += '<div class="atlas-card__name">' + escapeHTML(w.title || w.slug) + active + "</div>";
       html += '<div class="atlas-card__meta">' + w.entities + " " + (dict["atlas.entities"] || "сущностей") + " · " + w.sessions + " " + (dict["atlas.sessions"] || "сессий") + "</div>";
+      if (!w.language_ready) {
+        html += '<div class="atlas-card__status">' + (dict["atlas.language.preparing"] || "Язык книги ещё готовится…") + "</div>";
+      }
       html += '<div class="atlas-card__actions">';
       html += '<button type="button" data-action="new-life" data-slug="' + escapeHTML(w.slug) + '">' + (dict["atlas.actions.new_life"] || "Начать новую жизнь") + "</button>";
       if (!w.active) {
@@ -783,10 +788,28 @@
   }
 
   function playAtlasWorld(slug) {
+    if (!window.__languageReady || !window.__languageReady[slug]) {
+      // Язык книги ещё не готов (T-12-14): ковка фанфика до первого хода.
+      toast((window.I18N && window.I18N["atlas.language.preparing"]) || "Язык книги ещё готовится…", false);
+      forgeAtlasWorld(slug);
+      return;
+    }
     postJSON("/api/atlas/worlds/active", { world: slug }).then(function () {
       window.__activeSlug = slug;
       showChat();
     }).catch(atlasActionError);
+  }
+
+  // Синхронная ковка книги после рождения (T-12-14): метка language_ready и
+  // прогресс выставляются на сервере; отказ (нет модели) приходит предупреждением.
+  function forgeAtlasWorld(slug) {
+    postJSON("/api/atlas/worlds/forge", { world: slug }).then(function (res) {
+      if (res && res.warning) {
+        toast(res.warning, false);
+      }
+    }).catch(atlasActionError).then(function () {
+      loadAtlasWorlds();
+    });
   }
 
   function deleteAtlasWorld(slug) {
@@ -866,18 +889,20 @@
     }
     var btn = byId(IDS.atlasBirthSubmit);
     var release = setBusy(btn);
+    var slug = body.slug;
     postJSON("/api/atlas/worlds/birth", body).then(function () {
       var form = byId(IDS.atlasBirthForm);
       if (form) {
         form.reset();
       }
-      var slug = byId(IDS.atlasBirthSlug);
-      if (slug) {
-        slug.dataset.manual = "";
+      var slugInput = byId(IDS.atlasBirthSlug);
+      if (slugInput) {
+        slugInput.dataset.manual = "";
       }
       loadAtlasBirthOptions();
-      loadAtlasWorlds();
       showAtlasBirthError("");
+      // Синхронная ковка книги после рождения (T-12-14): до первого хода.
+      return forgeAtlasWorld(slug);
     }).catch(function (err) {
       atlasError(err);
     }).then(release);

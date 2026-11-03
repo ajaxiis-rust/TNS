@@ -58,6 +58,7 @@ window.I18N = {
   "atlas.actions.switch": "Переключить мир",
   "atlas.actions.delete": "Удалить мир",
   "atlas.actions.play": "Играть сейчас",
+  "atlas.language.preparing": "Язык книги ещё готовится…",
   "atlas.wizard.title": "Мастер рождения",
   "atlas.wizard.synopsis": "Синопсис новой жизни (1–3 предложения)",
   "atlas.wizard.name": "Имя (необязательно — пустое даёт случайное)",

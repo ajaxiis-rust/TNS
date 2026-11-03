@@ -87,14 +87,15 @@ func handleAtlasScreen(w http.ResponseWriter, _ *http.Request) {
 // atlasWorldCard — карточка мира в списке (UI-05.1): имя мира, счётчики
 // сущностей и сессий, признак активного мира.
 type atlasWorldCard struct {
-	Slug       string `json:"slug"`
-	Title      string `json:"title"`
-	Active     bool   `json:"active"`
-	Characters int    `json:"characters"`
-	Places     int    `json:"places"`
-	Paths      int    `json:"paths"`
-	Entities   int    `json:"entities"`
-	Sessions   int    `json:"sessions"`
+	Slug          string `json:"slug"`
+	Title         string `json:"title"`
+	Active        bool   `json:"active"`
+	Characters    int    `json:"characters"`
+	Places        int    `json:"places"`
+	Paths         int    `json:"paths"`
+	Entities      int    `json:"entities"`
+	Sessions      int    `json:"sessions"`
+	LanguageReady bool   `json:"language_ready"`
 }
 
 type atlasListResponse struct {
@@ -128,6 +129,7 @@ func handleAtlasList(w http.ResponseWriter, _ *http.Request) {
 		card := atlasWorldCard{Slug: wd.Slug, Title: wd.Title, Active: wd.Slug == active}
 		card.Characters, card.Places, card.Paths, card.Sessions = countWorld(wd)
 		card.Entities = card.Characters + card.Places + card.Paths
+		card.LanguageReady = worldLanguageReady(wd.Slug)
 		out.Worlds = append(out.Worlds, card)
 	}
 	writeJSON(w, http.StatusOK, out)

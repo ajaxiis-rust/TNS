@@ -85,6 +85,7 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodPost, path: "/api/atlas/worlds/active", handle: handleAtlasSwitch},
 		{method: http.MethodPost, path: "/api/atlas/worlds/replay", handle: handleAtlasReplay},
 		{method: http.MethodDelete, path: "/api/atlas/worlds/delete", handle: handleAtlasDelete},
+		{method: http.MethodPost, path: "/api/atlas/worlds/forge", handle: handleAtlasForge},
 		{method: http.MethodGet, path: "/api/mcp/dash", handle: handleMcpDash},
 		{method: http.MethodGet, path: "/api/mcp/sources", handle: handleMcpSources},
 		{method: http.MethodPost, path: "/api/mcp/import", handle: handleMcpImport},
