@@ -3,9 +3,13 @@ package supervisor
 import (
 	"errors"
 	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -269,6 +273,47 @@ func TestStopOrder(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("порядок остановки = %v, want %v", got, want)
 	}
+}
+
+// TestCheckHealth — «Проверка» health-запроса (T-12-17): живой /health —
+// готов, 500 и пустая спецификация — поведение по шагу 2.
+func TestCheckHealth(t *testing.T) {
+	ok := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/health" {
+			http.NotFound(w, r)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ok.Close()
+
+	bad := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer bad.Close()
+
+	if err := CheckHealth(Config{Port: portOf(t, ok.URL), HealthPath: "/health"}); err != nil {
+		t.Fatalf("CheckHealth(200) = %v, want nil", err)
+	}
+	if err := CheckHealth(Config{Port: portOf(t, bad.URL), HealthPath: "/health"}); err == nil {
+		t.Fatal("CheckHealth(500) = nil, want error")
+	}
+	if err := CheckHealth(Config{}); err != nil {
+		t.Fatalf("CheckHealth(no port) = %v, want nil", err)
+	}
+}
+
+func portOf(t *testing.T, raw string) int {
+	t.Helper()
+	u, err := url.Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := strconv.Atoi(u.Port())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return n
 }
 
 func TestLoadChildren(t *testing.T) {

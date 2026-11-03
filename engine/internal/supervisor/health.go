@@ -12,9 +12,11 @@ import (
 // на подставных часах.
 type ReadyFunc func(spec Config) error
 
-// defaultReady — health-запрос loopback-резидента (шаг 2). Ребёнок без порта или
+// CheckHealth — health-запрос loopback-резидента (шаг 2). Ребёнок без порта или
 // пути готов сразу: stdio-резидентов (лемматизатор) health-эндпоинт не касается.
-func defaultReady(spec Config) error {
+// Экспортируется для эмбеддера :5002 (T-12-17): здоровье проверяется до
+// косинус-проверки пулинга.
+func CheckHealth(spec Config) error {
 	if spec.Port == 0 || spec.HealthPath == "" {
 		return nil
 	}
@@ -32,4 +34,9 @@ func defaultReady(spec Config) error {
 		return fmt.Errorf("supervisor: health %s: status %d", url, resp.StatusCode)
 	}
 	return nil
+}
+
+// defaultReady — health-запрос loopback-резидента (шаг 2).
+func defaultReady(spec Config) error {
+	return CheckHealth(spec)
 }

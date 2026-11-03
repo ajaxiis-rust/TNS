@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"tns65/internal/db"
+	"tns65/internal/embedserver"
 	"tns65/internal/geo"
 	"tns65/internal/models"
 	"tns65/internal/netgate"
@@ -140,6 +141,7 @@ type settingsResponse struct {
 	Providers          []settingsProvider `json:"providers"`
 	Models             []modelStatus      `json:"models"`
 	RamGB              float64            `json:"ram_gb"`
+	Embedder           embedserver.Status `json:"embedder"`
 }
 
 // channelSettings — исходящий канал станка (T-08-03, F-04.3/F-04.4): край
@@ -318,7 +320,23 @@ func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 		Providers: providers,
 		Models:    models,
 		RamGB:     hostRAMGB(),
+		Embedder:  readEmbedderStatus(),
 	})
+}
+
+// embedStatusTimeout — потолок времени на опрос эмбеддера из UI. Отказ на
+// незанятом loopback-порту мгновенен, но GET не должен висеть на чужом сокете.
+const embedStatusTimeout = 3 * time.Second
+
+// readEmbedderStatus — снимок состояния эмбеддера :5002 для UI (T-12-17):
+// здоров ли сервер и прошла ли косинус-проверка пулинга.
+func readEmbedderStatus() embedserver.Status {
+	keys := readSettingsKeys(settingsTOMLPath)
+	llm := readLLMSettings(settingsConfigPath, keys)
+	addr := "http://" + normalizeAddr(llm.Embed.Addr)
+	ctx, cancel := context.WithTimeout(context.Background(), embedStatusTimeout)
+	defer cancel()
+	return embedserver.StatusOf(ctx, addr, nil)
 }
 
 // buildChannelSettings собирает карточку канала из секции tunnel config.yaml и
