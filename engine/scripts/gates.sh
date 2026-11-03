@@ -38,4 +38,11 @@ if [ -n "$null_out" ]; then
     fail=1
 fi
 
+# 5. Documentation must match the code (T-12-32): numbers, migration
+#    registry, ROUTES and ledger. Drift fails the gate.
+if ! bash scripts/docs-check.sh; then
+    echo "FAIL: bash scripts/docs-check.sh"
+    fail=1
+fi
+
 exit "$fail"

@@ -152,20 +152,17 @@ run_checks() {
     [ "${id_count[$id]}" -le 1 ] || drift "ID $id повторяется между файлами плана"
   done
 
-  # 6. Имена: полка, базы миров, неизменяемость base.db.
+  # 6. Полка и неизменяемость base.db. Имена баз кодом не навязываются
+  # (T-12-32.0): гейт сверяет числа, реестры миграций, ROUTES и ledger.
   local living=()
   for f in "$docs_dir"/*.md; do living+=("$f"); done
   for f in "$ROOT"/fine/04-spec/*.md; do living+=("$f"); done
   living+=("$arch")
 
-  local f rel n1 n2 shelf=0 imm=0
+  local f rel shelf=0 imm=0
   for f in "${living[@]}"; do
     [ -f "$f" ] || continue
     rel="${f#"$ROOT"/}"
-    n1="$(grep -oF 'world(name).db' "$f" | wc -l | tr -d ' ')"
-    n2="$(grep -oF '<slug>.db' "$f" | wc -l | tr -d ' ')"
-    [ "$n1" -eq 0 ] || drift "$rel: устаревшее имя world(name).db (×$n1)"
-    [ "$n2" -eq 0 ] || drift "$rel: устаревшее имя <slug>.db (×$n2)"
     grep -qF 'world_db/library/' "$f" && shelf=1
     grep -qE 'base\.db.*(неизмен|заморож|immutable|read-?only|readonly|на чтение|только читает)' "$f" && imm=1
   done

@@ -8,8 +8,8 @@
 | --- | --- | --- |
 | Станочный конфиг | `engine/config.yaml` | сервер, слоты LLM, пресеты, туннель, коэффициенты, скоринг композиции, резиденты, белые списки |
 | Ключи и токены | `engine/settings.toml` | ключи слотов и провайдеров, токен Telegram, переключатели; формат — `key = "value"` |
-| Мировые настраиваемые параметры | `world_db/worlds/<slug>/world.db` → `world_meta` | tunables (`globalLuck`, память NPC, норма дня) и состав роли `role.<роль>`; пишутся хэндлом `forge` |
-| Привязки слотов | `world_db/worlds/<slug>/world.db` → `model_bindings` | роль → провайдер/модель; пишутся хэндлом `core` |
+| Мировые настраиваемые параметры | `world_db/worlds/<slug>/<slug>.db` → `world_meta` | tunables (`globalLuck`, память NPC, норма дня) и состав роли `role.<роль>`; пишутся хэндлом `forge` |
+| Привязки слотов | `world_db/worlds/<slug>/<slug>.db` → `model_bindings` | роль → провайдер/модель; пишутся хэндлом `core` |
 | Файлы моделей | `world_db/models/<роль>/` | `current.bin`/`current.json`, `previous.*` для отката |
 | Тема интерфейса | браузер, `localStorage` `tns65.theme` | на сервере не хранится |
 
