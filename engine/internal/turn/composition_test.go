@@ -107,6 +107,43 @@ func (f compFixture) insertDrama(t *testing.T, family, secondary, technique, mor
 	}
 }
 
+// insertBook кладёт строку реестра book с явным id — для привязки source_book_id.
+func (f compFixture) insertBook(t *testing.T, id int64, name string) {
+	t.Helper()
+	if _, err := f.litForge.Exec("book",
+		`INSERT INTO book (id, shelf_id, name, lang, genres, rating, chapters, status, created_at)
+		 VALUES (?, '', ?, 'ru', '', '', 0, 'ready', '2026-01-01T00:00:00Z')`,
+		id, name); err != nil {
+		t.Fatalf("insert book: %v", err)
+	}
+}
+
+// insertDramaBook кладёт драму, привязанную к книге book_id.
+func (f compFixture) insertDramaBook(t *testing.T, bookID int64, family, secondary, technique, moral string, inversion bool, trust int) {
+	t.Helper()
+	inv := 0
+	if inversion {
+		inv = 1
+	}
+	var sec, tech, mor any
+	if secondary != "" {
+		sec = secondary
+	}
+	if technique != "" {
+		tech = technique
+	}
+	if moral != "" {
+		mor = moral
+	}
+	if _, err := f.litForge.Exec("bank_pool",
+		`INSERT INTO bank_pool (kind, text, lang, tags, trust_level, origin, created_at,
+		 family_primary, pattern_secondary, technique, moral_stance, inversion_flag, book_id)
+		 VALUES ('drama', 'текст сцены', 'ru', '', ?, 'forge-book', '2026-01-01T00:00:00Z', ?, ?, ?, ?, ?, ?)`,
+		trust, family, sec, tech, mor, inv, bookID); err != nil {
+		t.Fatalf("insert drama book: %v", err)
+	}
+}
+
 // setAnchorFamilies пишет anchor_families в world_meta хэндлом forge.
 func (f compFixture) setAnchorFamilies(t *testing.T, fams []string) {
 	t.Helper()
@@ -117,6 +154,15 @@ func (f compFixture) setAnchorFamilies(t *testing.T, fams []string) {
 	if _, err := f.worldForge.Exec("world_meta",
 		`INSERT INTO world_meta ("key", value) VALUES ('anchor_families', ?)`, string(raw)); err != nil {
 		t.Fatalf("insert anchor_families: %v", err)
+	}
+}
+
+// setSourceBookID пишет привязку фанфика source_book_id в world_meta хэндлом forge.
+func (f compFixture) setSourceBookID(t *testing.T, id int64) {
+	t.Helper()
+	if _, err := f.worldForge.Exec("world_meta",
+		`INSERT INTO world_meta ("key", value) VALUES ('source_book_id', ?)`, strconv.FormatInt(id, 10)); err != nil {
+		t.Fatalf("insert source_book_id: %v", err)
 	}
 }
 
@@ -403,6 +449,43 @@ func TestCompositionStage(t *testing.T) {
 			t.Fatalf("compositionGuide нулевой композиции = %q, want пусто", compositionGuide(structural.Composition{}))
 		}
 	})
+}
+
+// TestCompositionBookBoost — «две книги, привязанная выигрывает»: без привязки
+// универсальная сцена (anchor-семья quest_journey) набирает больше, а множитель
+// 3.0 при book_id = source_book_id переворачивает выбор в пользу привязанной.
+func TestCompositionBookBoost(t *testing.T) {
+	f := newCompositionFixture(t)
+	f.insertBook(t, 1, "Книга-фанфик")
+	f.insertBook(t, 2, "Универсальный нарратив")
+	f.insertDramaBook(t, 1, "rescue", "loyalty", "procedural_pressure", "redemptive", false, 2)
+	f.insertDramaBook(t, 2, "quest_journey", "rescue", "procedural_pressure", "redemptive", false, 2)
+	f.setAnchorFamilies(t, []string{"quest_journey"})
+
+	unbound := &TurnState{Prepath: Prepath{Intent: Intent{Name: "речь"}, Mood: "тревога"}}
+	fams := loadTestFamilies(t)
+
+	// Контроль без привязки: выигрывает anchor-сцена книги 2.
+	base, _, _, err := pickComposition(unbound, f.litReader, f.worldCore, fams, structural.DefaultConfig())
+	if err != nil {
+		t.Fatalf("pickComposition (без привязки): %v", err)
+	}
+	if base.FamilyPrimary != "quest_journey" {
+		t.Fatalf("без привязки family = %q, want quest_journey", base.FamilyPrimary)
+	}
+
+	// С привязкой: привязанная книга получает множитель 3.0 и выигрывает.
+	f.setSourceBookID(t, 1)
+	comp, score, _, err := pickComposition(unbound, f.litReader, f.worldCore, fams, structural.DefaultConfig())
+	if err != nil {
+		t.Fatalf("pickComposition (с привязкой): %v", err)
+	}
+	if comp.FamilyPrimary != "rescue" {
+		t.Fatalf("с привязкой family = %q, want rescue (привязанная книга выигрывает)", comp.FamilyPrimary)
+	}
+	if score <= 0 {
+		t.Fatalf("score = %v, want > 0", score)
+	}
 }
 
 func containsString(list []string, s string) bool {

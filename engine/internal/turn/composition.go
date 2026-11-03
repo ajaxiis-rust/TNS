@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +20,11 @@ import (
 // compositionBudget — бюджет выбора композиции (T-10-11, шаг 8): как у Челнока —
 // одна выборка SQL и скоринг в памяти, без слота генерации.
 const compositionBudget = 100 * time.Millisecond
+
+// fanficBookBoost — множитель скоринга для записей привязанной книги
+// (book_id = source_book_id, P11 §5.8): без него универсальный нарратив
+// перебивает фандом.
+const fanficBookBoost = 3.0
 
 // compositionStage — стадия композиции (T-10-11): живой ход выбирает композицию
 // драмы из литературного банка, а не одиночный архетип. Кандидаты — строки
@@ -108,6 +114,7 @@ func findEngineRoot() string {
 type dramaCandidate struct {
 	structural.Candidate
 	id        int64
+	bookID    int64 // bank_pool.book_id; 0 — сид/старая запись без книги.
 	usageBook int
 }
 
@@ -135,14 +142,15 @@ func pickComposition(st *TurnState, lit, world *db.Handle, fams []structural.Fam
 
 	q := buildCompositionQuery(st, world)
 	q.HasRicher = hasRicherComposition(cands)
+	sourceBookID := readSourceBookID(world)
 
 	var chosen dramaCandidate
 	if seq%structural.DefaultForceEvery == 0 {
 		chosen = forceCompositionPick(cands)
 	} else {
-		chosen = scoreCompositionPick(cands, q, cfg, usageChapter)
+		chosen = scoreCompositionPick(cands, q, cfg, usageChapter, sourceBookID)
 	}
-	return chosen.Composition, structural.Score(chosen.Candidate, q, cfg), seq, nil
+	return chosen.Composition, compositionScore(chosen, q, cfg, sourceBookID), seq, nil
 }
 
 // readDramaCandidates читает кандидатов композиции одним SQL: строки bank_pool
@@ -154,7 +162,7 @@ func readDramaCandidates(lit *db.Handle, fams []structural.Family) ([]dramaCandi
 		famBySlug[f.Name] = f
 	}
 
-	rows, err := lit.Query(`SELECT id, family_primary, pattern_secondary, technique, moral_stance, inversion_flag, trust_level
+	rows, err := lit.Query(`SELECT id, book_id, family_primary, pattern_secondary, technique, moral_stance, inversion_flag, trust_level
 		FROM bank_pool WHERE kind = 'drama' AND family_primary != '' ORDER BY id`)
 	if err != nil {
 		return nil, err
@@ -164,10 +172,11 @@ func readDramaCandidates(lit *db.Handle, fams []structural.Family) ([]dramaCandi
 	var out []dramaCandidate
 	for rows.Next() {
 		var id int64
+		var bookID sql.NullInt64
 		var inversionFlag, trustLevel int
 		var familyPrimary string
 		var secondary, technique, moralStance sql.NullString
-		if err := rows.Scan(&id, &familyPrimary, &secondary, &technique, &moralStance, &inversionFlag, &trustLevel); err != nil {
+		if err := rows.Scan(&id, &bookID, &familyPrimary, &secondary, &technique, &moralStance, &inversionFlag, &trustLevel); err != nil {
 			return nil, err
 		}
 		fam, ok := famBySlug[familyPrimary]
@@ -186,7 +195,8 @@ func readDramaCandidates(lit *db.Handle, fams []structural.Family) ([]dramaCandi
 				FamilyKeywords: fam.Keywords,
 				TrustLevel:     trustLevel,
 			},
-			id: id,
+			id:     id,
+			bookID: bookID.Int64,
 		}
 		if err := c.Composition.Validate(); err != nil {
 			continue
@@ -282,7 +292,7 @@ func hasRicherComposition(cands []dramaCandidate) bool {
 // scoreCompositionPick — выбор наибольшего скоринга после запрета переиспользования
 // семьи (Structural Drift, SCR-§3.3): семья с usage_chapter ≥ N исключается,
 // если есть кандидат другой семьи; при пустом пуле запрет не применяется.
-func scoreCompositionPick(cands []dramaCandidate, q structural.Query, cfg structural.Config, usageChapter map[string]int) dramaCandidate {
+func scoreCompositionPick(cands []dramaCandidate, q structural.Query, cfg structural.Config, usageChapter map[string]int, sourceBookID int64) dramaCandidate {
 	allowed := make([]dramaCandidate, 0, len(cands))
 	for _, c := range cands {
 		if compositionForbidden(c, cands, usageChapter) {
@@ -295,14 +305,41 @@ func scoreCompositionPick(cands []dramaCandidate, q structural.Query, cfg struct
 	}
 
 	best := allowed[0]
-	bestScore := structural.Score(best.Candidate, q, cfg)
+	bestScore := compositionScore(best, q, cfg, sourceBookID)
 	for _, c := range allowed[1:] {
-		sc := structural.Score(c.Candidate, q, cfg)
+		sc := compositionScore(c, q, cfg, sourceBookID)
 		if sc > bestScore || (sc == bestScore && c.id < best.id) {
 			best, bestScore = c, sc
 		}
 	}
 	return best
+}
+
+// compositionScore — структурный скоринг с бустом привязанной книги
+// (P11 §5.8): записи с book_id = source_book_id умножаются на fanficBookBoost.
+func compositionScore(c dramaCandidate, q structural.Query, cfg structural.Config, sourceBookID int64) float64 {
+	sc := structural.Score(c.Candidate, q, cfg)
+	if sourceBookID != 0 && c.bookID == sourceBookID {
+		sc *= fanficBookBoost
+	}
+	return sc
+}
+
+// readSourceBookID читает привязку фанфика из world_meta (T-12-13 запишет
+// source_book_id при рождении); 0 — ключа нет или значение не число.
+func readSourceBookID(h *db.Handle) int64 {
+	if h == nil {
+		return 0
+	}
+	var raw string
+	if err := h.QueryRow(`SELECT value FROM world_meta WHERE "key" = 'source_book_id'`).Scan(&raw); err != nil {
+		return 0
+	}
+	id, err := strconv.ParseInt(strings.TrimSpace(raw), 10, 64)
+	if err != nil {
+		return 0
+	}
+	return id
 }
 
 func compositionForbidden(c dramaCandidate, all []dramaCandidate, usageChapter map[string]int) bool {
