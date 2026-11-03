@@ -446,6 +446,49 @@ func TestSwitchModelRollback(t *testing.T) {
 	s.Stop()
 }
 
+// TestStopChild — выборочная остановка одного ребёнка (удаление модели,
+// T-13-03): гасит только его и снимает с надзора, сосед живёт, финальный
+// Stop остаётся чистым; отсутствующее имя — ошибка.
+func TestStopChild(t *testing.T) {
+	logger, _ := newTestLogger(t)
+
+	runner := &fakeRunner{}
+	runner.makeProc = func(name string) *fakeProcess {
+		return &fakeProcess{name: name, runner: runner, crashCh: make(chan error, 1), stopCh: make(chan struct{})}
+	}
+
+	s := New(logger, []Config{
+		{Name: "embed", Cmd: "fake"},
+		{Name: "llama", Cmd: "fake"},
+	},
+		WithClock(newFakeClock()), WithRunner(runner),
+		WithReady(func(Config) error { return nil }))
+	go s.Run()
+	waitFor(t, func() bool { return runner.startCount() >= 2 })
+
+	if err := s.StopChild("llama"); err != nil {
+		t.Fatalf("StopChild: %v", err)
+	}
+	embedAlive := false
+	for _, st := range s.Status() {
+		if st.Name == "llama" {
+			t.Fatal("llama остался в Status после StopChild")
+		}
+		if st.Name == "embed" && st.Running {
+			embedAlive = true
+		}
+	}
+	if !embedAlive {
+		t.Fatal("embed должен продолжать работать после StopChild(llama)")
+	}
+
+	if err := s.StopChild("nope"); err == nil {
+		t.Fatal("StopChild(отсутствующее имя) = nil, want error")
+	}
+
+	s.Stop()
+}
+
 // TestChildLogPath — логи ребёнка пишутся в отдельный файл (T-12-19).
 func TestChildLogPath(t *testing.T) {
 	logger, _ := newTestLogger(t)

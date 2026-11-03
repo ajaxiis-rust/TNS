@@ -1003,6 +1003,24 @@ var modelChildSwitch func(supervisor.Config) error
 // установка модели детей не трогает.
 func SetModelChildSwitch(f func(supervisor.Config) error) { modelChildSwitch = f }
 
+// genServedRole — роль, которую сейчас обслуживает единственный ребёнок
+// генерации; отмечается при каждой сборке его спеки (старт ядра, установка,
+// откат установки — все пути идут через buildModelChildSpec).
+var genServedRole atomic.Pointer[string]
+
+// ModelChildName — имя живого ребёнка роли для остановки при удалении
+// модели (T-13-03): «embed» для эмбеддера; «llama» — только когда ребёнок
+// генерации обслуживает эту роль; пустая строка — ребёнка у роли нет.
+func ModelChildName(role string) string {
+	if role == embedModelRole {
+		return (embedserver.Spec{}).Child().Name
+	}
+	if served := genServedRole.Load(); served != nil && *served == role {
+		return genModelChild
+	}
+	return ""
+}
+
 // ModelChildren — резиденты станции по манифестам world_db/models/ (T-13-07,
 // шаг 1): Spec.Bin — решённый обнаружением путь llama-server (T-13-06), не
 // зашитая строка bin/llama-server. Без найденного бинарника детей нет.
@@ -1098,6 +1116,7 @@ func buildModelChildSpec(role, file, bin string, llm llmSettings) supervisor.Con
 		return embedserver.Spec{Bin: bin, ModelPath: file, Host: host, Port: port}.Child()
 	}
 	host, port := slotHostPort(llm.Gen.Addr, 5001)
+	genServedRole.Store(&role)
 	return supervisor.Config{
 		Name:       genModelChild,
 		Cmd:        bin,

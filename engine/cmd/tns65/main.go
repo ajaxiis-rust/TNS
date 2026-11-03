@@ -206,6 +206,7 @@ func run() int {
 	runner := &childRunner{logger: logger, main: sup}
 	webapi.SupervisorStatus = runner.status
 	webapi.SetModelChildSwitch(runner.switchModel)
+	webapi.SetModelChildStop(runner.stopChildByName)
 	sup.Run()
 
 	// T-01-13, шаг 4: по SIGTERM и SIGINT дети гасятся в обратном порядке.
@@ -268,6 +269,26 @@ func (r *childRunner) switchModel(spec supervisor.Config) error {
 	extra := supervisor.New(r.logger, []supervisor.Config{spec})
 	extra.Run()
 	r.extra = append(r.extra, extra)
+	return nil
+}
+
+// stopChildByName гасит одного ребёнка по имени (удаление модели, T-13-03):
+// в основном надзирателе — StopChild; одиночный надзиратель — Stop целиком,
+// он и есть этот ребёнок. Отсутствие ребёнка — no-op.
+func (r *childRunner) stopChildByName(name string) error {
+	if supervisorHasChild(r.main, name) {
+		return r.main.StopChild(name)
+	}
+	r.mu.Lock()
+	for i, extra := range r.extra {
+		if supervisorHasChild(extra, name) {
+			r.extra = append(r.extra[:i:i], r.extra[i+1:]...)
+			r.mu.Unlock()
+			extra.Stop()
+			return nil
+		}
+	}
+	r.mu.Unlock()
 	return nil
 }
 

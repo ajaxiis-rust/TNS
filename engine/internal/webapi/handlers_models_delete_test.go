@@ -155,3 +155,23 @@ func containsName(list []string, name string) bool {
 	}
 	return false
 }
+
+// TestModelChildName — имя ребёнка для остановки при удалении (T-13-03):
+// эмбеддер — всегда «embed», роль генерации — «llama» только пока ребёнок
+// генерации обслуживает её, прочая роль — пусто (ребёнка нет, no-op).
+func TestModelChildName(t *testing.T) {
+	old := genServedRole.Load()
+	t.Cleanup(func() { genServedRole.Store(old) })
+
+	if got := ModelChildName(embedModelRole); got != "embed" {
+		t.Fatalf("ModelChildName(embed) = %q, want embed", got)
+	}
+	if got := ModelChildName("qwen"); got != "" {
+		t.Fatalf("ModelChildName(не обслуживается) = %q, want \"\"", got)
+	}
+	served := "qwen"
+	genServedRole.Store(&served)
+	if got := ModelChildName("qwen"); got != genModelChild {
+		t.Fatalf("ModelChildName(обслуживается) = %q, want %q", got, genModelChild)
+	}
+}

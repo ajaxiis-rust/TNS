@@ -13,13 +13,14 @@ import (
 // settingsModelsDeletePath — удаление установленной модели роли (T-13-03).
 const settingsModelsDeletePath = "/api/settings/models/delete"
 
-// modelChildStop — остановка ребёнка роли перед снятием её файлов; роль без
-// ребёнка — no-op. Устанавливается ядром в main.go, как и modelChildSwitch.
-var modelChildStop func(role string) error
+// modelChildStop — остановка ребёнка по имени надзирателя перед снятием
+// файлов роли; роль без живого ребёнка — no-op. Устанавливается ядром в
+// main.go, как и modelChildSwitch.
+var modelChildStop func(name string) error
 
-// SetModelChildStop подключает остановку ребёнка роли: без хука удаление
+// SetModelChildStop подключает остановку ребёнка по имени: без хука удаление
 // снимает файлы, но запущенного ребёнка не трогает.
-func SetModelChildStop(f func(role string) error) { modelChildStop = f }
+func SetModelChildStop(f func(name string) error) { modelChildStop = f }
 
 // handleSettingsModelDelete — DELETE /api/settings/models/delete: снимает
 // модель роли — файлы, манифест и задание реестра загрузок (MD-08.1, MD-08.4).
@@ -103,10 +104,11 @@ func removeModelFiles(dir string) ([]string, error) {
 // stopModelChildRole гасит ребёнка роли перед удалением файлов; роль без
 // запущенного ребёнка или без подключённого хука — no-op.
 func stopModelChildRole(role string) {
-	if modelChildStop == nil {
+	name := ModelChildName(role)
+	if name == "" || modelChildStop == nil {
 		return
 	}
-	if err := modelChildStop(role); err != nil {
+	if err := modelChildStop(name); err != nil {
 		logModelChildEvent(role, "model.child.stop_fail", err.Error())
 		return
 	}

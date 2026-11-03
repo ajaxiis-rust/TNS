@@ -82,6 +82,35 @@ func (s *Supervisor) SwitchModel(name string, args []string) error {
 	return nil
 }
 
+// StopChild гасит одного ребёнка по имени и снимает его с надзора —
+// удаление модели роли (T-13-03): ребёнку нечего обслуживать после снятия
+// файла. terminate ждёт выхода цикла, порт освобождается до возврата;
+// отсутствующий ребёнок — ошибка, остановленный надзиратель — ErrStopped.
+func (s *Supervisor) StopChild(name string) error {
+	s.mu.Lock()
+	if s.stopped {
+		s.mu.Unlock()
+		return ErrStopped
+	}
+	idx := -1
+	for i, c := range s.children {
+		if c.spec.Name == name {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		s.mu.Unlock()
+		return fmt.Errorf("supervisor: child %q not found", name)
+	}
+	c := s.children[idx]
+	s.children = append(s.children[:idx], s.children[idx+1:]...)
+	s.mu.Unlock()
+
+	c.terminate()
+	return nil
+}
+
 // waitChildReady ждёт готовности ребёнка (закрытие readyCh) или его выхода,
 // но не дольше ready_timeout спецификации.
 func (s *Supervisor) waitChildReady(c *child) error {
