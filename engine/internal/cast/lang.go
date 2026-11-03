@@ -75,6 +75,47 @@ var profiles = map[string]LangProfile{
 			"произнести", "буркнуть", "выкрикнуть",
 		},
 	},
+
+	// Заготовки профилей (T-12-23): служебные слова-артикли и местоимения,
+	// чтобы скан не считал их именами. Списки имён и речи пополняются позже.
+	"en": {
+		Lang: "en",
+		FunctionLemmas: []string{
+			"the", "a", "an", "and", "or", "but", "not", "in", "on", "at",
+			"to", "of", "for", "with", "by", "from", "as", "if", "that",
+			"he", "she", "it", "they", "i", "you", "we", "his", "her",
+			"their", "this", "these", "that", "those",
+		},
+		SpeechLemmas: []string{"say", "said", "tell", "ask", "reply", "answer"},
+	},
+	"de": {
+		Lang: "de",
+		FunctionLemmas: []string{
+			"der", "die", "das", "den", "dem", "des", "ein", "eine", "einer",
+			"und", "oder", "aber", "nicht", "in", "auf", "an", "zu", "von",
+			"für", "mit", "bei", "er", "sie", "es", "ich", "du", "wir",
+			"ihr", "dieser", "diese", "dieses", "dass",
+		},
+		SpeechLemmas: []string{"sagen", "sagte", "fragen", "antworten"},
+	},
+	"fr": {
+		Lang: "fr",
+		FunctionLemmas: []string{
+			"le", "la", "les", "un", "une", "des", "du", "et", "ou", "mais",
+			"ne", "pas", "à", "de", "pour", "avec", "il", "elle", "ils",
+			"elles", "je", "tu", "nous", "vous", "ce", "cette", "que",
+		},
+		SpeechLemmas: []string{"dire", "dit", "demander", "répondre"},
+	},
+	"es": {
+		Lang: "es",
+		FunctionLemmas: []string{
+			"el", "la", "los", "las", "un", "una", "unos", "unas", "y", "o",
+			"pero", "no", "en", "a", "de", "para", "con", "él", "ella",
+			"ellos", "yo", "tú", "nosotros", "este", "esta", "que",
+		},
+		SpeechLemmas: []string{"decir", "dijo", "preguntar", "responder"},
+	},
 }
 
 // profileSet — развёрнутые множества лемм профиля для быстрой сверки.
