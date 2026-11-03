@@ -6,7 +6,7 @@
   "lemmatizer": {
     "kind": "gomorphy",
     "protocol": "stdio-json",
-    "binary": "tns65-lemmaru",
+    "binary": "lemmatizer/tns65-lemmaru",
     "dict": "packs/ru/lemmatizer"
   },
   "files": {

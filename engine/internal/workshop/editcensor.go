@@ -63,12 +63,20 @@ func defaultEditLemmatizer() Lemmatizer {
 	return defaultEditLemOnce()
 }
 
-// editEngineRoot поднимается от рабочего каталога до каталога с go.mod.
+// editEngineRoot — корень экземпляра: репозиторий по go.mod, развёрнутая папка
+// без go.mod — рабочий каталог (base/, packs/ лежат рядом с бинарником).
 func editEngineRoot() string {
-	dir, err := os.Getwd()
-	if err != nil {
-		return ""
+	if dir, err := os.Getwd(); err == nil {
+		if root := walkUp(dir); root != "" {
+			return root
+		}
+		return dir
 	}
+	return ""
+}
+
+// walkUp поднимается от dir к родителям до каталога с go.mod.
+func walkUp(dir string) string {
 	for {
 		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			return dir
@@ -82,9 +90,11 @@ func editEngineRoot() string {
 }
 
 // editPackBinary возвращает путь бинарника лемматизатора из manifest.json
-// пакета ru (lemmatizer.binary); пустая строка — бинарник не задан.
+// пакета ru (lemmatizer.binary). Путь в манифесте считается относительно
+// каталога пакета; пустая строка — бинарник не задан.
 func editPackBinary(root string) string {
-	raw, err := os.ReadFile(filepath.Join(root, "packs", "ru", "manifest.json"))
+	packDir := filepath.Join(root, "packs", "ru")
+	raw, err := os.ReadFile(filepath.Join(packDir, "manifest.json"))
 	if err != nil {
 		return ""
 	}
@@ -97,10 +107,10 @@ func editPackBinary(root string) string {
 		return ""
 	}
 	name := m.Lemmatizer.Binary
-	if filepath.IsAbs(name) || strings.ContainsRune(name, filepath.Separator) {
+	if filepath.IsAbs(name) {
 		return name
 	}
-	return filepath.Join(root, "bin", name)
+	return filepath.Join(packDir, filepath.FromSlash(name))
 }
 
 // Validate проверяет правку before → after (W-15.6, CB-06.4–9). ok=true —

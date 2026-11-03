@@ -199,7 +199,7 @@ func TestStoplistGolden(t *testing.T) {
 		t.Skip("корень движка не найден — golden пакета недоступен")
 	}
 	packDir := filepath.Join(root, "packs", "ru")
-	binary := packLemmatizerBinary(root, packDir)
+	binary := packLemmatizerBinary(packDir)
 	if binary == "" {
 		t.Skip("манифест пакета не задаёт бинарник лемматизатора")
 	}
@@ -337,7 +337,7 @@ func TestRealProfileCensor(t *testing.T) {
 		t.Skip("корень движка не найден")
 	}
 	packDir := filepath.Join(root, "packs", "ru")
-	binary := packLemmatizerBinary(root, packDir)
+	binary := packLemmatizerBinary(packDir)
 	if binary == "" {
 		t.Skip("манифест пакета не задаёт бинарник лемматизатора")
 	}

@@ -5,3 +5,6 @@ e2e/reports/
 *.db-wal
 *.db-shm
 !base/*.db
+# Собранный лемматизатор живёт внутри языкового пакета рядом со словарём
+# (fine/04-spec D-13): это build-артефакт, не данные пакета.
+packs/*/lemmatizer/tns65-lemmaru*

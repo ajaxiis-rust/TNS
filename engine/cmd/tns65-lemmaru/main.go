@@ -98,7 +98,8 @@ func splitTags(raw string) []string {
 }
 
 // resolveDict возвращает путь к каталогу словаря: флаг -dict, затем переменная
-// TNS65_LEMMARU_DICT, затем packs/ru/lemmatizer от корня engine/ (поиском go.mod).
+// TNS65_LEMMARU_DICT, затем каталог рядом с бинарником (в пакете — это и есть
+// словарь), затем packs/ru/lemmatizer от корня engine/ (поиском go.mod).
 func resolveDict(flagValue string) string {
 	if flagValue != "" {
 		return flagValue
@@ -106,10 +107,22 @@ func resolveDict(flagValue string) string {
 	if env := os.Getenv("TNS65_LEMMARU_DICT"); env != "" {
 		return env
 	}
+	if exe, err := os.Executable(); err == nil {
+		dir := filepath.Dir(exe)
+		if dictPresent(dir) {
+			return dir
+		}
+	}
 	if root := findEngineRoot(); root != "" {
 		return filepath.Join(root, "packs", "ru", "lemmatizer")
 	}
 	return ""
+}
+
+// dictPresent сообщает, что в dir лежит словарь OpenCorpora: ориентир — meta.json.
+func dictPresent(dir string) bool {
+	_, err := os.Stat(filepath.Join(dir, "meta.json"))
+	return err == nil
 }
 
 // findEngineRoot поднимается от рабочего каталога (затем от каталога бинарника)

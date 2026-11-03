@@ -89,8 +89,9 @@ var (
 )
 
 // engineRootOnce — корень движка вычисляется один раз, а не обходом каталогов
-// на каждый вызов (E-01).
-var engineRootOnce = sync.OnceValue(findEngineRoot)
+// на каждый вызов (E-01). В staging-папке без go.mod корнем становится рабочий
+// каталог: пакеты, базы и словари раскладываются рядом с бинарником движка.
+var engineRootOnce = sync.OnceValue(instanceRoot)
 
 // Close останавливает кэшированных резидентов лемматизатора и очищает кэш.
 func Close() {
@@ -123,7 +124,7 @@ func checkerFor(root, lang string) *Checker {
 		checkers[key] = nil
 		return nil
 	}
-	binary := packLemmatizerBinary(root, packDir)
+	binary := packLemmatizerBinary(packDir)
 	if binary == "" {
 		checkers[key] = nil
 		return nil
@@ -197,8 +198,10 @@ func loadStoplistFile(path string) ([]string, error) {
 }
 
 // packLemmatizerBinary возвращает путь бинарника лемматизатора из manifest.json
-// пакета (lemmatizer.binary); пустая строка — бинарник не задан.
-func packLemmatizerBinary(root, packDir string) string {
+// пакета (lemmatizer.binary). Бинарник лежит внутри каталога пакета: путь в
+// манифесте считается относительно каталога пакета, поэтому staging-папка без
+// go.mod находит его рядом со словарём. Пустая строка — бинарник не задан.
+func packLemmatizerBinary(packDir string) string {
 	raw, err := os.ReadFile(filepath.Join(packDir, "manifest.json"))
 	if err != nil {
 		return ""
@@ -212,10 +215,10 @@ func packLemmatizerBinary(root, packDir string) string {
 		return ""
 	}
 	name := m.Lemmatizer.Binary
-	if filepath.IsAbs(name) || strings.ContainsRune(name, filepath.Separator) {
+	if filepath.IsAbs(name) {
 		return name
 	}
-	return filepath.Join(root, "bin", name)
+	return filepath.Join(packDir, filepath.FromSlash(name))
 }
 
 // findEngineRoot поднимается от рабочего каталога до каталога с go.mod.
@@ -234,4 +237,18 @@ func findEngineRoot() string {
 		}
 		dir = parent
 	}
+}
+
+// instanceRoot — корень работающего экземпляра: в репозитории это каталог с
+// go.mod (движок), в развёрнутой папке без go.mod — рабочий каталог, рядом с
+// которым лежат base/, packs/ и state/. Пакетные пути считаются от него.
+func instanceRoot() string {
+	if root := findEngineRoot(); root != "" {
+		return root
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return cwd
 }
