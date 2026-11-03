@@ -145,6 +145,7 @@ func run() int {
 		return 1
 	}
 	netgate.SetLogger(logger)
+	webapi.SetModelLogger(logger)
 
 	wl, err := portgate.LoadWhitelist("config.yaml")
 	if err != nil {

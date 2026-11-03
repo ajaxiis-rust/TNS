@@ -59,9 +59,13 @@ type modelVersion struct {
 	InstalledAt string `json:"installed_at"`
 }
 
-// modelLogger — журнал станка для событий загрузчика моделей
+// modelLogger — журнал движка для событий загрузчика моделей
 // (model.download.start|done|fail, T-13-01).
 var modelLogger *journal.Logger
+
+// SetModelLogger подключает журнал движка к загрузчику моделей; вызывает
+// main при старте (без этого события model.download.* не пишутся).
+func SetModelLogger(l *journal.Logger) { modelLogger = l }
 
 // modelDownloadFunc — загрузка файла модели Range-чанками в каталог роли.
 type modelDownloadFunc func(ctx context.Context, spec models.DownloadSpec) (models.DownloadResult, error)
