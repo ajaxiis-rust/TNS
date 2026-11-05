@@ -1,0 +1,4886 @@
+{
+ "source": "Л. Н. Толстой, «Война и мир», том I, части 1, 2 и 3 (1863–1869, публичный домен). Текст: ru.wikisource.org, страница «Война и мир (Толстой)/Том 1» (ПСС в 90 т., т. 9; скачано 2026-11-05 через API action=parse, HTML→чистый текст). Взятые главы: Ч1 гл. 1, 4, 9, 10, 15; Ч2 гл. 1, 8, 17, 20; Ч3 гл. 16, 18, 19.",
+ "chunking": "300–500 слов, границы только по абзацам (абзац не разрывается, реплики — отдельные абзацы). Фактически 300–499 слов, среднее 393. Чанки не пересекают «=== ПРОПУСК ===»; внутри одной главы куски могут быть несмежными.",
+ "chunks": [
+  {
+   "id": 0,
+   "chapter": "Ч1 ГЛ.1",
+   "para_from": 0,
+   "para_to": 9,
+   "words": 408,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "лицо",
+      "лысина"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "мундир",
+      "чулки",
+      "башмак"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "диван"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "равнодушие",
+      "насмешка"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "поцеловать",
+      "сесть"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.8,
+     "anchors": [
+      "говорить",
+      "отвечать",
+      "рассказывать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "июль",
+      "год",
+      "середа"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "князь",
+      "фрейлина",
+      "вечер"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    }
+   },
+   "characters": [
+    {
+     "name": "Анна Павловна",
+     "mentions": 6
+    },
+    {
+     "name": "Василий Курагин",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.61,
+   "quoted_share": 0.11,
+   "scene": 1,
+   "uncertain": false
+  },
+  {
+   "id": 1,
+   "chapter": "Ч1 ГЛ.1",
+   "para_from": 10,
+   "para_to": 16,
+   "words": 407,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "черта",
+      "улыбка"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "горячность",
+      "насмешка"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "остановиться"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.75,
+     "anchors": [
+      "говорить",
+      "спрашивать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "год"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "император",
+      "Австрия"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "кровь",
+      "убийца"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "война"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Анна Павловна",
+     "mentions": 4
+    },
+    {
+     "name": "Александр I",
+     "mentions": 1
+    },
+    {
+     "name": "Василий Курагин",
+     "mentions": 1
+    },
+    {
+     "name": "Наполеон",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.76,
+   "quoted_share": 0.0,
+   "scene": 1,
+   "uncertain": true,
+   "uncertain_reason": "политическая речь: violence/battle держатся на метафорах («кровь праведника», «убийца», «война»), прямая сцена отсутствует"
+  },
+  {
+   "id": 2,
+   "chapter": "Ч1 ГЛ.1",
+   "para_from": 17,
+   "para_to": 27,
+   "words": 445,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "красивый",
+      "прелестный"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "грусть",
+      "улыбка"
+     ]
+    },
+    "action_dramatic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.65,
+     "anchors": [
+      "говорить",
+      "прибавить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "год"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "императрица",
+      "барон",
+      "свет"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    }
+   },
+   "characters": [
+    {
+     "name": "Анна Павловна",
+     "mentions": 4
+    },
+    {
+     "name": "Анатоль Курагин",
+     "mentions": 1
+    },
+    {
+     "name": "Василий Курагин",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.83,
+   "quoted_share": 0.0,
+   "scene": 1,
+   "uncertain": true,
+   "uncertain_reason": "светская болтовня без события: все оценки, кроме social/speech, лежат в пограничной полосе 0.1–0.3"
+  },
+  {
+   "id": 3,
+   "chapter": "Ч1 ГЛ.4",
+   "para_from": 28,
+   "para_to": 36,
+   "words": 353,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "лицо",
+      "плечо",
+      "волосы"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "передняя",
+      "дверь"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "страх",
+      "озлобление",
+      "слеза"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "догнать",
+      "схватиться"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "сказать",
+      "просить"
+     ]
+    },
+    "time": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "княгиня",
+      "гвардия",
+      "государь"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "гвардия"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Василий Курагин",
+     "mentions": 7
+    },
+    {
+     "name": "Анна Павловна",
+     "mentions": 2
+    },
+    {
+     "name": "Борис Друбецкой",
+     "mentions": 2
+    },
+    {
+     "name": "Анна Михайловна Друбецкая",
+     "mentions": 1
+    },
+    {
+     "name": "Пьер Безухов",
+     "mentions": 1
+    },
+    {
+     "name": "Элен Курагина",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.54,
+   "quoted_share": 0.0,
+   "scene": 1,
+   "uncertain": false
+  },
+  {
+   "id": 4,
+   "chapter": "Ч1 ГЛ.4",
+   "para_from": 37,
+   "para_to": 50,
+   "words": 397,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "красавица",
+      "лицо"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "передняя"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "скука",
+      "совесть"
+     ]
+    },
+    "action_dramatic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "сказать",
+      "просить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "год"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.65,
+     "anchors": [
+      "князь",
+      "главнокомандующий",
+      "гвардия"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "гвардия",
+      "главнокомандующий",
+      "адъютант"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Кутузов",
+     "mentions": 4
+    },
+    {
+     "name": "Анна Михайловна Друбецкая",
+     "mentions": 3
+    },
+    {
+     "name": "Василий Курагин",
+     "mentions": 3
+    },
+    {
+     "name": "Борис Друбецкой",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.52,
+   "quoted_share": 0.0,
+   "scene": 1,
+   "uncertain": false
+  },
+  {
+   "id": 5,
+   "chapter": "Ч1 ГЛ.4",
+   "para_from": 51,
+   "para_to": 61,
+   "words": 414,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "красавица"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "стол",
+      "гостиная"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "насмешка",
+      "презрение"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "рисовать",
+      "пожать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.85,
+     "anchors": [
+      "говорить",
+      "продолжать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "год"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "виконт",
+      "княгиня",
+      "император"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "казнь",
+      "насилие"
+     ]
+    },
+    "battle": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    }
+   },
+   "characters": [
+    {
+     "name": "Анна Павловна",
+     "mentions": 5
+    },
+    {
+     "name": "Наполеон",
+     "mentions": 2
+    },
+    {
+     "name": "Александр I",
+     "mentions": 1
+    },
+    {
+     "name": "Андрей Болконский",
+     "mentions": 1
+    },
+    {
+     "name": "Ипполит Курагин",
+     "mentions": 1
+    },
+    {
+     "name": "Пьер Безухов",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.79,
+   "quoted_share": 0.0,
+   "scene": 1,
+   "uncertain": true,
+   "uncertain_reason": "«насилие, казни» — риторика о революции, а не сцена; violence 0.1 на грани ложного срабатывания"
+  },
+  {
+   "id": 6,
+   "chapter": "Ч1 ГЛ.9",
+   "para_from": 62,
+   "para_to": 69,
+   "words": 345,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "ресница",
+      "коса",
+      "рука"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "гостиная",
+      "комната"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "обожание",
+      "страсть"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "прыгнуть",
+      "играть"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "сказать",
+      "отвечать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "год"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "граф",
+      "гостья",
+      "полковник"
+     ]
+    },
+    "erotic": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "обнажённый",
+      "шея"
+     ]
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "война",
+      "гусар",
+      "полк"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Николай Ростов",
+     "mentions": 3
+    },
+    {
+     "name": "Борис Друбецкой",
+     "mentions": 2
+    },
+    {
+     "name": "Соня",
+     "mentions": 2
+    },
+    {
+     "name": "Наташа Ростова",
+     "mentions": 1
+    },
+    {
+     "name": "Шуберт",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.47,
+   "quoted_share": 0.0,
+   "scene": 2,
+   "uncertain": true,
+   "uncertain_reason": "erotic 0.2 держится на «обнажённых руках и шее» и метафоре котёнка — портрет, а не интимная сцена"
+  },
+  {
+   "id": 7,
+   "chapter": "Ч1 ГЛ.9",
+   "para_from": 70,
+   "para_to": 78,
+   "words": 330,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "лицо",
+      "улыбка"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "комната"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "ревность",
+      "слеза"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "выйти",
+      "пересесть"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "сказать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "четверг"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "Жюли",
+      "Карагина",
+      "графиня"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    }
+   },
+   "characters": [
+    {
+     "name": "Соня",
+     "mentions": 4
+    },
+    {
+     "name": "Жюли Карагина",
+     "mentions": 3
+    },
+    {
+     "name": "Николай Ростов",
+     "mentions": 3
+    },
+    {
+     "name": "Наполеон",
+     "mentions": 2
+    },
+    {
+     "name": "Анна Михайловна Друбецкая",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.67,
+   "quoted_share": 0.0,
+   "scene": 2,
+   "uncertain": false
+  },
+  {
+   "id": 8,
+   "chapter": "Ч1 ГЛ.9",
+   "para_from": 79,
+   "para_to": 91,
+   "words": 390,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "хороша",
+      "лицо"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "гостиная"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "улыбка",
+      "неловкость"
+     ]
+    },
+    "action_dramatic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.8,
+     "anchors": [
+      "говорить",
+      "сказать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "год",
+      "вечер"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "графиня",
+      "гостья",
+      "дочь"
+     ]
+    },
+    "erotic": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "целоваться"
+     ]
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    }
+   },
+   "characters": [
+    {
+     "name": "Вера Ростова",
+     "mentions": 4
+    },
+    {
+     "name": "Борис Друбецкой",
+     "mentions": 2
+    },
+    {
+     "name": "Николай Ростов",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.82,
+   "quoted_share": 0.0,
+   "scene": 2,
+   "uncertain": true,
+   "uncertain_reason": "erotic 0.2 — контрфактическое «они целовались бы»; фактического поцелуя в чанке нет"
+  },
+  {
+   "id": 9,
+   "chapter": "Ч1 ГЛ.10",
+   "para_from": 92,
+   "para_to": 105,
+   "words": 319,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "лицо",
+      "глаз"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "мундир"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "цветок"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "цветочная",
+      "комната",
+      "дверь"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "слеза",
+      "рыдать",
+      "ревность"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "спрятаться",
+      "бежать",
+      "обнять"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "сказать"
+     ]
+    },
+    "time": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "social": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "erotic": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "поцеловать",
+      "обнять"
+     ]
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    }
+   },
+   "characters": [
+    {
+     "name": "Соня",
+     "mentions": 8
+    },
+    {
+     "name": "Наташа Ростова",
+     "mentions": 7
+    },
+    {
+     "name": "Николай Ростов",
+     "mentions": 5
+    },
+    {
+     "name": "Борис Друбецкой",
+     "mentions": 4
+    }
+   ],
+   "dialogue_share": 0.5,
+   "quoted_share": 0.12,
+   "scene": 3,
+   "uncertain": false
+  },
+  {
+   "id": 10,
+   "chapter": "Ч1 ГЛ.10",
+   "para_from": 106,
+   "para_to": 125,
+   "words": 315,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "лицо",
+      "рука",
+      "палец"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "обшлаг",
+      "мундир"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "цветок"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "цветочная",
+      "диванная",
+      "кадка"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "волнение",
+      "страх",
+      "радость"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "вскочить",
+      "обнять",
+      "поцеловать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "шептать",
+      "сказать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "год"
+     ]
+    },
+    "social": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "erotic": {
+     "present": true,
+     "intensity": 0.8,
+     "anchors": [
+      "поцелуй",
+      "обнять",
+      "губы"
+     ]
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    }
+   },
+   "characters": [
+    {
+     "name": "Борис Друбецкой",
+     "mentions": 5
+    },
+    {
+     "name": "Наташа Ростова",
+     "mentions": 3
+    }
+   ],
+   "dialogue_share": 0.67,
+   "quoted_share": 0.0,
+   "scene": 3,
+   "uncertain": false
+  },
+  {
+   "id": 11,
+   "chapter": "Ч1 ГЛ.15",
+   "para_from": 126,
+   "para_to": 134,
+   "words": 342,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "толстый",
+      "лицо"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "гостиная",
+      "отоманка",
+      "стол"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "улыбка",
+      "насмешка"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "выйти",
+      "сесть"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "рассказывать",
+      "говорить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "обед",
+      "вечер"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.75,
+     "anchors": [
+      "граф",
+      "гость",
+      "хозяин"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "убить"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "гвардия",
+      "война"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Берг",
+     "mentions": 3
+    },
+    {
+     "name": "Шиншин",
+     "mentions": 3
+    },
+    {
+     "name": "Пьер Безухов",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.23,
+   "quoted_share": 0.0,
+   "scene": 4,
+   "uncertain": true,
+   "uncertain_reason": "«ротного командира могут убить» — гипотетическая реплика Берга; violence/battle 0.1 на грани"
+  },
+  {
+   "id": 12,
+   "chapter": "Ч1 ГЛ.15",
+   "para_from": 135,
+   "para_to": 150,
+   "words": 340,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "тучный",
+      "голова",
+      "букли"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "рукав",
+      "платье",
+      "серьга"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "зал",
+      "дверь",
+      "комната"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "ласка",
+      "гнев"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "войти",
+      "оправить",
+      "засучить"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.65,
+     "anchors": [
+      "сказать",
+      "говорить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "год"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.75,
+     "anchors": [
+      "именинница",
+      "гость",
+      "барышня"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    }
+   },
+   "characters": [
+    {
+     "name": "Марья Дмитриевна Ахросимова",
+     "mentions": 5
+    },
+    {
+     "name": "Наташа Ростова",
+     "mentions": 3
+    },
+    {
+     "name": "Анна Михайловна Друбецкая",
+     "mentions": 2
+    },
+    {
+     "name": "Пьер Безухов",
+     "mentions": 2
+    }
+   ],
+   "dialogue_share": 0.52,
+   "quoted_share": 0.0,
+   "scene": 4,
+   "uncertain": false
+  },
+  {
+   "id": 13,
+   "chapter": "Ч2 ГЛ.1",
+   "para_from": 151,
+   "para_to": 154,
+   "words": 421,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "бровь",
+      "бакенбард",
+      "плечо"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "мундир",
+      "эполет",
+      "сапог"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "сад",
+      "гора",
+      "крыша"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "крепость",
+      "город"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "счастье"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "подрагивать",
+      "ходить"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "приказ"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "октябрь",
+      "утро",
+      "год"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "главнокомандующий",
+      "командир",
+      "полк"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.65,
+     "anchors": [
+      "полк",
+      "солдат",
+      "смотр"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Кутузов",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.0,
+   "quoted_share": 0.49,
+   "scene": 5,
+   "uncertain": true,
+   "uncertain_reason": "смотр как battle: войска, полк, главнокомандующий есть, боя нет — battle 0.65 спорна"
+  },
+  {
+   "id": 14,
+   "chapter": "Ч2 ГЛ.1",
+   "para_from": 155,
+   "para_to": 167,
+   "words": 389,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "лицо"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "шинель",
+      "чехол",
+      "ранец"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "недовольство",
+      "учтивость"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "переодеть",
+      "бежать",
+      "подкидывать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "крикнуть",
+      "говорить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "час",
+      "ночь"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "генерал",
+      "адъютант",
+      "ротный"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "полк",
+      "рота",
+      "смотр"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Кутузов",
+     "mentions": 2
+    }
+   ],
+   "dialogue_share": 0.35,
+   "quoted_share": 0.0,
+   "scene": 5,
+   "uncertain": false
+  },
+  {
+   "id": 15,
+   "chapter": "Ч2 ГЛ.1",
+   "para_from": 168,
+   "para_to": 181,
+   "words": 398,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "лицо",
+      "пятно",
+      "челюсть"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "шинель",
+      "казакин"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "гнев",
+      "беспокойство",
+      "испуг"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "крикнуть",
+      "подойти"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "кричать",
+      "спросить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "час"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "генерал",
+      "капитан",
+      "полковник"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "полк",
+      "смотр",
+      "солдат"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Долохов",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.55,
+   "quoted_share": 0.2,
+   "scene": 5,
+   "uncertain": true,
+   "uncertain_reason": "строевой разнос: battle 0.5 держится на полковом быте, а не на сражении"
+  },
+  {
+   "id": 16,
+   "chapter": "Ч2 ГЛ.8",
+   "para_from": 182,
+   "para_to": 183,
+   "words": 319,
+   "categories": {
+    "appearance": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "капот"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "солнце",
+      "Дунай",
+      "гора"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "мост",
+      "крыша"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "страх",
+      "неизвестность"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "проходить",
+      "перейти"
+     ]
+    },
+    "speech": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "полдень",
+      "вечер"
+     ]
+    },
+    "social": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "смерть",
+      "страдание"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "неприятель",
+      "артиллерия",
+      "эскадрон"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Денисов",
+     "mentions": 2
+    }
+   ],
+   "dialogue_share": 0.0,
+   "quoted_share": 0.36,
+   "scene": 6,
+   "uncertain": true,
+   "uncertain_reason": "violence 0.2 — абстракции «смерть/страдание» в описании черты между войсками"
+  },
+  {
+   "id": 17,
+   "chapter": "Ч2 ГЛ.8",
+   "para_from": 184,
+   "para_to": 192,
+   "words": 472,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "лицо",
+      "кисть",
+      "усы"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "волнение",
+      "страх"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "скакать",
+      "осматривать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "крикнуть",
+      "сказать"
+     ]
+    },
+    "time": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "штаб-ротмистр",
+      "юнкер",
+      "начальник"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "эскадрон",
+      "ядро",
+      "гусар"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Денисов",
+     "mentions": 7
+    },
+    {
+     "name": "Николай Ростов",
+     "mentions": 3
+    },
+    {
+     "name": "Миронов",
+     "mentions": 2
+    },
+    {
+     "name": "Кирстен",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.21,
+   "quoted_share": 0.0,
+   "scene": 6,
+   "uncertain": false
+  },
+  {
+   "id": 18,
+   "chapter": "Ч2 ГЛ.8",
+   "para_from": 193,
+   "para_to": 201,
+   "words": 314,
+   "categories": {
+    "appearance": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "сабля",
+      "шпора"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "мост"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "страх",
+      "сердце"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "бежать",
+      "слезать",
+      "упасть"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "скомандовать"
+     ]
+    },
+    "time": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "полковник",
+      "гусар"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "носилки"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.65,
+     "anchors": [
+      "эскадрон",
+      "гусар",
+      "атака"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Николай Ростов",
+     "mentions": 7
+    },
+    {
+     "name": "Денисов",
+     "mentions": 2
+    }
+   ],
+   "dialogue_share": 0.22,
+   "quoted_share": 0.1,
+   "scene": 6,
+   "uncertain": false
+  },
+  {
+   "id": 19,
+   "chapter": "Ч2 ГЛ.8",
+   "para_from": 202,
+   "para_to": 211,
+   "words": 304,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "кивер",
+      "куртка"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "кивер",
+      "куртка",
+      "рейтузы"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "мост",
+      "доска"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "страх",
+      "озлобление"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "кричать",
+      "ехать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "говорить",
+      "сказать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "вечер"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "ротмистр",
+      "штаб-офицер"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "перебить"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.65,
+     "anchors": [
+      "мост",
+      "гусар",
+      "картечь"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Несвицкий",
+     "mentions": 3
+    },
+    {
+     "name": "Богданыч",
+     "mentions": 2
+    },
+    {
+     "name": "Денисов",
+     "mentions": 2
+    },
+    {
+     "name": "Жерков",
+     "mentions": 2
+    },
+    {
+     "name": "Николай Ростов",
+     "mentions": 2
+    }
+   ],
+   "dialogue_share": 0.51,
+   "quoted_share": 0.2,
+   "scene": 6,
+   "uncertain": false
+  },
+  {
+   "id": 20,
+   "chapter": "Ч2 ГЛ.8",
+   "para_from": 212,
+   "para_to": 222,
+   "words": 468,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "лицо"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "небо",
+      "солнце",
+      "гора"
+     ]
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "страх",
+      "ужас",
+      "молитва"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "упасть",
+      "подбежать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "кричать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "вечер"
+     ]
+    },
+    "social": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "раненый",
+      "стон",
+      "кровь"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "картечь",
+      "батарея",
+      "гусар"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Николай Ростов",
+     "mentions": 7
+    },
+    {
+     "name": "Несвицкий",
+     "mentions": 3
+    },
+    {
+     "name": "Богданыч",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.11,
+   "quoted_share": 0.52,
+   "scene": 6,
+   "uncertain": false
+  },
+  {
+   "id": 21,
+   "chapter": "Ч2 ГЛ.17",
+   "para_from": 223,
+   "para_to": 228,
+   "words": 499,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "лицо",
+      "глаз"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "бурка",
+      "картуз",
+      "шпага"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "осень",
+      "день"
+     ]
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "волнение",
+      "оживление"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "скакать",
+      "строиться"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "говорить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "час",
+      "вечер"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "свита",
+      "адъютант",
+      "ординарец"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.8,
+     "anchors": [
+      "батарея",
+      "канонада",
+      "колонна"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Андрей Болконский",
+     "mentions": 11
+    },
+    {
+     "name": "Багратион",
+     "mentions": 7
+    },
+    {
+     "name": "Мюрат",
+     "mentions": 2
+    },
+    {
+     "name": "Жерков",
+     "mentions": 1
+    },
+    {
+     "name": "Лемарруа",
+     "mentions": 1
+    },
+    {
+     "name": "Наполеон",
+     "mentions": 1
+    },
+    {
+     "name": "Тушин",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.0,
+   "quoted_share": 0.56,
+   "scene": 7,
+   "uncertain": false
+  },
+  {
+   "id": 22,
+   "chapter": "Ч2 ГЛ.17",
+   "para_from": 229,
+   "para_to": 242,
+   "words": 399,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "лицо",
+      "веснушка"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "шинель"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "страх",
+      "веселье"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "упасть",
+      "подъехать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "спросить",
+      "сказать"
+     ]
+    },
+    "time": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "генерал",
+      "фейерверкер"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "убить",
+      "мёртвый"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.8,
+     "anchors": [
+      "батарея",
+      "орудие",
+      "ядро"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Багратион",
+     "mentions": 4
+    },
+    {
+     "name": "Жерков",
+     "mentions": 4
+    },
+    {
+     "name": "Андрей Болконский",
+     "mentions": 3
+    },
+    {
+     "name": "Тушин",
+     "mentions": 3
+    },
+    {
+     "name": "Суворов",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.38,
+   "quoted_share": 0.25,
+   "scene": 7,
+   "uncertain": false
+  },
+  {
+   "id": 23,
+   "chapter": "Ч2 ГЛ.20",
+   "para_from": 243,
+   "para_to": 247,
+   "words": 488,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "лицо",
+      "бледный"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "шинель",
+      "сукно",
+      "сумка"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "лес"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "лес",
+      "мост"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "страх",
+      "отчаяние"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.65,
+     "anchors": [
+      "бежать",
+      "броситься",
+      "убить"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "кричать"
+     ]
+    },
+    "time": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "полк",
+      "командир"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.65,
+     "anchors": [
+      "убить",
+      "штык",
+      "плен"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.85,
+     "anchors": [
+      "полк",
+      "рота",
+      "атака"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Тимохин",
+     "mentions": 3
+    },
+    {
+     "name": "Экономов",
+     "mentions": 2
+    },
+    {
+     "name": "Долохов",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.02,
+   "quoted_share": 0.08,
+   "scene": 8,
+   "uncertain": false
+  },
+  {
+   "id": 24,
+   "chapter": "Ч2 ГЛ.20",
+   "para_from": 248,
+   "para_to": 258,
+   "words": 422,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "лицо",
+      "бледный"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "сумка",
+      "шпага",
+      "платок"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "ветер"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "деревня"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "отчаяние",
+      "радость"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "дышать",
+      "подхватывать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "сказать",
+      "кричать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "час"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "генерал",
+      "майор"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "рана",
+      "кровь",
+      "убить"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.8,
+     "anchors": [
+      "батарея",
+      "орудие",
+      "пожар"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Тушин",
+     "mentions": 5
+    },
+    {
+     "name": "Долохов",
+     "mentions": 3
+    },
+    {
+     "name": "Багратион",
+     "mentions": 2
+    },
+    {
+     "name": "Андрей Болконский",
+     "mentions": 1
+    },
+    {
+     "name": "Экономов",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.22,
+   "quoted_share": 0.13,
+   "scene": 8,
+   "uncertain": false
+  },
+  {
+   "id": 25,
+   "chapter": "Ч2 ГЛ.20",
+   "para_from": 259,
+   "para_to": 268,
+   "words": 479,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "лицо",
+      "молодец"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "страх",
+      "веселье",
+      "бред"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "бегать",
+      "прицеливаться"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "говорить",
+      "проговорить"
+     ]
+    },
+    "time": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "фейерверкер",
+      "денщик"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "кровь",
+      "убить",
+      "раненый"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.85,
+     "anchors": [
+      "орудие",
+      "батарея",
+      "ядро"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Тушин",
+     "mentions": 4
+    }
+   ],
+   "dialogue_share": 0.16,
+   "quoted_share": 0.16,
+   "scene": 8,
+   "uncertain": false
+  },
+  {
+   "id": 26,
+   "chapter": "Ч3 ГЛ.16",
+   "para_from": 269,
+   "para_to": 280,
+   "words": 461,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "лицо",
+      "бледный"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "знамя",
+      "мундир"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "гора"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "отчаяние",
+      "стыд",
+      "злоба"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "бежать",
+      "соскочить",
+      "схватить"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "кричать",
+      "прошептать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "минута"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "свита",
+      "полковой командир",
+      "император"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "кровь",
+      "рана",
+      "пуля"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.85,
+     "anchors": [
+      "знамя",
+      "батальон",
+      "залп"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Кутузов",
+     "mentions": 12
+    },
+    {
+     "name": "Андрей Болконский",
+     "mentions": 7
+    },
+    {
+     "name": "Несвицкий",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.29,
+   "quoted_share": 0.32,
+   "scene": 9,
+   "uncertain": false
+  },
+  {
+   "id": 27,
+   "chapter": "Ч3 ГЛ.16",
+   "para_from": 281,
+   "para_to": 285,
+   "words": 480,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "артиллерист",
+      "кивер"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "кивер",
+      "знамя"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "небо",
+      "облако"
+     ]
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "счастье",
+      "тишина",
+      "успокоение"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "бежать",
+      "упасть",
+      "схватить"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "кричать"
+     ]
+    },
+    "time": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "social": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.65,
+     "anchors": [
+      "убить",
+      "удар",
+      "падать"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.85,
+     "anchors": [
+      "знамя",
+      "батальон",
+      "орудие"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Андрей Болконский",
+     "mentions": 8
+    }
+   ],
+   "dialogue_share": 0.05,
+   "quoted_share": 0.79,
+   "scene": 9,
+   "uncertain": false
+  },
+  {
+   "id": 28,
+   "chapter": "Ч3 ГЛ.18",
+   "para_from": 286,
+   "para_to": 297,
+   "words": 333,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "лицо",
+      "бледный"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "деревня",
+      "церковь"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "страх",
+      "растерянность"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "ехать",
+      "спрашивать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "спрашивать",
+      "сказать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "час"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "государь",
+      "главнокомандующий",
+      "офицер"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "раненый",
+      "убить",
+      "ядро"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "ядро",
+      "батарея",
+      "войско"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Николай Ростов",
+     "mentions": 8
+    },
+    {
+     "name": "Кутузов",
+     "mentions": 4
+    }
+   ],
+   "dialogue_share": 0.53,
+   "quoted_share": 0.0,
+   "scene": 10,
+   "uncertain": false
+  },
+  {
+   "id": 29,
+   "chapter": "Ч3 ГЛ.18",
+   "para_from": 298,
+   "para_to": 303,
+   "words": 300,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "лицо"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "поле",
+      "пашня"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "церковь",
+      "башня"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "страх",
+      "ужас",
+      "жалость"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "ехать",
+      "сползаться"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "кричать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "вечер"
+     ]
+    },
+    "social": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "убитый",
+      "раненый",
+      "стон"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "поле",
+      "орудие",
+      "ядро"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Николай Ростов",
+     "mentions": 6
+    },
+    {
+     "name": "Кутузов",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.1,
+   "quoted_share": 0.66,
+   "scene": 10,
+   "uncertain": false
+  },
+  {
+   "id": 30,
+   "chapter": "Ч3 ГЛ.18",
+   "para_from": 304,
+   "para_to": 306,
+   "words": 407,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "лицо",
+      "щека",
+      "глаз"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "шляпа",
+      "султан"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "поле"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "деревня",
+      "огород",
+      "канава"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "обожание",
+      "смущение",
+      "счастье"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "ехать",
+      "перепрыгнуть"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "сказать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "час"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "государь",
+      "свита",
+      "офицер"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "рана"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "сражение",
+      "войско",
+      "батарея"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Николай Ростов",
+     "mentions": 12
+    },
+    {
+     "name": "Александр I",
+     "mentions": 1
+    },
+    {
+     "name": "Кутузов",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.0,
+   "quoted_share": 0.22,
+   "scene": 10,
+   "uncertain": true,
+   "uncertain_reason": "battle/violence 0.45/0.15 — только пересказ слухов о ранении и ядрах; сцена — свидание с государем"
+  },
+  {
+   "id": 31,
+   "chapter": "Ч3 ГЛ.18",
+   "para_from": 307,
+   "para_to": 315,
+   "words": 351,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "лицо"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "лёд",
+      "пруд"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "плотина",
+      "мельница"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "ужас",
+      "страх"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "бежать",
+      "давить",
+      "шагать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "кричать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "вечер",
+      "час"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "полк",
+      "командир"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.85,
+     "anchors": [
+      "убить",
+      "кровь",
+      "умирать"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.85,
+     "anchors": [
+      "плотина",
+      "орудие",
+      "канонада"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Долохов",
+     "mentions": 3
+    },
+    {
+     "name": "Дохтуров",
+     "mentions": 2
+    },
+    {
+     "name": "Ланжерон",
+     "mentions": 1
+    },
+    {
+     "name": "Пржебышевский",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.06,
+   "quoted_share": 0.05,
+   "scene": 11,
+   "uncertain": false
+  },
+  {
+   "id": 32,
+   "chapter": "Ч3 ГЛ.19",
+   "para_from": 316,
+   "para_to": 325,
+   "words": 480,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "лицо",
+      "рука",
+      "затылок"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "знамя",
+      "мундир"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "небо",
+      "облако",
+      "синева"
+     ]
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.75,
+     "anchors": [
+      "страдание",
+      "ничтожество",
+      "жизнь"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "лежать",
+      "шевелить"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "сказать",
+      "стон"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "вечер"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "император",
+      "адъютант"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.75,
+     "anchors": [
+      "кровь",
+      "рана",
+      "стон"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "поле",
+      "батарея",
+      "знамя"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Наполеон",
+     "mentions": 8
+    },
+    {
+     "name": "Андрей Болконский",
+     "mentions": 5
+    }
+   ],
+   "dialogue_share": 0.2,
+   "quoted_share": 0.09,
+   "scene": 12,
+   "uncertain": false
+  },
+  {
+   "id": 33,
+   "chapter": "Ч3 ГЛ.19",
+   "para_from": 326,
+   "para_to": 348,
+   "words": 380,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "лицо",
+      "мундир"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "мундир",
+      "цепочка"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "госпиталь",
+      "бивуак"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "боль",
+      "удовольствие"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "нести",
+      "поднять"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.65,
+     "anchors": [
+      "сказать",
+      "отвечать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "день"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "император",
+      "полковник",
+      "свет"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "рана",
+      "кровь",
+      "раненый"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "полк",
+      "эскадрон",
+      "пленный"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Наполеон",
+     "mentions": 9
+    },
+    {
+     "name": "Репнин",
+     "mentions": 5
+    },
+    {
+     "name": "Андрей Болконский",
+     "mentions": 4
+    },
+    {
+     "name": "Александр I",
+     "mentions": 2
+    },
+    {
+     "name": "Сухтелен",
+     "mentions": 2
+    },
+    {
+     "name": "маршал Ланн",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.5,
+   "quoted_share": 0.0,
+   "scene": 12,
+   "uncertain": false
+  },
+  {
+   "id": 34,
+   "chapter": "Ч3 ГЛ.19",
+   "para_from": 349,
+   "para_to": 356,
+   "words": 380,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "лицо",
+      "глаз"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "мундир",
+      "образок",
+      "цепочка"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "небо"
+     ]
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.75,
+     "anchors": [
+      "ничтожество",
+      "вера"
+     ]
+    },
+    "action_dramatic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "думать",
+      "сказать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "минута"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "император",
+      "княжна"
+     ]
+    },
+    "erotic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "violence": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "кровь",
+      "рана",
+      "смерть"
+     ]
+    },
+    "battle": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "пленный",
+      "бивуак"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Андрей Болконский",
+     "mentions": 5
+    },
+    {
+     "name": "Наполеон",
+     "mentions": 3
+    },
+    {
+     "name": "княжна Марья",
+     "mentions": 3
+    },
+    {
+     "name": "Ларрей",
+     "mentions": 1
+    },
+    {
+     "name": "Репнин",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.08,
+   "quoted_share": 0.37,
+   "scene": 12,
+   "uncertain": false
+  }
+ ],
+ "scenes": [
+  {
+   "id": 1,
+   "title": "Салон Анны Павловны Шерер, Петербург, июль 1805",
+   "paras": [
+    0,
+    61
+   ],
+   "chunks": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+   ],
+   "place": "гостиная Анны Павловны Шерер в Петербурге, вечер",
+   "participants": [
+    "Анна Павловна",
+    "Василий Курагин",
+    "Анна Михайловна Друбецкая",
+    "Элен Курагина",
+    "Пьер Безухов",
+    "Андрей Болконский",
+    "Ипполит Курагин"
+   ],
+   "note": "светский вечер: политические разговоры, виконт, князь Ипполит; в чанке 3 к Анне Павловне подходит Друбецкая"
+  },
+  {
+   "id": 2,
+   "title": "Дом Ростовых, Москва, именины",
+   "paras": [
+    62,
+    91
+   ],
+   "chunks": [
+    6,
+    7,
+    8
+   ],
+   "place": "гостиная Ростовых в Москве в день именин Наташи и графини",
+   "participants": [
+    "Николай Ростов",
+    "Соня",
+    "Борис Друбецкой",
+    "Вера Ростова",
+    "Жюли Карагина",
+    "Анна Михайловна Друбецкая"
+   ],
+   "note": "старшие и молодёжь в гостиной; графиня и граф говорят о детях"
+  },
+  {
+   "id": 3,
+   "title": "Цветочная Ростовых",
+   "paras": [
+    92,
+    125
+   ],
+   "chunks": [
+    9,
+    10
+   ],
+   "place": "цветочная комната и диванная в доме Ростовых",
+   "participants": [
+    "Наташа Ростова",
+    "Борис Друбецкой",
+    "Соня",
+    "Николай Ростов"
+   ],
+   "note": "свидание и поцелуй Наташи и Бориса; сцена Николая и Сони в той же цветочной"
+  },
+  {
+   "id": 4,
+   "title": "Обед у Ростовых",
+   "paras": [
+    126,
+    150
+   ],
+   "chunks": [
+    11,
+    12
+   ],
+   "place": "гостиная и зала Ростовых перед званым обедом",
+   "participants": [
+    "Берг",
+    "Шиншин",
+    "Пьер Безухов",
+    "Марья Дмитриевна Ахросимова",
+    "Наташа Ростова",
+    "Анна Михайловна Друбецкая"
+   ],
+   "note": "приезд Марьи Дмитриевны; Пьер неловко сидит посреди гостиной"
+  },
+  {
+   "id": 5,
+   "title": "Смотр под Браунау",
+   "paras": [
+    151,
+    181
+   ],
+   "chunks": [
+    13,
+    14,
+    15
+   ],
+   "place": "поле у крепости Браунау, Австрия, октябрь 1805",
+   "participants": [
+    "Кутузов",
+    "Долохов"
+   ],
+   "note": "пехотный полк в парадной форме ждёт смотра; полковой командир и ротные; Кутузов только упоминается"
+  },
+  {
+   "id": 6,
+   "title": "Переправа через Энс",
+   "paras": [
+    182,
+    222
+   ],
+   "chunks": [
+    16,
+    17,
+    18,
+    19,
+    20
+   ],
+   "place": "мост через реку у Браунау, день переправы",
+   "participants": [
+    "Денисов",
+    "Николай Ростов",
+    "Несвицкий",
+    "Жерков",
+    "Богданыч",
+    "Миронов",
+    "Кирстен"
+   ],
+   "note": "эскадрон Павлоградского полка на мосту; французы обстреливают мост картечью; раненые гусары"
+  },
+  {
+   "id": 7,
+   "title": "Батарея Тушина под Шенграбеном",
+   "paras": [
+    223,
+    242
+   ],
+   "chunks": [
+    21,
+    22
+   ],
+   "place": "батарея капитана Тушина на Шенграбенском поле",
+   "participants": [
+    "Андрей Болконский",
+    "Багратион",
+    "Жерков",
+    "Тушин"
+   ],
+   "note": "начало Шенграбенского боя; Багратион объезжает батарею; убитый казак у аудитора"
+  },
+  {
+   "id": 8,
+   "title": "Шенграбен: лес и деревня",
+   "paras": [
+    243,
+    268
+   ],
+   "chunks": [
+    23,
+    24,
+    25
+   ],
+   "place": "лес и опушка у деревни Шенграбен",
+   "participants": [
+    "Тимохин",
+    "Долохов",
+    "Тушин",
+    "Экономов",
+    "Багратион",
+    "Андрей Болконский"
+   ],
+   "note": "бегство пехотных полков, атака роты Тимохина, пожар Шенграбена; чанк 24 возвращает на батарею Тушина"
+  },
+  {
+   "id": 9,
+   "title": "Праценские высоты",
+   "paras": [
+    269,
+    285
+   ],
+   "chunks": [
+    26,
+    27
+   ],
+   "place": "Праценские высоты при Аустерлице, утро 20 ноября 1805",
+   "participants": [
+    "Кутузов",
+    "Андрей Болконский",
+    "Несвицкий"
+   ],
+   "note": "бегство войск, рана Кутузова в щёку, знамя и падение князя Андрея"
+  },
+  {
+   "id": 10,
+   "title": "Поле у Праца и Гостиерадек",
+   "paras": [
+    286,
+    306
+   ],
+   "chunks": [
+    28,
+    29,
+    30
+   ],
+   "place": "поле у деревни Праца и деревня Гостиерадек",
+   "participants": [
+    "Николай Ростов",
+    "Кутузов",
+    "Александр I"
+   ],
+   "note": "Ростов ищет государя, поле убитых и раненых, встреча с Александром I"
+  },
+  {
+   "id": 11,
+   "title": "Плотина Аугеста",
+   "paras": [
+    307,
+    315
+   ],
+   "chunks": [
+    31
+   ],
+   "place": "узкая плотина и пруд у деревни Аугеста",
+   "participants": [
+    "Долохов",
+    "Дохтуров",
+    "Пржебышевский",
+    "Ланжерон"
+   ],
+   "note": "давка на плотине под ядрами, раненый Долохов уходит на лёд"
+  },
+  {
+   "id": 12,
+   "title": "Праценская гора",
+   "paras": [
+    316,
+    356
+   ],
+   "chunks": [
+    32,
+    33,
+    34
+   ],
+   "place": "Праценская гора, место падения князя Андрея",
+   "participants": [
+    "Андрей Болконский",
+    "Наполеон",
+    "Репнин",
+    "Сухтелен",
+    "Ларрей"
+   ],
+   "note": "Наполеон над раненым Андреем; пленные кавалергарды; перевязочный пункт и Ларей"
+  }
+ ],
+ "characters_total": [
+  {
+   "name": "Анна Павловна",
+   "aliases": [
+    "Анна Павловна Шерер",
+    "Шерер",
+    "Annette"
+   ],
+   "mentions": 21,
+   "chunks": [
+    0,
+    1,
+    2,
+    3,
+    5
+   ],
+   "note": "фрейлина императрицы, хозяйка салона; ролевые слова «хозяйка», «фрейлина» не считаются"
+  },
+  {
+   "name": "Василий Курагин",
+   "aliases": [
+    "князь Василий",
+    "Василий",
+    "Basile"
+   ],
+   "mentions": 13,
+   "chunks": [
+    0,
+    1,
+    2,
+    3,
+    4
+   ],
+   "note": "князь Василий Курагин, отец Элен, Анатоля и Ипполита"
+  },
+  {
+   "name": "Элен Курагина",
+   "aliases": [
+    "княжна Элен",
+    "Hélène"
+   ],
+   "mentions": 1,
+   "chunks": [
+    3
+   ],
+   "note": "Элен Курагина, дочь князя Василия"
+  },
+  {
+   "name": "Анатоль Курагин",
+   "aliases": [
+    "Анатоль"
+   ],
+   "mentions": 1,
+   "chunks": [
+    2
+   ],
+   "note": "младший сын князя Василия, в отрывке только упоминается"
+  },
+  {
+   "name": "Ипполит Курагин",
+   "aliases": [
+    "князь Ипполит"
+   ],
+   "mentions": 1,
+   "chunks": [
+    5
+   ],
+   "note": "сын князя Василия, показывает герб Конде иголкой"
+  },
+  {
+   "name": "Пьер Безухов",
+   "aliases": [
+    "Пьер"
+   ],
+   "mentions": 5,
+   "chunks": [
+    3,
+    5,
+    11,
+    12
+   ],
+   "note": "незаконный сын графа Безухова"
+  },
+  {
+   "name": "Анна Михайловна Друбецкая",
+   "aliases": [
+    "Анна Михайловна",
+    "княгиня Друбецкая",
+    "Друбецкая"
+   ],
+   "mentions": 7,
+   "chunks": [
+    3,
+    4,
+    7,
+    12
+   ],
+   "note": "бедная княгиня, хлопочет о переводе сына в гвардию; «княгиня» — ролевое слово"
+  },
+  {
+   "name": "Борис Друбецкой",
+   "aliases": [
+    "Борис",
+    "Боринька"
+   ],
+   "mentions": 16,
+   "chunks": [
+    3,
+    4,
+    6,
+    8,
+    9,
+    10
+   ],
+   "note": "сын Анны Михайловны, офицер"
+  },
+  {
+   "name": "Наташа Ростова",
+   "aliases": [
+    "Наташа"
+   ],
+   "mentions": 14,
+   "chunks": [
+    6,
+    9,
+    10,
+    12
+   ],
+   "note": "младшая дочь Ростовых"
+  },
+  {
+   "name": "Николай Ростов",
+   "aliases": [
+    "Ростов",
+    "Николай",
+    "Николинька",
+    "Николушка"
+   ],
+   "mentions": 57,
+   "chunks": [
+    6,
+    7,
+    8,
+    9,
+    17,
+    18,
+    19,
+    20,
+    28,
+    29,
+    30
+   ],
+   "note": "старший сын Ростовых, юнкер Павлоградского гусарского полка; «Ростов» без имени — он"
+  },
+  {
+   "name": "Соня",
+   "aliases": [
+    "Соня-племянница",
+    "Софья"
+   ],
+   "mentions": 14,
+   "chunks": [
+    6,
+    7,
+    9
+   ],
+   "note": "племянница Ростовых"
+  },
+  {
+   "name": "Вера Ростова",
+   "aliases": [
+    "Вера"
+   ],
+   "mentions": 4,
+   "chunks": [
+    8
+   ],
+   "note": "старшая дочь Ростовых"
+  },
+  {
+   "name": "Жюли Карагина",
+   "aliases": [
+    "Жюли",
+    "Карагина"
+   ],
+   "mentions": 3,
+   "chunks": [
+    7
+   ],
+   "note": "дочь Карагиной, гостья у Ростовых"
+  },
+  {
+   "name": "Марья Дмитриевна Ахросимова",
+   "aliases": [
+    "Марья Дмитриевна"
+   ],
+   "mentions": 5,
+   "chunks": [
+    12
+   ],
+   "note": "крестная Наташи, гостья на именинах"
+  },
+  {
+   "name": "княжна Марья",
+   "aliases": [
+    "Марья",
+    "княжна Марья"
+   ],
+   "mentions": 3,
+   "chunks": [
+    34
+   ],
+   "note": "сестра князя Андрея, в отрывке только упоминается"
+  },
+  {
+   "name": "Берг",
+   "aliases": [
+    "Берг"
+   ],
+   "mentions": 3,
+   "chunks": [
+    11
+   ],
+   "note": "офицер, жених Веры"
+  },
+  {
+   "name": "Шиншин",
+   "aliases": [
+    "Шиншин"
+   ],
+   "mentions": 3,
+   "chunks": [
+    11
+   ],
+   "note": "приятель графа Ростова, шутит над Бергом"
+  },
+  {
+   "name": "Шуберт",
+   "aliases": [
+    "полковник Шуберт"
+   ],
+   "mentions": 1,
+   "chunks": [
+    6
+   ],
+   "note": "полковник Павлоградского гусарского полка, только упоминается"
+  },
+  {
+   "name": "Кутузов",
+   "aliases": [
+    "Михаил Иларионович",
+    "главнокомандующий"
+   ],
+   "mentions": 25,
+   "chunks": [
+    4,
+    13,
+    14,
+    26,
+    28,
+    29,
+    30
+   ],
+   "note": "Михаил Илларионович Кутузов; «главнокомандующий» — ролевое слово"
+  },
+  {
+   "name": "Багратион",
+   "aliases": [
+    "князь Багратион"
+   ],
+   "mentions": 13,
+   "chunks": [
+    21,
+    22,
+    24
+   ],
+   "note": "командующий арьергардом при Шенграбене"
+  },
+  {
+   "name": "Андрей Болконский",
+   "aliases": [
+    "князь Андрей",
+    "Андрей",
+    "Болконский"
+   ],
+   "mentions": 45,
+   "chunks": [
+    5,
+    21,
+    22,
+    24,
+    26,
+    27,
+    32,
+    33,
+    34
+   ],
+   "note": "адъютант Кутузова, при Аустерлице ранен со знаменем в руках"
+  },
+  {
+   "name": "Тушин",
+   "aliases": [
+    "капитан Тушин"
+   ],
+   "mentions": 13,
+   "chunks": [
+    21,
+    22,
+    24,
+    25
+   ],
+   "note": "командир батареи при Шенграбене"
+  },
+  {
+   "name": "Жерков",
+   "aliases": [
+    "Жерков"
+   ],
+   "mentions": 7,
+   "chunks": [
+    19,
+    21,
+    22
+   ],
+   "note": "корнет, ординарец, шутит над аудитором"
+  },
+  {
+   "name": "Денисов",
+   "aliases": [
+    "Васька Денисов",
+    "Василий Денисов",
+    "ротмистр Денисов"
+   ],
+   "mentions": 13,
+   "chunks": [
+    16,
+    17,
+    18,
+    19
+   ],
+   "note": "эскадронный командир Николая Ростова"
+  },
+  {
+   "name": "Несвицкий",
+   "aliases": [
+    "Несвицкий"
+   ],
+   "mentions": 7,
+   "chunks": [
+    19,
+    20,
+    26
+   ],
+   "note": "штаб-офицер при Кутузове"
+  },
+  {
+   "name": "Долохов",
+   "aliases": [
+    "Долохов"
+   ],
+   "mentions": 8,
+   "chunks": [
+    15,
+    23,
+    24,
+    31
+   ],
+   "note": "разжалованный офицер, в Шенграбене берёт трофеи, при Аугесте ранен в руку"
+  },
+  {
+   "name": "Тимохин",
+   "aliases": [
+    "Тимохин"
+   ],
+   "mentions": 3,
+   "chunks": [
+    23
+   ],
+   "note": "капитан, рота которого удержала лес под Шенграбеном"
+  },
+  {
+   "name": "Миронов",
+   "aliases": [
+    "юнкер Миронов"
+   ],
+   "mentions": 2,
+   "chunks": [
+    17
+   ],
+   "note": "юнкер эскадрона Денисова"
+  },
+  {
+   "name": "Кирстен",
+   "aliases": [
+    "штаб-ротмистр Кирстен"
+   ],
+   "mentions": 1,
+   "chunks": [
+    17
+   ],
+   "note": "штаб-ротмистр эскадрона"
+  },
+  {
+   "name": "Богданыч",
+   "aliases": [
+    "полковой командир",
+    "Богданыч"
+   ],
+   "mentions": 3,
+   "chunks": [
+    19,
+    20
+   ],
+   "note": "командир Павлоградского полка; прозвище по отчеству, «полковой командир» — ролевое слово"
+  },
+  {
+   "name": "Экономов",
+   "aliases": [
+    "майор Экономов"
+   ],
+   "mentions": 3,
+   "chunks": [
+    23,
+    24
+   ],
+   "note": "майор полка"
+  },
+  {
+   "name": "Наполеон",
+   "aliases": [
+    "Бонапарте",
+    "Бонапарт"
+   ],
+   "mentions": 26,
+   "chunks": [
+    1,
+    5,
+    7,
+    21,
+    32,
+    33,
+    34
+   ],
+   "note": "Наполеон; в русском тексте также Бонапарте"
+  },
+  {
+   "name": "Александр I",
+   "aliases": [
+    "государь",
+    "император Александр"
+   ],
+   "mentions": 5,
+   "chunks": [
+    1,
+    5,
+    30,
+    33
+   ],
+   "note": "Александр I; «государь» — ролевое слово, в счёт не входит"
+  },
+  {
+   "name": "Репнин",
+   "aliases": [
+    "князь Репнин"
+   ],
+   "mentions": 6,
+   "chunks": [
+    33,
+    34
+   ],
+   "note": "полковник кавалергардского полка, пленный при Аустерлице"
+  },
+  {
+   "name": "Сухтелен",
+   "aliases": [
+    "поручик Сухтелен"
+   ],
+   "mentions": 2,
+   "chunks": [
+    33
+   ],
+   "note": "молодой кавалергардский офицер, пленный"
+  },
+  {
+   "name": "Ларрей",
+   "aliases": [
+    "доктор Ларрей"
+   ],
+   "mentions": 1,
+   "chunks": [
+    34
+   ],
+   "note": "лейб-медик Наполеона"
+  },
+  {
+   "name": "маршал Ланн",
+   "aliases": [
+    "Лан"
+   ],
+   "mentions": 1,
+   "chunks": [
+    33
+   ],
+   "note": "маршал Лан, упомянут в реплике Наполеона"
+  },
+  {
+   "name": "Пржебышевский",
+   "aliases": [
+    "Пржебышевский"
+   ],
+   "mentions": 1,
+   "chunks": [
+    31
+   ],
+   "note": "генерал, сложивший оружие под Аустерлицем"
+  },
+  {
+   "name": "Дохтуров",
+   "aliases": [
+    "Дохтуров"
+   ],
+   "mentions": 2,
+   "chunks": [
+    31
+   ],
+   "note": "генерал арьергарда на плотине Аугеста"
+  },
+  {
+   "name": "Ланжерон",
+   "aliases": [
+    "Ланжерон"
+   ],
+   "mentions": 1,
+   "chunks": [
+    31
+   ],
+   "note": "генерал, остатки корпуса которого теснятся у плотины"
+  }
+ ],
+ "stats": {
+  "chunks": 35,
+  "words": 13749,
+  "chunks_min_words": 300,
+  "chunks_max_words": 499,
+  "scenes": 12,
+  "characters": 40,
+  "uncertain": 10,
+  "uncertain_chunks": [
+   1,
+   2,
+   5,
+   6,
+   8,
+   11,
+   13,
+   15,
+   16,
+   30
+  ],
+  "categories_present": {
+   "appearance": 33,
+   "clothing": 20,
+   "nature": 14,
+   "architecture": 23,
+   "emotion": 35,
+   "action_dramatic": 31,
+   "speech": 34,
+   "time": 27,
+   "social": 29,
+   "erotic": 4,
+   "violence": 20,
+   "battle": 27
+  },
+  "dialogue_share_avg": 0.36
+ }
+}
