@@ -14,8 +14,14 @@ import (
 // ErrTimeout — ответ лемматизатора не пришёл за тайм-аут (T-01-09, шаг 2).
 var ErrTimeout = errors.New("lemmarpc: timeout waiting for response")
 
-// responseTimeout — тайм-аут ответа протокола (шаг 2).
+// responseTimeout — тайм-аут ответа протокола на прогретом резиденте (шаг 2).
 const responseTimeout = 200 * time.Millisecond
+
+// warmupTimeout — ожидание первого ответа после старта резидента. Словарь
+// лемматизатора грузится при старте процесса и под нагрузкой (модели ещё
+// грузятся) первый ответ приходит заметно позже 200 мс; переменная, чтобы
+// тесты укорачивали прогрев.
+var warmupTimeout = 10 * time.Second
 
 // maxConsecutiveTimeouts — после стольких подряд тайм-аутов клиент перезапускает
 // процесс лемматизатора (шаг 2).
@@ -38,6 +44,7 @@ type session struct {
 	cmd     *exec.Cmd
 	stdin   io.WriteCloser
 	reader  *bufio.Reader
+	warm    bool
 	pending map[int]chan responseResult
 }
 
@@ -78,17 +85,23 @@ func (c *Client) Lemmatize(text string) ([]Token, error) {
 	}
 	c.mu.Unlock()
 
+	timeout := responseTimeout
+	if s.warm {
+		timeout = warmupTimeout
+	}
+
 	select {
 	case r := <-ch:
 		c.mu.Lock()
 		c.timeouts = 0
+		s.warm = false
 		c.mu.Unlock()
 		if r.err != nil {
 			c.handleReadError(r.err)
 			return nil, r.err
 		}
 		return r.resp.Tokens, nil
-	case <-time.After(responseTimeout):
+	case <-time.After(timeout):
 		c.mu.Lock()
 		delete(s.pending, id)
 		c.timeouts++
@@ -130,6 +143,7 @@ func (c *Client) startLocked() error {
 		cmd:     cmd,
 		stdin:   stdin,
 		reader:  bufio.NewReader(stdout),
+		warm:    true,
 		pending: map[int]chan responseResult{},
 	}
 	c.cur = s

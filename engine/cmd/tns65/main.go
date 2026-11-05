@@ -146,6 +146,9 @@ func run() int {
 	}
 	netgate.SetLogger(logger)
 	webapi.SetModelLogger(logger)
+	// Чат без лемматизатора не строит гипотезу намерения: каждый ход уходит в
+	// переспрос и не коммитится. Подключаем лемматизатор пакета по умолчанию.
+	webapi.SetChatLemmatizer(webapi.DefaultPackLemmatizer(logger))
 
 	wl, err := portgate.LoadWhitelist("config.yaml")
 	if err != nil {

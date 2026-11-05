@@ -18,6 +18,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"tns65/internal/journal"
 	"tns65/internal/netgate"
@@ -33,6 +34,21 @@ const (
 // telegramAPIHost — хост Telegram Bot API. Бот ходит наружу только исходящим
 // соединением (long poll getUpdates / sendMessage), входящих сокетов нет (F-04.4).
 const telegramAPIHost = "api.telegram.org"
+
+// telegramRequestTimeout — потолок одного исходящего запроса бота. Без него
+// зависший ответ Telegram навсегда блокирует long poll: канал перестаёт
+// опрашивать, а пометки подтверждения не уходят.
+const telegramRequestTimeout = 30 * time.Second
+
+// pollBackoff — пауза после транзиентной ошибки getUpdates перед следующей
+// попыткой: канал не гасится из-за одного таймаута или 429.
+const pollBackoff = 2 * time.Second
+
+// longPollTimeoutSeconds — время долгого опроса getUpdates: Telegram держит
+// запрос открытым до появления обновления, иначе цикл без паузы молотит запросы
+// и упирается в лимит 429. Меньше telegramRequestTimeout, чтобы клиент не
+// обрывал сам запрос раньше Telegram.
+const longPollTimeoutSeconds = 25
 
 // chatPath — маршрут loopback-сервера, в который бот пересылает реплику из
 // Telegram; активный мир привязывает хэндлер чата (T-08-15).
@@ -262,13 +278,17 @@ type TelegramBot struct {
 // сетевой гейт (netgate.Client, F-05), к loopback-серверу — напрямую
 // (netgate.Local, F-04.2).
 func NewTelegramBot(cfg TunnelConfig, logger *journal.Logger) *TelegramBot {
+	tg := netgate.Client(telegramAPIHost)
+	tg.Timeout = telegramRequestTimeout
+	loc := netgate.Local(localAddr(cfg.Local))
+	loc.Timeout = telegramRequestTimeout
 	return &TelegramBot{
 		cfg:          cfg,
 		logger:       logger,
 		telegramBase: "https://" + telegramAPIHost,
 		localBase:    cfg.Local,
-		telegram:     netgate.Client(telegramAPIHost),
-		local:        netgate.Local(localAddr(cfg.Local)),
+		telegram:     tg,
+		local:        loc,
 		dial:         (&net.Dialer{}).DialContext,
 	}
 }
@@ -421,8 +441,13 @@ type telegramChat struct {
 // (F-04.4).
 func (b *TelegramBot) GetUpdates(ctx context.Context, offset int64) ([]telegramUpdate, error) {
 	u := b.telegramBase + "/bot/" + b.cfg.TelegramToken + "/getUpdates"
+	params := url.Values{}
 	if offset > 0 {
-		u += "?offset=" + strconv.FormatInt(offset, 10)
+		params.Set("offset", strconv.FormatInt(offset, 10))
+	}
+	params.Set("timeout", strconv.Itoa(longPollTimeoutSeconds))
+	if q := params.Encode(); q != "" {
+		u += "?" + q
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
@@ -434,14 +459,15 @@ func (b *TelegramBot) GetUpdates(ctx context.Context, offset int64) ([]telegramU
 	}
 	defer resp.Body.Close()
 	var res struct {
-		OK     bool             `json:"ok"`
-		Result []telegramUpdate `json:"result"`
+		OK          bool             `json:"ok"`
+		Result      []telegramUpdate `json:"result"`
+		Description string           `json:"description"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
 		return nil, err
 	}
 	if !res.OK {
-		return nil, fmt.Errorf("webapi: telegram getUpdates: ok=false")
+		return nil, fmt.Errorf("webapi: telegram getUpdates: ok=false: %s", res.Description)
 	}
 	return res.Result, nil
 }
@@ -603,6 +629,8 @@ func (b *TelegramBot) relayChat(ctx context.Context, text string) {
 
 // Poll — цикл исходящего long poll: подписка на Telegram без входящих сокетов.
 // Событие подключения пишет StartTelegram (один раз на старт канала).
+// Транзиентная ошибка getUpdates не гасит канал: пауза и повтор, канал
+// останавливает только отмена контекста.
 func (b *TelegramBot) Poll(ctx context.Context) error {
 	var offset int64
 	for {
@@ -613,7 +641,16 @@ func (b *TelegramBot) Poll(ctx context.Context) error {
 		}
 		next, err := b.PollOnce(ctx, offset)
 		if err != nil {
-			return err
+			if b.logger != nil {
+				_ = b.logger.Event("telegram", "telegram.poll_error",
+					journal.Field{Key: "error", Value: err.Error()})
+			}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(pollBackoff):
+			}
+			continue
 		}
 		offset = next
 	}

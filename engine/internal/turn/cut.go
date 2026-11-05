@@ -73,3 +73,15 @@ func splitWords(text string) []string {
 		return unicode.IsSpace(r) || unicode.IsPunct(r)
 	})
 }
+
+// stripPunct убирает знаки препинания, оставляя пробелы: лемматизатор не узнаёт
+// словоформу, к которой прилипла запятая или иной знак («иду,» — UNKN), а разрез
+// сегментов по спецификации (T-03-02) знаков . ! ? … ; : не расширяет.
+func stripPunct(text string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsPunct(r) {
+			return ' '
+		}
+		return r
+	}, text)
+}

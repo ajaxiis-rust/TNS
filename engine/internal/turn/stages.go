@@ -198,7 +198,7 @@ func (s *cutStage) Run(ctx context.Context, st *TurnState) error {
 	for _, text := range segments {
 		seg := Segment{Text: text}
 		if lemmatizer != nil {
-			if toks, err := lemmatizer.Lemmatize(text); err == nil {
+			if toks, err := lemmatizer.Lemmatize(stripPunct(text)); err == nil {
 				for _, tok := range toks {
 					seg.Lemmas = append(seg.Lemmas, tok.Lemma)
 				}
