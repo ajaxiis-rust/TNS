@@ -1,0 +1,3267 @@
+{
+ "source": "Л. Н. Толстой, «Анна Каренина», часть I, главы I–IX (1878). Публичный домен. Текст: ru.wikisource.org, страницы «Анна Каренина (Толстой)/Часть I/Глава I…IX» (скачано 2026-11-05 через API action=parse, HTML→чистый текст). Локальных связных прозаических текстов нужного объёма в репозитории нет (engine/seed и engine/internal/workshop/testdata — до 500 слов).",
+ "chunking": "300–500 слов, по абзацам (границы абзацев не разрываются; реплика диалога = отдельный абзац). Диапазон чанков 307–426 слов, среднее 369; допускается пересечение границы главы.",
+ "chunks": [
+  {
+   "id": 0,
+   "para_from": 0,
+   "para_to": 4,
+   "words": 387,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "полный",
+      "тело",
+      "глаз"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "туфля",
+      "халат"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "кабинет",
+      "спальня",
+      "дом"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "отчаяние",
+      "вина",
+      "мука"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "вскочить",
+      "замычать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "объявить",
+      "думать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "день",
+      "утро",
+      "год"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "князь",
+      "свет"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Облонский",
+     "mentions": 5
+    },
+    {
+     "name": "m-lle Roland",
+     "mentions": 1
+    },
+    {
+     "name": "мисс Гуль",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.0,
+   "quoted_share": 0.45,
+   "scene": 1,
+   "uncertain": true,
+   "uncertain_reason": "внутренний монолог в кавычках при нулевом диалоге: speech 0.35 — пограничная оценка; чанк-экспозиция"
+  },
+  {
+   "id": 1,
+   "para_from": 5,
+   "para_to": 14,
+   "words": 333,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "красивый",
+      "лицо",
+      "состариться"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "спальня",
+      "кабинет",
+      "комната"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.85,
+     "anchors": [
+      "отчаяние",
+      "ужас",
+      "гнев"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "выбежать",
+      "вздрогнуть"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "спросить",
+      "думать",
+      "сказать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "год"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "жена",
+      "семейство"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Облонский",
+     "mentions": 3
+    },
+    {
+     "name": "Долли",
+     "mentions": 2
+    }
+   ],
+   "dialogue_share": 0.03,
+   "quoted_share": 0.56,
+   "scene": 1,
+   "uncertain": true,
+   "uncertain_reason": "ретроспектива (ссора три дня назад) внутри сцены 1 — граница сцены спорна"
+  },
+  {
+   "id": 2,
+   "para_from": 15,
+   "para_to": 18,
+   "words": 419,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "глаз",
+      "тело"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "халат",
+      "платье",
+      "сапог"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "дом",
+      "окно"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "ужас",
+      "досада"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "встать",
+      "позвонить"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "твердить",
+      "спросить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "ночь"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "гувернантка",
+      "жена"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Облонский",
+     "mentions": 3
+    },
+    {
+     "name": "Матвей",
+     "mentions": 2
+    },
+    {
+     "name": "m-lle Roland",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.0,
+   "quoted_share": 0.46,
+   "scene": 1,
+   "uncertain": false
+  },
+  {
+   "id": 3,
+   "para_from": 19,
+   "para_to": 42,
+   "words": 392,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "бакенбарды",
+      "лицо",
+      "рука"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "жакетка",
+      "платье"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "зеркало",
+      "комната",
+      "ковёр"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "улыбка",
+      "уныние"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "разорвать",
+      "кивнуть"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.8,
+     "anchors": [
+      "сказать",
+      "спросить",
+      "ответить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "завтра",
+      "воскресенье"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "барин",
+      "сударь",
+      "присутствие"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Матвей",
+     "mentions": 13
+    },
+    {
+     "name": "Облонский",
+     "mentions": 9
+    },
+    {
+     "name": "Долли",
+     "mentions": 3
+    },
+    {
+     "name": "Анна",
+     "mentions": 2
+    }
+   ],
+   "dialogue_share": 0.59,
+   "quoted_share": 0.12,
+   "scene": 1,
+   "uncertain": false
+  },
+  {
+   "id": 4,
+   "para_from": 43,
+   "para_to": 55,
+   "words": 400,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "лицо",
+      "рябой",
+      "тело"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "рубашка",
+      "халат"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "столовая",
+      "дом"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "покраснеть",
+      "уныние"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "скинуть",
+      "выйти"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "повиниться",
+      "молиться",
+      "сказать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "утро",
+      "вчера"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "сударь",
+      "нянюшка",
+      "купец"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Облонский",
+     "mentions": 7
+    },
+    {
+     "name": "Матвей",
+     "mentions": 2
+    },
+    {
+     "name": "Матрёна Филимоновна",
+     "mentions": 2
+    },
+    {
+     "name": "Долли",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.28,
+   "quoted_share": 0.0,
+   "scene": 1,
+   "uncertain": true,
+   "uncertain_reason": "переход из спальни в столовую в середине чанка (стык сцен 1 и 2)"
+  },
+  {
+   "id": 5,
+   "para_from": 56,
+   "para_to": 56,
+   "words": 426,
+   "categories": {
+    "appearance": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "шляпа",
+      "сюртук"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "досада",
+      "противно"
+     ]
+    },
+    "action_dramatic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "говорить",
+      "статья"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "время"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "партия",
+      "министерство",
+      "граф"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Облонский",
+     "mentions": 6
+    },
+    {
+     "name": "Матрёна Филимоновна",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.0,
+   "quoted_share": 1.0,
+   "scene": 2,
+   "uncertain": true,
+   "uncertain_reason": "чистая публицистическая экспозиция: anchors clothing — метафора, speech — косвенная речь газеты"
+  },
+  {
+   "id": 6,
+   "para_from": 57,
+   "para_to": 70,
+   "words": 313,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "лицо",
+      "шея",
+      "бакенбарды"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "дверь"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "улыбка",
+      "нежность",
+      "смущение"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "вбежать",
+      "обнять",
+      "поцеловать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "сказать",
+      "спросить",
+      "кричать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "ночь"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "отец",
+      "дети",
+      "гувернантка"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Облонский",
+     "mentions": 3
+    },
+    {
+     "name": "Таня",
+     "mentions": 2
+    },
+    {
+     "name": "Гриша",
+     "mentions": 1
+    },
+    {
+     "name": "мисс Гуль",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.27,
+   "quoted_share": 0.12,
+   "scene": 2,
+   "uncertain": false
+  },
+  {
+   "id": 7,
+   "para_from": 71,
+   "para_to": 82,
+   "words": 307,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "лицо",
+      "плечо"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "шляпа"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "камин",
+      "гостиная",
+      "спальня"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "досада",
+      "тоска"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "поцеловать",
+      "закурить",
+      "отворить"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "сказать",
+      "спросить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "вчера"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "просительница",
+      "штабс-капитанша"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Облонский",
+     "mentions": 4
+    },
+    {
+     "name": "Калинина",
+     "mentions": 3
+    },
+    {
+     "name": "Матвей",
+     "mentions": 2
+    },
+    {
+     "name": "Гриша",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.29,
+   "quoted_share": 0.39,
+   "scene": 2,
+   "uncertain": false
+  },
+  {
+   "id": 8,
+   "para_from": 83,
+   "para_to": 87,
+   "words": 369,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.9,
+     "anchors": [
+      "лицо",
+      "глаз",
+      "худой"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "кофточка"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "комната",
+      "шифоньерка",
+      "дом"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.9,
+     "anchors": [
+      "страдание",
+      "испуг",
+      "ненависть"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "сжаться",
+      "затрястись",
+      "оглядеть"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "сказать",
+      "подумать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "день"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "муж",
+      "дети"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Долли",
+     "mentions": 2
+    }
+   ],
+   "dialogue_share": 0.11,
+   "quoted_share": 0.15,
+   "scene": 3,
+   "uncertain": false
+  },
+  {
+   "id": 9,
+   "para_from": 88,
+   "para_to": 103,
+   "words": 368,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "лицо",
+      "слеза",
+      "губы"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "шифоньерка",
+      "стул"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.95,
+     "anchors": [
+      "рыдание",
+      "слеза",
+      "боль"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "вскрикнуть",
+      "захлопнуть",
+      "пошатнуться"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.9,
+     "anchors": [
+      "вскрикнуть",
+      "закричать",
+      "простить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "год"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "дети"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Долли",
+     "mentions": 6
+    },
+    {
+     "name": "Облонский",
+     "mentions": 1
+    },
+    {
+     "name": "Матвей",
+     "mentions": 1
+    },
+    {
+     "name": "Анна",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.59,
+   "quoted_share": 0.07,
+   "scene": 3,
+   "uncertain": false
+  },
+  {
+   "id": 10,
+   "para_from": 104,
+   "para_to": 114,
+   "words": 379,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "лицо",
+      "губы",
+      "глаз"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "комната",
+      "дверь"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.9,
+     "anchors": [
+      "злоба",
+      "ненависть",
+      "жалость"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "закричать",
+      "встать",
+      "уйти"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.9,
+     "anchors": [
+      "закричать",
+      "сказать",
+      "говорить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "нынче"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "муж",
+      "отец",
+      "любовница"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Облонский",
+     "mentions": 2
+    },
+    {
+     "name": "Долли",
+     "mentions": 2
+    },
+    {
+     "name": "Матвей",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.54,
+   "quoted_share": 0.36,
+   "scene": 3,
+   "uncertain": false
+  },
+  {
+   "id": 11,
+   "para_from": 115,
+   "para_to": 123,
+   "words": 343,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "рука",
+      "палец"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "шуба"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "столовая",
+      "крыльцо",
+      "спальня"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "горе",
+      "успокоить"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "надеть",
+      "выйти",
+      "крикнуть"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "крикнуть",
+      "сказать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "пятница"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "часовщик",
+      "домашний"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Матвей",
+     "mentions": 4
+    },
+    {
+     "name": "Облонский",
+     "mentions": 3
+    },
+    {
+     "name": "Матрёна Филимоновна",
+     "mentions": 2
+    },
+    {
+     "name": "Долли",
+     "mentions": 1
+    },
+    {
+     "name": "Анна",
+     "mentions": 1
+    },
+    {
+     "name": "мисс Гуль",
+     "mentions": 1
+    },
+    {
+     "name": "Марья",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.6,
+   "quoted_share": 0.15,
+   "scene": 3,
+   "uncertain": true,
+   "uncertain_reason": "смена сцены в последнем абзаце (уход мужа, сцена 4), «пятница» — временная метка внутри чанка"
+  },
+  {
+   "id": 12,
+   "para_from": 124,
+   "para_to": 128,
+   "words": 319,
+   "categories": {
+    "appearance": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "дом"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "горе"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": []
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "сказать",
+      "приказать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "час",
+      "год"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.8,
+     "anchors": [
+      "присутствие",
+      "министерство",
+      "родня"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Облонский",
+     "mentions": 5
+    },
+    {
+     "name": "Каренин",
+     "mentions": 2
+    },
+    {
+     "name": "Долли",
+     "mentions": 1
+    },
+    {
+     "name": "Анна",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.12,
+   "quoted_share": 0.47,
+   "scene": 4,
+   "uncertain": true,
+   "uncertain_reason": "короткий диалог + авторский экскурс о службе: единого места действия нет"
+  },
+  {
+   "id": 13,
+   "para_from": 129,
+   "para_to": 133,
+   "words": 341,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.9,
+     "anchors": [
+      "наружность",
+      "глаз",
+      "румянец"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "мундир"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "кабинет",
+      "присутствие"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "уважение",
+      "любовь"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "войти",
+      "пожать",
+      "сесть"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "проговорить",
+      "пошутить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "год"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "швейцар",
+      "писец",
+      "подчинённый"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Облонский",
+     "mentions": 11
+    }
+   ],
+   "dialogue_share": 0.09,
+   "quoted_share": 0.27,
+   "scene": 5,
+   "uncertain": false
+  },
+  {
+   "id": 14,
+   "para_from": 134,
+   "para_to": 147,
+   "words": 358,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "борода",
+      "плечо",
+      "мундир"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "мундир",
+      "шапка"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "зала",
+      "лестница",
+      "кабинет"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "радость",
+      "застенчивость"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "взбегать",
+      "пожать",
+      "поцеловать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "сказать",
+      "проговорить",
+      "спросить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "час"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "превосходительство",
+      "сторож",
+      "камер-юнкер"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Облонский",
+     "mentions": 6
+    },
+    {
+     "name": "Левин",
+     "mentions": 3
+    },
+    {
+     "name": "Гриневич",
+     "mentions": 3
+    },
+    {
+     "name": "Никитин",
+     "mentions": 2
+    }
+   ],
+   "dialogue_share": 0.54,
+   "quoted_share": 0.14,
+   "scene": 5,
+   "uncertain": false
+  },
+  {
+   "id": 15,
+   "para_from": 148,
+   "para_to": 150,
+   "words": 373,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "улыбка"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "кабинет"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "презирать",
+      "раздражаться"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": []
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "смеяться"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "молодость"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "министр",
+      "купец",
+      "подчинённый"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Облонский",
+     "mentions": 9
+    },
+    {
+     "name": "Левин",
+     "mentions": 8
+    }
+   ],
+   "dialogue_share": 0.08,
+   "quoted_share": 0.92,
+   "scene": 5,
+   "uncertain": true,
+   "uncertain_reason": "нет действия и места (экспозиция о связях), social 0.7 на границе по интенсивности"
+  },
+  {
+   "id": 16,
+   "para_from": 151,
+   "para_to": 160,
+   "words": 369,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "палец",
+      "ноготь",
+      "запонка"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "рубашка",
+      "запонка"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "кабинет"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "смущение",
+      "уважение"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "пожать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.75,
+     "anchors": [
+      "сказать",
+      "рассказывать"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": []
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "товарищ",
+      "земский",
+      "писатель"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Облонский",
+     "mentions": 7
+    },
+    {
+     "name": "Левин",
+     "mentions": 7
+    },
+    {
+     "name": "Гриневич",
+     "mentions": 4
+    },
+    {
+     "name": "Кознышев",
+     "mentions": 3
+    },
+    {
+     "name": "Никитин",
+     "mentions": 2
+    }
+   ],
+   "dialogue_share": 0.73,
+   "quoted_share": 0.0,
+   "scene": 5,
+   "uncertain": false
+  },
+  {
+   "id": 17,
+   "para_from": 161,
+   "para_to": 177,
+   "words": 356,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "лицо",
+      "покраснеть"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "платье",
+      "портной"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "кабинет"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "застенчивость",
+      "стыд",
+      "досада"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "покраснеть"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "сказать",
+      "спросить",
+      "ответить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": []
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "секретарь",
+      "начальник"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Левин",
+     "mentions": 7
+    },
+    {
+     "name": "Облонский",
+     "mentions": 4
+    },
+    {
+     "name": "Кити",
+     "mentions": 1
+    },
+    {
+     "name": "Гриневич",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.55,
+   "quoted_share": 0.0,
+   "scene": 5,
+   "uncertain": false
+  },
+  {
+   "id": 18,
+   "para_from": 178,
+   "para_to": 197,
+   "words": 362,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "свежесть",
+      "мускул"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "кабинет",
+      "сад"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "испуг",
+      "веселье"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "выйти",
+      "прокричать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.8,
+     "anchors": [
+      "сказать",
+      "спросить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "нынче",
+      "час"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "товарищ",
+      "жена"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Левин",
+     "mentions": 8
+    },
+    {
+     "name": "Облонский",
+     "mentions": 7
+    },
+    {
+     "name": "Кити",
+     "mentions": 1
+    },
+    {
+     "name": "Гриневич",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.94,
+   "quoted_share": 0.0,
+   "scene": 5,
+   "uncertain": false
+  },
+  {
+   "id": 19,
+   "para_from": 198,
+   "para_to": 201,
+   "words": 354,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "ножка",
+      "чулок",
+      "шубка"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.55,
+     "anchors": [
+      "шубка",
+      "чулок",
+      "шляпа"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "дом",
+      "бульвар"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "влюбиться",
+      "умиление"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": []
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "говорить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "студенчество"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "дворянин",
+      "учитель",
+      "лакей"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Левин",
+     "mentions": 7
+    },
+    {
+     "name": "Облонский",
+     "mentions": 3
+    },
+    {
+     "name": "Долли",
+     "mentions": 2
+    },
+    {
+     "name": "Кити",
+     "mentions": 2
+    },
+    {
+     "name": "Николай Щербацкий",
+     "mentions": 1
+    },
+    {
+     "name": "m-lle Linon",
+     "mentions": 1
+    },
+    {
+     "name": "Натали",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.05,
+   "quoted_share": 0.11,
+   "scene": 5,
+   "uncertain": true,
+   "uncertain_reason": "ретроспектива-воспоминание о доме Щербацких без текущего места действия"
+  },
+  {
+   "id": 20,
+   "para_from": 202,
+   "para_to": 205,
+   "words": 355,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "порт"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "кабинет"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "влюбиться",
+      "отчаяние",
+      "страх"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": []
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "письмо",
+      "возражение"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "зима",
+      "год"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "полковник",
+      "профессор",
+      "помещик"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Левин",
+     "mentions": 6
+    },
+    {
+     "name": "Кити",
+     "mentions": 5
+    },
+    {
+     "name": "Облонский",
+     "mentions": 3
+    },
+    {
+     "name": "Натали",
+     "mentions": 2
+    },
+    {
+     "name": "Долли",
+     "mentions": 1
+    },
+    {
+     "name": "Николай Щербацкий",
+     "mentions": 1
+    },
+    {
+     "name": "профессор",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.0,
+   "quoted_share": 0.0,
+   "scene": 6,
+   "uncertain": true,
+   "uncertain_reason": "чанк пересекает стык сцен 6 и 7 (ретроспектива -> кабинет Кознышева); стоит сцена первого абзаца"
+  },
+  {
+   "id": 21,
+   "para_from": 206,
+   "para_to": 211,
+   "words": 381,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "некрасивый",
+      "очки",
+      "лоб"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "очки"
+     ]
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "кабинет"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "отчаяние",
+      "страх"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "приехать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "полемика",
+      "возражение",
+      "письмо"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "молодость"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "профессор",
+      "брат"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "профессор",
+     "mentions": 6
+    },
+    {
+     "name": "Левин",
+     "mentions": 3
+    },
+    {
+     "name": "Кити",
+     "mentions": 3
+    },
+    {
+     "name": "Кознышев",
+     "mentions": 3
+    }
+   ],
+   "dialogue_share": 0.0,
+   "quoted_share": 0.0,
+   "scene": 7,
+   "uncertain": false
+  },
+  {
+   "id": 22,
+   "para_from": 212,
+   "para_to": 221,
+   "words": 397,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "бурлак",
+      "очки"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "досада"
+     ]
+    },
+    "action_dramatic": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.85,
+     "anchors": [
+      "сказать",
+      "говорить",
+      "спросить"
+     ]
+    },
+    "time": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "профессор"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "профессор",
+     "mentions": 5
+    },
+    {
+     "name": "Кознышев",
+     "mentions": 4
+    },
+    {
+     "name": "Левин",
+     "mentions": 2
+    }
+   ],
+   "dialogue_share": 0.44,
+   "quoted_share": 0.0,
+   "scene": 7,
+   "uncertain": false
+  },
+  {
+   "id": 23,
+   "para_from": 222,
+   "para_to": 241,
+   "words": 396,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": []
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.05,
+     "anchors": [
+      "имение"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.05,
+     "anchors": []
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "ужас",
+      "уныние",
+      "вина"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "встать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "сказать",
+      "спросить",
+      "перебить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": []
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "земство",
+      "управа",
+      "член"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Левин",
+     "mentions": 12
+    },
+    {
+     "name": "Кознышев",
+     "mentions": 6
+    },
+    {
+     "name": "профессор",
+     "mentions": 3
+    },
+    {
+     "name": "Николай Левин",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.57,
+   "quoted_share": 0.0,
+   "scene": 7,
+   "uncertain": false
+  },
+  {
+   "id": 24,
+   "para_from": 242,
+   "para_to": 254,
+   "words": 377,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": [
+      "почерк"
+     ]
+    },
+    "clothing": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "nature": {
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "сад",
+      "подъезд"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "волнение",
+      "ужас"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "поехать",
+      "слезть",
+      "пойти"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "сказать",
+      "прочесть"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "вечер",
+      "час"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "брат",
+      "лакей"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Левин",
+     "mentions": 8
+    },
+    {
+     "name": "Кознышев",
+     "mentions": 7
+    },
+    {
+     "name": "Облонский",
+     "mentions": 1
+    },
+    {
+     "name": "Кити",
+     "mentions": 1
+    },
+    {
+     "name": "Николай Левин",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.58,
+   "quoted_share": 0.06,
+   "scene": 7,
+   "uncertain": true,
+   "uncertain_reason": "чанк пересекает стык сцен 7 и 8 (кабинет -> Зоологический сад); стоит сцена первого абзаца"
+  },
+  {
+   "id": 25,
+   "para_from": 255,
+   "para_to": 259,
+   "words": 380,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "улыбка",
+      "лицо"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "шляпа",
+      "жакетка",
+      "конёк"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.9,
+     "anchors": [
+      "морозный",
+      "снег",
+      "берёза"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "подъезд",
+      "домик",
+      "каток"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "радость",
+      "страх"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "кататься",
+      "бежать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "закричать",
+      "окликнуть"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "день"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "жандарм",
+      "ванька",
+      "народ"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Левин",
+     "mentions": 4
+    },
+    {
+     "name": "Кити",
+     "mentions": 1
+    },
+    {
+     "name": "Николай Щербацкий",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.0,
+   "quoted_share": 0.6,
+   "scene": 8,
+   "uncertain": false
+  },
+  {
+   "id": 26,
+   "para_from": 260,
+   "para_to": 268,
+   "words": 389,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.8,
+     "anchors": [
+      "голова",
+      "плечо",
+      "глаз"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.45,
+     "anchors": [
+      "муфта",
+      "перчатка",
+      "ботинки"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "солнце",
+      "иней",
+      "лёд"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "каток"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "волнение",
+      "смущение"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "катиться",
+      "подать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "сказать",
+      "спросить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.1,
+     "anchors": []
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": []
+    }
+   },
+   "characters": [
+    {
+     "name": "Левин",
+     "mentions": 5
+    },
+    {
+     "name": "Николай Щербацкий",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.72,
+   "quoted_share": 0.0,
+   "scene": 8,
+   "uncertain": false
+  },
+  {
+   "id": 27,
+   "para_from": 269,
+   "para_to": 282,
+   "words": 377,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "лицо",
+      "улыбка",
+      "лоб"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "пальто",
+      "конёк"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "лёд"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "домик",
+      "скамейка"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "счастье",
+      "страх",
+      "огорчение"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "разбежаться",
+      "покатиться",
+      "побежать"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "сказать",
+      "спросить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.05,
+     "anchors": []
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "гувернантка"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Левин",
+     "mentions": 5
+    },
+    {
+     "name": "m-lle Linon",
+     "mentions": 3
+    },
+    {
+     "name": "Кити",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.72,
+   "quoted_share": 0.12,
+   "scene": 8,
+   "uncertain": false
+  },
+  {
+   "id": 28,
+   "para_from": 283,
+   "para_to": 297,
+   "words": 370,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "лицо",
+      "глаз",
+      "улыбка"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "конёк"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "лёд"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.25,
+     "anchors": [
+      "кофейня",
+      "ступени"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "грусть",
+      "надежда"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "побежать",
+      "пуститься",
+      "зацепиться"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "сказать",
+      "крикнуть"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.05,
+     "anchors": []
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": []
+    }
+   },
+   "characters": [
+    {
+     "name": "Левин",
+     "mentions": 5
+    },
+    {
+     "name": "Кити",
+     "mentions": 3
+    },
+    {
+     "name": "Николай Щербацкий",
+     "mentions": 1
+    },
+    {
+     "name": "m-lle Linon",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.41,
+   "quoted_share": 0.08,
+   "scene": 8,
+   "uncertain": false
+  },
+  {
+   "id": 29,
+   "para_from": 298,
+   "para_to": 313,
+   "words": 374,
+   "categories": {
+    "appearance": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "лицо",
+      "глаз"
+     ]
+    },
+    "clothing": {
+     "present": true,
+     "intensity": 0.2,
+     "anchors": [
+      "шляпа"
+     ]
+    },
+    "nature": {
+     "present": true,
+     "intensity": 0.15,
+     "anchors": [
+      "сад"
+     ]
+    },
+    "architecture": {
+     "present": true,
+     "intensity": 0.3,
+     "anchors": [
+      "сад",
+      "ступенька",
+      "гостиница"
+     ]
+    },
+    "emotion": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "ласка",
+      "огорчение",
+      "счастье"
+     ]
+    },
+    "action_dramatic": {
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "снять",
+      "догнать",
+      "взять"
+     ]
+    },
+    "speech": {
+     "present": true,
+     "intensity": 0.6,
+     "anchors": [
+      "сказать",
+      "спросить"
+     ]
+    },
+    "time": {
+     "present": true,
+     "intensity": 0.35,
+     "anchors": [
+      "четверг",
+      "нынче"
+     ]
+    },
+    "social": {
+     "present": true,
+     "intensity": 0.5,
+     "anchors": [
+      "княгиня",
+      "тёща"
+     ]
+    }
+   },
+   "characters": [
+    {
+     "name": "Левин",
+     "mentions": 6
+    },
+    {
+     "name": "Кити",
+     "mentions": 4
+    },
+    {
+     "name": "Облонский",
+     "mentions": 2
+    },
+    {
+     "name": "княгиня",
+     "mentions": 2
+    },
+    {
+     "name": "Долли",
+     "mentions": 1
+    },
+    {
+     "name": "m-lle Linon",
+     "mentions": 1
+    }
+   ],
+   "dialogue_share": 0.43,
+   "quoted_share": 0.17,
+   "scene": 8,
+   "uncertain": true,
+   "uncertain_reason": "чанк пересекает стык сцен 8 и 9 (каток -> выход из сада); стоит сцена первого абзаца"
+  }
+ ],
+ "scenes": [
+  {
+   "id": 1,
+   "paras": [
+    0,
+    51
+   ],
+   "place": "дом Облонских в Москве: кабинет и спальня Стивы, утро третьего дня после ссоры",
+   "participants": [
+    "Облонский",
+    "Матвей",
+    "Матрёна Филимоновна",
+    "цирюльник"
+   ],
+   "note": "Долли присутствует только в воспоминании; Анна и m-lle Roland — только упоминаются"
+  },
+  {
+   "id": 2,
+   "paras": [
+    52,
+    82
+   ],
+   "place": "столовая Облонских: кофе, газета, затем приём просительницы",
+   "participants": [
+    "Облонский",
+    "Матвей",
+    "Таня",
+    "Гриша",
+    "Калинина"
+   ],
+   "note": "переход из спальни в столовую внутри чанка 4"
+  },
+  {
+   "id": 3,
+   "paras": [
+    83,
+    122
+   ],
+   "place": "спальня Дарьи Александровны",
+   "participants": [
+    "Долли",
+    "Облонский"
+   ],
+   "note": "ссора и неудавшаяся попытка примирения"
+  },
+  {
+   "id": 4,
+   "paras": [
+    123,
+    128
+   ],
+   "place": "спальня Долли после ухода мужа; затем авторский фон о службе Облонского",
+   "participants": [
+    "Долли",
+    "Матрёна Филимоновна"
+   ],
+   "note": "вторая половина диапазона — не сцена, а нарративный экскурс"
+  },
+  {
+   "id": 5,
+   "paras": [
+    129,
+    201
+   ],
+   "place": "московское присутствие и служебный кабинет Облонского",
+   "participants": [
+    "Облонский",
+    "Левин",
+    "Никитин",
+    "Гриневич",
+    "секретарь",
+    "сторож"
+   ],
+   "note": "приход Левина делит сцену на две части без смены места"
+  },
+  {
+   "id": 6,
+   "paras": [
+    202,
+    203
+   ],
+   "place": "ретроспектива: дом Щербацких, студенческие годы Левина",
+   "participants": [
+    "Левин"
+   ],
+   "note": "нет текущего места действия — только воспоминание"
+  },
+  {
+   "id": 7,
+   "paras": [
+    204,
+    253
+   ],
+   "place": "кабинет Сергея Ивановича Кознышева (Москва)",
+   "participants": [
+    "Левин",
+    "Кознышев",
+    "профессор",
+    "лакей"
+   ],
+   "note": "спор с профессором, затем разговор братьев о Николае"
+  },
+  {
+   "id": 8,
+   "paras": [
+    254,
+    298
+   ],
+   "place": "Зоологический сад, каток (морозный зимний день)",
+   "participants": [
+    "Левин",
+    "Кити",
+    "Николай Щербацкий",
+    "m-lle Linon",
+    "катальщик",
+    "молодой конькобежец"
+   ],
+   "note": "первое объяснение Левина с Кити, закончившееся её холодностью"
+  },
+  {
+   "id": 9,
+   "paras": [
+    299,
+    313
+   ],
+   "place": "выход из Зоологического сада; отъезд в ресторан «Англия»",
+   "participants": [
+    "Левин",
+    "Кити",
+    "княгиня",
+    "Облонский"
+   ],
+   "note": "короткий стык: княгиня приглашает Левина на четверги"
+  }
+ ],
+ "characters_total": [
+  {
+   "name": "Облонский",
+   "aliases": [
+    "Степан Аркадьич",
+    "Стива",
+    "князь Облонский"
+   ],
+   "note": "Степан Аркадьич Облонский; ролевые отсылки «муж», «барин», «отец» в счёт не входят; главный герой чанков 0–19"
+  },
+  {
+   "name": "Долли",
+   "aliases": [
+    "Дарья Александровна",
+    "жена"
+   ],
+   "note": "Дарья Александровна Облонская, урождённая Щербацкая; «жена» — ролевое слово"
+  },
+  {
+   "name": "Матвей",
+   "aliases": [
+    "камердинер Матвей"
+   ],
+   "note": "камердинер Облонского; реплики «-с», называет хозяина «сударь»"
+  },
+  {
+   "name": "Анна",
+   "aliases": [
+    "Анна Аркадьевна",
+    "сестра"
+   ],
+   "note": "Анна Аркадьевна Каренина; в отрывке лично не появляется, только упоминается как ожидаемая гостья"
+  },
+  {
+   "name": "Левин",
+   "aliases": [
+    "Константин Дмитрич",
+    "Константин Левин"
+   ],
+   "note": "Константин Дмитриевич Левин; главный герой чанков 14–29"
+  },
+  {
+   "name": "Кити",
+   "aliases": [
+    "княжна Щербацкая",
+    "Екатерина Щербацкая"
+   ],
+   "note": "в тексте отрывка только «Кити»; полное имя не употребляется"
+  },
+  {
+   "name": "Матрёна Филимоновна",
+   "aliases": [
+    "Матреша",
+    "нянюшка"
+   ],
+   "note": "нянюшка Облонских, на стороне Стивы"
+  },
+  {
+   "name": "Таня",
+   "aliases": [
+    "Танчурочка",
+    "старшая девочка"
+   ],
+   "note": "старшая дочь Облонских, любимица отца"
+  },
+  {
+   "name": "Гриша",
+   "aliases": [
+    "меньшой мальчик"
+   ],
+   "note": "младший сын Облонских; в диалоге о конфетe упоминается «Грише?»"
+  },
+  {
+   "name": "Калинина",
+   "aliases": [
+    "штабс-капитанша",
+    "просительница"
+   ],
+   "note": "эпизодическая просительница; речи не имеет, только описана"
+  },
+  {
+   "name": "Никитин",
+   "aliases": [
+    "Филипп Иваныч Никитин",
+    "старый служака"
+   ],
+   "note": "сослуживец Облонского"
+  },
+  {
+   "name": "Гриневич",
+   "aliases": [
+    "Михаил Станиславич Гриневич",
+    "камер-юнкер"
+   ],
+   "note": "сослуживец Облонского; его холёные руки — повторяющаяся деталь"
+  },
+  {
+   "name": "Кознышев",
+   "aliases": [
+    "Сергей Иванович",
+    "Сергей Иваныч",
+    "брат писатель",
+    "одноутробный брат"
+   ],
+   "note": "старший брат Левина по матери, известный писатель"
+  },
+  {
+   "name": "Николай Левин",
+   "aliases": [
+    "брат Николай"
+   ],
+   "note": "старший родной брат Константина Левина, «погибший человек»; не путать с Николаем Щербацким"
+  },
+  {
+   "name": "Николай Щербацкий",
+   "aliases": [
+    "Щербацкий",
+    "кузен Кити",
+    "двоюродный брат Кити"
+   ],
+   "note": "сидит с коньками на скамейке, окликает Левина; семейные формы «Щербацкие/Щербацких» в счёт не входят"
+  },
+  {
+   "name": "профессор",
+   "aliases": [
+    "профессор философии",
+    "маленький жёлтый человечек в очках"
+   ],
+   "note": "приезжий из Харькова философ; имени в отрывке нет"
+  },
+  {
+   "name": "m-lle Roland",
+   "aliases": [
+    "француженка-гувернантка",
+    "гувернантка"
+   ],
+   "note": "бывшая гувернантка Облонских, причина ссоры; лично не появляется"
+  },
+  {
+   "name": "m-lle Linon",
+   "aliases": [
+    "mademoiselle Linon",
+    "старая француженка"
+   ],
+   "note": "гувернантка Щербацких; в чанке 27 «француженка» относится к ней, не к m-lle Roland"
+  },
+  {
+   "name": "мисс Гуль",
+   "aliases": [
+    "англичанка"
+   ],
+   "note": "гувернантка детей Облонских"
+  },
+  {
+   "name": "княгиня",
+   "aliases": [
+    "княгиня Щербацкая",
+    "мать Кити",
+    "тёща"
+   ],
+   "note": "мать Долли и Кити; «тёща» по отношению к Облонскому"
+  },
+  {
+   "name": "Каренин",
+   "aliases": [
+    "Алексей Александрович Каренин",
+    "муж Анны",
+    "шурин"
+   ],
+   "note": "только упоминается как устроитель карьеры Облонского"
+  },
+  {
+   "name": "Натали",
+   "aliases": [
+    "Натали Львова",
+    "вторая сестра Щербацкая"
+   ],
+   "note": "сестра Кити, замужем за дипломатом Львовым; только упоминается"
+  },
+  {
+   "name": "Марья",
+   "aliases": [],
+   "note": "прислуга, которой поручено приготовить диванную для Анны; одно упоминание в чанке 11"
+  }
+ ],
+ "stats": {
+  "chunks": 30,
+  "words": 11064,
+  "chunks_min_words": 307,
+  "chunks_max_words": 426,
+  "scenes": 9,
+  "characters": 23,
+  "uncertain": 11,
+  "uncertain_chunks": [
+   0,
+   1,
+   4,
+   5,
+   11,
+   12,
+   15,
+   19,
+   20,
+   24,
+   29
+  ],
+  "categories_present": {
+   "appearance": 28,
+   "clothing": 19,
+   "nature": 6,
+   "architecture": 28,
+   "emotion": 30,
+   "action_dramatic": 28,
+   "speech": 30,
+   "time": 29,
+   "social": 30
+  },
+  "dialogue_share_avg": 0.34
+ }
+}
