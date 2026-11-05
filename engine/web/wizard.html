@@ -176,6 +176,52 @@
   #wizard-engine-found li {
     margin-top: 8px;
   }
+  .wizard-downloads {
+    margin-top: 8px;
+  }
+  .wizard-download-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .wizard-download-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border, #2a2d33);
+  }
+  .wizard-download-name {
+    flex: 1 1 200px;
+    color: var(--fg, #e8eaed);
+  }
+  .wizard-download-link {
+    color: var(--accent, #7aa2f7);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .wizard-download-link:hover {
+    text-decoration: underline;
+  }
+  .wizard-download-path {
+    flex: 1 1 100%;
+    color: var(--fg-dim, #9aa0a6);
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    word-break: break-all;
+  }
+  .wizard-engine__manual {
+    margin-top: 12px;
+    color: var(--fg-dim, #9aa0a6);
+  }
+  .wizard-engine__manual p {
+    margin: 6px 0;
+  }
+  .wizard-engine__manual code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--fg, #e8eaed);
+  }
 </style>
 <div class="wizard">
   <div class="wizard__card">
@@ -205,7 +251,11 @@
         <div class="wizard-engine__actions">
           <button type="button" class="btn" id="wizard-engine-path-save" data-i18n="wizard.engine.path_save">Проверить путь</button>
           <button type="button" class="btn" id="wizard-engine-scan" data-i18n="wizard.engine.scan">Искать на диске</button>
-          <button type="button" class="btn btn--primary" id="wizard-engine-install" data-i18n="wizard.engine.install" hidden>Установить llama.cpp</button>
+        </div>
+        <div class="wizard-engine__manual">
+          <p>Скачайте llama.cpp браузером и положите бинарник в папку движка:</p>
+          <p><a class="wizard-download-link" href="https://github.com/ggml-org/llama.cpp/releases/download/b12063/llama-b12063-bin-ubuntu-x64.tar.gz" target="_blank" rel="noopener">Скачать llama.cpp b12063 (Linux x64)</a></p>
+          <p>Распакуйте архив и положите <code>llama-server</code> и библиотеки <code>lib*.so*</code> в <code>engine/bin/</code>. Затем нажмите «Проверить путь» или «Искать на диске».</p>
         </div>
         <ul id="wizard-engine-found" hidden></ul>
         <p class="wizard-hint" id="wizard-engine-hint" hidden></p>
@@ -217,8 +267,76 @@
 
     <section class="wizard-step" data-wizard-step-panel="1" hidden>
       <h2 data-i18n="wizard.model.title">Модели</h2>
-      <p class="wizard-hint" data-i18n="wizard.model.hint">Две группы: основная модель пишет прозу, эмбеддинг понимает смысл. Установите хотя бы одну основную модель и один эмбеддинг — остальное настраивается позже в «Настройках».</p>
-      <div id="wizard-model-cards"></div>
+      <p class="wizard-hint">Скачивайте модели браузером по ссылкам и сохраняйте файлы в указанные папки. Имя файла менять нельзя.</p>
+      <div class="wizard-downloads">
+        <div class="wizard-model-group">
+          <h3 class="wizard-model-group__title">Основная модель (генерация)</h3>
+          <p class="wizard-model-group__hint">Достаточно одной модели из списка. Роль задаёт папку сохранения: weaver — живая проза, pythia/editor/analysis — служебные роли.</p>
+          <ul class="wizard-download-list">
+            <li class="wizard-download-item">
+              <span class="wizard-download-name">Llama 3.2 3B · weaver</span>
+              <a class="wizard-download-link" href="https://huggingface.co/bartowski/Llama-3.2-3B-Instruct-GGUF/resolve/main/Llama-3.2-3B-Instruct-Q4_K_M.gguf" target="_blank" rel="noopener">Скачать</a>
+              <code class="wizard-download-path">world_db/models/weaver/Llama-3.2-3B-Instruct-Q4_K_M.gguf</code>
+            </li>
+            <li class="wizard-download-item">
+              <span class="wizard-download-name">Katarau 9B (RP) · weaver</span>
+              <a class="wizard-download-link" href="https://huggingface.co/katafiek/Katarau-9B-ru-RP-nsfw-GGUF/resolve/main/Katarau-9B-Q4_K_M.gguf" target="_blank" rel="noopener">Скачать</a>
+              <code class="wizard-download-path">world_db/models/weaver/Katarau-9B-Q4_K_M.gguf</code>
+            </li>
+            <li class="wizard-download-item">
+              <span class="wizard-download-name">Qwen 3.5 9B · weaver</span>
+              <a class="wizard-download-link" href="https://huggingface.co/mradermacher/Qwen3.5-9B-abliterated-i1-GGUF/resolve/main/Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf" target="_blank" rel="noopener">Скачать</a>
+              <code class="wizard-download-path">world_db/models/weaver/Qwen3.5-9B-abliterated.i1-Q4_K_M.gguf</code>
+            </li>
+            <li class="wizard-download-item">
+              <span class="wizard-download-name">Qwen 3.5 4B · weaver</span>
+              <a class="wizard-download-link" href="https://huggingface.co/mradermacher/Qwen3.5-4B-abliterated-GGUF/resolve/main/Qwen3.5-4B-abliterated.Q4_K_M.gguf" target="_blank" rel="noopener">Скачать</a>
+              <code class="wizard-download-path">world_db/models/weaver/Qwen3.5-4B-abliterated.Q4_K_M.gguf</code>
+            </li>
+            <li class="wizard-download-item">
+              <span class="wizard-download-name">Qwen 3.5 4B KAINE · weaver</span>
+              <a class="wizard-download-link" href="https://huggingface.co/kaineone/Qwen3.5-4B-abliterated-GGUF/resolve/main/KAINE-Qwen3.5-4B-abliterated.Q4_K_M.gguf" target="_blank" rel="noopener">Скачать</a>
+              <code class="wizard-download-path">world_db/models/weaver/KAINE-Qwen3.5-4B-abliterated.Q4_K_M.gguf</code>
+            </li>
+            <li class="wizard-download-item">
+              <span class="wizard-download-name">Qwen 2.5 7B · pythia</span>
+              <a class="wizard-download-link" href="https://huggingface.co/bartowski/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf" target="_blank" rel="noopener">Скачать</a>
+              <code class="wizard-download-path">world_db/models/pythia/Qwen2.5-7B-Instruct-Q4_K_M.gguf</code>
+            </li>
+            <li class="wizard-download-item">
+              <span class="wizard-download-name">Llama 3.1 8B · editor</span>
+              <a class="wizard-download-link" href="https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf" target="_blank" rel="noopener">Скачать</a>
+              <code class="wizard-download-path">world_db/models/editor/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf</code>
+            </li>
+            <li class="wizard-download-item">
+              <span class="wizard-download-name">Qwen 2.5 3B · analysis</span>
+              <a class="wizard-download-link" href="https://huggingface.co/bartowski/Qwen2.5-3B-Instruct-GGUF/resolve/main/Qwen2.5-3B-Instruct-Q4_K_M.gguf" target="_blank" rel="noopener">Скачать</a>
+              <code class="wizard-download-path">world_db/models/analysis/Qwen2.5-3B-Instruct-Q4_K_M.gguf</code>
+            </li>
+          </ul>
+        </div>
+        <div class="wizard-model-group">
+          <h3 class="wizard-model-group__title">Эмбеддинг (модель смысла)</h3>
+          <p class="wizard-model-group__hint">BGE-M3 превращает текст в векторы, эмбеддинг понимает смысл. Выберите вариант по объёму памяти.</p>
+          <ul class="wizard-download-list">
+            <li class="wizard-download-item">
+              <span class="wizard-download-name">BGE-M3 Q4_K_M · RAM &lt; 8 ГБ</span>
+              <a class="wizard-download-link" href="https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q4_K_M.gguf" target="_blank" rel="noopener">Скачать</a>
+              <code class="wizard-download-path">world_db/models/embed/bge-m3-Q4_K_M.gguf</code>
+            </li>
+            <li class="wizard-download-item">
+              <span class="wizard-download-name">BGE-M3 Q8_0 · RAM 8–16 ГБ</span>
+              <a class="wizard-download-link" href="https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q8_0.gguf" target="_blank" rel="noopener">Скачать</a>
+              <code class="wizard-download-path">world_db/models/embed/bge-m3-Q8_0.gguf</code>
+            </li>
+            <li class="wizard-download-item">
+              <span class="wizard-download-name">BGE-M3 F16 · RAM ≥ 16 ГБ</span>
+              <a class="wizard-download-link" href="https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-F16.gguf" target="_blank" rel="noopener">Скачать</a>
+              <code class="wizard-download-path">world_db/models/embed/bge-m3-F16.gguf</code>
+            </li>
+          </ul>
+        </div>
+      </div>
       <div class="wizard-actions">
         <button type="button" class="btn btn--ghost" data-wizard-back="0" data-i18n="wizard.back">Назад</button>
         <button type="button" class="btn btn--primary" id="wizard-step1-next" data-i18n="wizard.next">Дальше</button>
@@ -270,6 +388,7 @@
           <span data-i18n="atlas.censorship">Возрастной рейтинг</span>
           <select id="wizard-world-rating"></select>
         </label>
+        <p class="wizard-hint">Цензура: рейтинг выбирает словари стоп-слов — базовый список грубых слов действует при любом рейтинге, 16+ добавляет список оскорблений. Каждая варка книги и каждая сцена проходят проверку: фразы со стоп-словами в мир не попадают, остальной текст остаётся как написан. Рейтинг задаётся один раз при рождении мира и позже не меняется.</p>
         <label>
           <span data-i18n="atlas.genres">Жанры</span>
           <div class="choice-grid" id="wizard-world-genres"></div>

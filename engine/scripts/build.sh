@@ -51,3 +51,40 @@ mkdir -p packs/ru/lemmatizer
 echo "building ${cur_os}/${cur_arch} -> packs/ru/lemmatizer/tns65-lemmaru"
 CGO_ENABLED=0 GOOS="$cur_os" GOARCH="$cur_arch" \
     go build -trimpath -ldflags "${LDFLAGS}" -o packs/ru/lemmatizer/tns65-lemmaru ./cmd/tns65-lemmaru
+
+# Поставка языкового пакета в прод: пакет ездит ЦЕЛИКОМ, не выборочно.
+# Урок TNS-GAME (2026-11-04): прод со старой заглушкой stoplist.txt (7 служебных
+# слов от T-01-08) и без stoplist_16.txt резал любую варку книги цензором —
+# разбор в TNS-GAME/probe-out/REPORT.md. manifest.json пинит sha не всех файлов
+# цензора, поэтому обязательный список требуем явно, а пинимое сверяем по sha256.
+REQUIRED_PACK_FILES=(
+    stoplist.txt            # базовый словарь грубых слов — цензор при любом рейтинге
+    stoplist_16.txt         # 16+: второй словарь (оскорбления)
+    refusals.txt            # фразы-маркеры отказов LLM
+    descriptions.json
+    detectors_mood.json
+    detectors_time.json
+    lexicon_intents.jsonl
+    manifest.json
+)
+
+echo "verifying packs/ru"
+for f in "${REQUIRED_PACK_FILES[@]}"; do
+    if [ ! -f "packs/ru/$f" ]; then
+        echo "FAIL: packs/ru/$f отсутствует — без него цензор не варит книги в проде" >&2
+        exit 1
+    fi
+done
+while IFS=$'\t' read -r name sha; do
+    [ -n "$name" ] || continue
+    got="$(sha256sum "packs/ru/$name" | cut -d' ' -f1)"
+    if [ "$got" != "$sha" ]; then
+        echo "FAIL: packs/ru/$name sha256 $got != манифест $sha" >&2
+        exit 1
+    fi
+done < <(jq -r '.files | to_entries[] | "\(.key)\t\(.value)"' packs/ru/manifest.json)
+echo "packs/ru OK: словари цензора и маркеры отказов в поставке"
+
+# Сборка папки поставки (прод): копировать из корня движка bin/, base/, seed/,
+# config.yaml и packs/ целиком. Выборочное копирование пака уже однажды
+# ломало варку книг в проде.
