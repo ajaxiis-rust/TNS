@@ -395,7 +395,7 @@ govulncheck — **1 уязвимость stdlib: GO-2026-6859** (race в net/htt
 
 ```bash
 cd engine
-/home/ajaxiis/go/bin/golangci-lint run --output.json.path=../full-fixes/golangci-report.json --output.text.path=none ./...
+golangci-lint run --output.json.path=../full-fixes/golangci-report.json --output.text.colors=false ./... | tail -25
 go test -race -count=1 -timeout=25m ./... 2>&1 | tee ../full-fixes/race-test.log
 /home/ajaxiis/go/bin/govulncheck ./... 2>&1 | tee ../full-fixes/govulncheck.log
 ```
