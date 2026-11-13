@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"tns65/internal/models"
 )
 
 // seedProviderModels подменяет settings.toml, config.yaml и чтение списка
@@ -190,6 +192,129 @@ func TestProviderModelSave(t *testing.T) {
 		handleProviderModelSave(rr, req)
 		if rr.Code != http.StatusBadRequest {
 			t.Fatalf("body %s: status = %d, want 400", body, rr.Code)
+		}
+	}
+}
+
+// TestProviderModelsOpenAI — список OpenAI-совместимого провайдера читается
+// /models, служебные модели отсеиваются, цена — из providers.toml.
+func TestProviderModelsOpenAI(t *testing.T) {
+	seedProviderModels(t)
+	if err := os.WriteFile(providersTOMLPath, []byte(`
+[[providers]]
+name = "deepseek"
+protocol = "openai"
+base_url = "https://api.deepseek.com/v1"
+default_model = "deepseek-chat"
+
+[[models]]
+id = "deepseek-chat"
+input_usd_per_m = 0.28
+output_usd_per_m = 0.42
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(settingsTOMLPath, []byte("deepseek = \"sk-test\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	oldList := listOpenAIModels
+	listOpenAIModels = func(_ context.Context, baseURL, key string) ([]string, error) {
+		if baseURL != "https://api.deepseek.com/v1" || key != "sk-test" {
+			t.Errorf("base/key = %q/%q", baseURL, key)
+		}
+		return []string{"deepseek-chat", "whisper-1", "deepseek-embedding"}, nil
+	}
+	t.Cleanup(func() { listOpenAIModels = oldList })
+
+	rr := httptest.NewRecorder()
+	handleProviderModels(rr, httptest.NewRequest(http.MethodGet, "/api/providers/models?provider=deepseek", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d; body=%s", rr.Code, rr.Body.String())
+	}
+	var resp providerModelsResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Model != "deepseek-chat" {
+		t.Fatalf("model = %q", resp.Model)
+	}
+	if len(resp.Models) != 1 || resp.Models[0].ID != "deepseek-chat" {
+		t.Fatalf("модели = %+v (служебные должны отсеяться)", resp.Models)
+	}
+	if resp.Models[0].Price == nil || resp.Models[0].Price.InputUSDPerM != 0.28 {
+		t.Fatalf("цена = %+v", resp.Models[0].Price)
+	}
+
+	listOpenAIModels = func(context.Context, string, string) ([]string, error) {
+		return nil, models.ErrProviderKeyRejected
+	}
+	rr = httptest.NewRecorder()
+	handleProviderModels(rr, httptest.NewRequest(http.MethodGet, "/api/providers/models?provider=deepseek", nil))
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("отклонённый ключ: status = %d, want 409", rr.Code)
+	}
+}
+
+// TestProviderModelsCuratedList — курируемый список providers.toml (models = […])
+// отдаётся без ключа и без сети.
+func TestProviderModelsCuratedList(t *testing.T) {
+	seedProviderModels(t)
+	if err := os.WriteFile(providersTOMLPath, []byte(`
+[[providers]]
+name = "cloudflare"
+protocol = "openai"
+base_url = "https://api.cloudflare.com/client/v4/accounts/acc/ai/v1"
+default_model = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+models = ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/qwen/qwen2.5-coder-32b-instruct"]
+
+[[models]]
+id = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+input_usd_per_m = 0.29
+output_usd_per_m = 2.25
+
+[[models]]
+id = "@cf/qwen/qwen2.5-coder-32b-instruct"
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(settingsTOMLPath, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	rr := httptest.NewRecorder()
+	handleProviderModels(rr, httptest.NewRequest(http.MethodGet, "/api/providers/models?provider=cloudflare", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d; body=%s", rr.Code, rr.Body.String())
+	}
+	var resp providerModelsResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if len(resp.Models) != 2 || resp.Models[0].ID != "@cf/meta/llama-3.3-70b-instruct-fp8-fast" {
+		t.Fatalf("модели = %+v", resp.Models)
+	}
+	if resp.Models[0].Price == nil || resp.Models[0].Price.OutputUSDPerM != 2.25 {
+		t.Fatalf("цена = %+v", resp.Models[0].Price)
+	}
+}
+
+// TestProviderModelIDSlashes — имена с vendor/model, @cf/… и : принимаются.
+func TestProviderModelIDSlashes(t *testing.T) {
+	for _, id := range []string{
+		"deepseek-chat",
+		"anthropic/claude-3.5-sonnet",
+		"@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+		"accounts/fireworks/models/llama-v3p3-70b-instruct",
+		"meta-llama/Llama-3.3-70B-Instruct",
+		"gemini-3.8-flash",
+		"model:v1",
+	} {
+		if !validProviderModelID(id) {
+			t.Fatalf("имя %q отвергнуто", id)
+		}
+	}
+	for _, id := range []string{"", "/leading", "with space", "знак", "bad!"} {
+		if validProviderModelID(id) {
+			t.Fatalf("имя %q принято", id)
 		}
 	}
 }

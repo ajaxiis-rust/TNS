@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"tns65/internal/workshop"
+	"tns65/internal/providercfg"
 )
 
 // Счётчики квот и денег внешних слотов (T-08-13, F-07): индикация владельцу,
@@ -31,6 +31,7 @@ var providerLimitSource = func(string) (int64, bool) { return 0, false }
 // остаток лимита вызовов и деньги по тарифу (стоимость из журнала вызовов).
 type providerCard struct {
 	Name       string `json:"name"`
+	Label      string `json:"label,omitempty"`
 	KeySet     bool   `json:"key_set"`
 	Model      string `json:"model"`
 	Price      string `json:"price,omitempty"`      // справочная цена за 1M, вход/выход.
@@ -78,23 +79,24 @@ func readUsageTotals(path string) map[string]usageTotals {
 	return out
 }
 
-// providerCards собирает карточки внешних слотов (все пресеты реестра кроме
-// local). Ключ — из settings.toml (readSettingsKeys), модель — выбор из
-// settings.toml или заводская providers.toml, цена — из providers.toml, квота —
-// лимит из API минус вызовы журнала, деньги — сумма cost_millis журнала.
+// providerCards собирает карточки внешних слотов из реестра providers.toml.
+// Ключ — из settings.toml (readSettingsKeys), модель — выбор из settings.toml
+// или заводская providers.toml, цена — из providers.toml, квота — лимит из API
+// минус вызовы журнала, деньги — сумма cost_millis журнала.
 func providerCards() []providerCard {
 	keys := readSettingsKeys(settingsTOMLPath)
 	cat := readProviderCatalog(providersTOMLPath)
 	totals := readUsageTotals(providerUsagePath)
 	out := []providerCard{}
-	for _, p := range workshop.Presets() {
-		if p.Provider == workshop.ProviderLocal {
+	for _, def := range cat.Providers() {
+		if def.Protocol == providercfg.ProtocolLocal || def.Name == "local" {
 			continue
 		}
-		name := string(p.Provider)
-		model := selectedProviderModel(keys, cat, p.Provider)
+		name := def.Name
+		model := selectedProviderModel(keys, cat, name)
 		card := providerCard{
 			Name:      name,
+			Label:     def.Label,
 			KeySet:    keys[name] != "",
 			Model:     model,
 			Price:     priceLabel(cat, model),

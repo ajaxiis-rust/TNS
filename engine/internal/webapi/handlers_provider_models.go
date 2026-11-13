@@ -14,13 +14,14 @@ import (
 
 	"tns65/internal/models"
 	"tns65/internal/netgate"
-	"tns65/internal/workshop"
+	"tns65/internal/providercfg"
 )
 
-// Выбор внешней модели (T-02-11, шаг 3): список моделей читается у провайдера
-// по сохранённому ключу, выбранная модель хранится в settings.toml рядом с
-// ключом и перекрывает заводское имя. Цены Gemini API не отдаёт — они берутся
-// из справочной таблицы ниже и показываются как справка.
+// Выбор внешней модели (T-02-11, шаг 3): реестр провайдеров и заводские модели —
+// в providers.toml, выбранная модель — в settings.toml рядом с ключом. Список
+// моделей читается по сохранённому ключу (Gemini ListModels или
+// OpenAI-совместимый /models) либо берётся из курируемого списка файла. Цены
+// API не отдаёт — они в providers.toml.
 
 const (
 	providerModelsTimeout = 12 * time.Second
@@ -51,29 +52,14 @@ type providerModelsResponse struct {
 	Models   []providerModelCard `json:"models"`
 }
 
-// modelPriceTable — справочник цен удалён в providers.toml: цены и заводские
-// модели внешних провайдеров читаются из файла рядом с settings.toml (см.
-// providers_catalog.go), поэтому правка не требует пересборки ядра.
-
-// selectedProviderModel — модель провайдера: выбор из settings.toml, иначе
-// заводская из providers.toml ([defaults]), иначе встроенная models.ModelFor.
-func selectedProviderModel(keys map[string]string, cat providerCatalog, provider workshop.Provider) string {
-	if model := strings.TrimSpace(keys[models.ModelSettingsKey(models.Provider(provider))]); model != "" {
-		return model
+// externalProvider ищет внешний провайдер в реестре providers.toml; local и
+// неизвестные имена отвергаются.
+func externalProvider(cat providercfg.Config, name string) (providercfg.Provider, bool) {
+	p, ok := cat.Provider(strings.TrimSpace(name))
+	if !ok || p.Protocol == providercfg.ProtocolLocal || p.Name == "local" {
+		return providercfg.Provider{}, false
 	}
-	return cat.defaultFor(string(provider))
-}
-
-// externalProvider приводит имя к внешнему пресету реестра; local и неизвестные
-// имена отвергаются.
-func externalProvider(name string) (workshop.Provider, bool) {
-	trimmed := strings.TrimSpace(name)
-	for _, p := range workshop.Presets() {
-		if p.Provider != workshop.ProviderLocal && string(p.Provider) == trimmed {
-			return p.Provider, true
-		}
-	}
-	return "", false
+	return p, true
 }
 
 // geminiModelInfo — модель из ответа Gemini ListModels (только нужные поля).
@@ -95,7 +81,11 @@ type geminiModelsPage struct {
 var listGeminiModels = fetchGeminiModels
 
 // errProviderKeyRejected — провайдер не принял ключ (400/401/403).
-var errProviderKeyRejected = errors.New("provider key rejected")
+var errProviderKeyRejected = models.ErrProviderKeyRejected
+
+// listOpenAIModels — подменяемая в тестах функция чтения списка моделей
+// OpenAI-совместимого провайдера.
+var listOpenAIModels = models.ListOpenAIModels
 
 // fetchGeminiModels читает список моделей Gemini ключом провайдера. Ключ идёт
 // заголовком x-goog-api-key, чтобы не попасть в URL, журналы и тексты ошибок.
@@ -149,7 +139,8 @@ func isTextGenerationModel(id string) bool {
 	blocked := []string{
 		"-tts", "-image", "-live", "-transcribe", "-audio", "imagen", "lyria",
 		"veo", "embedding", "robotics", "computer-use", "deep-research",
-		"antigravity", "nano-banana", "omni", "decision",
+		"antigravity", "nano-banana", "omni", "decision", "whisper", "dall-e",
+		"rerank", "moderation",
 	}
 	for _, part := range blocked {
 		if strings.Contains(id, part) {
@@ -159,9 +150,10 @@ func isTextGenerationModel(id string) bool {
 	return true
 }
 
-// providerModelCards превращает ответ провайдера в карточки для UI: только
-// текстовые модели, поддерживающие generateContent, с ценой из providers.toml.
-func providerModelCards(raw []geminiModelInfo, cat providerCatalog) []providerModelCard {
+// providerModelCards превращает ответ Gemini ListModels в карточки для UI:
+// только текстовые модели, поддерживающие generateContent, с ценой и именем из
+// providers.toml.
+func providerModelCards(raw []geminiModelInfo, cat providercfg.Config) []providerModelCard {
 	cards := make([]providerModelCard, 0, len(raw))
 	for _, m := range raw {
 		id := strings.TrimPrefix(m.Name, "models/")
@@ -170,17 +162,55 @@ func providerModelCards(raw []geminiModelInfo, cat providerCatalog) []providerMo
 		}
 		displayName := m.DisplayName
 		if displayName == "" {
-			displayName = cat.displayName(id)
+			displayName = modelDisplayName(cat, id)
 		}
 		cards = append(cards, providerModelCard{
 			ID:           id,
 			DisplayName:  displayName,
 			InputTokens:  m.InputTokenLimit,
 			OutputTokens: m.OutputTokenLimit,
-			Price:        cat.priceForModel(id),
+			Price:        priceForModel(cat, id),
 		})
 	}
 	sort.Slice(cards, func(i, j int) bool { return cards[i].ID < cards[j].ID })
+	return cards
+}
+
+// openAIModelCards превращает список /models OpenAI-совместимого провайдера в
+// карточки: служебные модели (эмбеддинги, речь, картинки, модерация) отсеиваются,
+// цена и имя — из providers.toml. Токен-лимиты OpenAI-совместимый /models не
+// отдаёт.
+func openAIModelCards(ids []string, cat providercfg.Config) []providerModelCard {
+	cards := make([]providerModelCard, 0, len(ids))
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" || !isTextGenerationModel(id) {
+			continue
+		}
+		cards = append(cards, providerModelCard{
+			ID:          id,
+			DisplayName: modelDisplayName(cat, id),
+			Price:       priceForModel(cat, id),
+		})
+	}
+	sort.Slice(cards, func(i, j int) bool { return cards[i].ID < cards[j].ID })
+	return cards
+}
+
+// curatedModelCards собирает карточки из курируемого списка providers.toml
+// (models = [...]): сеть и ключ не нужны, порядок файла сохраняется.
+func curatedModelCards(ids []string, cat providercfg.Config) []providerModelCard {
+	cards := make([]providerModelCard, 0, len(ids))
+	for _, id := range ids {
+		if id == "" {
+			continue
+		}
+		cards = append(cards, providerModelCard{
+			ID:          id,
+			DisplayName: modelDisplayName(cat, id),
+			Price:       priceForModel(cat, id),
+		})
+	}
 	return cards
 }
 
@@ -193,41 +223,78 @@ func supportsGenerateContent(methods []string) bool {
 	return false
 }
 
+// geminiHost достаёт хост Gemini из base_url реестра; пусто — хост из конфига.
+func geminiHost(def providercfg.Provider) string {
+	if u, err := url.Parse(def.BaseURL); err == nil && u.Host != "" {
+		return u.Host
+	}
+	if cfg, err := models.LoadSlotsConfig(settingsConfigPath); err == nil {
+		return cfg.GeminiHost
+	}
+	return models.DefaultSlotsConfig().GeminiHost
+}
+
 // handleProviderModels — GET /api/providers/models?provider=<имя>: список
-// моделей внешнего провайдера по сохранённому ключу. Только чтение.
+// моделей внешнего провайдера. Курируемый список из providers.toml отдаётся без
+// сети; иначе список читается у провайдера сохранённым ключом (Gemini ListModels
+// или OpenAI-совместимый /models). Только чтение.
 func handleProviderModels(w http.ResponseWriter, r *http.Request) {
-	provider, ok := externalProvider(r.URL.Query().Get("provider"))
+	cat := readProviderCatalog(providersTOMLPath)
+	def, ok := externalProvider(cat, r.URL.Query().Get("provider"))
 	if !ok {
 		writeError(w, http.StatusBadRequest, codeBadRequest, "unknown external provider")
 		return
 	}
 	keys := readSettingsKeys(settingsTOMLPath)
-	cat := readProviderCatalog(providersTOMLPath)
-	key := strings.TrimSpace(keys[string(provider)])
+	resp := providerModelsResponse{
+		Provider: def.Name,
+		Model:    selectedProviderModel(keys, cat, def.Name),
+	}
+	if len(def.Models) > 0 {
+		resp.Models = curatedModelCards(def.Models, cat)
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
+	key := strings.TrimSpace(keys[def.Name])
 	if key == "" {
 		writeError(w, http.StatusConflict, codeConflict, "provider key is not set")
 		return
 	}
-	cfg, err := models.LoadSlotsConfig(settingsConfigPath)
-	if err != nil {
-		cfg = models.DefaultSlotsConfig()
-	}
 	ctx, cancel := context.WithTimeout(r.Context(), providerModelsTimeout)
 	defer cancel()
-	raw, err := listGeminiModels(ctx, cfg.GeminiHost, key)
-	if err != nil {
-		if errors.Is(err, errProviderKeyRejected) {
-			writeError(w, http.StatusConflict, codeConflict, "provider key rejected")
+	switch def.Protocol {
+	case providercfg.ProtocolLocal:
+		writeError(w, http.StatusBadRequest, codeBadRequest, "local provider has no remote model list")
+		return
+	case providercfg.ProtocolGemini:
+		raw, err := listGeminiModels(ctx, geminiHost(def), key)
+		if err != nil {
+			writeProviderModelsError(w, err)
 			return
 		}
-		writeError(w, http.StatusInternalServerError, codeInternal, "provider models unavailable")
+		resp.Models = providerModelCards(raw, cat)
+	case providercfg.ProtocolOpenAI:
+		ids, err := listOpenAIModels(ctx, def.BaseURL, key)
+		if err != nil {
+			writeProviderModelsError(w, err)
+			return
+		}
+		resp.Models = openAIModelCards(ids, cat)
+	default:
+		writeError(w, http.StatusBadRequest, codeBadRequest, "unknown provider protocol")
 		return
 	}
-	writeJSON(w, http.StatusOK, providerModelsResponse{
-		Provider: string(provider),
-		Model:    selectedProviderModel(keys, cat, provider),
-		Models:   providerModelCards(raw, cat),
-	})
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// writeProviderModelsError переводит ошибку чтения списка моделей в ответ:
+// отклонённый ключ — 409, остальное — 500.
+func writeProviderModelsError(w http.ResponseWriter, err error) {
+	if errors.Is(err, models.ErrProviderKeyRejected) {
+		writeError(w, http.StatusConflict, codeConflict, "provider key rejected")
+		return
+	}
+	writeError(w, http.StatusInternalServerError, codeInternal, "provider models unavailable")
 }
 
 // handleProviderModelSave — PUT /api/providers/model: выбранная модель
@@ -242,7 +309,8 @@ func handleProviderModelSave(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, codeBadRequest, "bad provider model body")
 		return
 	}
-	provider, ok := externalProvider(req.Provider)
+	cat := readProviderCatalog(providersTOMLPath)
+	def, ok := externalProvider(cat, req.Provider)
 	if !ok {
 		writeError(w, http.StatusBadRequest, codeBadRequest, "unknown external provider")
 		return
@@ -253,30 +321,32 @@ func handleProviderModelSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	keys := readSettingsKeys(settingsTOMLPath)
-	keys[models.ModelSettingsKey(models.Provider(provider))] = model
+	keys[models.ModelSettingsKey(models.Provider(def.Name))] = model
 	if err := writeSettingsKeys(settingsTOMLPath, keys); err != nil {
 		writeError(w, http.StatusInternalServerError, codeInternal, "settings write failed")
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status":           "ok",
-		"provider":         string(provider),
+		"provider":         def.Name,
 		"model":            model,
-		"price":            readProviderCatalog(providersTOMLPath).priceForModel(model),
+		"price":            priceForModel(cat, model),
 		"restart_required": true,
 	})
 }
 
-// validProviderModelID — имя модели Gemini: строчная латиница, цифры, точка и
-// дефис.
+// validProviderModelID — имя модели провайдера: латиница, цифры, точка, дефис,
+// подчёркивание, слэш (vendor/model), двоеточие и @ (Cloudflare). Начинается с
+// буквы или цифры.
 func validProviderModelID(model string) bool {
-	if model == "" || len(model) > 120 {
+	if model == "" || len(model) > 160 {
 		return false
 	}
 	for i, r := range model {
 		switch {
-		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
-		case (r == '.' || r == '-') && i > 0:
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+		case r == '@':
+		case (r == '.' || r == '-' || r == '_' || r == '/' || r == ':') && i > 0:
 		default:
 			return false
 		}

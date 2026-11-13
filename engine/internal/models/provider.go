@@ -47,14 +47,15 @@ func ProviderPresets() []Provider {
 // ResetProvider — сброс пресета: возвращает локальный пресет (шаг 3).
 func ResetProvider() Provider { return ProviderLocal }
 
-// ProviderByName приводит имя к пресету реестра; неизвестное имя — local.
+// ProviderByName приводит имя к пресету: пустое — local, остальные имена
+// сохраняются как есть (реестр провайдеров — внешний providers.toml, поэтому
+// список имён в коде не фиксируется).
 func ProviderByName(name string) Provider {
-	switch Provider(name) {
-	case ProviderLocal, ProviderGeminiFlash, ProviderGeminiPro:
-		return Provider(name)
-	default:
+	name = strings.TrimSpace(name)
+	if name == "" {
 		return ProviderLocal
 	}
+	return Provider(name)
 }
 
 // DefaultGeminiModel — имя модели Gemini по умолчанию (B-4: flash по умолчанию).

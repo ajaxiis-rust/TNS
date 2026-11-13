@@ -272,8 +272,11 @@ func TestPresetDefault(t *testing.T) {
 			t.Fatalf("реестр пресетов = %v, ожидался %v", got, want)
 		}
 	}
-	if p := ProviderByName("неизвестный"); p != ProviderLocal {
-		t.Fatalf("неизвестный пресет = %q, ожидался local", p)
+	if p := ProviderByName("deepseek"); p != Provider("deepseek") {
+		t.Fatalf("имя внешнего провайдера = %q, ожидалось без подмены на local", p)
+	}
+	if p := ProviderByName("  "); p != ProviderLocal {
+		t.Fatalf("пустое имя = %q, ожидался local", p)
 	}
 
 	cfg, err := LoadSlotsConfig(filepath.Join("..", "..", "config.yaml"))

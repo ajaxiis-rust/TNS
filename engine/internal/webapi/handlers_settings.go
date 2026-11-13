@@ -27,8 +27,8 @@ import (
 	"tns65/internal/journal"
 	"tns65/internal/models"
 	"tns65/internal/paganel"
+	"tns65/internal/providercfg"
 	"tns65/internal/supervisor"
-	"tns65/internal/workshop"
 	web "tns65/web"
 )
 
@@ -235,6 +235,7 @@ type settingsPreset struct {
 
 type settingsProvider struct {
 	Name   string `json:"name"`
+	Label  string `json:"label,omitempty"`
 	KeySet bool   `json:"key_set"`
 }
 
@@ -429,24 +430,23 @@ func channelWarningValue() string {
 	return channelWarning
 }
 
-// buildSettingsPresets собирает пресеты реестра T-02-11 и карточки внешних
-// провайдеров с признаком «ключ введён» (сам ключ наружу не отдаётся).
+// buildSettingsPresets собирает пресеты слота из реестра providers.toml: local
+// всегда первый (запаска :5001), затем внешние провайдеры файла с признаком
+// «ключ введён» (сам ключ наружу не отдаётся).
 func buildSettingsPresets(keys map[string]string) ([]settingsPreset, []settingsProvider) {
-	factory := workshop.Presets()
-	presets := make([]settingsPreset, 0, len(factory))
-	providers := make([]settingsProvider, 0, len(factory))
-	for _, p := range factory {
-		presets = append(presets, settingsPreset{
-			Provider:  string(p.Provider),
-			GenAddr:   p.GenAddr,
-			EmbedAddr: p.EmbedAddr,
-		})
-		if p.Provider != workshop.ProviderLocal {
-			providers = append(providers, settingsProvider{
-				Name:   string(p.Provider),
-				KeySet: keys[string(p.Provider)] != "",
-			})
+	cat := readProviderCatalog(providersTOMLPath)
+	presets := []settingsPreset{{Provider: "local", GenAddr: ":5001", EmbedAddr: ":5002"}}
+	providers := make([]settingsProvider, 0, len(cat.Providers()))
+	for _, def := range cat.Providers() {
+		if def.Protocol == providercfg.ProtocolLocal || def.Name == "local" {
+			continue
 		}
+		presets = append(presets, settingsPreset{Provider: def.Name})
+		providers = append(providers, settingsProvider{
+			Name:   def.Name,
+			Label:  def.Label,
+			KeySet: keys[def.Name] != "",
+		})
 	}
 	return presets, providers
 }

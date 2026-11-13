@@ -1,9 +1,11 @@
 package turn
 
 import (
+	"fmt"
 	"strings"
 
 	"tns65/internal/models"
+	"tns65/internal/providercfg"
 )
 
 // Токены-заменители биндера слотов (T-03-03, шаг 2). Закрываются биндером по
@@ -198,27 +200,26 @@ func nonEmpty(v, fallback string) string {
 	return v
 }
 
-// ProviderSlot возвращает слот Ткача для пресета из cfg (T-03-18, шаг 3):
-// local — локальная запаска :5001 (models.Weaver); внешний пресет — клиент
-// провайдера через сетевой гейт (models.ProviderClient). Выбранный провайдер
-// читается из cfg.Default; модель — model, а при пустом значении заводская
-// models.ModelFor. Дефолт и сброс — local.
-func ProviderSlot(cfg models.SlotsConfig, apiKey, model string) (ProseSlot, error) {
-	if cfg.Default == models.ProviderGeminiFlash || cfg.Default == models.ProviderGeminiPro {
-		if strings.TrimSpace(model) == "" {
-			model = models.ModelFor(cfg.Default)
-		}
-		return models.NewProviderClient("https://"+cfg.GeminiHost, model, apiKey)
+// ProviderSlot возвращает слот Ткача по определению провайдера из
+// providers.toml (T-03-18, шаг 3): local — локальная запаска :5001
+// (models.Weaver); gemini — Gemini generateContent; openai — OpenAI-совместимый
+// /chat/completions. Оба внешних клиента ходят только через сетевой гейт.
+// Модель — model, при пустом значении заводская из providers.toml.
+func ProviderSlot(def providercfg.Provider, apiKey, model string) (ProseSlot, error) {
+	if def.Protocol == providercfg.ProtocolLocal {
+		return models.NewWeaver(models.DefaultWeaverURL)
 	}
-	return models.NewWeaver(models.DefaultWeaverURL)
-}
-
-// ProviderSlotFromConfig читает выбранного провайдера из секции slots файла
-// конфигурации path и возвращает слот Ткача для него.
-func ProviderSlotFromConfig(path, apiKey, model string) (ProseSlot, error) {
-	cfg, err := models.LoadSlotsConfig(path)
-	if err != nil {
-		return nil, err
+	if strings.TrimSpace(model) == "" {
+		model = def.DefaultModel
 	}
-	return ProviderSlot(cfg, apiKey, model)
+	switch def.Protocol {
+	case providercfg.ProtocolLocal:
+		return models.NewWeaver(models.DefaultWeaverURL)
+	case providercfg.ProtocolGemini:
+		return models.NewProviderClient(def.BaseURL, model, apiKey)
+	case providercfg.ProtocolOpenAI:
+		return models.NewOpenAIClient(def.BaseURL, model, apiKey)
+	default:
+		return nil, fmt.Errorf("turn: неизвестный протокол провайдера %q", def.Protocol)
+	}
 }

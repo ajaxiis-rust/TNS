@@ -6,73 +6,15 @@ import (
 	"testing"
 )
 
-// TestParseProviderCatalog — разбор providers.toml: секция [defaults], массив
-// таблиц [[models]], комментарии и «#» внутри кавычек; чужие секции и битые
-// строки не мешают.
-func TestParseProviderCatalog(t *testing.T) {
-	cat := parseProviderCatalog(`
-# комментарий
-[defaults]
-"gemini-flash" = "gemini-3.8-flash"   # рядом с ключом
-gemini-pro = "gemini-3.1-pro-preview"
-
-[other]
-ignored = "да"
-
-[[models]]
-id = "gemini-3.8-flash"
-display_name = "Gemini 3.8 Flash # не комментарий"
-input_usd_per_m = 0.75
-output_usd_per_m = 3.75
-note = "до 31.12.2026"
-
-[[models]]
-id = "broken-model"
-input_usd_per_m = не число
-
-[[models]]
-display_name = "Без id — запись пропускается"
-`)
-
-	if got := cat.defaultFor("gemini-flash"); got != "gemini-3.8-flash" {
-		t.Fatalf("defaults gemini-flash = %q", got)
-	}
-	if got := cat.defaultFor("gemini-pro"); got != "gemini-3.1-pro-preview" {
-		t.Fatalf("defaults gemini-pro = %q", got)
-	}
-	price := cat.priceForModel("gemini-3.8-flash")
-	if price == nil || price.InputUSDPerM != 0.75 || price.OutputUSDPerM != 3.75 {
-		t.Fatalf("цена gemini-3.8-flash = %+v", price)
-	}
-	if cat.displayName("gemini-3.8-flash") != "Gemini 3.8 Flash # не комментарий" {
-		t.Fatalf("display_name = %q", cat.displayName("gemini-3.8-flash"))
-	}
-	if _, ok := cat.models["broken-model"]; !ok {
-		t.Fatal("запись с битым числом потеряна целиком")
-	}
-	if cat.models["broken-model"].InputUSDPerM != 0 {
-		t.Fatal("битое число записалось")
-	}
-	if _, ok := cat.models[""]; ok {
-		t.Fatal("запись без id попала в справочник")
-	}
-	if priceLabel(cat, "gemini-3.8-flash") != "$0.75 / $3.75 за 1M" {
-		t.Fatalf("priceLabel = %q", priceLabel(cat, "gemini-3.8-flash"))
-	}
-	if priceNote(cat, "gemini-3.8-flash") != "до 31.12.2026" {
-		t.Fatalf("priceNote = %q", priceNote(cat, "gemini-3.8-flash"))
-	}
-}
-
-// TestProviderCatalogMissingFile — файла нет: справочник пуст, заводская
-// модель берётся из встроенной models.ModelFor, цена неизвестна.
+// TestProviderCatalogMissingFile — файла нет: встроенный минимум провайдеров,
+// заводская модель на месте, цена неизвестна.
 func TestProviderCatalogMissingFile(t *testing.T) {
 	cat := readProviderCatalog(filepath.Join(t.TempDir(), "absent.toml"))
-	if got := cat.defaultFor("gemini-flash"); got != "gemini-3.8-flash" {
-		t.Fatalf("defaultFor без файла = %q, want встроенную модель", got)
+	if _, ok := cat.Provider("gemini-flash"); !ok {
+		t.Fatal("встроенный gemini-flash потерян")
 	}
-	if cat.priceForModel("gemini-3.8-flash") != nil {
-		t.Fatal("цена без файла должна быть неизвестна")
+	if got := cat.DefaultModel("gemini-flash"); got != "gemini-3.8-flash" {
+		t.Fatalf("DefaultModel без файла = %q", got)
 	}
 	if priceLabel(cat, "gemini-3.8-flash") != "" {
 		t.Fatal("подпись цены без файла должна быть пустой")
@@ -82,11 +24,15 @@ func TestProviderCatalogMissingFile(t *testing.T) {
 // TestProviderCatalogPriceForDisabledModel — у отключённой модели цена 0/0, в
 // интерфейсе остаётся только примечание.
 func TestProviderCatalogPriceForDisabledModel(t *testing.T) {
-	cat := parseProviderCatalog(`
+	path := filepath.Join(t.TempDir(), "providers.toml")
+	if err := os.WriteFile(path, []byte(`
 [[models]]
 id = "gemini-2.0-flash"
 note = "модель отключена Google"
-`)
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cat := readProviderCatalog(path)
 	if got := priceLabel(cat, "gemini-2.0-flash"); got != "модель отключена Google" {
 		t.Fatalf("priceLabel отключённой модели = %q", got)
 	}
@@ -102,8 +48,11 @@ func TestProviderCardsReadProvidersFileLive(t *testing.T) {
 	seedProviderCounters(t)
 
 	if err := os.WriteFile(providersTOMLPath, []byte(`
-[defaults]
-"gemini-flash" = "gemini-3.8-flash"
+[[providers]]
+name = "gemini-flash"
+protocol = "gemini"
+base_url = "https://generativelanguage.googleapis.com"
+default_model = "gemini-3.8-flash"
 
 [[models]]
 id = "gemini-3.8-flash"
@@ -119,8 +68,9 @@ output_usd_per_m = 3.75
 
 	// Правка файла — следующая карточка уже с новой ценой и моделью.
 	if err := os.WriteFile(providersTOMLPath, []byte(`
-[defaults]
-"gemini-flash" = "gemini-4-hydrogen"
+[[providers]]
+name = "gemini-flash"
+default_model = "gemini-4-hydrogen"
 
 [[models]]
 id = "gemini-4-hydrogen"
@@ -155,16 +105,57 @@ note = "есть бесплатный уровень"
 	}
 }
 
+// TestProviderCardsDynamicProvider — провайдер из файла без правок кода
+// появляется в карточках.
+func TestProviderCardsDynamicProvider(t *testing.T) {
+	seedProviderCounters(t)
+	if err := os.WriteFile(providersTOMLPath, []byte(`
+[[providers]]
+name = "gemini-flash"
+protocol = "gemini"
+default_model = "gemini-3.8-flash"
+
+[[providers]]
+name = "deepseek"
+label = "DeepSeek"
+protocol = "openai"
+base_url = "https://api.deepseek.com/v1"
+default_model = "deepseek-chat"
+
+[[models]]
+id = "deepseek-chat"
+input_usd_per_m = 0.28
+output_usd_per_m = 0.42
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(settingsTOMLPath, []byte("deepseek = \"sk-ds\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cards := providerCardsByName(providerCards())
+	ds, ok := cards["deepseek"]
+	if !ok {
+		t.Fatalf("динамический провайдер не появился: %+v", cards)
+	}
+	if ds.Model != "deepseek-chat" || ds.Price != "$0.28 / $0.42 за 1M" || !ds.KeySet {
+		t.Fatalf("карточка deepseek = %+v", ds)
+	}
+}
+
 // TestProviderModelCardsCatalogDisplayName — если провайдер не отдал имя модели,
 // берётся display_name из providers.toml.
 func TestProviderModelCardsCatalogDisplayName(t *testing.T) {
-	cat := parseProviderCatalog(`
+	path := filepath.Join(t.TempDir(), "providers.toml")
+	if err := os.WriteFile(path, []byte(`
 [[models]]
 id = "gemini-3.8-flash"
 display_name = "Gemini 3.8 Flash"
 input_usd_per_m = 0.75
 output_usd_per_m = 3.75
-`)
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cat := readProviderCatalog(path)
 	cards := providerModelCards([]geminiModelInfo{{
 		Name:                       "models/gemini-3.8-flash",
 		SupportedGenerationMethods: []string{"generateContent"},

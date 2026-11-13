@@ -4,7 +4,22 @@
 # списка не выполняется.
 netgate:
   allowed_hosts:
-    - generativelanguage.googleapis.com  # внешний API слота (Gemini, B-4)
+    - generativelanguage.googleapis.com  # Gemini: родной протокол и OpenAI-вход (providers.toml)
+    - api.mistral.ai                      # Mistral AI (OpenAI-совместимый)
+    - api.cohere.ai                       # Cohere Compatibility API
+    - openrouter.ai                       # OpenRouter
+    - api.groq.com                        # Groq
+    - api.sambanova.ai                    # SambaNova Cloud
+    - api.cerebras.ai                     # Cerebras
+    - integrate.api.nvidia.com            # NVIDIA NIM
+    - models.github.ai                    # GitHub Models (PAT models:read)
+    - api.cloudflare.com                  # Cloudflare Workers AI
+    - router.huggingface.co               # Hugging Face Inference Providers
+    - api.z.ai                            # Z.ai / Zhipu AI
+    - api.fireworks.ai                    # Fireworks AI
+    - api.deepinfra.com                   # DeepInfra
+    - api.tokenfactory.nebius.com         # Nebius Token Factory
+    - api.deepseek.com                    # DeepSeek
     - huggingface.co                      # HF — менеджер моделей (MD-09.1)
     - "*.huggingface.co"                  # CDN LFS: HF отдаёт файл редиректом
     - "*.hf.co"                           # Xet/CDN: us.aws.cdn.hf.co и другие

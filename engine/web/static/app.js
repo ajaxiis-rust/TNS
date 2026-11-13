@@ -2731,8 +2731,10 @@
       var quota = p.quota ? escapeHTML(p.quota) : unavailable;
       var cost = formatProviderCost(p.cost_millis);
       var selectID = "provider-model-" + p.name;
+      var title = p.label || p.name;
       return '<div class="settings-provider" data-provider="' + escapeHTML(p.name) + '">' +
-        '<div class="settings-provider__head"><b>' + escapeHTML(p.name) + '</b>' +
+        '<div class="settings-provider__head"><b>' + escapeHTML(title) + '</b>' +
+        (p.label ? ' <span class="settings-provider__id">' + escapeHTML(p.name) + '</span>' : '') +
         '<span class="st ' + (p.key_set ? "st--ok" : "st--err") + '">' +
         (p.key_set ? "ключ задан" : "без ключа") + '</span></div>' +
         '<div class="settings-provider__row settings-provider__model-row">' +
@@ -3163,7 +3165,8 @@
     }
     select.innerHTML = '<option value="">— Выберите провайдера —</option>' +
       (providers || []).map(function (p) {
-        return '<option value="' + escapeHTML(p.name) + '">' + escapeHTML(p.name) + "</option>";
+        var text = p.label ? p.label + " (" + p.name + ")" : p.name;
+        return '<option value="' + escapeHTML(p.name) + '">' + escapeHTML(text) + "</option>";
       }).join("");
   }
 

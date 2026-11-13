@@ -1531,6 +1531,11 @@ body {
 }
 
 /* Выбор модели провайдера: список читается по ключу, выбор пишется сразу. */
+.settings-provider__id {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
 .settings-provider__model-row {
   display: flex;
   flex-wrap: wrap;

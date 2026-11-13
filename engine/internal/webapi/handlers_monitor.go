@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"tns65/internal/journal"
-	"tns65/internal/workshop"
+	"tns65/internal/providercfg"
 )
 
 // Мониторинг (T-08-11, UI-09, F-09): раздел «Настройки», только чтение
@@ -126,14 +126,14 @@ func monitorSlots() []monitorSlot {
 			Addr:     llm.Embed.Addr,
 		},
 	}
-	for _, p := range workshop.Presets() {
-		if p.Provider == workshop.ProviderLocal {
+	for _, def := range readProviderCatalog(providersTOMLPath).Providers() {
+		if def.Protocol == providercfg.ProtocolLocal || def.Name == "local" {
 			continue
 		}
 		slots = append(slots, monitorSlot{
-			Name:     string(p.Provider),
+			Name:     def.Name,
 			Kind:     "provider",
-			KeyValid: keys[string(p.Provider)] != "",
+			KeyValid: keys[def.Name] != "",
 		})
 	}
 	return slots

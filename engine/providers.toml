@@ -1,18 +1,166 @@
-# providers.toml — внешние провайдеры: заводские модели и справочник цен.
+# providers.toml — внешние провайдеры генерации: адрес, протокол, заводская
+# модель и справочник цен.
 #
-# Ядро читает этот файл при каждом запросе (карточки «Провайдеры» и список
-# моделей), поэтому правка цены или заводской модели применяется без пересборки
-# ядра. Файл лежит рядом с settings.toml в корне работающей папки.
+# Ядро читает этот файл при каждом запросе (карточки «Провайдеры», список
+# моделей), поэтому добавление провайдера, правка заводской модели или цены не
+# требуют пересборки. Для слотов Ткача файл читается при старте ядра — новый
+# slots.default применяется после перезапуска.
 #
-# [defaults] — заводская модель пресета, пока в settings.toml нет выбора.
-#   Ключ — имя пресета из реестра workshop (slots.default в config.yaml).
-# [[models]] — справочник моделей: цена за 1M токенов в USD, вход и выход.
-#   API Gemini цен не отдаёт, поэтому цены и примечания живут только здесь.
-#   Цена 0/0 без чисел — модель отключена; в интерфейсе показывается note.
+# [[providers]] — внешний слот:
+#   name          — имя пресета: сюда же пишется ключ в settings.toml и
+#                   значение slots.default в config.yaml;
+#   label         — человекочитаемое имя в интерфейсе (необязательно);
+#   protocol      — gemini (generateContent) или openai (/chat/completions);
+#   base_url      — база без /chat/completions: для openai дописывается
+#                   /chat/completions и /models, для gemini — /v1beta/…;
+#   default_model — заводская модель, пока в settings.toml нет выбора;
+#   models        — курируемый список моделей (необязательно): если задан,
+#                   «Список» показывает его без сети и без ключа.
+#
+# [[models]] — справочник цен: id модели, цена за 1M токенов в USD (вход и
+# выход), примечание. Провайдеры цены через API не отдают. Модели, которых нет
+# в справочнике, показываются с «цена неизвестна».
+#
+# Хост каждого провайдера должен быть в netgate.allowed_hosts (config.yaml),
+# иначе запрос не выйдет наружу.
 
-[defaults]
-"gemini-flash" = "gemini-3.8-flash"
-"gemini-pro" = "gemini-3.1-pro-preview"
+# --- Gemini (родной протокол) ---------------------------------------------
+
+[[providers]]
+name = "gemini-flash"
+label = "Google Gemini Flash"
+protocol = "gemini"
+base_url = "https://generativelanguage.googleapis.com"
+default_model = "gemini-3.8-flash"
+
+[[providers]]
+name = "gemini-pro"
+label = "Google Gemini Pro"
+protocol = "gemini"
+base_url = "https://generativelanguage.googleapis.com"
+default_model = "gemini-3.1-pro-preview"
+
+# --- Gemini через OpenAI-совместимый вход ----------------------------------
+
+[[providers]]
+name = "gemini-openai"
+label = "Google Gemini (OpenAI-совместимый)"
+protocol = "openai"
+base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
+default_model = "gemini-3.8-flash"
+
+# --- OpenAI-совместимые провайдеры -----------------------------------------
+
+[[providers]]
+name = "deepseek"
+label = "DeepSeek"
+protocol = "openai"
+base_url = "https://api.deepseek.com/v1"
+default_model = "deepseek-chat"
+
+[[providers]]
+name = "mistral"
+label = "Mistral AI"
+protocol = "openai"
+base_url = "https://api.mistral.ai/v1"
+default_model = "mistral-large-latest"
+
+[[providers]]
+name = "cohere"
+label = "Cohere"
+protocol = "openai"
+base_url = "https://api.cohere.ai/compatibility/v1"
+default_model = "command-r-plus"
+
+[[providers]]
+name = "openrouter"
+label = "OpenRouter"
+protocol = "openai"
+base_url = "https://openrouter.ai/api/v1"
+default_model = "openrouter/auto"
+
+[[providers]]
+name = "groq"
+label = "Groq"
+protocol = "openai"
+base_url = "https://api.groq.com/openai/v1"
+default_model = "llama-3.3-70b-versatile"
+
+[[providers]]
+name = "sambanova"
+label = "SambaNova Cloud"
+protocol = "openai"
+base_url = "https://api.sambanova.ai/v1"
+default_model = "Meta-Llama-3.3-70B-Instruct"
+
+[[providers]]
+name = "cerebras"
+label = "Cerebras"
+protocol = "openai"
+base_url = "https://api.cerebras.ai/v1"
+default_model = "llama-3.3-70b"
+
+[[providers]]
+name = "nvidia"
+label = "NVIDIA NIM"
+protocol = "openai"
+base_url = "https://integrate.api.nvidia.com/v1"
+default_model = "meta/llama-3.3-70b-instruct"
+
+[[providers]]
+name = "github"
+label = "GitHub Models"
+protocol = "openai"
+base_url = "https://models.github.ai/inference"
+default_model = "openai/gpt-4o-mini"
+
+[[providers]]
+name = "huggingface"
+label = "Hugging Face Inference Providers"
+protocol = "openai"
+base_url = "https://router.huggingface.co/v1"
+default_model = "meta-llama/Llama-3.3-70B-Instruct"
+
+[[providers]]
+name = "zai"
+label = "Z.ai / Zhipu AI"
+protocol = "openai"
+base_url = "https://api.z.ai/api/paas/v4"
+default_model = "glm-4.6"
+
+[[providers]]
+name = "fireworks"
+label = "Fireworks AI"
+protocol = "openai"
+base_url = "https://api.fireworks.ai/inference/v1"
+default_model = "accounts/fireworks/models/llama-v3p3-70b-instruct"
+
+[[providers]]
+name = "deepinfra"
+label = "DeepInfra"
+protocol = "openai"
+base_url = "https://api.deepinfra.com/v1/openai"
+default_model = "meta-llama/Llama-3.3-70B-Instruct"
+
+[[providers]]
+name = "nebius"
+label = "Nebius Token Factory"
+protocol = "openai"
+base_url = "https://api.tokenfactory.nebius.com/v1"
+default_model = "meta-llama/Llama-3.3-70B-Instruct"
+
+# Cloudflare Workers AI: в base_url подставьте ACCOUNT_ID и раскомментируйте
+# строки. Хост api.cloudflare.com уже в netgate.allowed_hosts.
+#
+# [[providers]]
+# name = "cloudflare"
+# label = "Cloudflare Workers AI"
+# protocol = "openai"
+# base_url = "https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/v1"
+# default_model = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+# models = ["@cf/meta/llama-3.3-70b-instruct-fp8-fast"]
+
+# --- Справочник цен (за 1M токенов, USD) -----------------------------------
 
 [[models]]
 id = "gemini-4-carbon"
