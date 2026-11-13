@@ -144,6 +144,9 @@ type router struct {
 }
 
 func newRouter(hub *Hub) *router {
+	// Активный мир переживает перезапуск: выбор читается при сборке маршрутов,
+	// до первого запроса (файл состояния state/active_world).
+	restoreActiveWorld()
 	return &router{routes: routeSpecs(hub)}
 }
 

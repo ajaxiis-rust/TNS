@@ -23,6 +23,28 @@ import (
 	"tns65/internal/workshop"
 )
 
+// TestMain уводит файл активного мира во временный каталог: тесты не пишут в
+// рабочий каталог пакета и не видят состояние прошлых прогонов.
+func TestMain(m *testing.M) {
+	dir, err := os.MkdirTemp("", "webapi-active-")
+	if err != nil {
+		panic(err)
+	}
+	activeStatePath = filepath.Join(dir, "active_world")
+	code := m.Run()
+	_ = os.RemoveAll(dir)
+	os.Exit(code)
+}
+
+// restartAtlas имитирует перезапуск webapi: память обнуляется, файл состояния
+// на диске остаётся, затем идёт восстановление выбора.
+func restartAtlas() {
+	activeMu.Lock()
+	activeSlug = ""
+	activeMu.Unlock()
+	restoreActiveWorld()
+}
+
 // setupAtlas подменяет корень миров, base.db и эмбеддер на временные фикстуры и
 // возвращает корень. Эмбеддер — фейк testkit (T-08-05, шаг 5), без сети.
 func setupAtlas(t *testing.T) string {
@@ -229,6 +251,10 @@ func TestAtlasBirth(t *testing.T) {
 	}
 	if got := worldCharacters(t, dir, "sumerechnyj-mir"); got != 96 {
 		t.Fatalf("карточек после рождения: %d, want 96", got)
+	}
+	// Новорождённый мир сразу активен: фронт отдельного POST active не шлёт.
+	if got := getActiveSlug(); got != "sumerechnyj-mir" {
+		t.Fatalf("активный мир после рождения = %q, want sumerechnyj-mir", got)
 	}
 
 	// Валидация анкеты: пустой синопсис отвергается до создания каталога.
@@ -458,5 +484,92 @@ func TestAtlasDelete(t *testing.T) {
 	}
 	if !strings.Contains(string(logData), `"world.deleted"`) {
 		t.Fatalf("журнал не содержит world.deleted: %s", logData)
+	}
+}
+
+// TestActiveWorldRestart — выбор игрока переживает перезапуск: слаг лежит в
+// state/active_world и восстанавливается при сборке обработчика.
+func TestActiveWorldRestart(t *testing.T) {
+	dir := setupAtlas(t)
+	seedWorld(t, dir, "alpha-world", "Альфа-мир")
+	seedWorld(t, dir, "beta-world", "Бета-мир")
+
+	logPath := filepath.Join(dir, "station.log")
+	logger, err := journal.New(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	atlasLogger = logger
+
+	h := NewHandler(Config{Logger: logger})
+	rr := atlasRequest(t, h, http.MethodPost, atlasActivePath, `{"world":"beta-world"}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("POST %s: status = %d, want 200; body=%s", atlasActivePath, rr.Code, rr.Body.String())
+	}
+	if _, err := os.Stat(activeStatePath); err != nil {
+		t.Fatalf("файл состояния не создан: %v", err)
+	}
+
+	restartAtlas()
+	if got := getActiveSlug(); got != "beta-world" {
+		t.Fatalf("активный мир после рестарта = %q, want beta-world", got)
+	}
+	logData, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(logData), `"world.restored"`) {
+		t.Fatalf("журнал не содержит world.restored: %s", logData)
+	}
+}
+
+// TestActiveWorldRestoreBroken — несуществующий слаг в файле даёт пусто без
+// ошибки: двух миров достаточно, чтобы автовыбор не сработал.
+func TestActiveWorldRestoreBroken(t *testing.T) {
+	dir := setupAtlas(t)
+	seedWorld(t, dir, "alpha-world", "Альфа-мир")
+	seedWorld(t, dir, "beta-world", "Бета-мир")
+
+	if err := os.WriteFile(activeStatePath, []byte("ghost-world\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	NewHandler(Config{})
+	if got := getActiveSlug(); got != "" {
+		t.Fatalf("активный мир при битом файле = %q, want пусто", got)
+	}
+	if _, err := os.Stat(activeStatePath); !os.IsNotExist(err) {
+		t.Fatalf("файл состояния не убран: %v", err)
+	}
+}
+
+// TestActiveWorldAutoSelectSingle — единственный мир без файла становится
+// активным сам и записывается в состояние.
+func TestActiveWorldAutoSelectSingle(t *testing.T) {
+	dir := setupAtlas(t)
+	seedWorld(t, dir, "only-world", "Единственный мир")
+
+	NewHandler(Config{})
+	if got := getActiveSlug(); got != "only-world" {
+		t.Fatalf("активный мир = %q, want only-world", got)
+	}
+	restartAtlas()
+	if got := getActiveSlug(); got != "only-world" {
+		t.Fatalf("активный мир после рестарта = %q, want only-world", got)
+	}
+}
+
+// TestActiveWorldNoAutoSelectTwoWorlds — при двух мирах без файла выбор пуст:
+// сами ничего не выбираем.
+func TestActiveWorldNoAutoSelectTwoWorlds(t *testing.T) {
+	dir := setupAtlas(t)
+	seedWorld(t, dir, "alpha-world", "Альфа-мир")
+	seedWorld(t, dir, "beta-world", "Бета-мир")
+
+	NewHandler(Config{})
+	if got := getActiveSlug(); got != "" {
+		t.Fatalf("активный мир при двух мирах = %q, want пусто", got)
+	}
+	if _, err := os.Stat(activeStatePath); !os.IsNotExist(err) {
+		t.Fatalf("файл состояния создан без выбора: %v", err)
 	}
 }

@@ -38,6 +38,14 @@ const (
 // «Писатель»: удаление разрешено, писатель core).
 const eventWorldDeleted = "world.deleted"
 
+// eventWorldRestored — событие журнала станка при восстановлении активного
+// мира после перезапуска: выбор из файла состояния либо автовыбор единственного
+// мира.
+const eventWorldRestored = "world.restored"
+
+// atlasFieldWorld — ключ поля «мир» в событиях журнала станка.
+const atlasFieldWorld = "world"
+
 // Точки подмены для тестов: корень миров, база языка, эмбеддер и журнал.
 var (
 	atlasRoot   = db.WorldsRoot
@@ -46,17 +54,107 @@ var (
 	atlasLogger *journal.Logger
 )
 
-// activeSlug — активный мир интерфейса (выбор игрока). До T-08-15 хранится в
-// памяти webapi; список миров помечает карточку активного мира.
+// activeSlug — активный мир интерфейса (выбор игрока). Хранится в памяти
+// webapi и переживает перезапуск через файл состояния activeStatePath; список
+// миров помечает карточку активного мира.
 var (
 	activeMu   sync.Mutex
 	activeSlug string
 )
 
+// activeStatePath — файл состояния выбора игрока рядом с журналом станка
+// (state/active_world). Это машинное состояние, не конфиг; путь подменяется в
+// тестах.
+var activeStatePath = filepath.Join("state", "active_world")
+
+// setActiveSlug ставит активный мир и сразу сохраняет выбор на диск: после
+// перезапуска движка игрок возвращается в тот же мир.
 func setActiveSlug(s string) {
 	activeMu.Lock()
 	activeSlug = s
 	activeMu.Unlock()
+	saveActiveSlug(s)
+}
+
+// saveActiveSlug пишет слаг в state/active_world атомарно (временный файл и
+// rename). Пустой слаг — файл удаляется: «мир не выбран» — это отсутствие
+// записи, а не пустая строка, поэтому битый и пустой файл читаются одинаково.
+// Ошибки записи не отменяют выбор в памяти: чат продолжает работать.
+func saveActiveSlug(s string) {
+	if s == "" {
+		_ = os.Remove(activeStatePath)
+		return
+	}
+	dir := filepath.Dir(activeStatePath)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return
+	}
+	tmp, err := os.CreateTemp(dir, ".active_world-")
+	if err != nil {
+		return
+	}
+	name := tmp.Name()
+	if _, err := tmp.WriteString(s + "\n"); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(name)
+		return
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(name)
+		return
+	}
+	if err := os.Rename(name, activeStatePath); err != nil {
+		_ = os.Remove(name)
+	}
+}
+
+// readActiveSlug читает сохранённый выбор игрока. Нет файла или ошибка чтения
+// (в том числе битый файл) — пусто: ошибки не всплывают, мир просто не выбран.
+func readActiveSlug() string {
+	data, err := os.ReadFile(activeStatePath)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
+}
+
+// restoreActiveWorld восстанавливает выбор игрока при сборке маршрутов webapi.
+// Мир из файла сверяется со списком готовых миров: удалённый мир и битый файл
+// дают пусто, запись при этом убирается. Если выбора нет, а мир ровно один —
+// он становится активным сам: так свежий инстанс и прод с одним миром играют
+// сразу после перезапуска.
+func restoreActiveWorld() {
+	if getActiveSlug() != "" {
+		// Выбор уже в памяти: файл не перебивает его (повторная сборка обработчика).
+		return
+	}
+	worlds, err := birth.List(atlasRootDir())
+	if err != nil {
+		return
+	}
+	saved := readActiveSlug()
+	slug := ""
+	for _, w := range worlds {
+		if saved != "" && w.Slug == saved {
+			slug = saved
+			break
+		}
+	}
+	if slug == "" && len(worlds) == 1 {
+		slug = worlds[0].Slug
+	}
+	if slug == "" {
+		if saved != "" {
+			// Мира из файла больше нет — тихо убираем запись.
+			setActiveSlug("")
+		}
+		return
+	}
+	setActiveSlug(slug)
+	if atlasLogger != nil {
+		_ = atlasLogger.Event("webapi", eventWorldRestored,
+			journal.Field{Key: atlasFieldWorld, Value: slug})
+	}
 }
 
 func getActiveSlug() string {
@@ -193,6 +291,9 @@ func handleAtlasBirth(w http.ResponseWriter, r *http.Request) {
 		writeBirthError(w, err)
 		return
 	}
+	// Только что рождённый мир сразу становится активным: фронт после рождения
+	// отдельным запросом активный мир не ставит.
+	setActiveSlug(res.Slug)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status": "ok",
 		"world":  map[string]string{"slug": res.Slug, "title": a.Title},
@@ -357,7 +458,7 @@ func handleAtlasDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	if atlasLogger != nil {
 		_ = atlasLogger.Event("webapi", eventWorldDeleted,
-			journal.Field{Key: "world", Value: slug})
+			journal.Field{Key: atlasFieldWorld, Value: slug})
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
