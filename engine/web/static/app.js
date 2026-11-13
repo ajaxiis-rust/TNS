@@ -2055,6 +2055,7 @@
     bindSettingsSubmit(IDS.settingsAdvancedForm, submitSettingsAdvanced);
     bindSettingsNav();
     bindChannelExtras();
+    bindProviderModels();
     applyFieldHints(viewSettings);
     renderRoleNameOptions();
 
@@ -2721,18 +2722,151 @@
     var dict = window.I18N || {};
     var unavailable = dict["settings.providers.unavailable"] || "недоступно";
     box.innerHTML = providers.map(function (p) {
-      var model = p.model ? escapeHTML(p.model) : unavailable;
+      var model = p.model || "";
+      var modelLabel = model || unavailable;
+      var priceText = p.price || (dict["settings.providers.price_unknown"] || "цена неизвестна");
+      if (p.price && p.price_note) {
+        priceText += " · " + p.price_note;
+      }
       var quota = p.quota ? escapeHTML(p.quota) : unavailable;
       var cost = formatProviderCost(p.cost_millis);
-      return '<div class="settings-provider">' +
+      var selectID = "provider-model-" + p.name;
+      return '<div class="settings-provider" data-provider="' + escapeHTML(p.name) + '">' +
         '<div class="settings-provider__head"><b>' + escapeHTML(p.name) + '</b>' +
         '<span class="st ' + (p.key_set ? "st--ok" : "st--err") + '">' +
         (p.key_set ? "ключ задан" : "без ключа") + '</span></div>' +
-        '<div class="settings-provider__row">' + (dict["settings.providers.model"] || "Модель") + ': <b>' + model + '</b></div>' +
+        '<div class="settings-provider__row settings-provider__model-row">' +
+        '<label for="' + selectID + '">' + (dict["settings.providers.model"] || "Модель") + "</label>" +
+        '<select class="settings-provider__model" id="' + selectID + '" data-provider-model="' + escapeHTML(p.name) + '">' +
+        '<option value="' + escapeHTML(model) + '" selected>' + escapeHTML(modelLabel) + "</option></select>" +
+        '<button type="button" class="btn btn--ghost settings-provider__refresh" data-provider-refresh="' +
+        escapeHTML(p.name) + '">' + (dict["settings.providers.refresh"] || "Список") + "</button>" +
+        "</div>" +
+        '<div class="settings-provider__row settings-provider__price" data-provider-price="' +
+        escapeHTML(p.name) + '">' + escapeHTML(priceText) + "</div>" +
         '<div class="settings-provider__row">' + (dict["settings.providers.quota"] || "Остаток лимита") + ': ' + quota +
         ' · ' + (dict["settings.providers.cost"] || "Стоимость") + ': ' + cost + '</div>' +
         '</div>';
     }).join("");
+  }
+
+  // bindProviderModels — «Список» читает модели у провайдера по сохранённому
+  // ключу, выбор в списке сразу пишется в settings.toml.
+  function bindProviderModels() {
+    var box = byId(IDS.settingsProviders);
+    if (!box) {
+      return;
+    }
+    box.addEventListener("click", function (event) {
+      var btn = event.target.closest("button[data-provider-refresh]");
+      if (btn) {
+        loadProviderModels(btn.getAttribute("data-provider-refresh"), btn);
+      }
+    });
+    box.addEventListener("change", function (event) {
+      var select = event.target.closest("select[data-provider-model]");
+      if (select) {
+        saveProviderModel(select.getAttribute("data-provider-model"), select);
+      }
+    });
+  }
+
+  function loadProviderModels(provider, btn) {
+    var dict = window.I18N || {};
+    var release = setBusy(btn);
+    apiJSON("/api/providers/models?provider=" + encodeURIComponent(provider)).then(function (data) {
+      fillProviderModels(provider, data.models || [], data.model || "");
+    }).catch(function (err) {
+      if (err.code === "conflict") {
+        setValue(IDS.settingsProviderName, provider);
+        var keyField = byId(IDS.settingsProviderKey);
+        if (keyField) {
+          keyField.focus();
+        }
+        var rejected = String(err.message || "").indexOf("rejected") >= 0;
+        toast(rejected
+          ? (dict["settings.providers.key_rejected"] || "Провайдер отклонил ключ.")
+          : (dict["settings.providers.key_required"] || "Сначала сохраните ключ провайдера."), false);
+        return;
+      }
+      toast((err && err.message) || String(err), false);
+    }).then(release);
+  }
+
+  function fillProviderModels(provider, models, current) {
+    var dict = window.I18N || {};
+    var select = document.querySelector('select[data-provider-model="' + provider + '"]');
+    if (!select) {
+      return;
+    }
+    if (models.length === 0) {
+      toast(dict["settings.providers.models_empty"] || "Провайдер не вернул моделей.", false);
+      return;
+    }
+    var found = false;
+    var html = models.map(function (m) {
+      if (m.id === current) {
+        found = true;
+      }
+      var label = m.display_name && m.display_name !== m.id
+        ? m.display_name + " (" + m.id + ")"
+        : m.id;
+      return '<option value="' + escapeHTML(m.id) + '" data-price="' +
+        escapeHTML(providerPriceText(m.price)) + '">' + escapeHTML(label) + "</option>";
+    }).join("");
+    if (!found && current) {
+      html = '<option value="' + escapeHTML(current) + '" data-price="">' +
+        escapeHTML(current + " — " + (dict["settings.providers.model_stale"] || "нет в списке")) +
+        "</option>" + html;
+    }
+    select.innerHTML = html;
+    setValue(select.id, current || models[0].id);
+    updateProviderPrice(provider, select);
+  }
+
+  function providerPriceText(price) {
+    if (!price) {
+      return "";
+    }
+    if (!price.input_usd_per_m && !price.output_usd_per_m) {
+      return price.note || "";
+    }
+    var dict = window.I18N || {};
+    var text = "$" + priceFixed(price.input_usd_per_m) + " / $" + priceFixed(price.output_usd_per_m) +
+      " " + (dict["settings.providers.price_hint"] || "за 1M токенов, вход / выход");
+    if (price.note) {
+      text += " · " + price.note;
+    }
+    return text;
+  }
+
+  function priceFixed(value) {
+    return (Math.round((value || 0) * 100) / 100).toFixed(2);
+  }
+
+  function updateProviderPrice(provider, select) {
+    var box = document.querySelector('[data-provider-price="' + provider + '"]');
+    if (!box) {
+      return;
+    }
+    var option = select.options[select.selectedIndex];
+    var text = option ? option.getAttribute("data-price") || "" : "";
+    box.textContent = text || (window.I18N || {})["settings.providers.price_unknown"] || "цена неизвестна";
+  }
+
+  function saveProviderModel(provider, select) {
+    var model = select.value;
+    if (!model) {
+      return;
+    }
+    var dict = window.I18N || {};
+    putJSON("/api/providers/model", { provider: provider, model: model }).then(function () {
+      updateProviderPrice(provider, select);
+      toast(formatPercentText(
+        dict["settings.providers.model_saved"] || "Модель «%s» сохранена.", [model]), true);
+    }).catch(function (err) {
+      toast((err && err.message) || String(err), false);
+    });
   }
 
   function formatProviderCost(millis) {

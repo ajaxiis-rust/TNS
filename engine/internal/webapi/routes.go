@@ -118,6 +118,8 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodGet, path: "/api/first-run", handle: handleFirstRunGet},
 		{method: http.MethodPut, path: "/api/first-run/step", handle: handleFirstRunStep},
 		{method: http.MethodGet, path: "/api/providers", handle: handleProviders},
+		{method: http.MethodGet, path: "/api/providers/models", handle: handleProviderModels},
+		{method: http.MethodPut, path: "/api/providers/model", handle: handleProviderModelSave},
 		{method: http.MethodGet, path: "/api/monitor", handle: handleMonitor},
 		{method: http.MethodGet, path: "/api/library", handle: handleLibraryList},
 		{method: http.MethodPost, path: "/api/library/import", handle: handleLibraryImport},

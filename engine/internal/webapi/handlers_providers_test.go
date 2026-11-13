@@ -88,11 +88,24 @@ func TestProviderQuota(t *testing.T) {
 	if cards["gemini-pro"].KeySet {
 		t.Fatalf("gemini-pro key_set = true, want false (ключа нет)")
 	}
-	if got := cards["gemini-flash"].Model; got != "gemini-2.0-flash" {
-		t.Fatalf("gemini-flash model = %q, want gemini-2.0-flash", got)
+	if got := cards["gemini-flash"].Model; got != "gemini-3.8-flash" {
+		t.Fatalf("gemini-flash model = %q, want gemini-3.8-flash", got)
 	}
-	if got := cards["gemini-pro"].Model; got != "gemini-2.5-pro" {
-		t.Fatalf("gemini-pro model = %q, want gemini-2.5-pro", got)
+	if got := cards["gemini-pro"].Model; got != "gemini-3.1-pro-preview" {
+		t.Fatalf("gemini-pro model = %q, want gemini-3.1-pro-preview", got)
+	}
+	if got := cards["gemini-flash"].Price; got != "$0.75 / $3.75 за 1M" {
+		t.Fatalf("gemini-flash price = %q, want справочную цену", got)
+	}
+
+	// Выбор модели из settings.toml перекрывает заводскую.
+	if err := os.WriteFile(settingsTOMLPath,
+		[]byte("gemini-flash = \"sk-test\"\ngemini-flash_model = \"gemini-4-hydrogen\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cards = providerCardsByName(providerCards())
+	if got := cards["gemini-flash"].Model; got != "gemini-4-hydrogen" {
+		t.Fatalf("gemini-flash model с переопределением = %q, want gemini-4-hydrogen", got)
 	}
 
 	// Провайдер лимита не отдаёт — квота «недоступно», число не выдумывается.

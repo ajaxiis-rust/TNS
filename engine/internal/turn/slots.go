@@ -201,20 +201,24 @@ func nonEmpty(v, fallback string) string {
 // ProviderSlot возвращает слот Ткача для пресета из cfg (T-03-18, шаг 3):
 // local — локальная запаска :5001 (models.Weaver); внешний пресет — клиент
 // провайдера через сетевой гейт (models.ProviderClient). Выбранный провайдер
-// читается из cfg.Default; дефолт и сброс — local.
-func ProviderSlot(cfg models.SlotsConfig, apiKey string) (ProseSlot, error) {
+// читается из cfg.Default; модель — model, а при пустом значении заводская
+// models.ModelFor. Дефолт и сброс — local.
+func ProviderSlot(cfg models.SlotsConfig, apiKey, model string) (ProseSlot, error) {
 	if cfg.Default == models.ProviderGeminiFlash || cfg.Default == models.ProviderGeminiPro {
-		return models.NewProviderClient("https://"+cfg.GeminiHost, models.ModelFor(cfg.Default), apiKey)
+		if strings.TrimSpace(model) == "" {
+			model = models.ModelFor(cfg.Default)
+		}
+		return models.NewProviderClient("https://"+cfg.GeminiHost, model, apiKey)
 	}
 	return models.NewWeaver(models.DefaultWeaverURL)
 }
 
 // ProviderSlotFromConfig читает выбранного провайдера из секции slots файла
 // конфигурации path и возвращает слот Ткача для него.
-func ProviderSlotFromConfig(path, apiKey string) (ProseSlot, error) {
+func ProviderSlotFromConfig(path, apiKey, model string) (ProseSlot, error) {
 	cfg, err := models.LoadSlotsConfig(path)
 	if err != nil {
 		return nil, err
 	}
-	return ProviderSlot(cfg, apiKey)
+	return ProviderSlot(cfg, apiKey, model)
 }

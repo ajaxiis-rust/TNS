@@ -58,15 +58,25 @@ func ProviderByName(name string) Provider {
 }
 
 // DefaultGeminiModel — имя модели Gemini по умолчанию (B-4: flash по умолчанию).
-const DefaultGeminiModel = "gemini-2.0-flash"
+// Значение живое: gemini-2.0-flash у Google уже shut down.
+const DefaultGeminiModel = "gemini-3.8-flash"
 
-// ModelFor возвращает имя модели Gemini для пресета (B-4: flash по умолчанию,
-// pro опцией).
+// DefaultGeminiProModel — модель пресета pro.
+const DefaultGeminiProModel = "gemini-3.1-pro-preview"
+
+// ModelFor возвращает заводское имя модели Gemini для пресета (B-4: flash по
+// умолчанию, pro опцией). Пользовательский выбор хранится в settings.toml под
+// ключом ModelSettingsKey и перекрывает это значение.
 func ModelFor(p Provider) string {
 	if p == ProviderGeminiPro {
-		return "gemini-2.5-pro"
+		return DefaultGeminiProModel
 	}
 	return DefaultGeminiModel
+}
+
+// ModelSettingsKey — ключ settings.toml с выбранной моделью провайдера.
+func ModelSettingsKey(p Provider) string {
+	return string(p) + "_model"
 }
 
 // SlotsConfig — настройки слотов генерации из config.yaml (секция slots).

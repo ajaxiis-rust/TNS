@@ -6,25 +6,37 @@ import (
 	"path/filepath"
 
 	"tns65/internal/journal"
+	"tns65/internal/models"
 	"tns65/internal/turn"
 )
 
 // DefaultChatWeaver собирает слот Ткача по секции slots конфигурации экземпляра
 // (config.yaml в корне работающей папки): local — локальная запаска :5001,
-// внешний пресет — клиент провайдера. Ошибка чтения конфигурации — nil и
-// событие slot.wiring_fail в журнал: чат деградирует до статической заготовки,
-// но это видно в журнале. Ключ внешнего провайдера хранится в settings.toml и
-// живым контуром не читается (F-03.4); прод-пресет slots.default: local ключ не
-// использует, поэтому передаётся пустая строка.
+// внешний пресет — клиент провайдера. Ключ и выбранная модель читаются из
+// settings.toml один раз при сборке слота (на старте ядра), в памяти; сам ход их
+// не перечитывает. Ошибка чтения конфигурации — nil и событие slot.wiring_fail в
+// журнал: чат деградирует до статической заготовки, но это видно в журнале.
 func DefaultChatWeaver(logger *journal.Logger) turn.ProseSlot {
-	slot, err := turn.ProviderSlotFromConfig(filepath.Join(instanceRoot(), "config.yaml"), "")
+	cfg, err := models.LoadSlotsConfig(filepath.Join(instanceRoot(), "config.yaml"))
 	if err != nil {
-		if logger != nil {
-			_ = logger.Event("webapi", journal.EventSlotWiring,
-				journal.Field{Key: "role", Value: "weaver"},
-				journal.Field{Key: "error", Value: err.Error()})
-		}
+		logSlotWiringFail(logger, err)
+		return nil
+	}
+	keys := readSettingsKeys(settingsTOMLPath)
+	provider := string(cfg.Default)
+	slot, err := turn.ProviderSlot(cfg, keys[provider], keys[models.ModelSettingsKey(cfg.Default)])
+	if err != nil {
+		logSlotWiringFail(logger, err)
 		return nil
 	}
 	return slot
+}
+
+func logSlotWiringFail(logger *journal.Logger, err error) {
+	if logger == nil {
+		return
+	}
+	_ = logger.Event("webapi", journal.EventSlotWiring,
+		journal.Field{Key: "role", Value: "weaver"},
+		journal.Field{Key: "error", Value: err.Error()})
 }

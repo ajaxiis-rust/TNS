@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"tns65/internal/models"
 	"tns65/internal/workshop"
 )
 
@@ -34,8 +33,10 @@ type providerCard struct {
 	Name       string `json:"name"`
 	KeySet     bool   `json:"key_set"`
 	Model      string `json:"model"`
-	Quota      string `json:"quota"`       // остаток лимита; «недоступно» без лимита.
-	CostMillis int64  `json:"cost_millis"` // деньги по тарифу из журнала вызовов.
+	Price      string `json:"price,omitempty"`      // справочная цена за 1M, вход/выход.
+	PriceNote  string `json:"price_note,omitempty"` // примечание к цене (срок, условия).
+	Quota      string `json:"quota"`                // остаток лимита; «недоступно» без лимита.
+	CostMillis int64  `json:"cost_millis"`          // деньги по тарифу из журнала вызовов.
 }
 
 // usageLine — одна JSON-строка журнала вызовов (роль слота и его счётчики).
@@ -78,8 +79,9 @@ func readUsageTotals(path string) map[string]usageTotals {
 }
 
 // providerCards собирает карточки внешних слотов (все пресеты реестра кроме
-// local). Ключ — из settings.toml (readSettingsKeys), модель — models.ModelFor,
-// квота — лимит из API минус вызовы журнала, деньги — сумма cost_millis журнала.
+// local). Ключ — из settings.toml (readSettingsKeys), модель — выбор из
+// settings.toml или заводская models.ModelFor, цена — из справочника, квота —
+// лимит из API минус вызовы журнала, деньги — сумма cost_millis журнала.
 func providerCards() []providerCard {
 	keys := readSettingsKeys(settingsTOMLPath)
 	totals := readUsageTotals(providerUsagePath)
@@ -89,10 +91,13 @@ func providerCards() []providerCard {
 			continue
 		}
 		name := string(p.Provider)
+		model := selectedProviderModel(keys, p.Provider)
 		card := providerCard{
-			Name:   name,
-			KeySet: keys[name] != "",
-			Model:  models.ModelFor(models.Provider(name)),
+			Name:      name,
+			KeySet:    keys[name] != "",
+			Model:     model,
+			Price:     priceLabel(model),
+			PriceNote: priceNote(model),
 		}
 		t := totals[name]
 		if limit, ok := providerLimitSource(name); ok {
