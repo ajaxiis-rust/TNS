@@ -51,63 +51,17 @@ type providerModelsResponse struct {
 	Models   []providerModelCard `json:"models"`
 }
 
-// modelPriceTable — справочник цен Google за 1M токенов (вход/выход, USD).
-// Источник — страница Gemini API pricing; значения обновляются вместе с
-// движком. API цен не отдаёт, поэтому это единственный честный источник.
-var modelPriceTable = map[string]providerModelPrice{
-	"gemini-4-carbon":        {InputUSDPerM: 2.00, OutputUSDPerM: 10.00, Note: "до 30.11.2026"},
-	"gemini-4-argon":         {InputUSDPerM: 2.00, OutputUSDPerM: 10.00, Note: "до 30.11.2026"},
-	"gemini-4-hydrogen":      {InputUSDPerM: 1.50, OutputUSDPerM: 7.50, Note: "есть бесплатный уровень"},
-	"gemini-3.8-flash":       {InputUSDPerM: 0.75, OutputUSDPerM: 3.75, Note: "до 31.12.2026"},
-	"gemini-3.6-flash":       {InputUSDPerM: 0.75, OutputUSDPerM: 3.75, Note: "до 31.12.2026"},
-	"gemini-3.5-flash-lite":  {InputUSDPerM: 0.30, OutputUSDPerM: 2.50},
-	"gemini-3.1-flash-lite":  {InputUSDPerM: 0.25, OutputUSDPerM: 1.50},
-	"gemini-3.1-pro-preview": {InputUSDPerM: 2.00, OutputUSDPerM: 12.00, Note: "промпт ≤200k"},
-	"gemini-3-flash-preview": {InputUSDPerM: 0.50, OutputUSDPerM: 3.00},
-	"gemini-2.5-flash-lite":  {InputUSDPerM: 0.10, OutputUSDPerM: 0.40},
-	"gemini-2.5-flash":       {InputUSDPerM: 0.30, OutputUSDPerM: 2.50, Note: "устарела: с 01.12.2026 уходит на 3.5-flash-lite"},
-	"gemini-2.5-pro":         {InputUSDPerM: 1.25, OutputUSDPerM: 10.00, Note: "устарела: с 01.12.2026 уходит на 3.8-flash"},
-	"gemini-2.0-flash":       {Note: "модель отключена Google"},
-	"gemini-2.0-flash-lite":  {Note: "модель отключена Google"},
-}
-
-// priceForModel возвращает справочную цену модели; nil — цена неизвестна.
-func priceForModel(id string) *providerModelPrice {
-	price, ok := modelPriceTable[id]
-	if !ok {
-		return nil
-	}
-	return &price
-}
-
-// priceLabel — короткая подпись цены для карточки провайдера.
-func priceLabel(id string) string {
-	price := priceForModel(id)
-	if price == nil {
-		return ""
-	}
-	if price.InputUSDPerM == 0 && price.OutputUSDPerM == 0 {
-		return price.Note
-	}
-	return fmt.Sprintf("$%.2f / $%.2f за 1M", price.InputUSDPerM, price.OutputUSDPerM)
-}
-
-// priceNote — примечание к цене; повторять его в подписи не нужно.
-func priceNote(id string) string {
-	price := priceForModel(id)
-	if price == nil || price.Note == "" || (price.InputUSDPerM == 0 && price.OutputUSDPerM == 0) {
-		return ""
-	}
-	return price.Note
-}
+// modelPriceTable — справочник цен удалён в providers.toml: цены и заводские
+// модели внешних провайдеров читаются из файла рядом с settings.toml (см.
+// providers_catalog.go), поэтому правка не требует пересборки ядра.
 
 // selectedProviderModel — модель провайдера: выбор из settings.toml, иначе
-// заводская.
-func selectedProviderModel(keys map[string]string, provider workshop.Provider) string {
+// заводская из providers.toml ([defaults]), иначе встроенная models.ModelFor.
+func selectedProviderModel(keys map[string]string, cat providerCatalog, provider workshop.Provider) string {
 	if model := strings.TrimSpace(keys[models.ModelSettingsKey(models.Provider(provider))]); model != "" {
 		return model
 	}
-	return models.ModelFor(models.Provider(provider))
+	return cat.defaultFor(string(provider))
 }
 
 // externalProvider приводит имя к внешнему пресету реестра; local и неизвестные
@@ -206,20 +160,24 @@ func isTextGenerationModel(id string) bool {
 }
 
 // providerModelCards превращает ответ провайдера в карточки для UI: только
-// текстовые модели, поддерживающие generateContent, с ценой из справочника.
-func providerModelCards(raw []geminiModelInfo) []providerModelCard {
+// текстовые модели, поддерживающие generateContent, с ценой из providers.toml.
+func providerModelCards(raw []geminiModelInfo, cat providerCatalog) []providerModelCard {
 	cards := make([]providerModelCard, 0, len(raw))
 	for _, m := range raw {
 		id := strings.TrimPrefix(m.Name, "models/")
 		if id == "" || !supportsGenerateContent(m.SupportedGenerationMethods) || !isTextGenerationModel(id) {
 			continue
 		}
+		displayName := m.DisplayName
+		if displayName == "" {
+			displayName = cat.displayName(id)
+		}
 		cards = append(cards, providerModelCard{
 			ID:           id,
-			DisplayName:  m.DisplayName,
+			DisplayName:  displayName,
 			InputTokens:  m.InputTokenLimit,
 			OutputTokens: m.OutputTokenLimit,
-			Price:        priceForModel(id),
+			Price:        cat.priceForModel(id),
 		})
 	}
 	sort.Slice(cards, func(i, j int) bool { return cards[i].ID < cards[j].ID })
@@ -244,6 +202,7 @@ func handleProviderModels(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	keys := readSettingsKeys(settingsTOMLPath)
+	cat := readProviderCatalog(providersTOMLPath)
 	key := strings.TrimSpace(keys[string(provider)])
 	if key == "" {
 		writeError(w, http.StatusConflict, codeConflict, "provider key is not set")
@@ -266,8 +225,8 @@ func handleProviderModels(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, providerModelsResponse{
 		Provider: string(provider),
-		Model:    selectedProviderModel(keys, provider),
-		Models:   providerModelCards(raw),
+		Model:    selectedProviderModel(keys, cat, provider),
+		Models:   providerModelCards(raw, cat),
 	})
 }
 
@@ -303,7 +262,7 @@ func handleProviderModelSave(w http.ResponseWriter, r *http.Request) {
 		"status":           "ok",
 		"provider":         string(provider),
 		"model":            model,
-		"price":            priceForModel(model),
+		"price":            readProviderCatalog(providersTOMLPath).priceForModel(model),
 		"restart_required": true,
 	})
 }

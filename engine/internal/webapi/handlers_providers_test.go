@@ -20,15 +20,40 @@ func seedProviderCounters(t *testing.T) (usagePath string) {
 
 	oldUsage := providerUsagePath
 	oldTOML := settingsTOMLPath
+	oldProviders := providersTOMLPath
 	oldLimit := providerLimitSource
 	providerUsagePath = usagePath
 	settingsTOMLPath = filepath.Join(dir, "settings.toml")
+	providersTOMLPath = filepath.Join(dir, "providers.toml")
 	providerLimitSource = func(string) (int64, bool) { return 0, false }
 	t.Cleanup(func() {
 		providerUsagePath = oldUsage
 		settingsTOMLPath = oldTOML
+		providersTOMLPath = oldProviders
 		providerLimitSource = oldLimit
 	})
+	if err := os.WriteFile(providersTOMLPath, []byte(`
+[defaults]
+"gemini-flash" = "gemini-3.8-flash"
+"gemini-pro" = "gemini-3.1-pro-preview"
+
+[[models]]
+id = "gemini-3.8-flash"
+input_usd_per_m = 0.75
+output_usd_per_m = 3.75
+
+[[models]]
+id = "gemini-3.1-pro-preview"
+input_usd_per_m = 2.00
+output_usd_per_m = 12.00
+
+[[models]]
+id = "gemini-4-hydrogen"
+input_usd_per_m = 1.50
+output_usd_per_m = 7.50
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	return usagePath
 }
 

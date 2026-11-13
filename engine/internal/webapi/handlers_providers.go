@@ -80,10 +80,11 @@ func readUsageTotals(path string) map[string]usageTotals {
 
 // providerCards собирает карточки внешних слотов (все пресеты реестра кроме
 // local). Ключ — из settings.toml (readSettingsKeys), модель — выбор из
-// settings.toml или заводская models.ModelFor, цена — из справочника, квота —
+// settings.toml или заводская providers.toml, цена — из providers.toml, квота —
 // лимит из API минус вызовы журнала, деньги — сумма cost_millis журнала.
 func providerCards() []providerCard {
 	keys := readSettingsKeys(settingsTOMLPath)
+	cat := readProviderCatalog(providersTOMLPath)
 	totals := readUsageTotals(providerUsagePath)
 	out := []providerCard{}
 	for _, p := range workshop.Presets() {
@@ -91,13 +92,13 @@ func providerCards() []providerCard {
 			continue
 		}
 		name := string(p.Provider)
-		model := selectedProviderModel(keys, p.Provider)
+		model := selectedProviderModel(keys, cat, p.Provider)
 		card := providerCard{
 			Name:      name,
 			KeySet:    keys[name] != "",
 			Model:     model,
-			Price:     priceLabel(model),
-			PriceNote: priceNote(model),
+			Price:     priceLabel(cat, model),
+			PriceNote: priceNote(cat, model),
 		}
 		t := totals[name]
 		if limit, ok := providerLimitSource(name); ok {

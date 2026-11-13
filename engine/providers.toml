@@ -1,0 +1,93 @@
+# providers.toml — внешние провайдеры: заводские модели и справочник цен.
+#
+# Ядро читает этот файл при каждом запросе (карточки «Провайдеры» и список
+# моделей), поэтому правка цены или заводской модели применяется без пересборки
+# ядра. Файл лежит рядом с settings.toml в корне работающей папки.
+#
+# [defaults] — заводская модель пресета, пока в settings.toml нет выбора.
+#   Ключ — имя пресета из реестра workshop (slots.default в config.yaml).
+# [[models]] — справочник моделей: цена за 1M токенов в USD, вход и выход.
+#   API Gemini цен не отдаёт, поэтому цены и примечания живут только здесь.
+#   Цена 0/0 без чисел — модель отключена; в интерфейсе показывается note.
+
+[defaults]
+"gemini-flash" = "gemini-3.8-flash"
+"gemini-pro" = "gemini-3.1-pro-preview"
+
+[[models]]
+id = "gemini-4-carbon"
+input_usd_per_m = 2.00
+output_usd_per_m = 10.00
+note = "до 30.11.2026"
+
+[[models]]
+id = "gemini-4-argon"
+input_usd_per_m = 2.00
+output_usd_per_m = 10.00
+note = "до 30.11.2026"
+
+[[models]]
+id = "gemini-4-hydrogen"
+input_usd_per_m = 1.50
+output_usd_per_m = 7.50
+note = "есть бесплатный уровень"
+
+[[models]]
+id = "gemini-3.8-flash"
+display_name = "Gemini 3.8 Flash"
+input_usd_per_m = 0.75
+output_usd_per_m = 3.75
+note = "до 31.12.2026"
+
+[[models]]
+id = "gemini-3.6-flash"
+input_usd_per_m = 0.75
+output_usd_per_m = 3.75
+note = "до 31.12.2026"
+
+[[models]]
+id = "gemini-3.5-flash-lite"
+input_usd_per_m = 0.30
+output_usd_per_m = 2.50
+
+[[models]]
+id = "gemini-3.1-flash-lite"
+input_usd_per_m = 0.25
+output_usd_per_m = 1.50
+
+[[models]]
+id = "gemini-3.1-pro-preview"
+display_name = "Gemini 3.1 Pro Preview"
+input_usd_per_m = 2.00
+output_usd_per_m = 12.00
+note = "промпт ≤200k"
+
+[[models]]
+id = "gemini-3-flash-preview"
+input_usd_per_m = 0.50
+output_usd_per_m = 3.00
+
+[[models]]
+id = "gemini-2.5-flash-lite"
+input_usd_per_m = 0.10
+output_usd_per_m = 0.40
+
+[[models]]
+id = "gemini-2.5-flash"
+input_usd_per_m = 0.30
+output_usd_per_m = 2.50
+note = "устарела: с 01.12.2026 уходит на 3.5-flash-lite"
+
+[[models]]
+id = "gemini-2.5-pro"
+input_usd_per_m = 1.25
+output_usd_per_m = 10.00
+note = "устарела: с 01.12.2026 уходит на 3.8-flash"
+
+[[models]]
+id = "gemini-2.0-flash"
+note = "модель отключена Google"
+
+[[models]]
+id = "gemini-2.0-flash-lite"
+note = "модель отключена Google"

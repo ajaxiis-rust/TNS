@@ -18,14 +18,34 @@ func seedProviderModels(t *testing.T) {
 	dir := t.TempDir()
 	oldTOML := settingsTOMLPath
 	oldConfig := settingsConfigPath
+	oldProviders := providersTOMLPath
 	oldList := listGeminiModels
 	settingsTOMLPath = filepath.Join(dir, "settings.toml")
 	settingsConfigPath = filepath.Join(dir, "config.yaml")
+	providersTOMLPath = filepath.Join(dir, "providers.toml")
 	t.Cleanup(func() {
 		settingsTOMLPath = oldTOML
 		settingsConfigPath = oldConfig
+		providersTOMLPath = oldProviders
 		listGeminiModels = oldList
 	})
+	if err := os.WriteFile(providersTOMLPath, []byte(`
+[defaults]
+"gemini-flash" = "gemini-3.8-flash"
+"gemini-pro" = "gemini-3.1-pro-preview"
+
+[[models]]
+id = "gemini-3.8-flash"
+input_usd_per_m = 0.75
+output_usd_per_m = 3.75
+
+[[models]]
+id = "gemini-4-hydrogen"
+input_usd_per_m = 1.50
+output_usd_per_m = 7.50
+`), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(settingsTOMLPath, []byte("gemini-flash = \"sk-test\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
