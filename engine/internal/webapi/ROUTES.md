@@ -45,7 +45,8 @@
 | PUT | `/api/settings/keys` | `{"keys":{…}}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | PUT | `/api/settings/channel` | `{"edge","local","telegram_chat_id","telegram_token","clear_token"}` | `{"status":"ok","bot_running":bool,"warning":"…"}` | `method_not_allowed`, `bad_request`, `internal` |
 | POST | `/api/settings/models/install` | `{"world":"…","role":"…","source":"https://huggingface.co/…","model_ref":"…"}` — `world` может быть пустым: файл скачается без привязки роли | `{"status":"ok","model_ref":"…","file":"…","bound":bool,"child":"…"}` — `file` — исходное имя файла из URL, `child` — итог запуска ребёнка роли после установки: `started`, `failed`, `rolled_back` или пусто | `method_not_allowed`, `bad_request`, `not_found`, `conflict` (загрузка роли уже идёт), `internal` |
-| GET | `/api/settings/models/status` | query `role=<роль>`, `verify=1` (полная сверка sha256) — необязательны | `{"jobs":[{"role","model_ref","status","progress","error"}],"models":[{"role","model_ref","source","file","size","status","progress","integrity_ok","has_previous"}]}` — карточки установленных моделей (имя файла и размер) и текущие загрузки; `model_ref` в задании отличает вариант одной роли | `method_not_allowed` |
+| POST | `/api/settings/models/adopt` | `{"world":"…","role":"…","source":"https://huggingface.co/…","model_ref":"…"}` — файл уже скачан браузером; `world` может быть пустым: файл регистрируется без привязки роли; имя файла берётся только из `source` | `{"status":"ok","model_ref":"…","file":"…","bound":bool,"child":"…"}` — `file` — исходное имя файла из URL; файл ищется в каталоге роли и в папке загрузок браузера, оттуда переносится в каталог роли (каталоги — `dirs` в `/api/settings/models/status`) | `method_not_allowed`, `bad_request`, `not_found`, `conflict` (файла нет — текст содержит абсолютный путь каталога; файл ещё качается — нулевой размер; установка роли уже идёт), `internal` |
+| GET | `/api/settings/models/status` | query `role=<роль>`, `verify=1` (полная сверка sha256) — необязательны | `{"jobs":[{"role","model_ref","status","progress","error"}],"models":[{"role","model_ref","source","file","size","status","progress","integrity_ok","has_previous"}],"dirs":{"weaver":"…","pythia":"…","editor":"…","analysis":"…","embed":"…"}}` — карточки установленных моделей (имя файла и размер), текущие загрузки и абсолютные каталоги ролей для скачивания браузером; `model_ref` в задании отличает вариант одной роли | `method_not_allowed` |
 | POST | `/api/settings/models/rollback` | `{"world":"…","role":"…"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
 | DELETE | `/api/settings/models/delete` | `{"role":"…"}` | `{"status":"ok","removed":["…"]}` — файлы модели, манифест и задание реестра сняты | `method_not_allowed`, `bad_request`, `not_found`, `conflict`, `internal` |
 | GET | `/api/settings/llama/detect` | — | `{"found":bool,"path":"…","version":"…","source":"config|instance|path|candidates","searched":["…"],"install":{"running":bool,"stage":"download|verify|done|failed","error":"…"}}` — обнаружение llama-server: конфиг → `bin/` экземпляра → PATH → типовые каталоги сборки, каждый кандидат проверяется `--version` | `method_not_allowed` |
@@ -100,6 +101,7 @@ PUT /api/settings/config
 PUT /api/settings/keys
 PUT /api/settings/channel
 POST /api/settings/models/install
+POST /api/settings/models/adopt
 GET /api/settings/models/status
 POST /api/settings/models/rollback
 DELETE /api/settings/models/delete

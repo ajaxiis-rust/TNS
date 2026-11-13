@@ -125,6 +125,7 @@
     settingsModelRole: "settings-model-role",
     settingsModelSource: "settings-model-source",
     settingsModelRef: "settings-model-ref",
+    settingsModelPath: "settings-model-path",
     settingsModelsSave: "settings-models-save",
     settingsRoles: "settings-roles",
     settingsRolesForm: "settings-roles-form",
@@ -237,6 +238,10 @@
   // полный адрес файла, а статика не хранит внешних адресов целиком (ui-lint,
   // проверка 1), поэтому схема собирается отдельно от хоста.
   var MODEL_SOURCE_SCHEME = "https:" + "//";
+
+  // MODEL_DIRS — абсолютные каталоги ролей из /api/settings/models/status:
+  // подсказка «куда сохранить файл» при скачивании браузером.
+  var MODEL_DIRS = {};
 
   var MODEL_CATALOG = [
     {
@@ -1985,6 +1990,15 @@
     if (grid) {
       grid.addEventListener("click", onModelCatalogClick);
     }
+    // Путь «куда сохранить файл» под формой «Своя модель» обновляется на ввод.
+    [IDS.settingsModelRole, IDS.settingsModelSource].forEach(function (id) {
+      var field = byId(id);
+      if (!field) {
+        return;
+      }
+      field.addEventListener("input", renderModelSavePath);
+      field.addEventListener("change", renderModelSavePath);
+    });
   }
 
   function bindSettingsNav() {
@@ -2173,7 +2187,13 @@
     return ensureActiveWorld().then(function () {
       var slug = activeSlugValue();
       var path = slug ? "/api/settings?world=" + encodeURIComponent(slug) : "/api/settings";
-      return apiJSON(path).then(renderSettings).then(loadProvidersData).catch(settingsError);
+      // Каталоги ролей (куда сохранять файл, скачанный браузером) живут в
+      // статусе моделей; без них карточки не показывают путь.
+      var statusP = apiJSON("/api/settings/models/status").catch(function () { return null; });
+      return Promise.all([apiJSON(path), statusP]).then(function (res) {
+        renderSettings(res[0], (res[1] || {}).dirs || {});
+        return loadProvidersData();
+      }).catch(settingsError);
     });
   }
 
@@ -2329,7 +2349,7 @@
     };
   }
 
-  function renderSettings(data) {
+  function renderSettings(data, dirs) {
     var hasWorld = !!(data && data.world);
     setValue(IDS.settingsServerHost, data.general ? data.general.server_host : "");
     setValue(IDS.settingsServerPort, data.general ? String(data.general.server_port) : "");
@@ -2356,7 +2376,7 @@
     renderSettingsModels(data.models || [], hasWorld);
     renderModelChoices(data.models || []);
     renderRoleProviderChoices(data.presets || [], data.providers || []);
-    renderModelCatalog(data.models || [], data.ram_gb);
+    renderModelCatalog(data.models || [], data.ram_gb, dirs || {});
     renderModelCatalogNote(hasWorld);
     renderSettingsPlugins();
     renderSettingsFlags(data.advanced ? data.advanced.feature_flags || [] : []);
@@ -2642,10 +2662,13 @@
       }).join("");
   }
 
-  function renderModelCatalog(installed, ramGB) {
+  function renderModelCatalog(installed, ramGB, dirs) {
     var grid = byId(IDS.modelCatalogGrid);
     if (!grid) {
       return;
+    }
+    if (dirs && typeof dirs === "object") {
+      MODEL_DIRS = dirs;
     }
     var byRole = {};
     (installed || []).forEach(function (m) {
@@ -2653,6 +2676,7 @@
     });
     var recommended = recommendedEmbedRef(ramGB);
     var dict = window.I18N || {};
+    var saveTo = dict["settings.models.save_hint"] || "Сохраните в: %s — или оставьте в папке загрузок: «Подключить» перенесёт файл сам.";
     grid.innerHTML = MODEL_CATALOG.map(function (m) {
       var current = byRole[m.role];
       var isInstalled = !!current && (!current.model_ref || current.model_ref === m.ref);
@@ -2665,6 +2689,10 @@
       var badge = m.ref === recommended
         ? '<span class="chip chip--ok">' + (dict["settings.models.recommended"] || "рекомендуется") + "</span>"
         : "";
+      // Файл качает браузер: докачка и видимый прогресс — его работа, движку
+      // остаётся подключить готовый файл из каталога роли.
+      var savePath = modelSavePath(m.role, m.source);
+      var tip = savePath ? formatPercentText(saveTo, [savePath]) : "";
       return '<article class="model-card' + (isInstalled ? " model-card--installed" : "") + '"' +
         ' data-catalog-role="' + escapeHTML(m.role) + '"' +
         ' data-catalog-source="' + escapeHTML(m.source) + '"' +
@@ -2680,15 +2708,82 @@
         '<div class="model-card__status" data-model-status>' + escapeHTML(status) + "</div>" +
         '<div class="model-card__progress" hidden><span></span></div>' +
         '<div class="model-card__percent" hidden></div>' +
-        '<div class="model-card__actions"><button type="button" data-model-install>' +
-        (isInstalled ? (dict["settings.models.reinstall"] || "Переустановить")
-                     : (dict["settings.models.install"] || "Установить")) + "</button>" +
+        '<a class="model-card__dl" href="' + escapeHTML(m.source) + '" target="_blank" rel="noopener"' +
+        (tip ? ' data-tip="' + escapeHTML(tip) + '"' : "") + ">" +
+        escapeHTML(dict["settings.models.download_browser"] || "Скачать в браузере") + "</a>" +
+        '<code class="model-card__path"' + (savePath ? "" : " hidden") + ">" + escapeHTML(savePath) + "</code>" +
+        '<div class="model-card__actions"><button type="button" data-model-adopt>' +
+        escapeHTML(dict["settings.models.adopt"] || "Подключить") + "</button>" +
+        '<button type="button" data-model-copy>' +
+        escapeHTML(dict["settings.models.copy_path"] || "Скопировать путь") + "</button>" +
         (isInstalled
           ? '<button type="button" data-model-delete>' + (dict["settings.models.delete"] || "Удалить") + "</button>"
           : "") + "</div>" +
         "</article>";
     }).join("");
     applyModelStatuses(grid, installed || [], [], "settings.models");
+    renderModelSavePath();
+  }
+
+  // modelSourceFile — имя файла модели: последний сегмент ссылки, как на сервере.
+  function modelSourceFile(source) {
+    var clean = String(source || "").split("#")[0].split("?")[0];
+    var parts = clean.split("/");
+    return parts[parts.length - 1] || "";
+  }
+
+  // modelSavePath — путь, куда сохранить файл роли: каталог из статуса плюс имя.
+  function modelSavePath(role, source) {
+    var dir = MODEL_DIRS[role];
+    var file = modelSourceFile(source);
+    if (!dir || !file) {
+      return "";
+    }
+    return dir + "/" + file;
+  }
+
+  // applyModelPaths — обновляет путь на уже нарисованных карточках: каталоги
+  // приходят из статуса, карточку ради подсказки не перерисовываем.
+  function applyModelPaths(grid) {
+    if (!grid) {
+      return;
+    }
+    var dict = window.I18N || {};
+    var saveTo = dict["settings.models.save_hint"] || "Сохраните в: %s — или оставьте в папке загрузок: «Подключить» перенесёт файл сам.";
+    grid.querySelectorAll(".model-card").forEach(function (card) {
+      var path = modelSavePath(card.getAttribute("data-catalog-role"), card.getAttribute("data-catalog-source"));
+      var code = card.querySelector(".model-card__path");
+      if (code) {
+        code.textContent = path;
+        code.hidden = !path;
+      }
+      var link = card.querySelector(".model-card__dl");
+      if (!link) {
+        return;
+      }
+      if (path) {
+        link.setAttribute("data-tip", formatPercentText(saveTo, [path]));
+      } else {
+        link.removeAttribute("data-tip");
+      }
+    });
+    renderModelSavePath();
+  }
+
+  // renderModelSavePath — подсказка под формой «Своя модель»: путь считается
+  // из введённой ссылки и каталогов ролей.
+  function renderModelSavePath() {
+    var box = byId(IDS.settingsModelPath);
+    if (!box) {
+      return;
+    }
+    var role = fieldValue(IDS.settingsModelRole);
+    var path = role ? modelSavePath(role, fieldValue(IDS.settingsModelSource)) : "";
+    var dict = window.I18N || {};
+    box.hidden = !path;
+    box.textContent = path
+      ? formatPercentText(dict["settings.models.save_to"] || "Сохраните файл в: %s", [path])
+      : "";
   }
 
   // applyModelStatuses переносит живой статус ролей на уже нарисованные карточки:
@@ -2778,14 +2873,41 @@
       deleteModelRole(del.closest(".model-card").getAttribute("data-catalog-role"), del);
       return;
     }
-    var btn = event.target.closest("button[data-model-install]");
-    if (!btn) {
+    var copy = event.target.closest("button[data-model-copy]");
+    if (copy) {
+      copyModelPath(copy.closest(".model-card"), copy);
       return;
     }
-    installModelFromCard(btn.closest(".model-card"));
+    var adopt = event.target.closest("button[data-model-adopt]");
+    if (!adopt) {
+      return;
+    }
+    adoptModelFromCard(adopt.closest(".model-card"), adopt);
   }
 
-  function installModelFromCard(card) {
+  // copyModelPath — путь к файлу модели в буфер обмена; без Clipboard API
+  // (старый браузер) кнопка молчит, разметка не ломается.
+  function copyModelPath(card, btn) {
+    var path = card
+      ? modelSavePath(card.getAttribute("data-catalog-role"), card.getAttribute("data-catalog-source"))
+      : "";
+    if (!path || !navigator.clipboard || !navigator.clipboard.writeText) {
+      return;
+    }
+    navigator.clipboard.writeText(path).catch(noop);
+    var dict = window.I18N || {};
+    var old = btn.textContent;
+    btn.textContent = dict["settings.models.path_copied"] || "Путь скопирован";
+    setTimeout(function () {
+      btn.textContent = old;
+    }, 2000);
+  }
+
+  function noop() {}
+
+  // adoptModelFromCard — подключение уже скачанного файла: движок не качает
+  // заново, а проверяет файл в каталоге роли и регистрирует его.
+  function adoptModelFromCard(card, btn) {
     if (!card) {
       return;
     }
@@ -2795,54 +2917,21 @@
     if (!role || !source || !ref) {
       return;
     }
-    var btn = card.querySelector("button[data-model-install]");
-    var release = setBusy(btn);
-    setCardProgress(card, 0, "Загрузка…");
-    var stopPolling = startModelProgressPoll(role, card);
-    postJSON("/api/settings/models/install", {
+    var release = setBusy(btn || card.querySelector("button[data-model-adopt]"));
+    setCardProgress(card, 0, "Подключение…");
+    postJSON("/api/settings/models/adopt", {
       world: activeSlugValue(),
       role: role,
       source: source,
       model_ref: ref
     }).then(function (res) {
       setCardProgress(card, 1, res && res.bound === false
-        ? "Скачана. Привяжите роль после рождения мира."
+        ? "Подключена. Привяжите роль после рождения мира."
         : "Установлена и привязана.");
       return loadSettingsData();
     }).catch(function (err) {
       setCardProgress(card, 0, (err && err.message) || String(err), true);
-    }).then(function () {
-      stopPolling();
-      release();
-    });
-  }
-
-  function startModelProgressPoll(role, card) {
-    var stopped = false;
-    var timer = setInterval(function () {
-      if (stopped) {
-        return;
-      }
-      apiJSON("/api/settings/models/status?role=" + encodeURIComponent(role)).then(function (data) {
-        var job = (data.jobs || [])[0];
-        if (!job) {
-          return;
-        }
-        if (job.status === "downloading") {
-          setCardProgress(card, job.progress || 0, "Загрузка…");
-        } else if (job.status === "error") {
-          setCardProgress(card, job.progress || 0, job.error || "Ошибка загрузки", true);
-          stopped = true;
-          clearInterval(timer);
-        }
-      }).catch(function () {
-        // Опрос прогресса не должен ломать саму установку.
-      });
-    }, 500);
-    return function () {
-      stopped = true;
-      clearInterval(timer);
-    };
+    }).then(release);
   }
 
   function setCardProgress(card, progress, text, isError, detail) {
@@ -3106,7 +3195,9 @@
     if (!/^https?:\/\//i.test(source)) {
       source = MODEL_SOURCE_SCHEME + source.replace(/^\/+/, "");
     }
-    return postJSON("/api/settings/models/install", {
+    // Файл к этому моменту уже скачан браузером в каталог роли: форма только
+    // регистрирует его, повторной загрузки нет.
+    return postJSON("/api/settings/models/adopt", {
       world: activeSlugValue(),
       role: role,
       source: source,
@@ -3621,6 +3712,10 @@
         var badge = m.ref === recommended
           ? '<span class="chip chip--ok">' + (dict["settings.models.recommended"] || "рекомендуется") + "</span>"
           : "";
+        // В мастерe файл качает браузер, как в Настройках: ссылка с подсказкой
+        // «куда сохранить», затем «Подключить» регистрирует файл.
+        var savePath = modelSavePath(m.role, m.source);
+        var tip = savePath ? formatPercentText(dict["settings.models.save_hint"] || "Сохраните в: %s — или оставьте в папке загрузок: «Подключить» перенесёт файл сам.", [savePath]) : "";
         return '<article class="model-card" data-catalog-role="' + escapeHTML(m.role) + '"' +
           ' data-catalog-source="' + escapeHTML(m.source) + '"' +
           ' data-catalog-size="' + escapeHTML(m.size) + '"' +
@@ -3634,40 +3729,17 @@
           '<div class="model-card__status" data-model-status>' + escapeHTML(dict["wizard.model.not_installed"] || "Не установлена") + "</div>" +
           '<div class="model-card__progress" hidden><span></span></div>' +
           '<div class="model-card__percent" hidden></div>' +
-          '<div class="model-card__actions"><button type="button" data-model-install>' + escapeHTML(dict["settings.models.install"] || "Установить") + "</button></div>" +
+          '<a class="model-card__dl" href="' + escapeHTML(m.source) + '" target="_blank" rel="noopener"' +
+          (tip ? ' data-tip="' + escapeHTML(tip) + '"' : "") + ">" +
+          escapeHTML(dict["settings.models.download_browser"] || "Скачать в браузере") + "</a>" +
+          '<code class="model-card__path"' + (savePath ? "" : " hidden") + ">" + escapeHTML(savePath) + "</code>" +
+          '<div class="model-card__actions"><button type="button" data-model-adopt>' +
+          escapeHTML(dict["settings.models.adopt"] || "Подключить") + "</button>" +
+          '<button type="button" data-model-copy>' +
+          escapeHTML(dict["settings.models.copy_path"] || "Скопировать путь") + "</button></div>" +
           "</article>";
       }).join("") +
       "</div></div>";
-  }
-
-  function installWizardModel(card) {
-    if (!card) {
-      return;
-    }
-    var role = card.getAttribute("data-catalog-role") || "";
-    var source = card.getAttribute("data-catalog-source") || "";
-    var ref = card.getAttribute("data-catalog-ref") || "";
-    if (!role || !source || !ref) {
-      return;
-    }
-    var btn = card.querySelector("button[data-model-install]");
-    var release = setBusy(btn);
-    setCardProgress(card, 0, "Загрузка…");
-    var stopPolling = startModelProgressPoll(role, card);
-    postJSON("/api/settings/models/install", {
-      world: "",
-      role: role,
-      source: source,
-      model_ref: ref
-    }).then(function () {
-      setCardProgress(card, 1, "Установлена");
-    }).catch(function (err) {
-      setCardProgress(card, 0, (err && err.message) || String(err), true);
-    }).then(function () {
-      stopPolling();
-      release();
-      scheduleLivePoll(0);
-    });
   }
 
   function loadWizardWorldOptions() {
@@ -3716,9 +3788,14 @@
   }
 
   function onWizardModelClick(event) {
-    var btn = event.target.closest("button[data-model-install]");
-    if (btn) {
-      installWizardModel(btn.closest(".model-card"));
+    var copy = event.target.closest("button[data-model-copy]");
+    if (copy) {
+      copyModelPath(copy.closest(".model-card"), copy);
+      return;
+    }
+    var adopt = event.target.closest("button[data-model-adopt]");
+    if (adopt) {
+      adoptModelFromCard(adopt.closest(".model-card"), adopt);
     }
   }
 
@@ -4002,6 +4079,9 @@
       var status = res[0] || {};
       var state = res[1] || {};
       var jobs = status.jobs || [];
+      if (status.dirs) {
+        MODEL_DIRS = status.dirs;
+      }
       if (wizard) {
         if (state.steps) {
           renderWizardSteps(state.steps);
@@ -4010,6 +4090,7 @@
           renderWizardStation(state.station);
         }
         applyModelStatuses(byId(IDS.wizardModelCards), status.models || state.models || [], jobs, "wizard.model");
+        applyModelPaths(byId(IDS.wizardModelCards));
       }
       if (settings) {
         applySettingsLive(status);
@@ -4026,7 +4107,11 @@
   function applySettingsLive(status) {
     var models = (status && status.models) || [];
     var jobs = (status && status.jobs) || [];
+    if (status && status.dirs) {
+      MODEL_DIRS = status.dirs;
+    }
     applyModelStatuses(byId(IDS.modelCatalogGrid), models, jobs, "settings.models");
+    applyModelPaths(byId(IDS.modelCatalogGrid));
     var installed = models.filter(function (m) { return m && m.status === "installed"; }).length;
     setStatusText("settings-nav-models-status", installed ? String(installed) : "0", installed ? "st--ok" : "");
   }
