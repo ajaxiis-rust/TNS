@@ -78,6 +78,39 @@ func TestWizardCheckDotHasNoCircle(t *testing.T) {
 	}
 }
 
+// Индикация канала (решение владельца 2026-11-13): работает — ✓, не работает — ✗.
+// Знак дублирует цвет, поэтому состояние читается и без цвета.
+func TestChannelStatusesUseGlyphs(t *testing.T) {
+	app, err := web.FS.ReadFile("static/app.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(app)
+	for _, want := range []string{
+		`el.textContent = ok ? "✓" : "✗";`,
+		`(channelWorking ? "✓ " : "✗ ")`,
+		`(c.ok ? "✓ " : "✗ ")`,
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("app.js без знака состояния %q", want)
+		}
+	}
+
+	page, err := web.FS.ReadFile("settings.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"settings-channel-tunnel-badge-glyph",
+		"settings-channel-telegram-badge-glyph",
+		"status-glyph",
+	} {
+		if !strings.Contains(string(page), want) {
+			t.Errorf("settings.html без %q", want)
+		}
+	}
+}
+
 // Формулировки понятны владельцу без сленга разработки.
 func TestWizardTextsForOwner(t *testing.T) {
 	data, err := web.FS.ReadFile("static/i18n.js")

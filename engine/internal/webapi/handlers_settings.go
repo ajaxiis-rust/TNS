@@ -191,6 +191,7 @@ type channelSettings struct {
 	TelegramTokenSet   bool   `json:"telegram_token_set"`
 	TelegramConfigured bool   `json:"telegram_configured"`
 	BotRunning         bool   `json:"bot_running"`
+	TunnelRunning      bool   `json:"tunnel_running"`
 	Warning            string `json:"warning"`
 }
 
@@ -414,6 +415,7 @@ func buildChannelSettings(tun TunnelConfig, keys map[string]string) channelSetti
 		TelegramTokenSet:   tokenSet,
 		TelegramConfigured: tokenSet && chatID != "",
 		BotRunning:         botRunning.Load(),
+		TunnelRunning:      tunnelProcessRunning(),
 		Warning:            channelWarningValue(),
 	}
 }

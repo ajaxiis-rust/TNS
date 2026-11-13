@@ -2258,11 +2258,11 @@ body {
   white-space: nowrap;
 }
 
-.channel-panel .status i {
-  width: 5px;
-  height: 5px;
-  border-radius: 99px;
-  background: currentColor;
+/* Знак состояния в бейдже канала: ✓ работает, ✗ не работает. Цвет задаёт
+   класс status--ok/--err на самом бейдже. */
+.channel-panel .status__glyph {
+  font-size: 11px;
+  line-height: 1;
 }
 
 .channel-panel .status--off {
@@ -2311,25 +2311,23 @@ body {
   color: var(--muted);
 }
 
-.channel-panel .dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 99px;
-  background: var(--off);
+/* Знак состояния в строках канала: форма различает ✓/✗ без цвета. */
+.channel-panel .status-glyph {
   flex: 0 0 auto;
+  width: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  text-align: center;
+  color: var(--muted);
 }
 
-.channel-panel .dot--ok {
-  background: var(--ok);
-  box-shadow: 0 0 0 3px rgba(127, 174, 136, 0.14);
+.channel-panel .status-glyph--ok {
+  color: var(--ok);
 }
 
-.channel-panel .dot--wait {
-  background: var(--wait);
-}
-
-.channel-panel .dot--err {
-  background: var(--err);
+.channel-panel .status-glyph--err {
+  color: var(--err);
 }
 
 .channel-alert {

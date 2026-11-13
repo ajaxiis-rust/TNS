@@ -162,7 +162,14 @@
     settingsChannelChatId: "settings-channel-chat-id",
     settingsChannelToken: "settings-channel-token",
     settingsChannelConfigured: "settings-channel-configured",
+    settingsChannelConfiguredGlyph: "settings-channel-configured-glyph",
+    settingsChannelTelegramHint: "settings-channel-telegram-hint",
     settingsChannelBot: "settings-channel-bot",
+    settingsChannelBotGlyph: "settings-channel-bot-glyph",
+    settingsChannelTunnelBadge: "settings-channel-tunnel-badge",
+    settingsChannelTunnelGlyph: "settings-channel-tunnel-glyph",
+    settingsChannelTunnelState: "settings-channel-tunnel-state",
+    settingsChannelTelegramBadge: "settings-channel-telegram-badge",
     settingsChannelWarning: "settings-channel-warning",
     settingsChannelSave: "settings-channel-save",
     settingsPlugins: "settings-plugins",
@@ -2560,9 +2567,12 @@
     var dict = window.I18N || {};
     setStatusText("settings-nav-general-status", "готово", "st--ok");
     var channel = data.channel || {};
+    var channelWorking = !!channel.telegram_configured && !!channel.bot_running;
     setStatusText("settings-nav-channel-status",
-      channel.telegram_configured ? (dict["settings.channel.configured_yes"] || "настроен") : (dict["settings.channel.configured_no"] || "не настроен"),
-      channel.telegram_configured ? "st--ok" : "st--wait");
+      (channelWorking ? "✓ " : "✗ ") +
+        (channelWorking ? (dict["settings.channel.status_working"] || "работает")
+          : (dict["settings.channel.status_not_working"] || "не работает")),
+      channelWorking ? "st--ok" : "st--err");
     var llm = data.llm || {};
     setStatusText("settings-nav-llm-status", llm.local === false ? "внешний" : "локально", "");
     var keyed = (data.providers || []).filter(function (p) { return p.key_set; }).length;
@@ -2606,18 +2616,73 @@
   }
 
   function renderChannel(channel) {
+    var dict = window.I18N || {};
     setValue(IDS.settingsChannelEdge, channel.edge || "");
     setValue(IDS.settingsChannelLocal, channel.local || "");
     setValue(IDS.settingsChannelChatId, channel.telegram_chat_id || "");
     setKeyPlaceholder(IDS.settingsChannelToken, channel.telegram_token_set);
-    var dict = window.I18N || {};
-    setValue(IDS.settingsChannelConfigured, channel.telegram_configured
+
+    // Туннель: движок его не запускает — признак работы только живой cloudflared.
+    var tunnelOn = !!channel.tunnel_running;
+    setChannelBadge(IDS.settingsChannelTunnelBadge, tunnelOn,
+      tunnelOn ? "status--ok" : "status--err",
+      tunnelOn ? (dict["settings.channel.tunnel_running"] || "запущен")
+        : (dict["settings.channel.tunnel_off"] || "не запущен"));
+    setGlyph(IDS.settingsChannelTunnelGlyph, tunnelOn);
+    setValue(IDS.settingsChannelTunnelState, tunnelOn
+      ? (dict["settings.channel.tunnel_status_on"] || "Запущен")
+      : (dict["settings.channel.tunnel_status_off"] || "Не запущен"));
+
+    // Telegram: ✓ только когда есть токен и chat_id и бот действительно работает.
+    var configured = !!channel.telegram_configured;
+    var botOn = !!channel.bot_running;
+    var working = configured && botOn;
+    var badgeText = working
+      ? (dict["settings.channel.status_working"] || "работает")
+      : (configured
+        ? (dict["settings.channel.status_bot_stopped"] || "бот остановлен")
+        : (dict["settings.channel.configured_no"] || "не настроен"));
+    setChannelBadge(IDS.settingsChannelTelegramBadge, working,
+      working ? "status--ok" : (configured ? "status--err" : "status--off"), badgeText);
+    setGlyph(IDS.settingsChannelConfiguredGlyph, configured);
+    setValue(IDS.settingsChannelConfigured, configured
       ? (dict["settings.channel.configured_yes"] || "настроен")
       : (dict["settings.channel.configured_no"] || "не настроен"));
-    setValue(IDS.settingsChannelBot, channel.bot_running
+    setGlyph(IDS.settingsChannelBotGlyph, botOn);
+    setValue(IDS.settingsChannelBot, botOn
       ? (dict["settings.channel.bot_running"] || "бот работает")
       : (dict["settings.channel.bot_stopped"] || "бот остановлен"));
+    var tgHint = byId(IDS.settingsChannelTelegramHint);
+    if (tgHint) {
+      tgHint.hidden = configured;
+    }
     setValue(IDS.settingsChannelWarning, channel.warning || dict["settings.channel.warning"] || "Публичный туннель не имеет аутентификации");
+  }
+
+  // setGlyph — знак состояния: работает ✓, не работает ✗.
+  function setGlyph(id, ok) {
+    var el = byId(id);
+    if (!el) {
+      return;
+    }
+    el.textContent = ok ? "✓" : "✗";
+    el.classList.remove("status-glyph--ok", "status-glyph--err");
+    el.classList.add(ok ? "status-glyph--ok" : "status-glyph--err");
+  }
+
+  // Бейдж панели канала: тон — состоянием, знак — формой.
+  function setChannelBadge(id, ok, tone, text) {
+    var badge = byId(id);
+    if (!badge) {
+      return;
+    }
+    badge.classList.remove("status--ok", "status--err", "status--wait", "status--off");
+    badge.classList.add(tone);
+    var glyph = byId(id + "-glyph");
+    if (glyph) {
+      glyph.textContent = ok ? "✓" : "✗";
+    }
+    setValue(id + "-text", text);
   }
 
   function setKeyPlaceholder(id, keySet) {
@@ -2807,14 +2872,15 @@
       var state = c.ok ? (dict["settings.station.ok"] || "в норме") : (dict["settings.station.bad"] || "требует внимания");
       return '<div class="station-check' + (c.ok ? "" : " station-check--bad") + '">' +
         '<div class="station-check__head"><b>' + escapeHTML(label) + "</b>" +
-        '<span class="st ' + (c.ok ? "st--ok" : "st--err") + '">' + escapeHTML(state) + "</span></div>" +
+        '<span class="st ' + (c.ok ? "st--ok" : "st--err") + '">' +
+        (c.ok ? "✓ " : "✗ ") + escapeHTML(state) + "</span></div>" +
         '<div class="station-check__value">' + escapeHTML(c.value || "—") + "</div>" +
         (c.hint ? '<div class="station-check__hint">' + escapeHTML(c.hint) + "</div>" : "") +
         "</div>";
     }).join("");
     var bad = checks.filter(function (c) { return !c.ok; }).length;
     setStatusText("settings-nav-station-status",
-      bad ? String(bad) : (dict["settings.station.ok_short"] || "в норме"),
+      bad ? "✗ " + String(bad) : "✓ " + (dict["settings.station.ok_short"] || "в норме"),
       bad ? "st--err" : "st--ok");
   }
 

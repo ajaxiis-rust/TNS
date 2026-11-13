@@ -96,7 +96,10 @@
           <div class="channel-panel__head">
             <h2 data-i18n="settings.channel.tunnel">Туннель</h2>
             <span class="spacer"></span>
-            <span class="status status--off"><i></i><span data-i18n="settings.channel.status_off">выключен</span></span>
+            <span class="status status--off" id="settings-channel-tunnel-badge">
+              <span class="status__glyph" id="settings-channel-tunnel-badge-glyph" aria-hidden="true">✗</span>
+              <span id="settings-channel-tunnel-badge-text">не запущен</span>
+            </span>
           </div>
           <p class="channel-panel__hint" data-i18n="settings.channel.tunnel_hint">Исходящее соединение к краю Cloudflare. Входящих портов нет.</p>
           <label class="field">
@@ -112,8 +115,8 @@
             <input id="settings-channel-local" placeholder="127.0.0.1:8720">
           </label>
           <div class="status-row">
-            <span class="dot"></span>
-            <b data-i18n="settings.channel.tunnel_status_off">Не запущен</b>
+            <span class="status-glyph status-glyph--err" id="settings-channel-tunnel-glyph" aria-hidden="true">✗</span>
+            <b id="settings-channel-tunnel-state">Не запущен</b>
             <small data-i18n="settings.channel.tunnel_status_hint">scripts/tunnel.sh или tns65 tunnel --run</small>
           </div>
         </section>
@@ -122,7 +125,10 @@
           <div class="channel-panel__head">
             <h2 data-i18n="settings.channel.telegram">Telegram</h2>
             <span class="spacer"></span>
-            <span class="status status--off"><i></i><span data-i18n="settings.channel.status_off">выключен</span></span>
+            <span class="status status--off" id="settings-channel-telegram-badge">
+              <span class="status__glyph" id="settings-channel-telegram-badge-glyph" aria-hidden="true">✗</span>
+              <span id="settings-channel-telegram-badge-text">не работает</span>
+            </span>
           </div>
           <label class="field">
             <span data-i18n="settings.channel.token">Токен Telegram</span>
@@ -136,12 +142,12 @@
             <input id="settings-channel-chat-id">
           </label>
           <div class="status-row">
-            <span class="dot"></span>
+            <span class="status-glyph" id="settings-channel-configured-glyph" aria-hidden="true">—</span>
             <b id="settings-channel-configured"></b>
-            <small data-i18n="settings.channel.telegram_status_hint">нужны токен и chat_id</small>
+            <small id="settings-channel-telegram-hint" data-i18n="settings.channel.telegram_status_hint">нужны токен и chat_id</small>
           </div>
           <div class="status-row">
-            <span class="dot"></span>
+            <span class="status-glyph" id="settings-channel-bot-glyph" aria-hidden="true">—</span>
             <b id="settings-channel-bot"></b>
           </div>
         </section>
