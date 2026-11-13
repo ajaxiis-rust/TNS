@@ -115,9 +115,9 @@ func TestClient(t *testing.T) {
 
 	t.Run("timeout", func(t *testing.T) {
 		t.Setenv("LEMMARPC_FAKE_DELAY", "300ms")
-		oldWarmup := warmupTimeout
-		warmupTimeout = 100 * time.Millisecond
-		t.Cleanup(func() { warmupTimeout = oldWarmup })
+		oldWarmup, oldResponse := warmupTimeout, responseTimeout
+		warmupTimeout, responseTimeout = 100*time.Millisecond, 100*time.Millisecond
+		t.Cleanup(func() { warmupTimeout, responseTimeout = oldWarmup, oldResponse })
 		logPath := filepath.Join(t.TempDir(), "journal.log")
 		logger, err := journal.New(logPath)
 		if err != nil {
@@ -146,9 +146,9 @@ func TestClient(t *testing.T) {
 
 	t.Run("restart after 3 timeouts", func(t *testing.T) {
 		t.Setenv("LEMMARPC_FAKE_DELAY", "300ms")
-		oldWarmup := warmupTimeout
-		warmupTimeout = 100 * time.Millisecond
-		t.Cleanup(func() { warmupTimeout = oldWarmup })
+		oldWarmup, oldResponse := warmupTimeout, responseTimeout
+		warmupTimeout, responseTimeout = 100*time.Millisecond, 100*time.Millisecond
+		t.Cleanup(func() { warmupTimeout, responseTimeout = oldWarmup, oldResponse })
 		pidLog := filepath.Join(t.TempDir(), "pids.log")
 		t.Setenv("LEMMARPC_FAKE_PID_LOG", pidLog)
 		c := NewClient(fake, nil)

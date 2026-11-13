@@ -15,7 +15,11 @@ import (
 var ErrTimeout = errors.New("lemmarpc: timeout waiting for response")
 
 // responseTimeout — тайм-аут ответа протокола на прогретом резиденте (шаг 2).
-const responseTimeout = 200 * time.Millisecond
+// 2 с, а не 200 мс: прогон 2026-11-13 под нагрузкой (загрузка 9B-модели занимала
+// все ядра) показал lemma.fail timeout у прогретого резидента, после чего ход
+// уходил в stop_crane/abort. Переменная, как и warmupTimeout, чтобы тесты
+// укорачивали тайм-аут.
+var responseTimeout = 2 * time.Second
 
 // warmupTimeout — ожидание первого ответа после старта резидента. Словарь
 // лемматизатора грузится при старте процесса и под нагрузкой (модели ещё
@@ -59,8 +63,8 @@ func NewClient(binary string, logger *journal.Logger) *Client {
 }
 
 // Lemmatize разбирает text и возвращает токены (лемма, часть речи, метки).
-// Тайм-аут ответа — 200 мс; после трёх подряд тайм-аутов процесс перезапускается;
-// ошибки пишутся в журнал событием lemma.fail (шаг 2).
+// Тайм-аут ответа — responseTimeout; после трёх подряд тайм-аутов процесс
+// перезапускается; ошибки пишутся в журнал событием lemma.fail (шаг 2).
 func (c *Client) Lemmatize(text string) ([]Token, error) {
 	c.mu.Lock()
 	if c.cur == nil {

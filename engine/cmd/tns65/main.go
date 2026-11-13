@@ -149,6 +149,10 @@ func run() int {
 	// Чат без лемматизатора не строит гипотезу намерения: каждый ход уходит в
 	// переспрос и не коммитится. Подключаем лемматизатор пакета по умолчанию.
 	webapi.SetChatLemmatizer(webapi.DefaultPackLemmatizer(logger))
+	// T-03-08: слот Ткача по секции slots конфигурации экземпляра. Без него путь
+	// weaver коммитит статическую заготовку вместо прозы модели. Уже подключённый
+	// слот (e2e-хук --fake-slot) сеттер не перезаписывает.
+	webapi.SetChatWeaver(webapi.DefaultChatWeaver(logger))
 
 	wl, err := portgate.LoadWhitelist("config.yaml")
 	if err != nil {

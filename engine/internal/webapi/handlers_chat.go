@@ -48,6 +48,16 @@ var chatLogger *journal.Logger
 // подключён, ход уходит на страховку. Подменяется e2e-хуком SetE2ESlot.
 var chatWeaver turn.ProseSlot
 
+// SetChatWeaver подключает слот Ткача к чатовому конвейеру. Пустой слот и уже
+// подключённый слот не перезаписываются: в e2e-сборке подставной слот ставит
+// хук --fake-slot до старта ядра, и релизная проводка его не затирает.
+func SetChatWeaver(s turn.ProseSlot) {
+	if s == nil || chatWeaver != nil {
+		return
+	}
+	chatWeaver = s
+}
+
 // chatLemmatizer — лемматизатор резки реплики (T-03-02); nil — лемм нет.
 // Подменяется e2e-хуком SetE2ELemmatizer.
 var chatLemmatizer turn.Lemmatizer

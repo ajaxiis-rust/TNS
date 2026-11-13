@@ -18,6 +18,7 @@ const (
 	EventTurnStage             = "turn.stage"
 	EventSawPhaseBreak         = "saw.phase_break"
 	EventSlotDegraded          = "slot.degraded"
+	EventSlotWiring            = "slot.wiring_fail"
 	EventTurnSawRecommendation = "turn.saw_recommendation"
 	EventTurnSelectorDecision  = "turn.selector_decision"
 	EventTurnPath              = "turn.path"
