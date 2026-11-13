@@ -162,6 +162,26 @@ output_usd_per_m = 6.00
 	}
 }
 
+func TestShippedProvidersFile(t *testing.T) {
+	cfg := Load(filepath.Join("..", "..", "providers.toml"))
+	for _, name := range []string{"gemini-flash", "gemini-pro", "gemini-openai", "deepseek", "mimo", "qwen"} {
+		if _, ok := cfg.Provider(name); !ok {
+			t.Fatalf("в поставке providers.toml нет провайдера %q", name)
+		}
+	}
+	mimo, _ := cfg.Provider("mimo")
+	if mimo.Protocol != ProtocolOpenAI || mimo.BaseURL != "https://api.xiaomimimo.com/v1" || mimo.DefaultModel != "mimo-v2-flash" {
+		t.Fatalf("mimo = %+v", mimo)
+	}
+	qwen, _ := cfg.Provider("qwen")
+	if qwen.BaseURL != "https://dashscope-intl.aliyuncs.com/compatible-mode/v1" {
+		t.Fatalf("qwen = %+v", qwen)
+	}
+	if _, ok := cfg.Model("gemini-3.8-flash"); !ok {
+		t.Fatal("справочник цен поставки пуст")
+	}
+}
+
 func TestParseStringArray(t *testing.T) {
 	cases := map[string][]string{
 		`["a", "b/c"]`:       {"a", "b/c"},

@@ -20,6 +20,9 @@ netgate:
     - api.deepinfra.com                   # DeepInfra
     - api.tokenfactory.nebius.com         # Nebius Token Factory
     - api.deepseek.com                    # DeepSeek
+    - api.xiaomimimo.com                  # Xiaomi MiMo
+    - dashscope-intl.aliyuncs.com         # Alibaba Qwen (DashScope, международный)
+    - dashscope.aliyuncs.com              # Alibaba Qwen (DashScope, Китай; для qwen-cn)
     - huggingface.co                      # HF — менеджер моделей (MD-09.1)
     - "*.huggingface.co"                  # CDN LFS: HF отдаёт файл редиректом
     - "*.hf.co"                           # Xet/CDN: us.aws.cdn.hf.co и другие

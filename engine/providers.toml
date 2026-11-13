@@ -59,6 +59,30 @@ base_url = "https://api.deepseek.com/v1"
 default_model = "deepseek-chat"
 
 [[providers]]
+name = "mimo"
+label = "Xiaomi MiMo"
+protocol = "openai"
+base_url = "https://api.xiaomimimo.com/v1"
+default_model = "mimo-v2-flash"
+
+[[providers]]
+name = "qwen"
+label = "Alibaba Qwen (DashScope)"
+protocol = "openai"
+base_url = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+default_model = "qwen-plus"
+
+# Qwen в китайском регионе — другой хост; для него добавьте отдельную запись и
+# хост dashscope.aliyuncs.com в netgate.allowed_hosts (config.yaml).
+#
+# [[providers]]
+# name = "qwen-cn"
+# label = "Alibaba Qwen (Китай)"
+# protocol = "openai"
+# base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+# default_model = "qwen-plus"
+
+[[providers]]
 name = "mistral"
 label = "Mistral AI"
 protocol = "openai"
