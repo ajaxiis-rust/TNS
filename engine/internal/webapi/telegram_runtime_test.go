@@ -98,7 +98,7 @@ func TestStartTelegramLifecycle(t *testing.T) {
 
 	// Poll должен выполнить хотя бы один getUpdates к фейковому Telegram.
 	deadline := time.Now().Add(2 * time.Second)
-	for !telegramSawPath(tgCh, "/bot/tok/getUpdates") {
+	for !telegramSawPath(tgCh, "/bottok/getUpdates") {
 		if time.Now().After(deadline) {
 			t.Fatal("Poll did not reach fake Telegram getUpdates")
 		}

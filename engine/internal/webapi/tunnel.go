@@ -450,7 +450,7 @@ type telegramChat struct {
 // на сообщения — только исходящими запросами, webhook-входящих сокетов нет
 // (F-04.4).
 func (b *TelegramBot) GetUpdates(ctx context.Context, offset int64) ([]telegramUpdate, error) {
-	u := b.telegramBase + "/bot/" + b.cfg.TelegramToken + "/getUpdates"
+	u := b.telegramBase + "/bot" + b.cfg.TelegramToken + "/getUpdates"
 	params := url.Values{}
 	if offset > 0 {
 		params.Set("offset", strconv.FormatInt(offset, 10))
@@ -588,7 +588,7 @@ func (b *TelegramBot) answerCallback(ctx context.Context, callbackID, text strin
 	if b.cfg.TelegramToken == "" {
 		return ErrTelegramNotConfigured
 	}
-	u := b.telegramBase + "/bot/" + b.cfg.TelegramToken + "/answerCallbackQuery"
+	u := b.telegramBase + "/bot" + b.cfg.TelegramToken + "/answerCallbackQuery"
 	form := url.Values{}
 	form.Set("callback_query_id", callbackID)
 	form.Set("text", text)
@@ -899,7 +899,7 @@ func (b *TelegramBot) sendTelegramMessage(ctx context.Context, text, keyboard st
 	if b.cfg.TelegramToken == "" || b.cfg.TelegramChatID == "" {
 		return ErrTelegramNotConfigured
 	}
-	u := b.telegramBase + "/bot/" + b.cfg.TelegramToken + "/sendMessage"
+	u := b.telegramBase + "/bot" + b.cfg.TelegramToken + "/sendMessage"
 	form := url.Values{}
 	form.Set("chat_id", b.cfg.TelegramChatID)
 	form.Set("text", text)

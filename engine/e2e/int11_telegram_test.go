@@ -208,7 +208,7 @@ func newFakeTelegram(t *testing.T, token string) (*fakeTelegram, *httptest.Serve
 }
 
 func (f *fakeTelegram) handle(w http.ResponseWriter, r *http.Request) {
-	switch strings.TrimPrefix(r.URL.Path, "/bot/"+f.token) {
+	switch strings.TrimPrefix(r.URL.Path, "/bot"+f.token) {
 	case "/getUpdates":
 		f.mu.Lock()
 		updates := f.queue

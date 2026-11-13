@@ -198,8 +198,8 @@ func TestTelegramBotForwardsChat(t *testing.T) {
 
 func assertTelegramMessage(t *testing.T, got requestCapture, wantText string) {
 	t.Helper()
-	if got.method != http.MethodPost || got.path != "/bot/tok/sendMessage" {
-		t.Fatalf("telegram request = %s %s, want POST /bot/tok/sendMessage", got.method, got.path)
+	if got.method != http.MethodPost || got.path != "/bottok/sendMessage" {
+		t.Fatalf("telegram request = %s %s, want POST /bottok/sendMessage", got.method, got.path)
 	}
 	vals, err := url.ParseQuery(got.body)
 	if err != nil {
@@ -755,8 +755,8 @@ func newCallbackBot(t *testing.T, update telegramUpdate) (*TelegramBot, chan req
 // assertAnswerCallback проверяет, что бот ответил на callback коротким текстом.
 func assertAnswerCallback(t *testing.T, got requestCapture, wantID, wantText string) {
 	t.Helper()
-	if got.method != http.MethodPost || got.path != "/bot/tok/answerCallbackQuery" {
-		t.Fatalf("answer callback = %s %s, want POST /bot/tok/answerCallbackQuery", got.method, got.path)
+	if got.method != http.MethodPost || got.path != "/bottok/answerCallbackQuery" {
+		t.Fatalf("answer callback = %s %s, want POST /bottok/answerCallbackQuery", got.method, got.path)
 	}
 	vals, err := url.ParseQuery(got.body)
 	if err != nil {
