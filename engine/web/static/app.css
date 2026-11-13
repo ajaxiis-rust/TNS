@@ -1159,6 +1159,127 @@ body {
   border-radius: 10px;
 }
 
+/* Бейджи состояния привязок и панели «Состояние станции». */
+.settings-role .st,
+.station-check .st,
+.settings-current .st {
+  padding: 2px 8px;
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+}
+
+.settings-role .st--ok,
+.station-check .st--ok,
+.settings-current .st--ok {
+  color: var(--ok);
+  border-color: rgba(127, 174, 136, 0.32);
+  background: rgba(127, 174, 136, 0.08);
+}
+
+.settings-role .st--err,
+.station-check .st--err {
+  color: var(--err);
+  border-color: rgba(198, 103, 82, 0.35);
+  background: rgba(198, 103, 82, 0.09);
+}
+
+.settings-role--inactive {
+  align-items: flex-start;
+  text-align: left;
+  border-style: dashed;
+  border-color: rgba(198, 103, 82, 0.35);
+}
+
+.settings-role--inactive .settings-role__actions {
+  margin-left: 0;
+}
+
+.settings-role__problem {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: var(--err);
+}
+
+.settings-role__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.settings-role__actions button {
+  padding: 3px 9px;
+  font-size: 11px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line-strong, var(--line));
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.settings-role__actions button:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
+
+.settings-roles-inactive {
+  margin-top: 4px;
+}
+
+/* Неактивные привязки — строки во всю ширину: причине и кнопкам нужно место,
+   сетка карточек ролей здесь тесна. */
+#settings-roles-inactive {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.station-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.station-check {
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.station-check--bad {
+  border-color: rgba(198, 103, 82, 0.35);
+}
+
+.station-check__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+  font-size: 12px;
+}
+
+.station-check__value {
+  font-size: 12px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.station-check__hint {
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.model-card--target {
+  outline: 2px solid var(--ok);
+  outline-offset: 2px;
+}
+
 .settings-provider {
   padding: 10px 14px;
   background: var(--card);

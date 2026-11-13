@@ -39,8 +39,9 @@
 | PUT | `/api/mcp/lemmatizer` | `{"enabled":bool}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | GET | `/settings.html` | — | `settings.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/wizard.html` | — | `wizard.html` из embed (мастер первого запуска) | `method_not_allowed`, `not_found` |
-| GET | `/api/settings` | query `world=<slug>` | `{"world":"…","sections":[…],"embedding_dimension":1024,"general":{…},"world":{…},"advanced":{…},"bindings":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| GET | `/api/settings` | query `world=<slug>` | `{"world":"…","sections":[…],"embedding_dimension":1024,"general":{…},"world":{…},"advanced":{…},"bindings":[{"role","model_ref","provider","active","state","problem"}],"station":{"ready":bool,"world":"…","checks":[{"key","ok","value","hint"}]}}` — привязка `active=false`, когда локальной модели нет на диске или у внешнего провайдера нет ключа; `state` — `ok|no_model|no_file|no_key`, `problem` — причина; `station` сверяет модели, привязки, порты, llama-server и Telegram на момент запроса | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | PUT | `/api/settings/bindings` | `{"world":"…","bindings":[{"role","model_ref","provider"}]}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| POST | `/api/settings/bindings/forget` | `{"world":"…","role":"…"}` | `{"status":"ok","role":"…"}` — удаляет строку роли из `model_bindings`; файлы моделей не трогаются | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | PUT | `/api/settings/config` | `{"host","port","paganel_enabled","scout_enabled","gen_addr","gen_model","gen_timeout","gen_max_tokens","gen_temperature","gen_retries","gen_concurrency","embed_addr","embed_model","embed_timeout","local","sampling"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | PUT | `/api/settings/keys` | `{"keys":{…}}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | PUT | `/api/settings/channel` | `{"edge","local","telegram_chat_id","telegram_token","clear_token"}` | `{"status":"ok","bot_running":bool,"warning":"…"}` | `method_not_allowed`, `bad_request`, `internal` |
@@ -97,6 +98,7 @@ GET /settings.html
 GET /wizard.html
 GET /api/settings
 PUT /api/settings/bindings
+POST /api/settings/bindings/forget
 PUT /api/settings/config
 PUT /api/settings/keys
 PUT /api/settings/channel

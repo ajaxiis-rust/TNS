@@ -137,6 +137,11 @@
     settingsRolePrompts: "settings-role-prompts",
     settingsRolePriority: "settings-role-priority",
     settingsRolesSave: "settings-roles-save",
+    settingsStation: "settings-station",
+    settingsStationRefresh: "settings-station-refresh",
+    settingsRolesInactiveWrap: "settings-roles-inactive-wrap",
+    settingsRolesInactive: "settings-roles-inactive",
+    settingsRolesInactiveCount: "settings-roles-inactive-count",
     settingsWorldForm: "settings-world-form",
     settingsWorldSelect: "settings-world-select",
     settingsWorldOpen: "settings-world-open",
@@ -169,6 +174,7 @@
     monitorJournal: "monitor-journal",
     settingsNav: "settings-nav",
     settingsSectionGeneral: "settings-section-general",
+    settingsSectionStation: "settings-section-station",
     settingsSectionLLM: "settings-section-llm",
     settingsSectionProviders: "settings-section-providers",
     settingsSectionModels: "settings-section-models",
@@ -221,6 +227,7 @@
 
   var SETTINGS_SECTIONS = [
     "settings-section-general",
+    "settings-section-station",
     "settings-section-llm",
     "settings-section-providers",
     "settings-section-models",
@@ -1940,15 +1947,39 @@
     if (rolesBox) {
       rolesBox.addEventListener("click", function (event) {
         var card = event.target.closest(".settings-role[data-role]");
+        if (card) {
+          fillRoleFormFromCard(card);
+        }
+      });
+    }
+
+    var inactiveBox = byId(IDS.settingsRolesInactive);
+    if (inactiveBox) {
+      inactiveBox.addEventListener("click", function (event) {
+        var card = event.target.closest(".settings-role[data-role]");
         if (!card) {
           return;
         }
-        setValue(IDS.settingsRoleName, card.getAttribute("data-role") || "");
-        setValue(IDS.settingsRoleProvider, ensureOption(IDS.settingsRoleProvider, card.getAttribute("data-provider") || "local"));
-        setValue(IDS.settingsRoleModel, ensureOption(IDS.settingsRoleModel, card.getAttribute("data-model") || ""));
-        setValue(IDS.settingsRoleTemperature, card.getAttribute("data-temperature") || "0");
-        setValue(IDS.settingsRolePrompts, card.getAttribute("data-prompts") || "");
-        setValue(IDS.settingsRolePriority, card.getAttribute("data-priority") || "0");
+        var forget = event.target.closest("button[data-binding-forget]");
+        if (forget) {
+          forgetBinding(card.getAttribute("data-role"), forget);
+          return;
+        }
+        if (event.target.closest("button[data-binding-repair]")) {
+          repairBinding(card);
+          return;
+        }
+        fillRoleFormFromCard(card);
+      });
+    }
+
+    var stationRefresh = byId(IDS.settingsStationRefresh);
+    if (stationRefresh) {
+      stationRefresh.addEventListener("click", function () {
+        var release = setBusy(stationRefresh);
+        loadSettingsData().then(function () {
+          toast((window.I18N || {})["settings.station.checked"] || "Проверено: настройки перечитаны", true);
+        }).catch(settingsError).then(release);
       });
     }
 
@@ -2366,6 +2397,7 @@
     setChecked(IDS.settingsScoutEnabled, data.world_section && data.world_section.paganel ? !!data.world_section.paganel.scout_enabled : false);
     renderLLMSettings(data.llm || {});
     renderChannel(data.channel || {});
+    renderSettingsStation(data.station || {});
     renderSettingsPresets(data.presets || []);
     renderSettingsBindings(data.bindings || [], hasWorld);
     renderSettingsModelsCurrent(data.bindings || [], hasWorld);
@@ -2520,29 +2552,79 @@
     if (!box) {
       return;
     }
+    var dict = window.I18N || {};
+    var wrap = byId(IDS.settingsRolesInactiveWrap);
+    var inactiveBox = byId(IDS.settingsRolesInactive);
     if (!hasWorld) {
       renderNoWorldNote(box);
+      if (wrap) {
+        wrap.hidden = true;
+      }
       return;
     }
-    if (bindings.length === 0) {
-      box.innerHTML = '<p class="settings-empty">—</p>';
-      return;
+    // Сервер уже сверил каждую привязку с диском и ключами: active=false —
+    // старая запись, которой сейчас нечем ответить. Такие роли не выдаём за
+    // рабочие, а складываем в свёрнутый блок «Неактивные привязки».
+    var active = [];
+    var inactive = [];
+    (bindings || []).forEach(function (b) {
+      if (b.active === false) {
+        inactive.push(b);
+      } else {
+        active.push(b);
+      }
+    });
+    if (active.length === 0) {
+      box.innerHTML = '<p class="settings-empty">' +
+        (dict["settings.roles.no_active"] || "Активных привязок нет: модель не установлена или нет ключа.") + "</p>";
+    } else {
+      box.innerHTML = active.map(function (b) {
+        return roleCardHtml(b, true, dict);
+      }).join("");
     }
-    box.innerHTML = bindings.map(function (b) {
-      var html = '<div class="settings-role" data-role="' + escapeHTML(b.role) +
-        '" data-provider="' + escapeHTML(b.provider || "local") +
-        '" data-model="' + escapeHTML(b.model_ref || "") +
-        '" data-temperature="' + escapeHTML(String(b.temperature || 0)) +
-        '" data-prompts="' + escapeHTML(b.prompts || "") +
-        '" data-priority="' + escapeHTML(String(b.priority || 0)) + '">' +
-        '<b>' + escapeHTML(b.role) + '</b>' +
-        '<span>' + escapeHTML(b.provider) + (b.model_ref ? ' · ' + escapeHTML(b.model_ref) : '') + '</span>' +
-        (b.temperature ? '<span class="chip">t=' + escapeHTML(String(b.temperature)) + '</span>' : '') +
-        (b.prompts ? '<span class="chip">' + escapeHTML(b.prompts) + '</span>' : '') +
-        (b.priority ? '<span class="chip">p=' + escapeHTML(String(b.priority)) + '</span>' : '') +
-        '</div>';
-      return html;
-    }).join("");
+    if (wrap && inactiveBox) {
+      wrap.hidden = inactive.length === 0;
+      inactiveBox.innerHTML = inactive.map(function (b) {
+        return roleCardHtml(b, false, dict);
+      }).join("");
+      var count = byId(IDS.settingsRolesInactiveCount);
+      if (count) {
+        count.textContent = inactive.length ? "(" + inactive.length + ")" : "";
+      }
+    }
+  }
+
+  // roleCardHtml — карточка роли: активная отвечает моделью или ключом,
+  // неактивная показывает причину и кнопки «Подключить»/«Забыть».
+  function roleCardHtml(b, active, dict) {
+    var role = escapeHTML(b.role);
+    var provider = escapeHTML(b.provider || "local");
+    var model = b.model_ref ? " · " + escapeHTML(b.model_ref) : "";
+    var attrs = ' data-role="' + role +
+      '" data-provider="' + provider +
+      '" data-model="' + escapeHTML(b.model_ref || "") +
+      '" data-temperature="' + escapeHTML(String(b.temperature || 0)) +
+      '" data-prompts="' + escapeHTML(b.prompts || "") +
+      '" data-priority="' + escapeHTML(String(b.priority || 0)) + '"';
+    var chips = (b.temperature ? '<span class="chip">t=' + escapeHTML(String(b.temperature)) + "</span>" : "") +
+      (b.prompts ? '<span class="chip">' + escapeHTML(b.prompts) + "</span>" : "") +
+      (b.priority ? '<span class="chip">p=' + escapeHTML(String(b.priority)) + "</span>" : "");
+    if (active) {
+      return '<div class="settings-role"' + attrs + ">" +
+        "<b>" + role + "</b>" +
+        "<span>" + provider + model + "</span>" +
+        '<span class="st st--ok">' + (dict["settings.roles.active"] || "активна") + "</span>" +
+        chips + "</div>";
+    }
+    return '<div class="settings-role settings-role--inactive"' + attrs + ">" +
+      "<b>" + role + "</b>" +
+      "<span>" + provider + model + "</span>" +
+      '<span class="st st--err">' + (dict["settings.roles.inactive"] || "неактивна") + "</span>" +
+      '<small class="settings-role__problem">' + escapeHTML(b.problem || "") + "</small>" +
+      '<span class="settings-role__actions">' +
+      "<button type=\"button\" data-binding-repair>" + (dict["settings.roles.repair"] || "Подключить") + "</button>" +
+      "<button type=\"button\" data-binding-forget>" + (dict["settings.roles.forget"] || "Забыть") + "</button>" +
+      "</span></div>";
   }
 
   // Что сейчас привязано к ролям — чтобы не искать это по форме установки.
@@ -2555,17 +2637,110 @@
       box.innerHTML = '<p class="settings-empty">Мир не выбран — привязка ролей появится после рождения мира.</p>';
       return;
     }
-    if (!bindings || bindings.length === 0) {
-      box.innerHTML = '<p class="settings-empty">Ни одна роль пока не привязана к модели.</p>';
+    var all = bindings || [];
+    var active = all.filter(function (b) { return b.active !== false; });
+    var stale = all.length - active.length;
+    if (active.length === 0) {
+      box.innerHTML = '<p class="settings-empty">' +
+        (stale
+          ? "Активных привязок нет. Неактивных: " + stale + " — причина в разделе «Роли»."
+          : "Ни одна роль пока не привязана к модели.") + "</p>";
       return;
     }
-    box.innerHTML = bindings.map(function (b) {
+    box.innerHTML = active.map(function (b) {
       return '<div class="settings-current__row"><span class="settings-current__role">' +
         escapeHTML(b.role) + '</span><span>' + escapeHTML(b.provider) +
         (b.model_ref ? ' · ' + escapeHTML(b.model_ref) : '') + '</span>' +
+        '<span class="st st--ok">' + ((window.I18N || {})["settings.roles.active"] || "активна") + '</span>' +
         (b.temperature ? '<span class="chip">t=' + escapeHTML(String(b.temperature)) + '</span>' : '') +
         '</div>';
+    }).join("") + (stale
+      ? '<p class="settings-note">Неактивных привязок: ' + stale + ' — причина и действия в разделе «Роли».</p>'
+      : "");
+  }
+
+  // renderSettingsStation — панель «Состояние станции»: сервер уже сверил
+  // файлы моделей, привязки, порты и каналы, экран только показывает.
+  function renderSettingsStation(station) {
+    var box = byId(IDS.settingsStation);
+    if (!box) {
+      return;
+    }
+    var dict = window.I18N || {};
+    var checks = (station && station.checks) || [];
+    if (checks.length === 0) {
+      box.innerHTML = '<p class="settings-empty">' + (dict["settings.station.unavailable"] || "Проверка недоступна.") + "</p>";
+      return;
+    }
+    box.innerHTML = checks.map(function (c) {
+      var label = dict["settings.station." + c.key] || c.key;
+      var state = c.ok ? (dict["settings.station.ok"] || "в норме") : (dict["settings.station.bad"] || "требует внимания");
+      return '<div class="station-check' + (c.ok ? "" : " station-check--bad") + '">' +
+        '<div class="station-check__head"><b>' + escapeHTML(label) + "</b>" +
+        '<span class="st ' + (c.ok ? "st--ok" : "st--err") + '">' + escapeHTML(state) + "</span></div>" +
+        '<div class="station-check__value">' + escapeHTML(c.value || "—") + "</div>" +
+        (c.hint ? '<div class="station-check__hint">' + escapeHTML(c.hint) + "</div>" : "") +
+        "</div>";
     }).join("");
+    var bad = checks.filter(function (c) { return !c.ok; }).length;
+    setStatusText("settings-nav-station-status",
+      bad ? String(bad) : (dict["settings.station.ok_short"] || "в норме"),
+      bad ? "st--err" : "st--ok");
+  }
+
+  // fillRoleFormFromCard — подставляет привязку в форму роли.
+  function fillRoleFormFromCard(card) {
+    setValue(IDS.settingsRoleName, card.getAttribute("data-role") || "");
+    setValue(IDS.settingsRoleProvider, ensureOption(IDS.settingsRoleProvider, card.getAttribute("data-provider") || "local"));
+    setValue(IDS.settingsRoleModel, ensureOption(IDS.settingsRoleModel, card.getAttribute("data-model") || ""));
+    setValue(IDS.settingsRoleTemperature, card.getAttribute("data-temperature") || "0");
+    setValue(IDS.settingsRolePrompts, card.getAttribute("data-prompts") || "");
+    setValue(IDS.settingsRolePriority, card.getAttribute("data-priority") || "0");
+  }
+
+  // forgetBinding — явное удаление неактивной привязки: убирается только строка
+  // model_bindings, файл модели на диске остаётся.
+  function forgetBinding(role, btn) {
+    var release = setBusy(btn);
+    postJSON("/api/settings/bindings/forget", { world: activeSlugValue(), role: role }).then(function () {
+      toast((window.I18N || {})["settings.roles.forgotten"] || "Привязка забыта", true);
+      return loadSettingsData();
+    }).catch(function (err) {
+      toast((err && err.message) || String(err), false);
+    }).then(release);
+  }
+
+  // repairBinding — ведёт из неактивной привязки в раздел, где её чинят:
+  // локальной роли нужен файл модели, внешней — ключ провайдера.
+  function repairBinding(card) {
+    var provider = card.getAttribute("data-provider") || "local";
+    var role = card.getAttribute("data-role") || "";
+    var dict = window.I18N || {};
+    if (provider === "local") {
+      scrollToSection(IDS.settingsSectionModels);
+      var target = null;
+      document.querySelectorAll("#model-catalog-grid .model-card").forEach(function (el) {
+        if (el.getAttribute("data-catalog-role") === role) {
+          target = el;
+        }
+      });
+      if (target) {
+        target.classList.add("model-card--target");
+        setTimeout(function () { target.classList.remove("model-card--target"); }, 2400);
+      }
+      toast(formatPercentText(dict["settings.roles.repair_model"] || "Роль «%s»: скачайте модель и нажмите «Подключить»", [role]), true);
+      return;
+    }
+    scrollToSection(IDS.settingsSectionProviders);
+    setValue(IDS.settingsProviderName, provider);
+    toast(formatPercentText(dict["settings.roles.repair_key"] || "Введите ключ провайдера %s и сохраните", [provider]), true);
+  }
+
+  function scrollToSection(id) {
+    var section = byId(id);
+    if (section && section.scrollIntoView) {
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }
 
   function renderSettingsModels(models, hasWorld) {

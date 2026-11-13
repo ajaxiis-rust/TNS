@@ -100,6 +100,7 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodGet, path: "/wizard.html", handle: handleWizardScreen},
 		{method: http.MethodGet, path: "/api/settings", handle: handleSettingsGet},
 		{method: http.MethodPut, path: "/api/settings/bindings", handle: handleSettingsBindings},
+		{method: http.MethodPost, path: "/api/settings/bindings/forget", handle: handleSettingsBindingForget},
 		{method: http.MethodPut, path: "/api/settings/config", handle: handleSettingsConfig},
 		{method: http.MethodPut, path: "/api/settings/keys", handle: handleSettingsKeys},
 		{method: http.MethodPut, path: "/api/settings/channel", handle: handleSettingsChannel},

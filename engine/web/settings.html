@@ -6,6 +6,7 @@
     <div class="settings-nav__title" data-i18n="menu.settings">Настройки</div>
     <div class="settings-nav__group" data-i18n="settings.nav.group.main">Основное</div>
     <a href="#settings-section-general"><span data-i18n="settings.general">General</span><span class="st st--ok" id="settings-nav-general-status" data-i18n="settings.nav.general">готово</span></a>
+    <a href="#settings-section-station"><span data-i18n="settings.station">Что сейчас работает</span><span class="st" id="settings-nav-station-status" data-i18n="settings.nav.station">—</span></a>
     <div class="settings-nav__group" data-i18n="settings.nav.group.link">Связь</div>
     <a href="#settings-section-channel"><span data-i18n="settings.channel">Канал</span><span class="st st--wait" id="settings-nav-channel-status" data-i18n="settings.nav.channel">не настроен</span></a>
     <div class="settings-nav__group" data-i18n="settings.nav.group.models">Модели и роли</div>
@@ -29,6 +30,15 @@
     </label>
     <button type="button" class="btn btn--ghost" id="settings-world-open" data-i18n="settings.worldbar.open">Открыть Атлас</button>
   </div>
+
+  <section class="settings-section" id="settings-section-station" aria-label="Что сейчас работает">
+    <div class="settings-section__head">
+      <h2 data-i18n="settings.station">Что сейчас работает</h2>
+      <button type="button" class="btn btn--ghost" id="settings-station-refresh" data-i18n="settings.station.check">Проверить</button>
+      <p class="settings-section__hint" data-i18n="settings.station.hint">Реальная картина на текущий момент: файлы моделей, привязки ролей, порты, llama-server и Telegram.</p>
+    </div>
+    <div class="station-grid" id="settings-station"></div>
+  </section>
   <section class="settings-section" id="settings-section-general" aria-label="General">
     <h2 data-i18n="settings.general">General</h2>
     <form class="settings-form" id="settings-general-form">
@@ -313,6 +323,11 @@
       <p class="settings-section__hint" data-i18n="settings.roles.hint">Какая роль какой моделью отвечает. Для большинства случаев достаточно провайдера и модели.</p>
     </div>
     <div class="settings-roles" id="settings-roles"></div>
+    <details class="settings-details settings-roles-inactive" id="settings-roles-inactive-wrap" hidden>
+      <summary><span data-i18n="settings.roles.inactive_block">Неактивные привязки</span> <span id="settings-roles-inactive-count"></span></summary>
+      <p class="settings-note" data-i18n="settings.roles.inactive_hint">У роли нет установленной модели или ключа провайдера — она не отвечает. «Подключить» открывает нужный раздел, «Забыть» удаляет привязку.</p>
+      <div class="settings-roles" id="settings-roles-inactive"></div>
+    </details>
     <datalist id="settings-role-names"></datalist>
     <form class="settings-form" id="settings-roles-form">
       <label class="settings-field">

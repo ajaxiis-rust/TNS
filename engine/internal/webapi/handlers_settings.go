@@ -94,7 +94,22 @@ type slotBinding struct {
 	Temperature float64 `json:"temperature,omitempty"`
 	Prompts     string  `json:"prompts,omitempty"`
 	Priority    int     `json:"priority,omitempty"`
+
+	// Состояние привязки на текущий момент — только чтение (решение владельца
+	// 2026-11-13): локальной роли нужен установленный файл, внешней — ключ.
+	// Запись привязок эти поля не читает.
+	Active  bool   `json:"active"`
+	State   string `json:"state,omitempty"`
+	Problem string `json:"problem,omitempty"`
 }
+
+// Состояния привязки для экрана Настроек.
+const (
+	bindingStateOK      = "ok"
+	bindingStateNoModel = "no_model"
+	bindingStateNoFile  = "no_file"
+	bindingStateNoKey   = "no_key"
+)
 
 // roleConfig — состав слота роли, который не помещается в model_bindings
 // (там только role/model_ref/provider): температура, промпты, приоритет.
@@ -138,12 +153,31 @@ type settingsResponse struct {
 	Advanced           advancedSettings         `json:"advanced"`
 	Channel            channelSettings          `json:"channel"`
 	Bindings           []slotBinding            `json:"bindings"`
+	Station            stationState             `json:"station"`
 	Presets            []settingsPreset         `json:"presets"`
 	Providers          []settingsProvider       `json:"providers"`
 	Models             []modelStatus            `json:"models"`
 	RamGB              float64                  `json:"ram_gb"`
 	Embedder           embedserver.Status       `json:"embedder"`
 	Supervisor         []supervisor.ChildStatus `json:"supervisor"`
+}
+
+// stationCheck — одна строка панели «Состояние станции»: ключ подписи в
+// словаре интерфейса, значение на текущий момент и признак нормы.
+type stationCheck struct {
+	Key   string `json:"key"`
+	OK    bool   `json:"ok"`
+	Value string `json:"value"`
+	Hint  string `json:"hint,omitempty"`
+}
+
+// stationState — реальная картина станции на момент открытия Настроек
+// (решение владельца 2026-11-13, вариант 3): что лежит на диске, какие
+// привязки живые, отвечают ли порты и настроены ли каналы.
+type stationState struct {
+	Ready  bool           `json:"ready"`
+	World  string         `json:"world"`
+	Checks []stationCheck `json:"checks"`
 }
 
 // channelSettings — исходящий канал станка (T-08-03, F-04.3/F-04.4): край
@@ -252,6 +286,7 @@ func handleSettingsScreen(w http.ResponseWriter, _ *http.Request) {
 // мировых переключателей, памяти NPC, удачи мира и привязок слотов.
 func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 	slug := strings.TrimSpace(r.URL.Query().Get("world"))
+	keys := readSettingsKeys(settingsTOMLPath)
 
 	meta := map[string]string{}
 	bindings := []slotBinding{}
@@ -277,6 +312,9 @@ func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 		bindings = enrichBindings(meta, bindings)
 	}
 	models = readModelStatuses()
+	// Привязка, у которой нет файла или ключа, не показывается как рабочая:
+	// экран отвечает реальной картине, а не прежним записям в model_bindings.
+	bindings = validateBindings(bindings, models, keys)
 
 	webCfg := Config{Host: DefaultHost, Port: DefaultPort}
 	if cfg, err := LoadConfig(settingsConfigPath); err == nil {
@@ -290,9 +328,11 @@ func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 	if cfg, err := LoadTunnelConfig(settingsConfigPath); err == nil {
 		tunCfg = cfg
 	}
-	keys := readSettingsKeys(settingsTOMLPath)
 
 	presets, providers := buildSettingsPresets(keys)
+	llm := readLLMSettings(settingsConfigPath, keys)
+	channel := buildChannelSettings(tunCfg, keys)
+	embedder := readEmbedderStatus()
 
 	writeJSON(w, http.StatusOK, settingsResponse{
 		World:              slug,
@@ -308,7 +348,7 @@ func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 			Auth:                 "none",
 			ExternalVectorSearch: keys["external_vector_search"] == "true",
 		},
-		LLM: readLLMSettings(settingsConfigPath, keys),
+		LLM: llm,
 		WorldSection: worldSettings{
 			Paganel: paganelSettings{
 				Enabled:      pagCfg.Enabled,
@@ -317,13 +357,14 @@ func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 		Advanced:   buildAdvanced(meta),
-		Channel:    buildChannelSettings(tunCfg, keys),
+		Channel:    channel,
 		Bindings:   bindings,
+		Station:    buildStationState(r.Context(), slug, models, bindings, llm, embedder, channel, providers),
 		Presets:    presets,
 		Providers:  providers,
 		Models:     models,
 		RamGB:      hostRAMGB(),
-		Embedder:   readEmbedderStatus(),
+		Embedder:   embedder,
 		Supervisor: readSupervisorStatus(),
 	})
 }
@@ -459,6 +500,44 @@ func handleSettingsBindings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// eventBindingForget — явное удаление неактивной привязки роли из model_bindings
+// (решение владельца 2026-11-13). Файлы моделей при этом не трогаются.
+const eventBindingForget = "binding.forget"
+
+// handleSettingsBindingForget — POST /api/settings/bindings/forget: владелец
+// убирает привязку, у которой нет ни файла, ни ключа. Удаляется только строка
+// роли; каталог world_db/models/<роль>/ и манифест остаются как есть.
+func handleSettingsBindingForget(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		World string `json:"world"`
+		Role  string `json:"role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "bad forget body")
+		return
+	}
+	slug := strings.TrimSpace(req.World)
+	role := strings.TrimSpace(req.Role)
+	if slug == "" || role == "" {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "world and role required")
+		return
+	}
+	h, err := db.OpenWriterAs(worldDBPath(slug), db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		writeError(w, http.StatusNotFound, codeNotFound, "world not found")
+		return
+	}
+	defer h.Close()
+	if _, err := h.Exec("model_bindings", `DELETE FROM model_bindings WHERE role = ?`, role); err != nil {
+		writeError(w, http.StatusInternalServerError, codeInternal, "binding delete failed")
+		return
+	}
+	if modelLogger != nil {
+		_ = modelLogger.Event("settings", eventBindingForget, journal.Field{Key: "role", Value: role})
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "role": role})
 }
 
 // handleSettingsConfig — PUT /api/settings/config: станочные настройки web,
@@ -875,6 +954,201 @@ func enrichBindings(meta map[string]string, bindings []slotBinding) []slotBindin
 		out = append(out, b)
 	}
 	return out
+}
+
+// validateBindings сверяет привязки с текущим диском и ключами: локальной роли
+// нужен установленный файл модели с целым манифестом, внешнему провайдеру —
+// ключ в settings.toml. Невалидная привязка остаётся в списке, но помечается
+// неактивной: экран Настроек не выдаёт старую запись за рабочую настройку.
+func validateBindings(bindings []slotBinding, installed []modelStatus, keys map[string]string) []slotBinding {
+	byRole := make(map[string]modelStatus, len(installed))
+	for _, m := range installed {
+		byRole[m.Role] = m
+	}
+	out := make([]slotBinding, 0, len(bindings))
+	for _, b := range bindings {
+		b.Active = false
+		b.Problem = ""
+		switch {
+		case b.Provider == "" || b.Provider == "local":
+			m, installedHere := byRole[b.Role]
+			switch {
+			case !installedHere:
+				b.State = bindingStateNoModel
+				b.Problem = "модель роли не установлена"
+			case !m.IntegrityOK:
+				b.State = bindingStateNoFile
+				b.Problem = "файл модели " + m.ModelRef + " не найден или повреждён"
+			case b.ModelRef != "" && m.ModelRef != "" && b.ModelRef != m.ModelRef:
+				b.State = bindingStateNoFile
+				b.Problem = "на диске другая модель: " + m.ModelRef
+			default:
+				b.State = bindingStateOK
+				b.Active = true
+			}
+		case b.ModelRef == "":
+			b.State = bindingStateNoModel
+			b.Problem = "у роли нет модели"
+		case keys[b.Provider] == "":
+			b.State = bindingStateNoKey
+			b.Problem = "не задан ключ провайдера " + b.Provider
+		default:
+			b.State = bindingStateOK
+			b.Active = true
+		}
+		out = append(out, b)
+	}
+	return out
+}
+
+// stationProbeTimeout — потолок TCP-проверки слота в панели «Состояние станции»:
+// закрытый loopback-порт отвечает мгновенно, чужой сокет не должен вешать экран.
+const stationProbeTimeout = 400 * time.Millisecond
+
+// buildStationState собирает реальную картину станции для открытия Настроек:
+// модели на диске, живые привязки, локальные слоты, llama-server и каналы.
+func buildStationState(ctx context.Context, slug string, models []modelStatus, bindings []slotBinding, llm llmSettings,
+	embedder embedserver.Status, channel channelSettings, providers []settingsProvider) stationState {
+	st := stationState{World: slug, Checks: make([]stationCheck, 0, 7)}
+
+	worldValue := slug
+	if worldValue == "" {
+		worldValue = "не выбран"
+	}
+	st.Checks = append(st.Checks, stationCheck{Key: "world", OK: slug != "", Value: worldValue})
+
+	ready, broken := 0, 0
+	for _, m := range models {
+		if m.Status != modelStatusInstalled {
+			continue
+		}
+		if m.IntegrityOK {
+			ready++
+			continue
+		}
+		broken++
+	}
+	modelsValue := fmt.Sprintf("%d установлено", ready)
+	if broken > 0 {
+		modelsValue = fmt.Sprintf("%d установлено · %d без файла", ready, broken)
+	}
+	st.Checks = append(st.Checks, stationCheck{
+		Key: "models", OK: ready > 0 && broken == 0, Value: modelsValue,
+		Hint: "файлы моделей на диске; «без файла» — манифест есть, файла нет",
+	})
+
+	active := 0
+	for _, b := range bindings {
+		if b.Active {
+			active++
+		}
+	}
+	bindingsValue := "мир не выбран"
+	if slug != "" {
+		bindingsValue = fmt.Sprintf("активны: %d · неактивны: %d", active, len(bindings)-active)
+	}
+	st.Checks = append(st.Checks, stationCheck{
+		Key: "bindings", OK: slug != "" && active == len(bindings), Value: bindingsValue,
+	})
+
+	if llm.Local {
+		addr := normalizeAddr(llm.Gen.Addr)
+		up := portListens(ctx, addr)
+		st.Checks = append(st.Checks, stationCheck{
+			Key: "gen", OK: up, Value: llm.Gen.Addr + " · " + listenWord(up),
+		})
+	} else {
+		keyed := 0
+		for _, p := range providers {
+			if p.KeySet {
+				keyed++
+			}
+		}
+		st.Checks = append(st.Checks, stationCheck{
+			Key: "gen", OK: keyed > 0, Value: fmt.Sprintf("внешний провайдер · %d с ключом", keyed),
+		})
+	}
+
+	embedValue := llm.Embed.Addr + " · " + listenWord(embedder.Healthy)
+	if !embedder.Healthy && embedder.Error != "" {
+		embedValue = llm.Embed.Addr + " · " + embedder.Error
+	}
+	st.Checks = append(st.Checks, stationCheck{Key: "embed", OK: embedder.Healthy, Value: embedValue})
+
+	llama := llamaBinaryPath()
+	llamaValue := "не найден"
+	if llama != "" {
+		llamaValue = llama
+	}
+	st.Checks = append(st.Checks, stationCheck{
+		Key: "llama", OK: llama != "", Value: llamaValue,
+		Hint: "ищется в настройках, в папке bin рядом с игрой и в PATH",
+	})
+
+	telegramValue := "не настроен"
+	if channel.TelegramConfigured {
+		telegramValue = "настроен · бот работает"
+		if !channel.BotRunning {
+			telegramValue = "настроен · бот остановлен"
+		}
+	} else if channel.TelegramTokenSet {
+		telegramValue = "есть токен, нет chat_id"
+	}
+	st.Checks = append(st.Checks, stationCheck{
+		Key: "telegram", OK: channel.TelegramConfigured && channel.BotRunning, Value: telegramValue,
+	})
+
+	st.Ready = true
+	for _, c := range st.Checks {
+		if !c.OK {
+			st.Ready = false
+			break
+		}
+	}
+	return st
+}
+
+// listenWord — слово состояния слота для панели станции.
+func listenWord(up bool) string {
+	if up {
+		return "отвечает"
+	}
+	return "не отвечает"
+}
+
+// portListens — дешёвая TCP-проверка loopback-слота без HTTP-запроса.
+func portListens(ctx context.Context, addr string) bool {
+	if addr == "" {
+		return false
+	}
+	conn, err := (&net.Dialer{Timeout: stationProbeTimeout}).DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	return true
+}
+
+// llamaBinaryPath — наличие llama-server без запуска --version: решённый путь
+// конфига, bin/ экземпляра, bin/ рядом с бинарником и PATH. Версию для панели
+// станции не спрашиваем: открытие Настроек не должно ждать запуска процесса.
+func llamaBinaryPath() string {
+	candidates := []string{readLlamaServerPath(), filepath.Join(llamaBinDir, llamaServerName())}
+	if exe, err := os.Executable(); err == nil {
+		candidates = append(candidates, filepath.Join(filepath.Dir(exe), llamaBinDir, llamaServerName()))
+	}
+	for _, path := range candidates {
+		if path == "" {
+			continue
+		}
+		if info, err := os.Stat(path); err == nil && info.Mode().IsRegular() {
+			return path
+		}
+	}
+	if path, err := llamaLookPath(llamaServerName()); err == nil {
+		return path
+	}
+	return ""
 }
 
 // writeSlotBindings вставляет или обновляет строки model_bindings по роли.
@@ -1371,7 +1645,7 @@ func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 	}
 	// T-13-07, шаг 2: ребёнок роли поднимается сразу, без перезапуска ядра.
 	child := startInstalledModelChild(role)
-	setModelJob(role, modelRef, "installed", 1, "")
+	setModelJob(role, modelRef, modelStatusInstalled, 1, "")
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status": "ok", "model_ref": modelRef, "file": file, "bound": h != nil, "child": child,
 	})
@@ -1627,7 +1901,7 @@ func handleSettingsModelAdopt(w http.ResponseWriter, r *http.Request) {
 	}
 	// T-13-07, шаг 2: ребёнок роли поднимается сразу, без перезапуска ядра.
 	child := startInstalledModelChild(role)
-	setModelJob(role, modelRef, "installed", 1, "")
+	setModelJob(role, modelRef, modelStatusInstalled, 1, "")
 	logModelAdopt(eventAdoptDone, role, file, "")
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status": "ok", "model_ref": modelRef, "file": file, "bound": h != nil, "child": child,
@@ -2056,7 +2330,7 @@ func probeFirstRunStation() firstRunStation {
 	st.EmbedPortFree = supervisor.CheckPortFree(5002) == nil
 	st.Children = stationChildren()
 	for _, m := range readModelStatuses() {
-		if m.Role == "embed" && m.Status == "installed" {
+		if m.Role == "embed" && m.Status == modelStatusInstalled {
 			st.EmbedModel = m.ModelRef
 			break
 		}

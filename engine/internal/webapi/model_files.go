@@ -26,6 +26,9 @@ import (
 // переименовываются: замена и откат меняют только указатель манифеста.
 
 const (
+	// modelStatusInstalled — статус установленной модели в карточках и заданиях.
+	modelStatusInstalled = "installed"
+
 	// modelManifestName — манифест-указатель версий роли.
 	modelManifestName = "manifest.json"
 	// modelLegacyManifest — манифест старой раскладки current.bin/current.json.
@@ -320,7 +323,7 @@ func modelStatusIn(dir string, verify bool) (modelStatus, bool) {
 	if m, ok := readModelManifest(dir); ok {
 		return modelStatus{
 			Role: m.Role, ModelRef: m.ModelRef, Source: m.Source, File: m.File,
-			Status: "installed", Progress: 1,
+			Status: modelStatusInstalled, Progress: 1,
 			IntegrityOK: modelStatusIntegrity(dir, m.File, m.SHA256, m.Size, verify),
 			HasPrevious: m.Previous != "",
 		}, true
@@ -331,7 +334,7 @@ func modelStatusIn(dir string, verify bool) (modelStatus, bool) {
 	}
 	return modelStatus{
 		Role: m.Role, ModelRef: m.ModelRef, Source: m.Source, File: legacyModelFileName(m),
-		Status: "installed", Progress: 1,
+		Status: modelStatusInstalled, Progress: 1,
 		IntegrityOK: modelStatusIntegrity(dir, modelLegacyFile, m.SHA256, m.Size, verify),
 	}, true
 }

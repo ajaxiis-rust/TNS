@@ -1340,3 +1340,135 @@ func TestChildEmbedRollback(t *testing.T) {
 			switched[0].Args[1], switched[1].Args[1], newFile, oldFile)
 	}
 }
+
+// TestSettingsBindingsValidated — экран Настроек отвечает реальной картиной:
+// локальная привязка активна только при установленном файле, внешняя — при
+// ключе провайдера. Старая запись без файла уходит в неактивные (решение
+// владельца 2026-11-13).
+func TestSettingsBindingsValidated(t *testing.T) {
+	seedSettingsWorld(t)
+	seedModelAdoptEnv(t)
+	if err := os.WriteFile(settingsTOMLPath, []byte("openai = \"sk-test\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	content := "weaver-model"
+	dir := modelDir("weaver")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "weaver-Q4_K_M.gguf"), []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256([]byte(content))
+	if err := installModelFile("weaver", "org/weaver", "https://huggingface.co/org/repo/resolve/main/weaver-Q4_K_M.gguf",
+		"weaver-Q4_K_M.gguf", hex.EncodeToString(sum[:]), int64(len(content))); err != nil {
+		t.Fatal(err)
+	}
+
+	body := []byte(`{"world":"alpha","bindings":[
+		{"role":"weaver","model_ref":"org/weaver","provider":"local"},
+		{"role":"pythia","model_ref":"org/pythia","provider":"local"},
+		{"role":"analysis","model_ref":"gpt-4o-mini","provider":"openai"},
+		{"role":"editor","model_ref":"claude","provider":"anthropic"}
+	]}`)
+	if rr := mcpRequest(t, handleSettingsBindings, http.MethodPut, settingsBindingsPath, body, "application/json"); rr.Code != http.StatusOK {
+		t.Fatalf("PUT bindings: status = %d; body=%s", rr.Code, rr.Body.String())
+	}
+
+	rr := mcpRequest(t, handleSettingsGet, http.MethodGet, settingsPath+"?world=alpha", nil, "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET settings: status = %d; body=%s", rr.Code, rr.Body.String())
+	}
+	var out settingsResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]slotBinding{}
+	for _, b := range out.Bindings {
+		got[b.Role] = b
+	}
+	if b := got["weaver"]; !b.Active || b.State != bindingStateOK {
+		t.Fatalf("weaver = %+v, want active/ok", b)
+	}
+	if b := got["pythia"]; b.Active || b.State != bindingStateNoModel {
+		t.Fatalf("pythia = %+v, want inactive/no_model", b)
+	}
+	if b := got["analysis"]; !b.Active || b.State != bindingStateOK {
+		t.Fatalf("analysis = %+v, want active/ok по ключу openai", b)
+	}
+	if b := got["editor"]; b.Active || b.State != bindingStateNoKey || !strings.Contains(b.Problem, "anthropic") {
+		t.Fatalf("editor = %+v, want inactive/no_key про anthropic", b)
+	}
+
+	checks := map[string]stationCheck{}
+	for _, c := range out.Station.Checks {
+		checks[c.Key] = c
+	}
+	if c := checks["world"]; !c.OK || c.Value != "alpha" {
+		t.Fatalf("station.world = %+v, want alpha/ok", c)
+	}
+	if c := checks["models"]; !c.OK || !strings.Contains(c.Value, "1 установлено") {
+		t.Fatalf("station.models = %+v, want 1 установлено/ok", c)
+	}
+	if c := checks["bindings"]; c.OK || !strings.Contains(c.Value, "активны: 2 · неактивны: 2") {
+		t.Fatalf("station.bindings = %+v, want активны: 2 · неактивны: 2 и не ok", c)
+	}
+
+	// Файл модели пропал — привязка перестаёт быть рабочей без правки БД.
+	if err := os.Remove(filepath.Join(dir, "weaver-Q4_K_M.gguf")); err != nil {
+		t.Fatal(err)
+	}
+	rr = mcpRequest(t, handleSettingsGet, http.MethodGet, settingsPath+"?world=alpha", nil, "")
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	for _, b := range out.Bindings {
+		if b.Role == "weaver" && (b.Active || b.State != bindingStateNoFile) {
+			t.Fatalf("weaver без файла = %+v, want inactive/no_file", b)
+		}
+	}
+}
+
+// TestSettingsBindingForget — «Забыть» удаляет только строку model_bindings;
+// файлы моделей не трогаются, неверная роль или мир — 400/404.
+func TestSettingsBindingForget(t *testing.T) {
+	seedSettingsWorld(t)
+	seedModelAdoptEnv(t)
+	putAdoptedFile(t, "pythia", "pythia.gguf", "data")
+
+	body := []byte(`{"world":"alpha","bindings":[{"role":"pythia","model_ref":"org/pythia","provider":"local"}]}`)
+	if rr := mcpRequest(t, handleSettingsBindings, http.MethodPut, settingsBindingsPath, body, "application/json"); rr.Code != http.StatusOK {
+		t.Fatalf("PUT bindings: status = %d", rr.Code)
+	}
+
+	rr := mcpRequest(t, handleSettingsBindingForget, http.MethodPost, "/api/settings/bindings/forget",
+		[]byte(`{"world":"alpha","role":"pythia"}`), "application/json")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("forget: status = %d; body=%s", rr.Code, rr.Body.String())
+	}
+	world, err := db.OpenReaderAs(worldDBPath("alpha"), db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer world.Close()
+	var n int
+	if err := world.QueryRow(`SELECT COUNT(*) FROM model_bindings`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("привязок после forget = %d, want 0", n)
+	}
+	if _, err := os.Stat(filepath.Join(modelDir("pythia"), "pythia.gguf")); err != nil {
+		t.Fatalf("файл модели удалён вместе с привязкой: %v", err)
+	}
+
+	if rr := mcpRequest(t, handleSettingsBindingForget, http.MethodPost, "/api/settings/bindings/forget",
+		[]byte(`{"world":"alpha"}`), "application/json"); rr.Code != http.StatusBadRequest {
+		t.Fatalf("forget без роли: status = %d, want 400", rr.Code)
+	}
+	if rr := mcpRequest(t, handleSettingsBindingForget, http.MethodPost, "/api/settings/bindings/forget",
+		[]byte(`{"world":"nope","role":"pythia"}`), "application/json"); rr.Code != http.StatusNotFound {
+		t.Fatalf("forget неизвестного мира: status = %d, want 404", rr.Code)
+	}
+}
