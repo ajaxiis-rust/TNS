@@ -309,6 +309,13 @@ func detectLlamaServer() llamaDetection {
 	if probe(filepath.Join(llamaBinDir, llamaServerName()), "instance") {
 		return det
 	}
+	// Развёрнутый экземпляр могли запустить не из своего каталога: ищем bin/
+	// рядом с исполняемым файлом, иначе мастер показывал «не найден».
+	if exe, err := os.Executable(); err == nil {
+		if probe(filepath.Join(filepath.Dir(exe), llamaBinDir, llamaServerName()), "executable") {
+			return det
+		}
+	}
 	if path, err := llamaLookPath(llamaServerName()); err == nil && probe(path, "path") {
 		return det
 	}

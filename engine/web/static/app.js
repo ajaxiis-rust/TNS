@@ -2709,7 +2709,7 @@
         '<div class="model-card__progress" hidden><span></span></div>' +
         '<div class="model-card__percent" hidden></div>' +
         '<a class="model-card__dl" href="' + escapeHTML(m.source) + '" target="_blank" rel="noopener"' +
-        (tip ? ' data-tip="' + escapeHTML(tip) + '"' : "") + ">" +
+        (tip ? ' data-tip="' + escapeHTML(tip) + '" title="' + escapeHTML(tip) + '"' : "") + ">" +
         escapeHTML(dict["settings.models.download_browser"] || "Скачать в браузере") + "</a>" +
         '<code class="model-card__path"' + (savePath ? "" : " hidden") + ">" + escapeHTML(savePath) + "</code>" +
         '<div class="model-card__actions"><button type="button" data-model-adopt>' +
@@ -2896,6 +2896,7 @@
     }
     navigator.clipboard.writeText(path).catch(noop);
     var dict = window.I18N || {};
+    toast(dict["settings.models.path_copied"] || "Путь скопирован", true);
     var old = btn.textContent;
     btn.textContent = dict["settings.models.path_copied"] || "Путь скопирован";
     setTimeout(function () {
@@ -3730,7 +3731,7 @@
           '<div class="model-card__progress" hidden><span></span></div>' +
           '<div class="model-card__percent" hidden></div>' +
           '<a class="model-card__dl" href="' + escapeHTML(m.source) + '" target="_blank" rel="noopener"' +
-          (tip ? ' data-tip="' + escapeHTML(tip) + '"' : "") + ">" +
+          (tip ? ' data-tip="' + escapeHTML(tip) + '" title="' + escapeHTML(tip) + '"' : "") + ">" +
           escapeHTML(dict["settings.models.download_browser"] || "Скачать в браузере") + "</a>" +
           '<code class="model-card__path"' + (savePath ? "" : " hidden") + ">" + escapeHTML(savePath) + "</code>" +
           '<div class="model-card__actions"><button type="button" data-model-adopt>' +

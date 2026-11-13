@@ -20,7 +20,11 @@ var staticFS = func() fs.FS {
 var staticHandler = http.StripPrefix("/static/", http.FileServer(http.FS(staticFS)))
 
 // staticServe — обработчик маршрута GET /static/: файлы static/* из embed.
+// no-cache: файлы вшиты в бинарник и не имеют валидаторов (mtime у embed.FS
+// пустой), поэтому без заголовка браузер может годами держать старый app.css
+// и не показывать обновления после пересборки.
 func staticServe(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-cache")
 	staticHandler.ServeHTTP(w, r)
 }
 
@@ -31,6 +35,7 @@ func serveIndex(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusNotFound, codeNotFound, "index not found")
 		return
 	}
+	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
@@ -44,6 +49,7 @@ func handleHistoryScreen(w http.ResponseWriter, _ *http.Request) {
 		writeError(w, http.StatusNotFound, codeNotFound, "history screen not found")
 		return
 	}
+	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(data)
