@@ -399,3 +399,21 @@ golangci-lint run --output.json.path=../full-fixes/golangci-report.json --output
 go test -race -count=1 -timeout=25m ./... 2>&1 | tee ../full-fixes/race-test.log
 /home/ajaxiis/go/bin/govulncheck ./... 2>&1 | tee ../full-fixes/govulncheck.log
 ```
+
+## 7. Статус на вечер 2026-11-13 (ветка dry/full-fixes)
+
+### Закрыто
+- **GO-2026-6859** — toolchain `go1.27.4` в `engine/go.mod`; govulncheck: «No vulnerabilities found» (коммит ab3fa2a).
+- **P0-волна — все 31 находка** (коммит 042c977): 22 правки + 9 осознанных `//nolint` с обоснованиями.
+  Реальные правки: `errors.Is` вместо `==`/`!=` и switch по ошибке (swarm/launch, workshop/forge_input, webapi/handlers_book); `%w`-обёртки (models/provider, llama_install); `rows.Err()` проверяется в 7 местах; `appendAssign` в journal.go; `reflect.Pointer`; ineffassign.
+  Nolint: bodyclose ×2 (тело закрывает горутина-читатель), nilerr ×5 (задокументированные fallback-контракты «отказ прозы — факты выживают», «битый payload пропускается» и т.п.), errcheck ×2 (ожидаемая ошибка после Stop/сигнала).
+- Race: два полных `go test -race ./...` (до патча на 1.27.3 и после на 1.27.4) — оба зелёные, октябрьские флаки censor/supervisor не воспроизведены.
+
+### Осталось 1491 (P1/P2) — приоритеты триажа
+1. **gosec G101 ×8** — глянуть глазами: потенциальные хардкод-креды (могут быть ложными — имена заголовков и т.п.).
+2. **exhaustive ×4** — тихие ветки в switch по енамам: `workshop/queue.go:66` (нет KindAnalysis/KindForgePlan/KindPythia/KindEdit/KindEpoch), `workshop/forge_pipeline.go:111` (нет TokenThing/TokenPrice), `selector/saw.go:176` (нет MoodNeutral), `selector/selector.go:113` (нет RecommendNone). Это реальные несостыковки.
+3. **unused ×5** — мёртвый код: `turn/clock.go` (realClock), `turn/stopcrane.go` (commitTurn, writeHeroState). Решить: удалить или это забыли вызвать.
+4. **Системная волна «контекст»** — noctx 209 + contextcheck 32: контекст не протаскивается в HTTP/exec/SQL (fetch моделей, Telegram, llama-инсталлер, очередь). Большая задача под отдельную спеку.
+5. **sqlclosecheck ×26** — живой код: `book/chapter.go:216,234`, `book/window.go:178,199`, `paganel/forge_ring.go:312`, `webapi/handlers_library.go:157`, `workshop/complement.go:99`, `workshop/editcensor.go:421` (остальное — тесты).
+6. **gosec G115 ×5** (int-переполнение), **G204 ×3** (exec с переменной), **G404 ×3** (math/rand — для геймплейного рандома легитимно, подтвердить), G112 slowloris ×1.
+7. **Политика шума**: wrapcheck 737 (настроить ignoreSigs/выключить), goconst 323 (пачками по пакетам), gosec G306 ×79 (права файлов — один пункт политики), revive 25, unparam 15, misspell 7 (NB: «Humours» — британское написание, легитимно; отключить правило или задать locale UK).
