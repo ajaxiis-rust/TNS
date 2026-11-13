@@ -80,6 +80,8 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodGet, path: "/history.html", handle: handleHistoryScreen},
 		{method: http.MethodGet, path: "/mcp.html", handle: handleMcpScreen},
 		{method: http.MethodGet, path: "/api/atlas/worlds", handle: handleAtlasList},
+		{method: http.MethodGet, path: "/api/atlas/worlds/map", handle: handleMapViewport},
+		{method: http.MethodGet, path: "/api/atlas/worlds/graph", handle: handleRelationGraph},
 		{method: http.MethodGet, path: "/api/atlas/birth", handle: handleAtlasBirthOptions},
 		{method: http.MethodPost, path: "/api/atlas/worlds/birth", handle: handleAtlasBirth},
 		{method: http.MethodPost, path: "/api/atlas/worlds/active", handle: handleAtlasSwitch},

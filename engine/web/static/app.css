@@ -506,6 +506,22 @@ body {
   max-width: 100%;
 }
 
+/* Атлас занимает высоту вкладки: карта и граф дорисовываются на весь
+   оставшийся объём, а не в фиксированном окне 320 px. */
+.view.view-atlas {
+  display: flex;
+  flex-direction: column;
+}
+
+.view.view-atlas .atlas {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.atlas-worlds-section {
+  flex: 0 0 auto;
+}
+
 .atlas-worlds {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -551,6 +567,50 @@ body {
 .atlas-card__actions button {
   padding: 4px 10px;
   font-size: 0.6rem;
+}
+
+/* Пустая карточка «Создать мир» — первая в сетке миров. */
+.atlas-card--create {
+  align-items: center;
+  justify-content: center;
+  min-height: 116px;
+  color: var(--muted);
+  text-align: center;
+  font: inherit;
+  background: color-mix(in srgb, var(--card) 55%, transparent);
+  border-style: dashed;
+  border-color: var(--line-strong);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.atlas-card--create:hover,
+.atlas-card--create:focus-visible {
+  color: var(--text);
+  border-color: var(--brass);
+  background: color-mix(in srgb, var(--brass) 10%, transparent);
+}
+
+.atlas-card__plus {
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--brass-2);
+}
+
+.atlas-card--create .atlas-card__name {
+  justify-content: center;
+  font-size: 0.82rem;
+}
+
+.atlas-card--create .atlas-card__meta {
+  font-size: 0.66rem;
+}
+
+.atlas-worlds__empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
 .atlas-form,
@@ -783,28 +843,194 @@ body {
   justify-self: start;
 }
 
+/* Карта и граф — вкладки одной секции на весь остаток экрана. */
+.atlas-visual-section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 380px;
+  padding: 10px;
+}
+
+.atlas-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.atlas-tab {
+  margin-bottom: -1px;
+  padding: 7px 14px;
+  font-family: inherit;
+  font-size: 0.74rem;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.atlas-tab:hover {
+  color: var(--text);
+}
+
+.atlas-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--brass-2);
+}
+
+.atlas-tabpanels {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.atlas-tabpanel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.atlas-tabpanel[hidden] {
+  display: none;
+}
+
 .atlas-map,
 .atlas-graph {
   position: relative;
-  padding: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
   overflow: hidden;
   background: var(--card, #143238);
   border: 1px solid var(--line, rgba(166, 132, 74, 0.26));
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .atlas-map-canvas,
 .atlas-graph-canvas {
+  position: absolute;
+  inset: 0;
   display: block;
-  max-width: 100%;
-  height: auto;
+  width: 100%;
+  height: 100%;
 }
 
 .atlas-map-status,
 .atlas-graph-status {
-  margin: 6px 0 0;
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  margin: 0;
+  padding: 4px 9px;
   font-size: 0.66rem;
   color: var(--muted, #6f717a);
+  background: color-mix(in srgb, var(--sea) 78%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+}
+
+/* --- Окна Атласа: анкета мира и мастер новой жизни --------------------- */
+
+.atlas-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.atlas-modal[hidden] {
+  display: none;
+}
+
+.atlas-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--backdrop, rgba(0, 0, 0, 0.72));
+}
+
+.atlas-modal__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(860px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+  background: var(--card);
+  border: 1px solid var(--line-strong, rgba(166, 132, 74, 0.45));
+  border-radius: 14px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+}
+
+.atlas-modal__panel--narrow {
+  width: min(560px, 100%);
+}
+
+.atlas-modal__head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.atlas-modal__titles {
+  min-width: 0;
+}
+
+.atlas-modal__head h2 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.atlas-modal__head .atlas-section__hint {
+  margin: 0;
+}
+
+.atlas-modal__close {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  font-family: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.atlas-modal__close:hover {
+  color: var(--text);
+  border-color: var(--brass);
+}
+
+.atlas-modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px 18px;
+}
+
+.atlas-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.atlas-modal__actions button {
+  padding: 8px 20px;
 }
 
 /* --- Книга (модалка истории) ------------------------------------------ */
@@ -2389,6 +2615,14 @@ body {
   .tab.active::after {
     bottom: -6px;
   }
+
+  .atlas-modal {
+    padding: 8px;
+  }
+
+  .atlas-modal__panel {
+    max-height: calc(100vh - 16px);
+  }
 }
 
 @media (max-width: 480px) {
@@ -2405,6 +2639,10 @@ body {
   .atlas-form,
   .atlas-wizard {
     grid-template-columns: 1fr;
+  }
+
+  .atlas-visual-section {
+    min-height: 320px;
   }
 
   .settings-nav {

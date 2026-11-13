@@ -24,6 +24,13 @@
     heroPanel: "hero-panel",
     systemPanel: "system-panel",
     atlasWorlds: "atlas-worlds",
+    atlasBirthModal: "atlas-birth-modal",
+    atlasBirthClose: "atlas-birth-close",
+    atlasWizardClose: "atlas-wizard-close",
+    atlasTabMap: "atlas-tab-map",
+    atlasTabGraph: "atlas-tab-graph",
+    atlasPanelMap: "atlas-panel-map",
+    atlasPanelGraph: "atlas-panel-graph",
     atlasBirthForm: "atlas-birth-form",
     atlasBirthSlug: "atlas-birth-slug",
     atlasBirthTitle: "atlas-birth-title",
@@ -488,6 +495,7 @@
   function loadAtlasView() {
     if (atlasLoaded) {
       loadAtlasWorlds();
+      refreshAtlasVisuals();
       return;
     }
     fetch("/atlas.html").then(function (res) {
@@ -502,9 +510,52 @@
       atlasLoaded = true;
       loadAtlasBirthOptions();
       loadAtlasWorlds();
+      refreshAtlasVisuals();
     }).catch(function (err) {
       viewAtlas.textContent = err.message;
     });
+  }
+
+  // Карта и граф живут в скрытых панелях вкладок: рисуем только видимую,
+  // иначе canvas получает нулевой размер.
+  function refreshAtlasVisuals() {
+    var active = viewAtlas.querySelector("[data-atlas-tab].active");
+    var name = active ? active.getAttribute("data-atlas-tab") : "map";
+    if (name === "graph") {
+      if (window.TNSGraph) {
+        window.TNSGraph.render();
+      }
+      return;
+    }
+    if (window.TNSMap) {
+      window.TNSMap.render();
+    }
+  }
+
+  function switchAtlasTab(name) {
+    viewAtlas.querySelectorAll("[data-atlas-tab]").forEach(function (tab) {
+      var on = tab.getAttribute("data-atlas-tab") === name;
+      tab.classList.toggle("active", on);
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+      tab.tabIndex = on ? 0 : -1;
+    });
+    var mapPanel = byId(IDS.atlasPanelMap);
+    var graphPanel = byId(IDS.atlasPanelGraph);
+    if (mapPanel) {
+      mapPanel.hidden = name !== "map";
+    }
+    if (graphPanel) {
+      graphPanel.hidden = name !== "graph";
+    }
+    if (name === "graph") {
+      if (window.TNSGraph) {
+        window.TNSGraph.render();
+      }
+      return;
+    }
+    if (window.TNSMap) {
+      window.TNSMap.render();
+    }
   }
 
   // Канонические перечни анкеты приходят из движка: форма не может предложить
@@ -950,7 +1001,77 @@
     if (worlds) {
       worlds.addEventListener("click", onAtlasWorldsClick);
     }
+    viewAtlas.querySelectorAll("[data-atlas-tab]").forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        switchAtlasTab(tab.getAttribute("data-atlas-tab"));
+      });
+    });
+    var birthClose = byId(IDS.atlasBirthClose);
+    if (birthClose) {
+      birthClose.addEventListener("click", function () {
+        closeAtlasModal(IDS.atlasBirthModal);
+      });
+    }
+    var wizardClose = byId(IDS.atlasWizardClose);
+    if (wizardClose) {
+      wizardClose.addEventListener("click", function () {
+        closeAtlasModal(IDS.atlasWizard);
+      });
+    }
+    viewAtlas.addEventListener("click", function (event) {
+      var closer = event.target.closest("[data-atlas-close]");
+      if (closer) {
+        closeAtlasModal(closer.getAttribute("data-atlas-close"));
+      }
+    });
+    document.addEventListener("keydown", onAtlasModalKeydown);
     updateSynopsisCount();
+  }
+
+  // Окна Атласа: анкета нового мира и мастер новой жизни. Клик по фону и Esc
+  // закрывают окно, фокус возвращается на кнопку, которая его открыла.
+  function openAtlasModal(id) {
+    var modal = byId(id);
+    if (!modal) {
+      return;
+    }
+    modal.__atlasReturn = document.activeElement;
+    modal.hidden = false;
+    var first = modal.querySelector("input, textarea, select") ||
+      modal.querySelector("button");
+    if (first) {
+      first.focus({ preventScroll: true });
+    }
+  }
+
+  function closeAtlasModal(id) {
+    var modal = byId(id);
+    if (!modal || modal.hidden) {
+      return;
+    }
+    modal.hidden = true;
+    var back = modal.__atlasReturn;
+    if (back && typeof back.focus === "function") {
+      back.focus({ preventScroll: true });
+    }
+  }
+
+  function onAtlasModalKeydown(event) {
+    if (event.key !== "Escape") {
+      return;
+    }
+    var fanfic = byId(IDS.fanficModal);
+    if (fanfic && !fanfic.hidden) {
+      event.preventDefault();
+      cancelFanficModal();
+      return;
+    }
+    var open = viewAtlas.querySelector(".atlas-modal:not([hidden])");
+    if (!open) {
+      return;
+    }
+    event.preventDefault();
+    closeAtlasModal(open.id);
   }
 
   // Слаг заполняется из названия, пока игрок не поправил его руками.
@@ -1096,11 +1217,17 @@
     }
     var dict = window.I18N || {};
     var worlds = data.worlds || [];
+    var createCard = '<button type="button" class="atlas-card atlas-card--create" data-action="create">' +
+      '<span class="atlas-card__plus" aria-hidden="true">+</span>' +
+      '<span class="atlas-card__name">' + (dict["atlas.create"] || "Создать мир") + "</span>" +
+      '<span class="atlas-card__meta">' + (dict["atlas.create.hint"] || "Анкета в окне") + "</span>" +
+      "</button>";
     if (worlds.length === 0) {
-      box.innerHTML = '<p data-i18n="atlas.empty">' + (dict["atlas.empty"] || "Пока нет миров.") + "</p>";
+      box.innerHTML = createCard + '<p class="atlas-worlds__empty" data-i18n="atlas.empty">' +
+        (dict["atlas.empty"] || "Пока нет миров.") + "</p>";
       return;
     }
-    box.innerHTML = worlds.map(function (w) {
+    box.innerHTML = createCard + worlds.map(function (w) {
       window.__languageReady[w.slug] = !!w.language_ready;
       var active = w.active ? ' <span class="atlas-card__active">' + (dict["atlas.active"] || "Активен") + "</span>" : "";
       var html = '<div class="atlas-card' + (w.active ? " atlas-card--active" : "") + '">';
@@ -1128,6 +1255,10 @@
     }
     var action = btn.getAttribute("data-action");
     var slug = btn.getAttribute("data-slug") || "";
+    if (action === "create") {
+      openAtlasModal(IDS.atlasBirthModal);
+      return;
+    }
     if (action === "switch") {
       switchAtlasWorld(slug);
     } else if (action === "delete") {
@@ -1189,7 +1320,7 @@
       return;
     }
     wizard.setAttribute("data-slug", slug);
-    wizard.hidden = false;
+    openAtlasModal(IDS.atlasWizard);
     var isekai = byId(IDS.atlasWizardIsekai);
     if (isekai) {
       isekai.checked = true;
@@ -1219,9 +1350,7 @@
       censorship: "16+"
     };
     postJSON("/api/atlas/worlds/replay", body).then(function () {
-      if (wizard) {
-        wizard.hidden = true;
-      }
+      closeAtlasModal(IDS.atlasWizard);
       loadAtlasWorlds();
     }).catch(atlasActionError);
   }
@@ -1261,6 +1390,7 @@
       }
       loadAtlasBirthOptions();
       showAtlasBirthError("");
+      closeAtlasModal(IDS.atlasBirthModal);
       // Синхронная ковка книги после рождения (T-12-14): до первого хода.
       return forgeAtlasWorld(slug);
     }).catch(function (err) {

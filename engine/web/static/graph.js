@@ -1,7 +1,7 @@
 "use strict";
 
 // «Граф отношений» (T-08-06, UI-05.6): связи между персонажами из social_graph.
-// Рендер в браузере без внешних библиотек; данные — только чтение из
+// Canvas растягивается на весь остаток вкладки. Данные — только чтение из
 // /api/atlas/worlds/graph.
 (function () {
   var IDS = {
@@ -9,6 +9,10 @@
     canvas: "atlas-graph-canvas",
     status: "atlas-graph-status"
   };
+
+  var lastData = null;
+  var resizeTimer = 0;
+  var viewportObserved = false;
 
   function byId(id) {
     return document.getElementById(id);
@@ -19,6 +23,23 @@
     if (el) {
       el.textContent = message;
     }
+  }
+
+  // Цвета берём из темы, чтобы граф не выпадал из тёмной панели Атласа.
+  function themeColors() {
+    var cs = getComputedStyle(document.documentElement);
+    function pick(name, fallback) {
+      var value = (cs.getPropertyValue(name) || "").trim();
+      return value || fallback;
+    }
+    return {
+      bg: pick("--card", "#143238"),
+      hair: pick("--hair", "rgba(243, 236, 223, 0.06)"),
+      edge: pick("--line-strong", "rgba(166, 132, 74, 0.45)"),
+      text: pick("--text", "#f3ecdf"),
+      muted: pick("--muted", "#a5b6b8"),
+      accent: pick("--brass-2", "#c9a86a")
+    };
   }
 
   function apiJSON(path) {
@@ -42,36 +63,58 @@
     return slug;
   }
 
+  function drawGrid(ctx, width, height, colors) {
+    var step = 72;
+    ctx.strokeStyle = colors.hair;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (var x = (width % step) / 2; x < width; x += step) {
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+    }
+    for (var y = (height % step) / 2; y < height; y += step) {
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+    }
+    ctx.stroke();
+  }
+
   function drawGraph(data) {
+    lastData = data;
     var canvas = byId(IDS.canvas);
-    if (!canvas) {
-      return;
-    }
-    var dict = window.I18N || {};
-    var nodes = data.nodes || [];
-    if (nodes.length === 0) {
-      canvas.width = 0;
-      canvas.height = 0;
-      setStatus(dict["atlas.graph.empty"] || "Связей пока нет.");
-      return;
-    }
-
     var viewport = byId(IDS.viewport);
-    var width = Math.max(320, viewport ? viewport.clientWidth : 0) || 480;
-    var height = 320;
-    canvas.width = width;
-    canvas.height = height;
-
+    if (!canvas || !viewport) {
+      return;
+    }
+    var width = Math.max(280, viewport.clientWidth);
+    var height = Math.max(240, viewport.clientHeight);
+    var dpr = window.devicePixelRatio || 1;
+    var pixelWidth = Math.round(width * dpr);
+    var pixelHeight = Math.round(height * dpr);
+    if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+      canvas.width = pixelWidth;
+      canvas.height = pixelHeight;
+    }
     var ctx = canvas.getContext("2d");
     if (!ctx) {
       return;
     }
 
-    ctx.fillStyle = "#ffffff";
+    var colors = themeColors();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = colors.bg;
     ctx.fillRect(0, 0, width, height);
+    drawGrid(ctx, width, height, colors);
+
+    var dict = window.I18N || {};
+    var nodes = data.nodes || [];
+    if (nodes.length === 0) {
+      setStatus(dict["atlas.graph.empty"] || "Связей пока нет.");
+      return;
+    }
 
     var positions = {};
-    var radius = Math.min(width, height) / 2 - 48;
+    var radius = Math.max(80, Math.min(width, height) / 2 - 70);
     nodes.forEach(function (n, i) {
       var angle = (2 * Math.PI * i) / nodes.length - Math.PI / 2;
       positions[n.id] = {
@@ -80,23 +123,26 @@
       };
     });
 
+    ctx.save();
+    ctx.strokeStyle = colors.edge;
+    ctx.lineWidth = 1.2;
     (data.edges || []).forEach(function (e) {
       var a = positions[e.a_character_id];
       var b = positions[e.b_character_id];
       if (!a || !b) {
         return;
       }
-      ctx.strokeStyle = "#9a9a9a";
-      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
       ctx.stroke();
-      ctx.fillStyle = "#555555";
+      ctx.fillStyle = colors.muted;
       ctx.font = "11px system-ui, sans-serif";
-      ctx.fillText(String(e.relation == null ? "" : e.relation), (a.x + b.x) / 2, (a.y + b.y) / 2);
+      ctx.fillText(String(e.relation == null ? "" : e.relation), (a.x + b.x) / 2 + 4, (a.y + b.y) / 2 - 4);
     });
+    ctx.restore();
 
+    ctx.font = "13px system-ui, sans-serif";
     nodes.forEach(function (n) {
       var p = positions[n.id];
       if (!p) {
@@ -104,24 +150,50 @@
       }
       ctx.beginPath();
       ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
-      ctx.fillStyle = "#1a6fb0";
+      ctx.fillStyle = colors.accent;
       ctx.fill();
-      ctx.fillStyle = "#1a1a1a";
-      ctx.font = "12px system-ui, sans-serif";
+      ctx.fillStyle = colors.text;
       ctx.fillText(String(n.name == null ? "" : n.name), p.x + 12, p.y + 4);
     });
 
     setStatus(dict["atlas.graph.status"] || "Связи между персонажами из социального графа.");
   }
 
+  function redraw() {
+    if (lastData) {
+      drawGraph(lastData);
+    }
+  }
+
+  function scheduleRedraw() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(redraw, 100);
+  }
+
+  function observeViewport() {
+    if (viewportObserved) {
+      return;
+    }
+    var viewport = byId(IDS.viewport);
+    if (!viewport) {
+      return;
+    }
+    viewportObserved = true;
+    if (typeof ResizeObserver !== "undefined") {
+      new ResizeObserver(scheduleRedraw).observe(viewport);
+    }
+    window.addEventListener("resize", scheduleRedraw);
+  }
+
   function loadGraph() {
     if (!byId(IDS.canvas)) {
       return;
     }
+    observeViewport();
     apiJSON("/api/atlas/worlds").then(function (worlds) {
       var slug = activeSlug(worlds);
       if (!slug) {
-        setStatus((window.I18N && window.I18N["atlas.graph.empty"]) || "Связей пока нет.");
+        drawGraph({ nodes: [] });
         return null;
       }
       return apiJSON("/api/atlas/worlds/graph?world=" + encodeURIComponent(slug));
@@ -131,6 +203,16 @@
       }
     }).catch(function (err) {
       setStatus(err.message);
+    });
+  }
+
+  function watchTheme() {
+    if (typeof MutationObserver === "undefined") {
+      return;
+    }
+    new MutationObserver(scheduleRedraw).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"]
     });
   }
 
@@ -145,6 +227,7 @@
   } else {
     start();
   }
+  watchTheme();
 
-  window.TNSGraph = { render: loadGraph, start: start };
+  window.TNSGraph = { render: loadGraph, start: start, redraw: redraw };
 })();

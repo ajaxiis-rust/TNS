@@ -21,6 +21,8 @@
 | GET | `/history.html` | — | `history.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/mcp.html` | — | `mcp.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/api/atlas/worlds` | — | `{"active":"…","worlds":[{"slug","title","active","characters","places","paths","entities","sessions"}]}` | `method_not_allowed`, `internal` |
+| GET | `/api/atlas/worlds/map` | query `world=<slug>` | `{"world":"…","places":[{"id","name","kind","x","y","known","distance_km","days"}],"paths":[…],"hero":{"place_id","x","y"},"rings":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| GET | `/api/atlas/worlds/graph` | query `world=<slug>` | `{"world":"…","nodes":[{"id","name"}],"edges":[{"id","a_character_id","b_character_id","relation","weight"}]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | GET | `/api/atlas/birth` | — | `{"genres":[…],"social_orders":[…],"travel_modes":[…],"economy_mods":[…],"ratings":[…],"langs":[…]}` — канонические перечни анкеты рождения | `method_not_allowed`, `internal` |
 | POST | `/api/atlas/worlds/birth` | анкета рождения (15 ключей) | `{"status":"ok","world":{"slug","title"}}` | `method_not_allowed`, `bad_request`, `conflict`, `internal` |
 | POST | `/api/atlas/worlds/active` | `{"world":"<slug>"}` | `{"status":"ok","active":"<slug>"}` | `method_not_allowed`, `bad_request` |
@@ -78,6 +80,8 @@ GET /atlas.html
 GET /history.html
 GET /mcp.html
 GET /api/atlas/worlds
+GET /api/atlas/worlds/map
+GET /api/atlas/worlds/graph
 GET /api/atlas/birth
 POST /api/atlas/worlds/birth
 POST /api/atlas/worlds/active
