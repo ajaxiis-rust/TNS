@@ -132,7 +132,7 @@ func (c *child) run() {
 		if !ready && !stopping {
 			// Не готов в срок — гасим и лечим как неудачу (шаг 2).
 			_ = proc.Stop()
-			<-waitCh
+			<-waitCh //nolint:errcheck // код выхода после Stop не важен: лечение как ErrNotReady
 			exitErr = ErrNotReady
 		} else {
 			// Готов или остановка: ждём выхода процесса; при остановке его гасит

@@ -474,7 +474,7 @@ func scanLlamaServer(root string, maxDepth int, timeout time.Duration) []string 
 			return ctx.Err()
 		}
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr // недоступный каталог пропускаем: обход продолжается.
 		}
 		if d.IsDir() {
 			if path == root {
@@ -590,7 +590,7 @@ func runLlamaInstallScript() error {
 			return errors.New("install script timed out")
 		}
 		if line := firstNonEmptyLine(stderr.String()); line != "" {
-			return fmt.Errorf("%v: %s", err, line)
+			return fmt.Errorf("%w: %s", err, line)
 		}
 		return err
 	}

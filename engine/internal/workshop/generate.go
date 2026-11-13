@@ -77,7 +77,7 @@ func GenerateWithRetry(ctx context.Context, lit *db.Handle, opts GenerateOptions
 	}
 	prose, err := ladder(ctx, lit, opts, prompt(2, facts))
 	if err != nil {
-		return facts, nil // отказ прозы — факты выживают (шаг 5).
+		return facts, nil //nolint:nilerr // отказ прозы — факты выживают (шаг 5).
 	}
 	return prose, nil
 }
@@ -167,7 +167,7 @@ func ResolveCastRole(ctx context.Context, lit *db.Handle, name, chunkText string
 		Provider: DefaultProvider,
 	}, func(_ int, _ string) string { return castRolePrompt(name, chunkText, tied) })
 	if err != nil {
-		return "", nil // отказ слота — маркеры остаются (P12 §5.9 п.5).
+		return "", nil //nolint:nilerr // отказ слота — маркеры остаются (P12 §5.9 п.5).
 	}
 	return strings.TrimSpace(out), nil
 }

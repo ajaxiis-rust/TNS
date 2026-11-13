@@ -435,10 +435,7 @@ func TestTelegramBotSubscribeNews(t *testing.T) {
 
 	// Ждём, пока бот установил исходящее WS-подключение и подписался на топик.
 	deadline := time.Now().Add(2 * time.Second)
-	for {
-		if wsSubscribed(hub, newsTopic) {
-			break
-		}
+	for !wsSubscribed(hub, newsTopic) {
 		if time.Now().After(deadline) {
 			t.Fatal("bot did not subscribe to station.news")
 		}
@@ -457,7 +454,10 @@ func TestTelegramBotSubscribeNews(t *testing.T) {
 
 	cancel()
 	select {
-	case <-done:
+	case err := <-done:
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Fatalf("SubscribeNews: %v", err)
+		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("SubscribeNews did not stop")
 	}

@@ -44,7 +44,7 @@ func TestSecondInstance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("первый Acquire: %v", err)
 	}
-	defer first.Release()
+	defer func() { _ = first.Release() }()
 
 	// Первый экземпляр стартует надзирателя с одним ребёнком.
 	logger, _ := newTestLogger(t)

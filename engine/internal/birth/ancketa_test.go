@@ -224,7 +224,7 @@ func hasFieldError(err error, field string) bool {
 
 func jsonKeys(a any) []string {
 	typ := reflect.TypeOf(a)
-	if typ.Kind() == reflect.Ptr {
+	if typ.Kind() == reflect.Pointer {
 		typ = typ.Elem()
 	}
 	var keys []string

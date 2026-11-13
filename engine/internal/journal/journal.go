@@ -76,10 +76,10 @@ func (l *Logger) Event(source, event string, fields ...Field) error {
 		l.mu.Unlock()
 		return err
 	}
-	line := append(b, '\n')
+	b = append(b, '\n')
 
 	if l.f != nil {
-		if info, err := l.f.Stat(); err == nil && info.Size()+int64(len(line)) > l.maxBytes {
+		if info, err := l.f.Stat(); err == nil && info.Size()+int64(len(b)) > l.maxBytes {
 			if err := l.rotateLocked(); err != nil {
 				l.mu.Unlock()
 				return err
@@ -87,7 +87,7 @@ func (l *Logger) Event(source, event string, fields ...Field) error {
 		}
 	}
 
-	_, err = l.f.Write(line)
+	_, err = l.f.Write(b)
 	fn := l.onEvent
 	l.mu.Unlock()
 	if err == nil && fn != nil {

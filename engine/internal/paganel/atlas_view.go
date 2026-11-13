@@ -81,7 +81,7 @@ func BuildAtlasView(h *db.Handle) (AtlasView, error) {
 	if err != nil {
 		return v, err
 	}
-	v.Hero = AtlasHero{PlaceID: hero.PlaceID, X: hero.X, Y: hero.Y}
+	v.Hero = AtlasHero(hero)
 
 	norm, err := ReadDayNorm(h)
 	if err != nil {

@@ -80,6 +80,7 @@ func DescriptionByName(lit *db.Handle, name string) (string, bool) {
 		}
 		return appearance, appearance != ""
 	}
+	_ = rows.Err() // ошибка чтения строк гасится: подстановка декоративная.
 	return "", false
 }
 

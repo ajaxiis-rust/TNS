@@ -404,6 +404,7 @@ func readChatWorldState(h *db.Handle) map[string]string {
 		}
 		out[key] = s
 	}
+	_ = rows.Err() // ошибка чтения гасится: панель «мир» показывает прочитанное.
 	return out
 }
 
@@ -480,6 +481,7 @@ func readChatTurns(h *db.Handle) []chatTurnItem {
 		}
 		out = append(out, item)
 	}
+	_ = rows.Err() // ошибка чтения гасится: чат показывает прочитанное.
 	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
 		out[i], out[j] = out[j], out[i]
 	}

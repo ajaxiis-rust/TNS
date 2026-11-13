@@ -68,7 +68,7 @@ func (w *Weaver) Stream(ctx context.Context, prompt string) (<-chan string, erro
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := w.http.Do(req)
+	resp, err := w.http.Do(req) //nolint:bodyclose // тело закрывает горутина-читатель через defer resp.Body.Close().
 	if err != nil {
 		return nil, err
 	}

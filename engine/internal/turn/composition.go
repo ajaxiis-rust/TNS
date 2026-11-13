@@ -54,7 +54,7 @@ func (s *compositionStage) Run(_ context.Context, st *TurnState) error {
 	start := s.now()
 	comp, score, seq, err := pickComposition(st, s.lit, s.world, fams, s.cfg)
 	if err != nil {
-		return nil // деградация: отказ хода запрещён (SCR-§4).
+		return nil //nolint:nilerr // деградация: отказ хода запрещён (SCR-§4).
 	}
 	if elapsed := s.now().Sub(start); elapsed > compositionBudget {
 		return nil // деградация: выборка не уложилась в бюджет.
@@ -198,7 +198,7 @@ func readDramaCandidates(lit *db.Handle, fams []structural.Family) ([]dramaCandi
 			id:     id,
 			bookID: bookID.Int64,
 		}
-		if err := c.Composition.Validate(); err != nil {
+		if err := c.Validate(); err != nil {
 			continue
 		}
 		out = append(out, c)

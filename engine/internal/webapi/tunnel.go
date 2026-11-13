@@ -340,7 +340,7 @@ func StartTelegram(ctx context.Context, cfg TunnelConfig, logger *journal.Logger
 				Text string `json:"text"`
 			}
 			if err := json.Unmarshal(msg.Payload, &p); err != nil {
-				return nil
+				return nil //nolint:nilerr // битое сообщение новостей пропускаем.
 			}
 			return bot.SendNews(runCtx, p.Text)
 		})

@@ -232,7 +232,7 @@ func (c *ProviderClient) Stream(ctx context.Context, prompt string) (<-chan stri
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.http.Do(req)
+	resp, err := c.http.Do(req) //nolint:bodyclose // тело закрывает горутина-читатель через defer resp.Body.Close().
 	if err != nil {
 		return nil, classifyDoErr(err)
 	}
@@ -271,7 +271,7 @@ func classifyDoErr(err error) error {
 	if errors.Is(err, netgate.ErrDeniedHost) {
 		return err
 	}
-	return fmt.Errorf("%w: %v", ErrNetwork, err)
+	return fmt.Errorf("%w: %w", ErrNetwork, err)
 }
 
 // geminiChunkText извлекает текст из одной строки потока Gemini; не-JSON строка

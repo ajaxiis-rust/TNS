@@ -129,7 +129,7 @@ func run() int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
-	defer lock.Release()
+	defer func() { _ = lock.Release() }()
 
 	logger, err := journal.New("state/journal/engine.log")
 	if err != nil {
@@ -501,7 +501,7 @@ func runTunnelScript() error {
 		return nil
 	case s := <-sig:
 		_ = cmd.Process.Signal(s)
-		<-done
+		<-done //nolint:errcheck // при остановке по сигналу ненулевой код выхода ожидаем
 		return nil
 	}
 }

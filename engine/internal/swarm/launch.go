@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -58,7 +59,7 @@ func Launch(logger *journal.Logger, spec Spec, coreVersion string) (Result, erro
 
 	br := bufio.NewReader(stdout)
 	line, err := br.ReadBytes('\n')
-	if err != nil && err != io.EOF {
+	if err != nil && !errors.Is(err, io.EOF) {
 		_ = killProcess(cmd.Process)
 		_ = cmd.Wait()
 		_ = closeWriter(stderr)

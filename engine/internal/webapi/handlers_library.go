@@ -154,6 +154,7 @@ func castByShelf(lit *db.Handle) map[string]libraryCast {
 		}
 		refs = append(refs, r)
 	}
+	_ = rows.Err() // ошибка чтения гасится: полка показывает прочитанное.
 	_ = rows.Close()
 	for _, r := range refs {
 		out[r.shelf] = readBookCast(lit, r.id)
@@ -201,6 +202,7 @@ func readBookCast(lit *db.Handle, bookID int64) libraryCast {
 			c.Characters[i].Roles = append(c.Characters[i].Roles, role)
 		}
 	}
+	_ = rows.Err() // ошибка чтения гасится: карта показывает прочитанное.
 	if len(c.Characters) == 0 {
 		return c
 	}

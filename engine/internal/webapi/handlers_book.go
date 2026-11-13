@@ -1,6 +1,7 @@
 package webapi
 
 import (
+	"errors"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -217,10 +218,10 @@ func handleBookExport(w http.ResponseWriter, r *http.Request) {
 		filePath, err = book.ExportBook(h, bookRoot, format)
 	}
 	if err != nil {
-		switch err {
-		case book.ErrExportFormat, book.ErrChapterNotPublished:
+		switch {
+		case errors.Is(err, book.ErrExportFormat), errors.Is(err, book.ErrChapterNotPublished):
 			writeError(w, http.StatusBadRequest, codeBadRequest, err.Error())
-		case book.ErrExportNoChapters:
+		case errors.Is(err, book.ErrExportNoChapters):
 			writeError(w, http.StatusBadRequest, codeBadRequest, err.Error())
 		default:
 			writeError(w, http.StatusInternalServerError, codeInternal, "export failed")

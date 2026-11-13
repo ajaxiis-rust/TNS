@@ -119,6 +119,10 @@ func TestEdits(t *testing.T) {
 		}
 		cuts = append(cuts, c)
 	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		t.Fatalf("book_cuts rows: %v", err)
+	}
 	rows.Close()
 	if len(cuts) != 3 {
 		t.Fatalf("строк book_cuts = %d, want 3", len(cuts))

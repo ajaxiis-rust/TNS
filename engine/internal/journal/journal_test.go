@@ -298,7 +298,7 @@ func TestChildOutput(t *testing.T) {
 		t.Fatalf("Pipe: %v", err)
 	}
 	for i := 0; i < 200; i++ {
-		if _, err := pw3.Write([]byte(fmt.Sprintf("line-%d\n", i))); err != nil {
+		if _, err := fmt.Fprintf(pw3, "line-%d\n", i); err != nil {
 			t.Fatalf("Write(%d): %v", i, err)
 		}
 	}

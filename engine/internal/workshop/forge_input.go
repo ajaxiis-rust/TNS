@@ -190,7 +190,7 @@ func parseFB2(data []byte) (*ParsedBook, error) {
 
 	for {
 		tok, err := dec.Token()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

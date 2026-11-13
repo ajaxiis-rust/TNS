@@ -422,6 +422,7 @@ func worldHasEntity(world *db.Handle, fold string) bool {
 				return true
 			}
 		}
+		_ = rows.Err() // ошибка чтения гасится: проверка идёт по прочитанному.
 		rows.Close()
 	}
 	return false

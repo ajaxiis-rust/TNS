@@ -250,7 +250,7 @@ func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 
 	meta := map[string]string{}
 	bindings := []slotBinding{}
-	models := []modelStatus{}
+	var models []modelStatus
 	if slug != "" {
 		world, err := db.OpenReaderAs(worldDBPath(slug), db.DBWorld, db.WriterCore, nil)
 		if err != nil {
