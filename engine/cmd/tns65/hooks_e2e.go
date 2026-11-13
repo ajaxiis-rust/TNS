@@ -77,7 +77,7 @@ type e2eBirthReport struct {
 
 func isE2ECoreFlag(arg string) bool {
 	switch arg {
-	case "--fake-clock", "--fake-embed", "--fake-slot":
+	case "--fake-clock", "--fake-embed", "--fake-slot", "--fake-telegram":
 		return true
 	}
 	return false
@@ -92,12 +92,16 @@ func runE2ECore(args []string) int {
 	fakeClock := fs.Bool("fake-clock", false, "фейковые часы (e2e)")
 	_ = fs.Bool("fake-embed", false, "детерминированный эмбеддер 1024 (e2e)")
 	fakeSlot := fs.String("fake-slot", "", "адрес подставного слота Ткача (e2e)")
+	fakeTelegram := fs.String("fake-telegram", "", "адрес фейка Telegram Bot API (e2e)")
 	if err := fs.Parse(args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 2
 	}
 	if *fakeClock {
 		webapi.SetE2EClock(testkit.NewClock())
+	}
+	if *fakeTelegram != "" {
+		webapi.SetE2ETelegramBase(*fakeTelegram)
 	}
 	if *fakeSlot != "" {
 		weaver, err := models.NewWeaver(*fakeSlot)

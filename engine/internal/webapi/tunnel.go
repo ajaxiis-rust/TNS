@@ -274,18 +274,28 @@ type TelegramBot struct {
 	dial         func(ctx context.Context, network, addr string) (net.Conn, error)
 }
 
+// telegramBaseURL — база Bot API. e2e-хук SetE2ETelegramBase подменяет её
+// локальным фейком (файл с тегом e2e); в проде — штатный Telegram.
+var telegramBaseURL = "https://" + telegramAPIHost
+
 // NewTelegramBot собирает бота на исходящих клиентах: наружу — через единый
 // сетевой гейт (netgate.Client, F-05), к loopback-серверу — напрямую
 // (netgate.Local, F-04.2).
 func NewTelegramBot(cfg TunnelConfig, logger *journal.Logger) *TelegramBot {
-	tg := netgate.Client(telegramAPIHost)
+	base := telegramBaseURL
+	var tg *http.Client
+	if base == "https://"+telegramAPIHost {
+		tg = netgate.Client(telegramAPIHost)
+	} else {
+		tg = netgate.Local(localAddr(base))
+	}
 	tg.Timeout = telegramRequestTimeout
 	loc := netgate.Local(localAddr(cfg.Local))
 	loc.Timeout = telegramRequestTimeout
 	return &TelegramBot{
 		cfg:          cfg,
 		logger:       logger,
-		telegramBase: "https://" + telegramAPIHost,
+		telegramBase: base,
 		localBase:    cfg.Local,
 		telegram:     tg,
 		local:        loc,
