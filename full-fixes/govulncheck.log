@@ -1,0 +1,61 @@
+=== Symbol Results ===
+
+Vulnerability #1: GO-2026-6859
+    HTTP/1 server crash due to MaxBytesReader header race in net/http
+  More info: https://pkg.go.dev/vuln/GO-2026-6859
+  Standard library
+    Found in: net/http@go1.27.3
+    Fixed in: net/http@go1.27.4
+    Example traces found:
+      #1: cmd/tns65-lemmaru/main.go:71:24: tns65.lemmatize calls gomorphy.MorphAnalyzer.Parse, which eventually calls http.CanonicalHeaderKey
+      #2: internal/supervisor/health.go:24:2: supervisor.CheckHealth calls http.Client.CloseIdleConnections
+      #3: internal/webapi/tunnel.go:456:28: webapi.TelegramBot.GetUpdates calls http.Client.Do
+      #4: internal/supervisor/health.go:27:25: supervisor.CheckHealth calls http.Client.Get
+      #5: internal/bake/bake.go:252:26: bake.embed calls http.Client.Post
+      #6: internal/webapi/static.go:24:25: webapi.staticServe calls http.HandlerFunc.ServeHTTP
+      #7: internal/models/fetch.go:244:56: models.probeDownload calls http.Header.Get
+      #8: internal/webapi/tunnel.go:394:16: webapi.TelegramBot.ForwardChat calls http.Header.Set
+      #9: internal/webapi/tunnel.go:452:40: webapi.TelegramBot.GetUpdates calls http.NewRequestWithContext
+      #10: internal/webapi/handlers_mcp.go:318:33: webapi.handleMcpImport calls http.Request.FormFile
+      #11: internal/webapi/handlers_mcp.go:309:39: webapi.handleMcpImport calls http.Request.FormValue
+      #12: internal/webapi/handlers_mcp.go:305:32: webapi.handleMcpImport calls http.Request.ParseMultipartForm
+      #13: internal/webapi/server.go:124:25: webapi.Server.Close calls http.Server.Close
+      #14: internal/webapi/server.go:114:24: webapi.Server.Serve calls http.Server.Serve
+      #15: internal/webapi/tunnel.go:460:2: webapi.TelegramBot.GetUpdates calls http.body.Close
+      #16: internal/swarm/launch.go:82:24: swarm.Launch calls io.ReadAll, which calls http.body.Read
+      #17: internal/webapi/tunnel.go:460:2: webapi.TelegramBot.GetUpdates calls http.bodyEOFSignal.Close
+      #18: internal/cast/scan.go:182:13: cast.LoadNames calls bufio.Scanner.Scan, which calls http.bodyEOFSignal.Read
+      #19: internal/swarm/launch.go:75:17: swarm.Launch calls io.Copy, which eventually calls http.bodyLocked.Read
+      #20: internal/swarm/launch.go:75:17: swarm.Launch calls io.Copy, which eventually calls http.bufioFlushWriter.Write
+      #21: internal/webapi/tunnel.go:460:2: webapi.TelegramBot.GetUpdates calls http.cancelTimerBody.Close
+      #22: internal/cast/scan.go:182:13: cast.LoadNames calls bufio.Scanner.Scan, which calls http.cancelTimerBody.Read
+      #23: cmd/tns65-lemmaru/main.go:47:2: tns65.serve calls bufio.Writer.Flush, which calls http.checkConnErrorWriter.Write
+      #24: cmd/tns65-lemmaru/main.go:47:2: tns65.serve calls bufio.Writer.Flush, which calls http.chunkWriter.Write
+      #25: internal/swarm/launch.go:75:17: swarm.Launch calls io.Copy, which eventually calls http.connReader.Read
+      #26: internal/webapi/tunnel.go:460:2: webapi.TelegramBot.GetUpdates calls http2.transportResponseBody.Close, which eventually calls http.expectContinueReader.Close
+      #27: internal/swarm/launch.go:82:24: swarm.Launch calls io.ReadAll, which calls http.expectContinueReader.Read
+      #28: internal/webapi/static.go:24:25: webapi.staticServe calls http.fileHandler.ServeHTTP
+      #29: internal/webapi/tunnel.go:460:2: webapi.TelegramBot.GetUpdates calls http.gzipReader.Close
+      #30: internal/cast/scan.go:182:13: cast.LoadNames calls bufio.Scanner.Scan, which calls http.gzipReader.Read
+      #31: internal/webapi/ws.go:230:18: webapi.client.close calls http.loggingConn.Close
+      #32: internal/swarm/launch.go:75:17: swarm.Launch calls io.Copy, which eventually calls http.loggingConn.Read
+      #33: internal/paganel/atlas_view.go:227:15: paganel.AtlasViewPrompt calls fmt.Fprintf, which calls http.loggingConn.Write
+      #34: internal/swarm/launch.go:75:17: swarm.Launch calls io.Copy, which eventually calls http.maxBytesReader.Read
+      #35: internal/supervisor/child.go:331:15: supervisor.execProcess.Stop calls sync.Once.Do, which eventually calls http.onceCloseListener.Close
+      #36: internal/swarm/launch.go:75:17: swarm.Launch calls io.Copy, which eventually calls http.persistConn.Read
+      #37: internal/swarm/launch.go:75:17: swarm.Launch calls io.Copy, which eventually calls http.persistConnWriter.ReadFrom
+      #38: cmd/tns65-lemmaru/main.go:47:2: tns65.serve calls bufio.Writer.Flush, which calls http.persistConnWriter.Write
+      #39: internal/webapi/tunnel.go:460:2: webapi.TelegramBot.GetUpdates calls http2.transportResponseBody.Close, which eventually calls http.readTrackingBody.Close
+      #40: internal/swarm/launch.go:82:24: swarm.Launch calls io.ReadAll, which calls http.readTrackingBody.Read
+      #41: internal/cast/scan.go:182:13: cast.LoadNames calls bufio.Scanner.Scan, which calls http.readWriteCloserBody.Read
+      #42: internal/webapi/server.go:182:18: webapi.statusWriter.Hijack calls http.response.Hijack
+      #43: internal/swarm/launch.go:75:17: swarm.Launch calls io.Copy, which eventually calls http.response.ReadFrom
+      #44: internal/webapi/server.go:173:31: webapi.statusWriter.Write calls http.response.Write
+      #45: internal/webapi/server.go:166:30: webapi.statusWriter.WriteHeader calls http.response.WriteHeader
+      #46: internal/webapi/tunnel.go:759:29: webapi.TelegramBot.dialWS calls io.WriteString, which calls http.response.WriteString
+      #47: internal/webapi/tunnel.go:646:50: webapi.TelegramBot.Poll calls http.transportReadFromServerError.Error
+
+Your code is affected by 1 vulnerability from the Go standard library.
+This scan found no other vulnerabilities in packages you import or modules you
+require.
+Use '-show verbose' for more details.

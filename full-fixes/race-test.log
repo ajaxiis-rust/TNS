@@ -1,0 +1,32 @@
+?   	tns65/cmd/tns65	[no test files]
+?   	tns65/cmd/tns65-bake	[no test files]
+?   	tns65/cmd/tns65-lemmaru	[no test files]
+ok  	tns65/internal/bake	5.986s
+ok  	tns65/internal/bank	1.558s
+ok  	tns65/internal/birth	64.781s
+ok  	tns65/internal/book	35.516s
+ok  	tns65/internal/cast	3.646s
+ok  	tns65/internal/censor	1.213s
+ok  	tns65/internal/core	3.669s
+ok  	tns65/internal/db	6.058s
+ok  	tns65/internal/embedserver	1.076s
+ok  	tns65/internal/geo	2.085s
+ok  	tns65/internal/journal	1.133s
+ok  	tns65/internal/langpack	1.286s
+ok  	tns65/internal/lemmarpc	30.589s
+ok  	tns65/internal/library	1.043s
+ok  	tns65/internal/models	2.094s
+ok  	tns65/internal/netgate	1.157s
+ok  	tns65/internal/paganel	29.261s
+ok  	tns65/internal/portgate	1.020s
+ok  	tns65/internal/sediment	5.750s
+ok  	tns65/internal/selector	3.245s
+ok  	tns65/internal/structural	1.936s
+ok  	tns65/internal/supervisor	2.385s
+ok  	tns65/internal/swarm	2.045s
+ok  	tns65/internal/testkit	1.012s
+ok  	tns65/internal/turn	27.268s
+?   	tns65/internal/version	[no test files]
+ok  	tns65/internal/webapi	43.024s
+ok  	tns65/internal/workshop	19.800s
+?   	tns65/web	[no test files]

@@ -1,0 +1,63 @@
+# golangci-lint v2 — полная статическая карта багов TNS65.
+# Цели: ошибки (errcheck/errorlint/nilerr), атомарность (govet copylocks/lostcancel),
+# сеть (bodyclose/noctx/contextcheck), БД (rowserrcheck/sqlclosecheck),
+# несостыковки (exhaustive/goconst). Полный бейзлайн, не гейт: см. full-fixes/LINT-REPORT-*.md
+version: "2"
+
+linters:
+  default: none
+  enable:
+    # --- ошибки ---
+    - errcheck        # непроверенные ошибки
+    - errorlint       # err == / errors.Is, %w
+    - nilerr          # return nil при err != nil
+    - wrapcheck       # возврат чужой ошибки без обёртки
+    # --- атомарность/конкурентность (статика) ---
+    - govet           # copylocks, lostcancel и весь vet
+    - staticcheck     # SA2002 и др.
+    # --- сеть ---
+    - bodyclose       # незакрытый http.Response.Body
+    - noctx           # http-запрос без контекста
+    - contextcheck    # потеря контекста по цепочке вызовов
+    # --- база данных ---
+    - rowserrcheck    # непроверенный rows.Err()
+    - sqlclosecheck   # незакрытые rows/stmt
+    # --- база багов ---
+    - gosec           # небезопасные паттерны
+    - unconvert       # лишние приведения типов
+    - durationcheck   # time.Duration*Duration
+    - unparam         # неиспользуемые параметры
+    - ineffassign     # мёртвые присваивания
+    - unused          # неиспользуемый код
+    - gocritic
+    - revive
+    # --- несостыковки ---
+    - exhaustive      # неполные switch по енамам
+    - goconst         # расползшиеся дубли строк
+    - misspell
+    - copyloopvar
+
+  settings:
+    misspell:
+      locale: US
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+
+  exclusions:
+    # стандартные пресеты v2 (std-error-handling и пр.) — осознанно оставлены:
+    # они убирают заведомый шум, реальные проблемы остаются в отчёте
+    presets:
+      - comments
+      - std-error-handling
+      - common-false-positives
+      - legacy
+
+issues:
+  # полный бейзлайн без обрезаний
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofmt
