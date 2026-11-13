@@ -104,7 +104,6 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodPut, path: "/api/settings/keys", handle: handleSettingsKeys},
 		{method: http.MethodPut, path: "/api/settings/channel", handle: handleSettingsChannel},
 		{method: http.MethodPost, path: "/api/settings/models/install", handle: handleSettingsModelInstall},
-		{method: http.MethodPost, path: "/api/settings/models/adopt", handle: handleSettingsModelAdopt},
 		{method: http.MethodGet, path: "/api/settings/models/status", handle: handleSettingsModelStatus},
 		{method: http.MethodPost, path: "/api/settings/models/rollback", handle: handleSettingsModelRollback},
 		{method: http.MethodDelete, path: "/api/settings/models/delete", handle: handleSettingsModelDelete},
