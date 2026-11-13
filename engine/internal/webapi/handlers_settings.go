@@ -3,9 +3,12 @@ package webapi
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -44,6 +47,7 @@ const (
 	settingsKeysPath           = "/api/settings/keys"
 	settingsChannelPath        = "/api/settings/channel"
 	settingsModelsInstallPath  = "/api/settings/models/install"
+	settingsModelsAdoptPath    = "/api/settings/models/adopt"
 	settingsModelsStatusPath   = "/api/settings/models/status"
 	settingsModelsRollbackPath = "/api/settings/models/rollback"
 )
@@ -1230,7 +1234,8 @@ func logModelChild(role, event string, spec supervisor.Config, errMsg string) {
 // установленных моделей и текущие задания загрузки (MD-08.2). Карточка модели
 // опрашивает этот маршрут во время установки и рисует прогресс внутри себя.
 // role — необязательный фильтр; целостность полным sha256 — только по
-// ?verify=1 (кнопка «Проверить», T-13-04).
+// ?verify=1 (кнопка «Проверить», T-13-04). dirs — абсолютные каталоги ролей
+// каталога моделей: подсказка, куда сохранить файл при скачивании браузером.
 func handleSettingsModelStatus(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	role := strings.TrimSpace(query.Get("role"))
@@ -1254,7 +1259,9 @@ func handleSettingsModelStatus(w http.ResponseWriter, r *http.Request) {
 		}
 		models = kept
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"jobs": jobs, "models": models})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"jobs": jobs, "models": models, "dirs": modelRoleDirs(),
+	})
 }
 
 // handleSettingsModelInstall — POST /api/settings/models/install: установка или
@@ -1364,6 +1371,173 @@ func handleSettingsModelInstall(w http.ResponseWriter, r *http.Request) {
 	// T-13-07, шаг 2: ребёнок роли поднимается сразу, без перезапуска ядра.
 	child := startInstalledModelChild(role)
 	setModelJob(role, modelRef, "installed", 1, "")
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status": "ok", "model_ref": modelRef, "file": file, "bound": h != nil, "child": child,
+	})
+}
+
+// События журнала регистрации скачанного файла модели (решение владельца
+// 2026-11-13): имена заданы рядом с хэндлом, общий реестр journal/events.go —
+// по образцу internal/models/fetch.go.
+const (
+	eventAdoptStart = "model.adopt.start"
+	eventAdoptDone  = "model.adopt.done"
+	eventAdoptFail  = "model.adopt.fail"
+)
+
+// logModelAdopt пишет событие регистрации файла модели в журнал движка.
+func logModelAdopt(event, role, file, errMsg string) {
+	if modelLogger == nil {
+		return
+	}
+	fields := []journal.Field{
+		{Key: "role", Value: role},
+		{Key: "file", Value: file},
+	}
+	if errMsg != "" {
+		fields = append(fields, journal.Field{Key: "error", Value: errMsg})
+	}
+	_ = modelLogger.Event("model", event, fields...)
+}
+
+// modelFileDigest считает sha256 и размер файла потоком: файл модели —
+// гигабайты, целиком в память не читается.
+func modelFileDigest(path string) (string, int64, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", 0, err
+	}
+	defer f.Close()
+	h := sha256.New()
+	size, err := io.Copy(h, f)
+	if err != nil {
+		return "", 0, err
+	}
+	return hex.EncodeToString(h.Sum(nil)), size, nil
+}
+
+// modelRoleDirs — абсолютные каталоги всех ролей каталога моделей: подсказка
+// «куда сохранить файл» для скачивания браузером. modelsRoot в тестах
+// подменяется на абсолютный TempDir, в производстве — путь от экземпляра.
+func modelRoleDirs() map[string]string {
+	root := modelsRoot
+	if !filepath.IsAbs(root) {
+		root = filepath.Join(instanceRoot(), root)
+	}
+	dirs := make(map[string]string, len(generationModelRoles)+1)
+	dirs[embedModelRole] = filepath.Join(root, modelDirName(embedModelRole))
+	for _, role := range generationModelRoles {
+		dirs[role] = filepath.Join(root, modelDirName(role))
+	}
+	return dirs
+}
+
+// handleSettingsModelAdopt — POST /api/settings/models/adopt: регистрация файла
+// модели, уже скачанного браузером (решение владельца 2026-11-13). Движок не
+// перекачивает гигабайты: браузер умеет докачку и видимый прогресс, движку
+// остаётся подключить готовый файл. Имя файла берётся только из source —
+// имя от клиента открыло бы путь наружу каталога роли (path traversal).
+func handleSettingsModelAdopt(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		World    string `json:"world"`
+		Role     string `json:"role"`
+		Source   string `json:"source"`
+		ModelRef string `json:"model_ref"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "bad adopt body")
+		return
+	}
+	slug := strings.TrimSpace(req.World)
+	role := strings.TrimSpace(req.Role)
+	source := strings.TrimSpace(req.Source)
+	modelRef := strings.TrimSpace(req.ModelRef)
+	if role == "" || modelRef == "" {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "role and model_ref required")
+		return
+	}
+	if !isHFSource(source) {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "source must be a Hugging Face URL")
+		return
+	}
+	file, err := modelSourceName(source)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "source must name a model file")
+		return
+	}
+
+	dir := modelDir(role)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		writeError(w, http.StatusInternalServerError, codeInternal, "model dir create failed")
+		return
+	}
+	target := filepath.Join(dir, file)
+	if abs, absErr := filepath.Abs(target); absErr == nil {
+		target = abs
+	}
+	// Файл ждёт на месте: отказ называет абсолютный путь, куда его положить.
+	if info, statErr := os.Stat(target); statErr != nil || !info.Mode().IsRegular() {
+		writeError(w, http.StatusConflict, codeConflict, "model file not found: save it to "+target)
+		return
+	}
+
+	// Одна активная установка на роль (T-13-02, шаг 6): вторая параллельная
+	// регистрация той же роли не гоняется на файлах роли.
+	if !beginModelJob(role, modelRef) {
+		active, _ := modelJob(role)
+		if active.ModelRef != "" {
+			writeError(w, http.StatusConflict, codeConflict, "already installing "+active.ModelRef)
+			return
+		}
+		writeError(w, http.StatusConflict, codeConflict, "model install already running")
+		return
+	}
+	logModelAdopt(eventAdoptStart, role, file, "")
+	sha, size, err := modelFileDigest(target)
+	if err != nil {
+		logModelAdopt(eventAdoptFail, role, file, err.Error())
+		setModelJob(role, modelRef, "error", 0, err.Error())
+		writeError(w, http.StatusInternalServerError, codeInternal, "model read failed")
+		return
+	}
+	if size == 0 {
+		logModelAdopt(eventAdoptFail, role, file, "empty model")
+		setModelJob(role, modelRef, "error", 0, "empty model")
+		writeError(w, http.StatusInternalServerError, codeInternal, "empty model")
+		return
+	}
+
+	// Мир необязателен: привязка роли пишется только когда мир выбран.
+	var h *db.Handle
+	if slug != "" {
+		h, err = db.OpenWriterAs(worldDBPath(slug), db.DBWorld, db.WriterCore, nil)
+		if err != nil {
+			logModelAdopt(eventAdoptFail, role, file, err.Error())
+			setModelJob(role, modelRef, "error", 0, err.Error())
+			writeError(w, http.StatusNotFound, codeNotFound, "world not found")
+			return
+		}
+		defer h.Close()
+	}
+
+	if err := installModelFile(role, modelRef, source, file, sha, size); err != nil {
+		logModelAdopt(eventAdoptFail, role, file, err.Error())
+		setModelJob(role, modelRef, "error", 0, err.Error())
+		writeError(w, http.StatusInternalServerError, codeInternal, "model install failed")
+		return
+	}
+	if h != nil {
+		if err := writeSlotBindings(h, []slotBinding{{Role: role, ModelRef: modelRef, Provider: "local"}}); err != nil {
+			logModelAdopt(eventAdoptFail, role, file, err.Error())
+			setModelJob(role, modelRef, "error", 0, err.Error())
+			writeError(w, http.StatusInternalServerError, codeInternal, "binding write failed")
+			return
+		}
+	}
+	// T-13-07, шаг 2: ребёнок роли поднимается сразу, без перезапуска ядра.
+	child := startInstalledModelChild(role)
+	setModelJob(role, modelRef, "installed", 1, "")
+	logModelAdopt(eventAdoptDone, role, file, "")
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status": "ok", "model_ref": modelRef, "file": file, "bound": h != nil, "child": child,
 	})

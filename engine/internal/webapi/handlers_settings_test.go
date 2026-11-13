@@ -512,6 +512,231 @@ func TestEmbedModelInstallsIntoEmbedDir(t *testing.T) {
 	}
 }
 
+// seedModelAdoptEnv подменяет каталог моделей на временный и очищает реестр
+// заданий: регистрация файла не видит установок соседних тестов.
+func seedModelAdoptEnv(t *testing.T) string {
+	t.Helper()
+	oldRoot, oldJobs := modelsRoot, modelJobs
+	modelsRoot = filepath.Join(t.TempDir(), "models")
+	modelJobsMu.Lock()
+	modelJobs = map[string]modelJobState{}
+	modelJobsMu.Unlock()
+	t.Cleanup(func() {
+		modelsRoot = oldRoot
+		modelJobsMu.Lock()
+		modelJobs = oldJobs
+		modelJobsMu.Unlock()
+	})
+	return modelsRoot
+}
+
+// putAdoptedFile кладёт файл «скачанный браузером» в каталог роли.
+func putAdoptedFile(t *testing.T, role, name, content string) string {
+	t.Helper()
+	dir := modelDir(role)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// postAdopt шлёт тело регистрации скачанного файла в хэндл adopt.
+func postAdopt(t *testing.T, body map[string]string) *httptest.ResponseRecorder {
+	t.Helper()
+	raw, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return mcpRequest(t, handleSettingsModelAdopt, http.MethodPost, settingsModelsAdoptPath, raw, "application/json")
+}
+
+// TestModelAdoptFile — регистрация файла, скачанного браузером: манифест,
+// sha256, привязка роли и статус installed без повторной загрузки.
+func TestModelAdoptFile(t *testing.T) {
+	seedSettingsWorld(t)
+	seedModelAdoptEnv(t)
+	oldFetch := fetchModelToFile
+	fetchModelToFile = func(_ context.Context, _ models.DownloadSpec) (models.DownloadResult, error) {
+		t.Fatal("adopt не должен качать файл заново")
+		return models.DownloadResult{}, nil
+	}
+	t.Cleanup(func() { fetchModelToFile = oldFetch })
+
+	content := "adopted-model"
+	path := putAdoptedFile(t, "weaver", "weaver-Q4_K_M.gguf", content)
+	body := map[string]string{
+		"world":     "alpha",
+		"role":      "weaver",
+		"source":    "https://huggingface.co/org/repo/resolve/main/weaver-Q4_K_M.gguf",
+		"model_ref": "org/weaver",
+	}
+	rr := postAdopt(t, body)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("adopt: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	var out struct {
+		Status   string `json:"status"`
+		ModelRef string `json:"model_ref"`
+		File     string `json:"file"`
+		Bound    bool   `json:"bound"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Status != "ok" || out.ModelRef != "org/weaver" || out.File != "weaver-Q4_K_M.gguf" || !out.Bound {
+		t.Fatalf("adopt = %+v, want ok/org/weaver/weaver-Q4_K_M.gguf/bound", out)
+	}
+
+	m, ok := readModelManifest(modelDir("weaver"))
+	if !ok {
+		t.Fatal("манифест роли не записан")
+	}
+	sum := sha256.Sum256([]byte(content))
+	if m.File != "weaver-Q4_K_M.gguf" || m.SHA256 != hex.EncodeToString(sum[:]) || m.Size != int64(len(content)) {
+		t.Fatalf("манифест = %+v, want файл, sha256 и размер скачанного файла", m)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("файл модели пропал: %v", err)
+	}
+
+	status := mcpRequest(t, handleSettingsModelStatus, http.MethodGet,
+		settingsModelsStatusPath+"?role=weaver", nil, "")
+	if status.Code != http.StatusOK {
+		t.Fatalf("status: %d, want 200; body=%s", status.Code, status.Body.String())
+	}
+	var st struct {
+		Models []modelStatus `json:"models"`
+	}
+	if err := json.Unmarshal(status.Body.Bytes(), &st); err != nil {
+		t.Fatal(err)
+	}
+	if len(st.Models) != 1 || st.Models[0].Role != "weaver" || st.Models[0].Status != "installed" || !st.Models[0].IntegrityOK {
+		t.Fatalf("статус weaver = %+v, want installed с целым файлом", st.Models)
+	}
+
+	world, err := db.OpenReaderAs(worldDBPath("alpha"), db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer world.Close()
+	var ref string
+	if err := world.QueryRow(`SELECT model_ref FROM model_bindings WHERE role = 'weaver'`).Scan(&ref); err != nil {
+		t.Fatal(err)
+	}
+	if ref != "org/weaver" {
+		t.Fatalf("привязка = %q, want org/weaver", ref)
+	}
+}
+
+// TestModelAdoptMissingFile — файла нет: 409, а текст отказа называет
+// абсолютный путь, куда его положить.
+func TestModelAdoptMissingFile(t *testing.T) {
+	root := seedModelAdoptEnv(t)
+	rr := postAdopt(t, map[string]string{
+		"role":      "pythia",
+		"source":    "https://huggingface.co/org/repo/resolve/main/pythia-Q4_K_M.gguf",
+		"model_ref": "org/pythia",
+	})
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("adopt без файла: status = %d, want 409; body=%s", rr.Code, rr.Body.String())
+	}
+	want := filepath.Join(root, "pythia", "pythia-Q4_K_M.gguf")
+	if !strings.Contains(rr.Body.String(), want) {
+		t.Fatalf("текст отказа = %s, want путь %s", rr.Body.String(), want)
+	}
+	if _, ok := readModelManifest(modelDir("pythia")); ok {
+		t.Fatal("манифест записан без файла модели")
+	}
+}
+
+// TestModelAdoptBadRequests — не-HF источник, битое тело и пустой файл до
+// манифеста не доходят.
+func TestModelAdoptBadRequests(t *testing.T) {
+	seedModelAdoptEnv(t)
+
+	if rr := postAdopt(t, map[string]string{
+		"role":      "editor",
+		"source":    "https://example.com/repo/resolve/main/editor.gguf",
+		"model_ref": "org/editor",
+	}); rr.Code != http.StatusBadRequest {
+		t.Fatalf("не-HF source: status = %d, want 400; body=%s", rr.Code, rr.Body.String())
+	}
+
+	rr := mcpRequest(t, handleSettingsModelAdopt, http.MethodPost,
+		settingsModelsAdoptPath, []byte("{"), "application/json")
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("битое тело: status = %d, want 400; body=%s", rr.Code, rr.Body.String())
+	}
+
+	putAdoptedFile(t, "analysis", "analysis-Q4_K_M.gguf", "")
+	rr = postAdopt(t, map[string]string{
+		"role":      "analysis",
+		"source":    "https://huggingface.co/org/repo/resolve/main/analysis-Q4_K_M.gguf",
+		"model_ref": "org/analysis",
+	})
+	if rr.Code != http.StatusInternalServerError || !strings.Contains(rr.Body.String(), "empty model") {
+		t.Fatalf("пустой файл: status = %d body=%s, want 500 empty model", rr.Code, rr.Body.String())
+	}
+	if _, ok := readModelManifest(modelDir("analysis")); ok {
+		t.Fatal("пустой файл попал в манифест роли")
+	}
+}
+
+// TestModelAdoptBusyRole — параллельная регистрация той же роли получает 409,
+// как и параллельная установка (T-13-02, шаг 6).
+func TestModelAdoptBusyRole(t *testing.T) {
+	seedModelAdoptEnv(t)
+	putAdoptedFile(t, "editor", "editor-Q4_K_M.gguf", "editor")
+
+	modelJobsMu.Lock()
+	modelJobs["editor"] = modelJobState{Role: "editor", ModelRef: "org/busy", Status: "downloading"}
+	modelJobsMu.Unlock()
+
+	rr := postAdopt(t, map[string]string{
+		"role":      "editor",
+		"source":    "https://huggingface.co/org/repo/resolve/main/editor-Q4_K_M.gguf",
+		"model_ref": "org/editor",
+	})
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("занятая роль: status = %d, want 409; body=%s", rr.Code, rr.Body.String())
+	}
+	if _, ok := readModelManifest(modelDir("editor")); ok {
+		t.Fatal("манифест записан при занятой роли")
+	}
+}
+
+// TestModelStatusDirs — статус отдаёт абсолютные каталоги всех пяти ролей
+// каталога: по ним браузерная карточка показывает, куда сохранить файл.
+func TestModelStatusDirs(t *testing.T) {
+	root := seedModelAdoptEnv(t)
+	rr := mcpRequest(t, handleSettingsModelStatus, http.MethodGet, settingsModelsStatusPath, nil, "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	var out struct {
+		Dirs map[string]string `json:"dirs"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	for _, role := range []string{"weaver", "pythia", "editor", "analysis", "embed"} {
+		dir, ok := out.Dirs[role]
+		if !ok {
+			t.Fatalf("dirs без роли %q: %v", role, out.Dirs)
+		}
+		if !filepath.IsAbs(dir) {
+			t.Fatalf("dirs[%s] = %q, want абсолютный путь", role, dir)
+		}
+		if want := filepath.Join(root, role); dir != want {
+			t.Fatalf("dirs[%s] = %q, want %q", role, dir, want)
+		}
+	}
+}
+
 // TestSettingsReportsRamGB — рекомендация по RAM (T-12-16): ответ настроек
 // отдаёт объём памяти станка для подсветки подходящего варианта BGE-M3.
 func TestSettingsReportsRamGB(t *testing.T) {
