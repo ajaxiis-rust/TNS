@@ -272,6 +272,44 @@ func TestTurnEndpoint(t *testing.T) {
 	}
 }
 
+// TestTurnEndpointTooLong — реплика длиннее лимита отвергается до конвейера
+// (IMP-7): 400 с подсказкой, строка хода не появляется.
+func TestTurnEndpointTooLong(t *testing.T) {
+	path := seedChatWorld(t)
+
+	body, err := json.Marshal(chatTurnRequest{World: "alpha", Text: strings.Repeat("я", 4001)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr := chatRequest(t, handleChatTurn, http.MethodPost, chatTurnPath, string(body))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("POST /api/turn сверх лимита: status = %d, want 400; body=%s", rr.Code, rr.Body.String())
+	}
+	var eb errorBody
+	if err := json.Unmarshal(rr.Body.Bytes(), &eb); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if eb.Error.Code != codeBadRequest {
+		t.Fatalf("код ошибки = %q, want %q", eb.Error.Code, codeBadRequest)
+	}
+	if !strings.Contains(eb.Error.Message, "длиннее 2000 токенов") || !strings.Contains(eb.Error.Message, "2001") {
+		t.Fatalf("подсказка = %q, want лимит 2000 и оценку 2001", eb.Error.Message)
+	}
+
+	reader, err := db.OpenReader(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	var n int
+	if err := reader.QueryRow(`SELECT COUNT(*) FROM turns`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("строк в turns = %d, want 0: ход не должен начинаться", n)
+	}
+}
+
 // TestChatState — панель мир/герой/система и сводка при возврате до первой
 // реплики.
 func TestChatState(t *testing.T) {

@@ -22,6 +22,7 @@ import (
 
 	"tns65/internal/journal"
 	"tns65/internal/netgate"
+	"tns65/internal/textlimit"
 )
 
 // DefaultTunnelEdge и DefaultTunnelLocal — параметры исходящего туннеля по
@@ -408,6 +409,18 @@ func (b *TelegramBot) ForwardChat(ctx context.Context, text string) (int64, erro
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		// Отказ сервера с подсказкой (IMP-7): длинную реплику игрок получает
+		// текстом сервера, остальные сбои — прежней общей фразой.
+		if resp.StatusCode == http.StatusBadRequest {
+			var eb errorBody
+			if err := json.NewDecoder(resp.Body).Decode(&eb); err == nil &&
+				eb.Error.Code == codeBadRequest && eb.Error.Message != "" {
+				return 0, &textlimit.TooLongError{
+					Kind:    textlimit.KindPlayerMessage,
+					Message: eb.Error.Message,
+				}
+			}
+		}
 		return 0, fmt.Errorf("webapi: forward chat: status %d", resp.StatusCode)
 	}
 	var out chatTurnResponse
@@ -617,10 +630,14 @@ func (b *TelegramBot) relayChat(ctx context.Context, text string) {
 		return
 	}
 
+	var tooLong *textlimit.TooLongError
 	turnID, err := b.ForwardChat(ctx, text)
 	switch {
 	case errors.Is(err, ErrNoActiveWorld):
 		_ = b.SendChat(ctx, "Сначала выберите мир в Атласе.")
+		return
+	case errors.As(err, &tooLong):
+		_ = b.SendChat(ctx, tooLong.Error())
 		return
 	case err != nil:
 		_ = b.SendChat(ctx, "Не получилось передать реплику миру, попробуйте ещё раз.")

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"tns65/internal/journal"
+	"tns65/internal/textlimit"
 )
 
 // DefaultHost и DefaultPort — дефолт строго loopback (T-08-02, шаг 1).
@@ -70,6 +71,7 @@ func New(cfg Config) *Server {
 	mcpLogger = cfg.Logger
 	coeffLogger = cfg.Logger
 	chatLogger = cfg.Logger
+	inputLimits = loadInputLimits(settingsConfigPath)
 	hub := NewHub()
 	router := newRouter(hub)
 	bindMonitorJournal(cfg.Logger)
@@ -87,6 +89,7 @@ func NewHandler(cfg Config) http.Handler {
 	mcpLogger = cfg.Logger
 	coeffLogger = cfg.Logger
 	chatLogger = cfg.Logger
+	inputLimits = loadInputLimits(settingsConfigPath)
 	hub := NewHub()
 	router := newRouter(hub)
 	bindMonitorJournal(cfg.Logger)
@@ -180,6 +183,16 @@ func (w *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		return nil, nil, errors.New("webapi: response writer does not support hijacking")
 	}
 	return hj.Hijack()
+}
+
+// loadInputLimits читает секцию limits config.yaml (IMP-7): реплика игрока и
+// описание мира. Ошибка чтения — умолчания 2000 токенов.
+func loadInputLimits(path string) textlimit.Limits {
+	limits, err := textlimit.LoadConfig(path)
+	if err != nil {
+		return textlimit.DefaultLimits()
+	}
+	return limits
 }
 
 // LoadConfig читает секцию web из config.yaml; при отсутствии секции —
