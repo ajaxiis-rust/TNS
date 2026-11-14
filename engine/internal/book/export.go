@@ -227,3 +227,180 @@ func ExportBook(h *db.Handle, root string, format Format) (string, error) {
 	}
 	return path, nil
 }
+
+// Экспорт опубликованных глав в ready/ (IMP-6): один файл Markdown на главу с
+// YAML front matter и текстом действующей версии. Каталог живёт в state-каталоге
+// мира рядом с базами: <root>/worlds/<slug>/ready; пустой root — db.WorldsRoot.
+
+// ErrReadyExport — глава опубликована, но файл ready/ не записан: публикация в
+// базе мира остаётся, ошибка возвращается наружу.
+var ErrReadyExport = errors.New("book: глава опубликована, но экспорт в ready/ не удался")
+
+// ReadyDir — каталог готовых к публикации глав мира slug (IMP-6, шаг 1).
+func ReadyDir(root, slug string) string {
+	if root == "" {
+		root = db.WorldsRoot
+	}
+	return filepath.Join(root, "worlds", slug, "ready")
+}
+
+// readyFileName — детерминированное имя файла главы (IMP-6, шаг 2): глава —
+// chapter-<day>-<id>.md, эпилог — epilogue-<day>-<id>.md. Пере-экспорт
+// перезаписывает тот же файл, дублей не появляется.
+func readyFileName(kind ChapterKind, day, id int64) string {
+	prefix := "chapter"
+	if kind == KindEpilogue {
+		prefix = "epilogue"
+	}
+	return fmt.Sprintf("%s-%d-%d.md", prefix, day, id)
+}
+
+// readyChapter — глава файла ready/: строки book_chapters, действующая версия и
+// дата из журнала мира (пусто — дата опускается).
+type readyChapter struct {
+	ID     int64
+	Day    int64
+	Title  string
+	Kind   ChapterKind
+	Digest string
+	Date   string
+	Text   string
+}
+
+// readyFrontMatter — YAML-шапка файла главы (IMP-6, шаг 2): мир, глава, день,
+// заголовок, вид, дайджест и дата, если у главы есть источник даты. Строки в
+// двойных кавычках: заголовок и дайджест содержат двоеточия и переводы строк.
+func readyFrontMatter(slug string, ch readyChapter) string {
+	var b strings.Builder
+	b.WriteString("---\n")
+	fmt.Fprintf(&b, "world: %q\n", slug)
+	fmt.Fprintf(&b, "chapter_id: %d\n", ch.ID)
+	fmt.Fprintf(&b, "day: %d\n", ch.Day)
+	fmt.Fprintf(&b, "title: %q\n", ch.Title)
+	fmt.Fprintf(&b, "kind: %s\n", ch.Kind)
+	fmt.Fprintf(&b, "digest: %q\n", ch.Digest)
+	if ch.Date != "" {
+		fmt.Fprintf(&b, "date: %q\n", ch.Date)
+	}
+	b.WriteString("---\n")
+	return b.String()
+}
+
+// readyDate — дата главы из журнала мира: closed_at события автозакрытия главы.
+// Прямой связи главы с сессией в базе мира нет (book_chapters.session_id не
+// хранится), поэтому sessions.ended_at к главе не привязать; без события дата
+// опускается.
+func readyDate(h *db.Handle, chapterID int64) string {
+	rows, err := h.Query(`SELECT payload_json FROM events WHERE kind = ? ORDER BY id`, AutoCloseEventKind)
+	if err != nil {
+		return ""
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var raw string
+		if rows.Scan(&raw) != nil {
+			continue
+		}
+		var payload struct {
+			ChapterID int64  `json:"chapter_id"`
+			ClosedAt  string `json:"closed_at"`
+		}
+		if json.Unmarshal([]byte(raw), &payload) != nil {
+			continue
+		}
+		if payload.ChapterID == chapterID && payload.ClosedAt != "" {
+			return payload.ClosedAt
+		}
+	}
+	return ""
+}
+
+// ExportReadyChapter выгружает опубликованную главу в
+// <root>/worlds/<slug>/ready/<kind>-<day>-<id>.md (IMP-6) и возвращает путь.
+// Неопубликованная глава не выгружается — ErrChapterNotPublished, файла нет.
+func ExportReadyChapter(h *db.Handle, root string, chapterID int64) (string, error) {
+	if h == nil {
+		return "", errors.New("book: нет хэндла мира")
+	}
+	if chapterID <= 0 {
+		return "", errors.New("book: id главы не задан")
+	}
+
+	ch := readyChapter{ID: chapterID}
+	var status, kind string
+	err := h.QueryRow(`SELECT day, title, status, kind FROM book_chapters WHERE id = ?`, chapterID).
+		Scan(&ch.Day, &ch.Title, &status, &kind)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", errors.New("book: глава не найдена")
+	}
+	if err != nil {
+		return "", err
+	}
+	if status != string(StatusPublished) {
+		return "", ErrChapterNotPublished
+	}
+	ch.Kind = ChapterKind(kind)
+
+	pub, err := LoadPublished(h, chapterID)
+	if err != nil {
+		return "", err
+	}
+	ch.Text = pub.Text
+	ch.Digest = pub.Digest
+
+	slug, err := worldSlug(h)
+	if err != nil {
+		return "", err
+	}
+	ch.Date = readyDate(h, chapterID)
+
+	dir := ReadyDir(root, slug)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	path := filepath.Join(dir, readyFileName(ch.Kind, ch.Day, ch.ID))
+	body := readyFrontMatter(slug, ch) + ch.Text + "\n"
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+// ExportReadyAll пере-экспортирует все опубликованные главы мира (backfill,
+// IMP-6, шаг 3): порядок day, id, эпилоги идут за главами. Возвращает пути
+// записанных файлов; при сбое записи останавливается и отдаёт ошибку.
+func ExportReadyAll(h *db.Handle, root string) ([]string, error) {
+	if h == nil {
+		return nil, errors.New("book: нет хэндла мира")
+	}
+
+	rows, err := h.Query(`SELECT id FROM book_chapters WHERE status = 'published' ORDER BY day, id`)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, err
+	}
+	rows.Close()
+
+	paths := make([]string, 0, len(ids))
+	for _, id := range ids {
+		path, err := ExportReadyChapter(h, root, id)
+		if err != nil {
+			return paths, err
+		}
+		paths = append(paths, path)
+	}
+	return paths, nil
+}

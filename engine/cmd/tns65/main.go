@@ -16,6 +16,7 @@ import (
 	"syscall"
 
 	"tns65/internal/birth"
+	"tns65/internal/book"
 	"tns65/internal/db"
 	"tns65/internal/journal"
 	"tns65/internal/langpack"
@@ -99,6 +100,11 @@ func main() {
 			if errors.As(err, &ee) {
 				os.Exit(ee.Code)
 			}
+			os.Exit(1)
+		}
+	case "book":
+		if err := runBook(args[1:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 	case "swarm":
@@ -389,6 +395,58 @@ func runWorldList() error {
 	}
 	for _, w := range worlds {
 		fmt.Printf("%s — %s — %s\n", w.Slug, w.Title, w.BirthDate.Format("2006-01-02"))
+	}
+	return nil
+}
+
+// runBook — команды книги (IMP-6): пере-экспорт опубликованных глав в ready/.
+func runBook(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("tns65 book: missing command (export)")
+	}
+	switch args[0] {
+	case "export":
+		return runBookExport(args[1:])
+	default:
+		return fmt.Errorf("tns65 book: unknown command %q", args[0])
+	}
+}
+
+// runBookExport — подкоманда book export --world <слаг>: полный пере-экспорт
+// опубликованных глав мира в ready/ (backfill, IMP-6). Печатает путь каждого
+// записанного файла.
+func runBookExport(args []string) error {
+	fs := flag.NewFlagSet("book export", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	slug := fs.String("world", "", "слаг мира")
+	root := fs.String("root", "", "корень миров (по умолчанию world_db)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() > 0 {
+		return fmt.Errorf("tns65 book export: unexpected argument %q", fs.Arg(0))
+	}
+	if *slug == "" {
+		return fmt.Errorf("tns65 book export: флаг --world обязателен")
+	}
+
+	worldsRoot := *root
+	if worldsRoot == "" {
+		worldsRoot = db.WorldsRoot
+	}
+	path := filepath.Join(worldsRoot, "worlds", *slug, *slug+".db")
+	h, err := db.OpenReaderAs(path, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		return fmt.Errorf("tns65 book export: %w", err)
+	}
+	defer func() { _ = h.Close() }()
+
+	paths, err := book.ExportReadyAll(h, worldsRoot)
+	if err != nil {
+		return fmt.Errorf("tns65 book export: %w", err)
+	}
+	for _, p := range paths {
+		fmt.Println(p)
 	}
 	return nil
 }

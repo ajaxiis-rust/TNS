@@ -63,6 +63,10 @@ func newBookWorld(t *testing.T) *db.Handle {
 	if err := db.Migrate(w, "world", "shared"); err != nil {
 		t.Fatalf("Migrate(world, shared): %v", err)
 	}
+	// Слаг мира — имя каталога ready/ при экспорте публикации (IMP-6).
+	if _, err := w.Exec(`INSERT INTO world_meta ("key", value) VALUES ('slug', '"a"')`); err != nil {
+		t.Fatalf("INSERT world_meta slug: %v", err)
+	}
 	if err := w.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}

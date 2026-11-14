@@ -1,6 +1,8 @@
 bin/
 state/
 e2e/reports/
+# Готовые к публикации главы (IMP-6): экспорт в ready/ вне git.
+world_db/worlds/*/ready/
 *.db
 *.db-wal
 *.db-shm

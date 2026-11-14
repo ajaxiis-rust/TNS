@@ -84,8 +84,10 @@ func CanPublish(h *db.Handle, chapterID int64) bool {
 // Process — идемпотентный оркестратор публикации (шаг 2): доводит главу
 // closed → processing → published, помечает действующую издательскую версию в
 // book_text.published и пишет вектор смысла главы в vectors (owner_table=
-// 'book_chapters', вход для дрейфа заявки T-07-09). Повторный вызов на
-// опубликованной главе ничего не делает и дублей не создаёт.
+// 'book_chapters', вход для дрейфа заявки T-07-09). После коммита публикации
+// глава выгружается в ready/ (IMP-6); сбой выгрузки публикацию не откатывает и
+// возвращается наружу как ErrReadyExport. Повторный вызов на опубликованной
+// главе ничего не делает и дублей не создаёт.
 func Process(ctx context.Context, h *db.Handle, embedder models.Embedder, chapterID int64) error {
 	if ctx == nil {
 		ctx = context.Background()
@@ -141,7 +143,7 @@ func Process(ctx context.Context, h *db.Handle, embedder models.Embedder, chapte
 		return err
 	}
 
-	return h.Tx(db.WriterCore, func(tx *db.Tx) error {
+	if err := h.Tx(db.WriterCore, func(tx *db.Tx) error {
 		if status == string(StatusClosed) {
 			res, err := tx.Exec("book_chapters",
 				`UPDATE book_chapters SET status = 'processing' WHERE id = ? AND status = 'closed'`, chapterID)
@@ -187,7 +189,16 @@ func Process(ctx context.Context, h *db.Handle, embedder models.Embedder, chapte
 			return err
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	// Экспорт в ready/ (IMP-6, шаг 3): публикация уже закоммичена, поэтому сбой
+	// записи файла её не откатывает — ошибка уходит наружу отдельным видом.
+	if _, err := ExportReadyChapter(h, "", chapterID); err != nil {
+		return fmt.Errorf("%w: %w", ErrReadyExport, err)
+	}
+	return nil
 }
 
 // chapterVectorBlob кодирует вектор смысла главы в BLOB Float32 little-endian
