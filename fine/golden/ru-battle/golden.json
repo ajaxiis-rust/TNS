@@ -32,11 +32,9 @@
      "anchors": []
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "диван"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "emotion": {
      "present": true,
@@ -50,8 +48,7 @@
      "present": true,
      "intensity": 0.2,
      "anchors": [
-      "поцеловать",
-      "сесть"
+      "поцеловать"
      ]
     },
     "speech": {
@@ -151,11 +148,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "остановиться"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -176,8 +171,7 @@
      "present": true,
      "intensity": 0.5,
      "anchors": [
-      "император",
-      "Австрия"
+      "император"
      ]
     },
     "erotic": {
@@ -186,19 +180,14 @@
      "anchors": []
     },
     "violence": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "кровь",
-      "убийца"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "battle": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "война"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     }
    },
    "characters": [
@@ -277,11 +266,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "год"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": true,
@@ -412,11 +399,9 @@
      "anchors": []
     },
     "battle": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "гвардия"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     }
    },
    "characters": [
@@ -476,11 +461,9 @@
      "anchors": []
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "передняя"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "emotion": {
      "present": true,
@@ -504,11 +487,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "год"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": true,
@@ -530,13 +511,9 @@
      "anchors": []
     },
     "battle": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "гвардия",
-      "главнокомандующий",
-      "адъютант"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     }
    },
    "characters": [
@@ -590,7 +567,6 @@
      "present": true,
      "intensity": 0.2,
      "anchors": [
-      "стол",
       "гостиная"
      ]
     },
@@ -603,12 +579,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "рисовать",
-      "пожать"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -619,11 +592,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "год"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": true,
@@ -640,12 +611,9 @@
      "anchors": []
     },
     "violence": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "казнь",
-      "насилие"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "battle": {
      "present": false,
@@ -728,12 +696,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "прыгнуть",
-      "играть"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -744,11 +709,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "год"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": true,
@@ -760,12 +723,9 @@
      ]
     },
     "erotic": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "обнажённый",
-      "шея"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "violence": {
      "present": false,
@@ -773,13 +733,9 @@
      "anchors": []
     },
     "battle": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "война",
-      "гусар",
-      "полк"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     }
    },
    "characters": [
@@ -851,12 +807,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.25,
-     "anchors": [
-      "выйти",
-      "пересесть"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -866,11 +819,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "четверг"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": true,
@@ -995,11 +946,9 @@
      ]
     },
     "erotic": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "целоваться"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "violence": {
      "present": false,
@@ -1048,18 +997,14 @@
      ]
     },
     "clothing": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "мундир"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "nature": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "цветок"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "architecture": {
      "present": true,
@@ -1084,8 +1029,7 @@
      "intensity": 0.35,
      "anchors": [
       "спрятаться",
-      "бежать",
-      "обнять"
+      "бежать"
      ]
     },
     "speech": {
@@ -1172,19 +1116,16 @@
      ]
     },
     "nature": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "цветок"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "architecture": {
      "present": true,
      "intensity": 0.3,
      "anchors": [
       "цветочная",
-      "диванная",
-      "кадка"
+      "диванная"
      ]
     },
     "emotion": {
@@ -1200,9 +1141,7 @@
      "present": true,
      "intensity": 0.45,
      "anchors": [
-      "вскочить",
-      "обнять",
-      "поцеловать"
+      "вскочить"
      ]
     },
     "speech": {
@@ -1214,11 +1153,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "год"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": false,
@@ -1289,9 +1226,7 @@
      "present": true,
      "intensity": 0.45,
      "anchors": [
-      "гостиная",
-      "отоманка",
-      "стол"
+      "гостиная"
      ]
     },
     "emotion": {
@@ -1303,12 +1238,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "выйти",
-      "сесть"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -1341,19 +1273,14 @@
      "anchors": []
     },
     "violence": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "убить"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "battle": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "гвардия",
-      "война"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     }
    },
    "characters": [
@@ -1427,8 +1354,6 @@
      "present": true,
      "intensity": 0.3,
      "anchors": [
-      "войти",
-      "оправить",
       "засучить"
      ]
     },
@@ -1525,8 +1450,7 @@
      "intensity": 0.25,
      "anchors": [
       "сад",
-      "гора",
-      "крыша"
+      "гора"
      ]
     },
     "architecture": {
@@ -1545,19 +1469,14 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.25,
-     "anchors": [
-      "подрагивать",
-      "ходить"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "приказ"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "time": {
      "present": true,
@@ -1588,13 +1507,9 @@
      "anchors": []
     },
     "battle": {
-     "present": true,
-     "intensity": 0.65,
-     "anchors": [
-      "полк",
-      "солдат",
-      "смотр"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     }
    },
    "characters": [
@@ -1654,7 +1569,6 @@
      "present": true,
      "intensity": 0.45,
      "anchors": [
-      "переодеть",
       "бежать",
       "подкидывать"
      ]
@@ -1695,13 +1609,9 @@
      "anchors": []
     },
     "battle": {
-     "present": true,
-     "intensity": 0.6,
-     "anchors": [
-      "полк",
-      "рота",
-      "смотр"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     }
    },
    "characters": [
@@ -1759,12 +1669,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.3,
-     "anchors": [
-      "крикнуть",
-      "подойти"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -1775,11 +1682,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "час"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": true,
@@ -1801,13 +1706,9 @@
      "anchors": []
     },
     "battle": {
-     "present": true,
-     "intensity": 0.5,
-     "anchors": [
-      "полк",
-      "смотр",
-      "солдат"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     }
    },
    "characters": [
@@ -1835,11 +1736,9 @@
      "anchors": []
     },
     "clothing": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "капот"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "nature": {
      "present": true,
@@ -1867,12 +1766,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "проходить",
-      "перейти"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": false,
@@ -1898,12 +1794,9 @@
      "anchors": []
     },
     "violence": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "смерть",
-      "страдание"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "battle": {
      "present": true,
@@ -1970,8 +1863,7 @@
      "present": true,
      "intensity": 0.35,
      "anchors": [
-      "скакать",
-      "осматривать"
+      "скакать"
      ]
     },
     "speech": {
@@ -2052,12 +1944,9 @@
      "anchors": []
     },
     "clothing": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "сабля",
-      "шпора"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "nature": {
      "present": false,
@@ -2065,11 +1954,9 @@
      "anchors": []
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "мост"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "emotion": {
      "present": true,
@@ -2089,11 +1976,9 @@
      ]
     },
     "speech": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "скомандовать"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "time": {
      "present": false,
@@ -2153,12 +2038,9 @@
    "words": 304,
    "categories": {
     "appearance": {
-     "present": true,
-     "intensity": 0.25,
-     "anchors": [
-      "кивер",
-      "куртка"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "clothing": {
      "present": true,
@@ -2191,12 +2073,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "кричать",
-      "ехать"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -2207,11 +2086,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "вечер"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": true,
@@ -2227,11 +2104,9 @@
      "anchors": []
     },
     "violence": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "перебить"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "battle": {
      "present": true,
@@ -2278,11 +2153,9 @@
    "words": 468,
    "categories": {
     "appearance": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "лицо"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "clothing": {
      "present": false,
@@ -2316,7 +2189,6 @@
      "present": true,
      "intensity": 0.35,
      "anchors": [
-      "упасть",
       "подбежать"
      ]
     },
@@ -2402,8 +2274,7 @@
      "intensity": 0.25,
      "anchors": [
       "бурка",
-      "картуз",
-      "шпага"
+      "картуз"
      ]
     },
     "nature": {
@@ -2558,7 +2429,6 @@
      "present": true,
      "intensity": 0.3,
      "anchors": [
-      "упасть",
       "подъехать"
      ]
     },
@@ -2658,19 +2528,14 @@
      ]
     },
     "nature": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "лес"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "лес",
-      "мост"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "emotion": {
      "present": true,
@@ -2685,8 +2550,7 @@
      "intensity": 0.65,
      "anchors": [
       "бежать",
-      "броситься",
-      "убить"
+      "броситься"
      ]
     },
     "speech": {
@@ -2768,27 +2632,19 @@
      ]
     },
     "clothing": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "сумка",
-      "шпага",
-      "платок"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "nature": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "ветер"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "деревня"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "emotion": {
      "present": true,
@@ -2802,7 +2658,6 @@
      "present": true,
      "intensity": 0.3,
      "anchors": [
-      "дышать",
       "подхватывать"
      ]
     },
@@ -2815,11 +2670,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "час"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": true,
@@ -2999,12 +2852,9 @@
      ]
     },
     "clothing": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "знамя",
-      "мундир"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "nature": {
      "present": false,
@@ -3012,11 +2862,9 @@
      "anchors": []
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "гора"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "emotion": {
      "present": true,
@@ -3045,11 +2893,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "минута"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": true,
@@ -3111,20 +2957,14 @@
    "words": 480,
    "categories": {
     "appearance": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "артиллерист",
-      "кивер"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "clothing": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "кивер",
-      "знамя"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "nature": {
      "present": true,
@@ -3153,7 +2993,6 @@
      "intensity": 0.6,
      "anchors": [
       "бежать",
-      "упасть",
       "схватить"
      ]
     },
@@ -3251,12 +3090,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.35,
-     "anchors": [
-      "ехать",
-      "спрашивать"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -3292,8 +3128,7 @@
      "intensity": 0.45,
      "anchors": [
       "раненый",
-      "убить",
-      "ядро"
+      "убить"
      ]
     },
     "battle": {
@@ -3329,11 +3164,9 @@
    "words": 300,
    "categories": {
     "appearance": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "лицо"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "clothing": {
      "present": false,
@@ -3344,7 +3177,6 @@
      "present": true,
      "intensity": 0.3,
      "anchors": [
-      "поле",
       "пашня"
      ]
     },
@@ -3369,7 +3201,6 @@
      "present": true,
      "intensity": 0.35,
      "anchors": [
-      "ехать",
       "сползаться"
      ]
     },
@@ -3381,11 +3212,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "вечер"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": false,
@@ -3456,11 +3285,9 @@
      ]
     },
     "nature": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "поле"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "architecture": {
      "present": true,
@@ -3484,7 +3311,6 @@
      "present": true,
      "intensity": 0.3,
      "anchors": [
-      "ехать",
       "перепрыгнуть"
      ]
     },
@@ -3496,11 +3322,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "час"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": true,
@@ -3517,11 +3341,9 @@
      "anchors": []
     },
     "violence": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "рана"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "battle": {
      "present": true,
@@ -3600,9 +3422,7 @@
      "present": true,
      "intensity": 0.5,
      "anchors": [
-      "бежать",
-      "давить",
-      "шагать"
+      "бежать"
      ]
     },
     "speech": {
@@ -3692,12 +3512,9 @@
      ]
     },
     "clothing": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "знамя",
-      "мундир"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "nature": {
      "present": true,
@@ -3723,19 +3540,15 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.25,
-     "anchors": [
-      "лежать",
-      "шевелить"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
      "intensity": 0.3,
      "anchors": [
-      "сказать",
-      "стон"
+      "сказать"
      ]
     },
     "time": {
@@ -3803,8 +3616,7 @@
      "present": true,
      "intensity": 0.3,
      "anchors": [
-      "лицо",
-      "мундир"
+      "лицо"
      ]
     },
     "clothing": {
@@ -3853,11 +3665,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "день"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": true,
@@ -3943,7 +3753,6 @@
      "intensity": 0.15,
      "anchors": [
       "мундир",
-      "образок",
       "цепочка"
      ]
     },
@@ -3976,16 +3785,13 @@
      "present": true,
      "intensity": 0.35,
      "anchors": [
-      "думать",
       "сказать"
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "минута"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": true,
