@@ -29,3 +29,10 @@ const (
 	EventTurnComposition       = "turn.composition"
 	EventDeepreadCall          = "deepread.call"
 )
+
+// Имена полей событий, общих для нескольких пакетов.
+const (
+	// FieldRegistryChanged — дрейф реестра семей в событии turn.composition
+	// (FIX-6): текущий реестр разошёлся с отпечатком рождения мира.
+	FieldRegistryChanged = "registry_changed"
+)

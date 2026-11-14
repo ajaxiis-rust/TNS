@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -163,6 +164,16 @@ func (f compFixture) setSourceBookID(t *testing.T, id int64) {
 	if _, err := f.worldForge.Exec("world_meta",
 		`INSERT INTO world_meta ("key", value) VALUES ('source_book_id', ?)`, strconv.FormatInt(id, 10)); err != nil {
 		t.Fatalf("insert source_book_id: %v", err)
+	}
+}
+
+// setRegistrySHA пишет отпечаток реестра семей (family_registry_sha256) в
+// world_meta хэндлом forge — как это делает рождение мира.
+func (f compFixture) setRegistrySHA(t *testing.T, sum string) {
+	t.Helper()
+	if _, err := f.worldForge.Exec("world_meta",
+		`INSERT INTO world_meta ("key", value) VALUES ('family_registry_sha256', ?)`, sum); err != nil {
+		t.Fatalf("insert family_registry_sha256: %v", err)
 	}
 }
 
@@ -426,6 +437,47 @@ func TestCompositionStage(t *testing.T) {
 		}
 		if st2.Composition.FamilyPrimary != "" {
 			t.Fatalf("Composition.FamilyPrimary = %q, want пусто (бюджет превышен)", st2.Composition.FamilyPrimary)
+		}
+	})
+
+	t.Run("е: дрейф реестра — registry_changed=true", func(t *testing.T) {
+		f := newCompositionFixture(t)
+		f.insertDrama(t, "quest_journey", "", "", "", false, 2)
+		f.setAnchorFamilies(t, []string{"quest_journey"})
+		// Отпечаток рождения не совпадает с текущим реестром: набор 14 сменился тихо.
+		f.setRegistrySHA(t, strings.Repeat("0", 64))
+
+		p, logPath := newCompositionPipeline(t, f)
+		if _, err := p.Run(context.Background(), TurnInput{SessionID: 1, PlayerText: "Я иду.", At: time.Now()}); err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+
+		evs := readCompositionEvents(t, logPath)
+		if len(evs) != 1 {
+			t.Fatalf("событий turn.composition = %d, want 1", len(evs))
+		}
+		if got := compositionField(evs[0], "registry_changed"); got != "true" {
+			t.Fatalf("registry_changed = %q, want true", got)
+		}
+	})
+
+	t.Run("ж: реестр совпал — поля registry_changed нет", func(t *testing.T) {
+		f := newCompositionFixture(t)
+		f.insertDrama(t, "quest_journey", "", "", "", false, 2)
+		f.setAnchorFamilies(t, []string{"quest_journey"})
+		f.setRegistrySHA(t, structural.RegistrySHA256(loadTestFamilies(t)))
+
+		p, logPath := newCompositionPipeline(t, f)
+		if _, err := p.Run(context.Background(), TurnInput{SessionID: 1, PlayerText: "Я иду.", At: time.Now()}); err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+
+		evs := readCompositionEvents(t, logPath)
+		if len(evs) != 1 {
+			t.Fatalf("событий turn.composition = %d, want 1", len(evs))
+		}
+		if got := compositionField(evs[0], "registry_changed"); got != "" {
+			t.Fatalf("registry_changed = %q, want пусто (дрейфа нет)", got)
 		}
 	})
 

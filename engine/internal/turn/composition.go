@@ -26,6 +26,12 @@ const compositionBudget = 100 * time.Millisecond
 // перебивает фандом.
 const fanficBookBoost = 3.0
 
+// registryMetaKey — ключ world_meta с отпечатком реестра семей, который пишет
+// рождение мира (T-10-13). Живой ход сверяет с ним текущий реестр: расхождение —
+// тихая смена набора 14, видимая в поле registry_changed события turn.composition
+// (FIX-6).
+const registryMetaKey = "family_registry_sha256"
+
 // compositionStage — стадия композиции (T-10-11): живой ход выбирает композицию
 // драмы из литературного банка, а не одиночный архетип. Кандидаты — строки
 // bank_pool kind='drama' с непустым family_primary; скоринг — structural.Score
@@ -65,7 +71,7 @@ func (s *compositionStage) Run(_ context.Context, st *TurnState) error {
 
 	comp.Mood = st.Prepath.Mood
 	st.Composition = comp
-	s.logComposition(comp, score, seq)
+	s.logComposition(comp, score, seq, registryChanged(s.world, fams))
 	return nil
 }
 
@@ -376,18 +382,38 @@ func compositionForceLess(a, b dramaCandidate) bool {
 	return a.id < b.id
 }
 
-func (s *compositionStage) logComposition(c structural.Composition, score float64, seq int) {
+func (s *compositionStage) logComposition(c structural.Composition, score float64, seq int, registryDrift bool) {
 	if s.logger == nil {
 		return
 	}
-	_ = s.logger.Event("turn", journal.EventTurnComposition,
-		journal.Field{Key: "family", Value: c.FamilyPrimary},
-		journal.Field{Key: "secondary", Value: c.PatternSecondary},
-		journal.Field{Key: "technique", Value: c.Technique},
-		journal.Field{Key: "moral_stance", Value: c.MoralStance},
-		journal.Field{Key: "inversion", Value: strconv.FormatBool(c.Inversion)},
-		journal.Field{Key: "score", Value: strconv.FormatFloat(score, 'f', 4, 64)},
-		journal.Field{Key: "seq", Value: strconv.Itoa(seq)})
+	fields := []journal.Field{
+		{Key: "family", Value: c.FamilyPrimary},
+		{Key: "secondary", Value: c.PatternSecondary},
+		{Key: "technique", Value: c.Technique},
+		{Key: "moral_stance", Value: c.MoralStance},
+		{Key: "inversion", Value: strconv.FormatBool(c.Inversion)},
+		{Key: "score", Value: strconv.FormatFloat(score, 'f', 4, 64)},
+		{Key: "seq", Value: strconv.Itoa(seq)},
+	}
+	if registryDrift {
+		fields = append(fields, journal.Field{Key: journal.FieldRegistryChanged, Value: "true"})
+	}
+	_ = s.logger.Event("turn", journal.EventTurnComposition, fields...)
+}
+
+// registryChanged — текущий реестр семей разошёлся с отпечатком, записанным при
+// рождении мира (FIX-6). Нет ключа, хэндла или реестра — сверять не с чем,
+// расхождения нет (деградация без отказа).
+func registryChanged(h *db.Handle, fams []structural.Family) bool {
+	if h == nil || len(fams) == 0 {
+		return false
+	}
+	var want string
+	if err := h.QueryRow(`SELECT value FROM world_meta WHERE "key" = ?`, registryMetaKey).Scan(&want); err != nil {
+		return false
+	}
+	sum := structural.RegistrySHA256(fams)
+	return sum != "" && sum != strings.TrimSpace(want)
 }
 
 // compositionGuide — строка-руководство выбранной композиции для промпта Ткача
