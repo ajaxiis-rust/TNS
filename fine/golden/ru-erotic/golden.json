@@ -814,7 +814,6 @@
      "present": true,
      "intensity": 0.55,
      "anchors": [
-      "умереть",
       "схоронить",
       "схватить"
      ]
@@ -844,11 +843,9 @@
      ]
     },
     "erotic": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "постель"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "violence": {
      "present": true,
@@ -899,8 +896,7 @@
      "present": true,
      "intensity": 0.2,
      "anchors": [
-      "лицо",
-      "грудь"
+      "лицо"
      ]
     },
     "clothing": {
@@ -934,12 +930,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.3,
-     "anchors": [
-      "проснуться",
-      "целовать"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "speech": {
      "present": true,
