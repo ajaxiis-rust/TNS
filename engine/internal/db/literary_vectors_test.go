@@ -164,8 +164,9 @@ func TestLiteraryVectors(t *testing.T) {
 		if vectorsRows != 1 {
 			t.Errorf("строк учёта 0002_vectors после легаси-миграции = %d, want 1", vectorsRows)
 		}
-		if uv := userVersionOf(t, lw); uv != 5 {
-			t.Errorf("user_version = %d, want 5", uv)
+		// Поверх легаси-мира встаёт и 0006_book_deepread (T-14-03).
+		if uv := userVersionOf(t, lw); uv != 6 {
+			t.Errorf("user_version = %d, want 6", uv)
 		}
 	})
 }

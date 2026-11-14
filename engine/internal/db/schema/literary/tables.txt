@@ -5,6 +5,11 @@ book_chunk
 book_character
 book_character_mention
 book_character_role
+book_chunk_tag
+book_place
+book_scene
+book_style
+dict_staging
 forge_log
 horoscope_issue
 lit_template

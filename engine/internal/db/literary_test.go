@@ -66,15 +66,15 @@ func TestLiterarySchema(t *testing.T) {
 		}
 	}
 
-	// 3. Учёт миграций: user_version == 5 и schema_migrations ==
+	// 3. Учёт миграций: user_version == 6 и schema_migrations ==
 	// [{1, "0001_init"}, {2, "0002_sediment_idempotency"}, {3, "0003_composition"},
-	// {4, "0004_book"}, {5, "0005_cast"}].
+	// {4, "0004_book"}, {5, "0005_cast"}, {6, "0006_book_deepread"}].
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 5 {
-		t.Errorf("user_version = %d, want 5", uv)
+	if uv != 6 {
+		t.Errorf("user_version = %d, want 6", uv)
 	}
 
 	type migration struct {
@@ -95,7 +95,7 @@ func TestLiterarySchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_sediment_idempotency"}, {3, "0003_composition"}, {4, "0004_book"}, {5, "0005_cast"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_sediment_idempotency"}, {3, "0003_composition"}, {4, "0004_book"}, {5, "0005_cast"}, {6, "0006_book_deepread"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
