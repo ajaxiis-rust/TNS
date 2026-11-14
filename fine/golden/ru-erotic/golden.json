@@ -1144,11 +1144,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "глядеть"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -1162,8 +1160,7 @@
      "present": true,
      "intensity": 0.4,
      "anchors": [
-      "ночь",
-      "месяц"
+      "ночь"
      ]
     },
     "social": {
