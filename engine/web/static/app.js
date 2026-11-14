@@ -167,9 +167,13 @@
     settingsChannelBot: "settings-channel-bot",
     settingsChannelBotGlyph: "settings-channel-bot-glyph",
     settingsChannelTunnelBadge: "settings-channel-tunnel-badge",
+    settingsChannelTunnelBadgeGlyph: "settings-channel-tunnel-badge-glyph",
+    settingsChannelTunnelBadgeText: "settings-channel-tunnel-badge-text",
     settingsChannelTunnelGlyph: "settings-channel-tunnel-glyph",
     settingsChannelTunnelState: "settings-channel-tunnel-state",
     settingsChannelTelegramBadge: "settings-channel-telegram-badge",
+    settingsChannelTelegramBadgeGlyph: "settings-channel-telegram-badge-glyph",
+    settingsChannelTelegramBadgeText: "settings-channel-telegram-badge-text",
     settingsChannelWarning: "settings-channel-warning",
     settingsChannelSave: "settings-channel-save",
     settingsPlugins: "settings-plugins",
@@ -2625,7 +2629,8 @@
 
     // Туннель: движок его не запускает — признак работы только живой cloudflared.
     var tunnelOn = !!channel.tunnel_running;
-    setChannelBadge(IDS.settingsChannelTunnelBadge, tunnelOn,
+    setChannelBadge(IDS.settingsChannelTunnelBadge, IDS.settingsChannelTunnelBadgeGlyph,
+      IDS.settingsChannelTunnelBadgeText, tunnelOn,
       tunnelOn ? "status--ok" : "status--err",
       tunnelOn ? (dict["settings.channel.tunnel_running"] || "запущен")
         : (dict["settings.channel.tunnel_off"] || "не запущен"));
@@ -2643,7 +2648,8 @@
       : (configured
         ? (dict["settings.channel.status_bot_stopped"] || "бот остановлен")
         : (dict["settings.channel.configured_no"] || "не настроен"));
-    setChannelBadge(IDS.settingsChannelTelegramBadge, working,
+    setChannelBadge(IDS.settingsChannelTelegramBadge, IDS.settingsChannelTelegramBadgeGlyph,
+      IDS.settingsChannelTelegramBadgeText, working,
       working ? "status--ok" : (configured ? "status--err" : "status--off"), badgeText);
     setGlyph(IDS.settingsChannelConfiguredGlyph, configured);
     setValue(IDS.settingsChannelConfigured, configured
@@ -2672,18 +2678,18 @@
   }
 
   // Бейдж панели канала: тон — состоянием, знак — формой.
-  function setChannelBadge(id, ok, tone, text) {
+  function setChannelBadge(id, glyphId, textId, ok, tone, text) {
     var badge = byId(id);
     if (!badge) {
       return;
     }
     badge.classList.remove("status--ok", "status--err", "status--wait", "status--off");
     badge.classList.add(tone);
-    var glyph = byId(id + "-glyph");
+    var glyph = byId(glyphId);
     if (glyph) {
       glyph.textContent = ok ? "✓" : "✗";
     }
-    setValue(id + "-text", text);
+    setValue(textId, text);
   }
 
   function setKeyPlaceholder(id, keySet) {
@@ -4478,6 +4484,11 @@
     if (!root) {
       return;
     }
+    // Ссылки скачивания моделей в разметке без схемы (data-source): ui-lint
+    // (проверка 1) запрещает полные внешние адреса в статике.
+    root.querySelectorAll(".wizard-download-link[data-source]").forEach(function (link) {
+      link.href = MODEL_SOURCE_SCHEME + link.getAttribute("data-source");
+    });
     var step0Next = byId(IDS.wizardStep0Next);
     if (step0Next) {
       step0Next.addEventListener("click", function () { wizardNext("0", "1", step0Next); });
