@@ -123,6 +123,9 @@ GLO-5). Числа помечены «канон» / «рабочее значе
 
 ### FIX-6. Событие `turn.composition` c `registry_changed=true` не эмитится
 
+> ✅ Выполнено 2026-11-14 (коммит 0ff9dde): дрейф реестра семей эмитится
+> полем `registry_changed` в `turn.composition`.
+
 - **Факт (отступление T-10-13):** отпечаток реестра 14 семей пишется при
   рождении (`family_registry_sha256`), но live-turn событие о смене реестра не
   выдаётся — `logComposition` в `turn/composition.go` не различает случай
