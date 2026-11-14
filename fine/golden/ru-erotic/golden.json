@@ -47,11 +47,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "выдать"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "speech": {
      "present": false,
@@ -80,11 +78,9 @@
      "anchors": []
     },
     "violence": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "драма"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "battle": {
      "present": false,
@@ -154,11 +150,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "прорвать"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "speech": {
      "present": false,
@@ -182,11 +176,9 @@
      ]
     },
     "erotic": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "опочивальня"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "violence": {
      "present": false,
