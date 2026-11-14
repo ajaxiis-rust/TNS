@@ -625,12 +625,13 @@ func launchSwarmTask(args []string) error {
 	return nil
 }
 
-// wireWorkshopSlot подключает слот мастерской по маршруту sources (Э3):
-// разбор и варка книги-источника идут списком провайдеров route_sources, один
-// кусок — одной моделью за один запрос. Маршруты, ключи и модели читаются
-// здесь один раз, на старте процесса. Конфиг не прочитался — слот не
-// подключён, ковка идёт существующей деградацией, а отказ виден событием
-// slot.wiring_fail.
+// wireWorkshopSlot подключает слот мастерской по маршрутам источников и
+// литературной обработки главы (Э3, Э4): разбор и варка книги-источника идут
+// списком провайдеров route_sources, правка главы, дайджест и стилизация —
+// списком route_editor; один кусок — одной моделью за один запрос. Маршруты,
+// ключи и модели читаются здесь один раз, на старте процесса. Конфиг не
+// прочитался — слот не подключён, ковка идёт существующей деградацией, а отказ
+// виден событием slot.wiring_fail.
 func wireWorkshopSlot(logger *journal.Logger) {
 	cfg, err := providerroute.LoadSettings("config.yaml", "settings.toml")
 	if err != nil {
@@ -642,7 +643,8 @@ func wireWorkshopSlot(logger *journal.Logger) {
 		return
 	}
 	router := providerroute.NewRouter(cfg, providercfg.Load("providers.toml"), logger)
-	workshop.SetSlot(workshop.NewRoutedWorkshopSlot(router.Slot(providerroute.TaskSources)))
+	workshop.SetSlot(workshop.NewRoutedWorkshopSlot(router.Slot(providerroute.TaskSources)).
+		RouteRoles(router.Slot(providerroute.TaskEditor), workshop.EditorRoles()...))
 }
 
 // runSwarmTask — скрытая точка входа однозадачной задачи роя: первой строкой
