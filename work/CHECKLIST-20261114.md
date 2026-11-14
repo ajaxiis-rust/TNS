@@ -98,7 +98,7 @@ mechanics-from-chat.md. Статусы сверены с кодом на HEAD `8
 | DEC-3 (Q-3) Приёмка INT-10…12 | ✅ закрыт (INT-10…12 внесены) | INT-10 (ночь/оседание), INT-11 (кольцо/край), INT-12 (порт-гейт на живом старте) внесены в `fine/04-spec/09-acceptance.md` |
 | DEC-4 (Q-4) Глубокая разведка при рождении | ✅ закрыт (bd9c16e, 2026-11-14) | Решение: живой прогон с обязательным логированием разведки (B-14.4); реализация — задача DEC-4 плана |
 | DOC-1 карточка 12.10 | ✅ закрыт (127a46c, 2026-11-14) | Баннер закрытия в `repair-card-20261012.md` (корень репо); контур — `fine/plan` + `99-LEDGER` (202/202); снимок в RAW не трогается |
-| DOC-2 зеркала после фиксов | ⬜ открыт | После FIX-3/4/6: ROUTES.md + `docs-check.sh` зелёный |
+| DOC-2 зеркала после фиксов | ✅ закрыт (dc10903, 2026-11-14) | ROUTES.md сверен с HEAD: `/api/settings` (`world_section`, `llm`, `presets`, `providers`, `models`, `embedder`, `supervisor`, `ram_gb`), потолки IMP-7 у `/api/turn` и анкеты, `/api/providers/*` и маршрут `sources_map` (Э6) на месте; `docs-check.sh` зелёный; тесты `TestRouteTablePaths`, `TestRouteTableLimits` |
 | DOC-3 решения в журнал/спеку | ⬜ открыт | По мере DEC-1…4 |
 | DOC-4 `ui-check release`: веб-разметка | ✅ закрыт (57b526f, 2026-11-14) | Инлайн-скрипт → `static/wizard.js`; семь id сняты или оживлены; `ui-check release` зелёный |
 
