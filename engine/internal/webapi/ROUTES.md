@@ -15,7 +15,7 @@
 | GET | `/api/world` | query `world=<slug>` | `{"world":"…","fields":{…}}` — замороженные поля анкеты из `world_meta` | `method_not_allowed`, `bad_request`, `internal` |
 | PUT | `/api/world/tunables` | `{"world":"…","tunables":{…}}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `internal` |
 | POST | `/api/turn` | `{"world":"<slug>","text":"…"}` | `{"turn_id":N}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
-| GET | `/api/state` | query `world=<slug>` | `{"world":"…","world_state":{…},"hero":{place_id,mood,status,health,health_known,place,place_kind},"system":{mode,session_id,started_at},"return_summary":"…","return_news":[…],"turns":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| GET | `/api/state` | query `world=<slug>` | `{"world":"…","world_state":{…},"hero":{place_id,mood,status,health,health_known,place,place_kind},"system":{mode,session_id,started_at},"return_summary":"…","return_news":["…"],"turns":[…]}` — `return_news` — вести последнего возврата из журнала событий `events.kind=news`; `[]` — вестей не было | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | POST | `/api/scene/{id}/signal` | `{"kind":"like|dislike"}` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | GET | `/atlas.html` | — | `atlas.html` из embed | `method_not_allowed`, `not_found` |
 | GET | `/history.html` | — | `history.html` из embed | `method_not_allowed`, `not_found` |

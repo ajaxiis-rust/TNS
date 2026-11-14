@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"tns65/internal/db"
+	"tns65/internal/turn"
 )
 
 // seedChatWorld создаёт базу мира alpha по раскладке <root>/worlds/<slug>/<slug>.db,
@@ -324,6 +325,136 @@ func TestChatState(t *testing.T) {
 	}
 	if after.Turns[0].SceneID <= 0 {
 		t.Fatalf("scene_id = %d, want > 0 для сигналов", after.Turns[0].SceneID)
+	}
+}
+
+// TestChatStateReturnNews — возврат отдаёт непустой return_news из журнала
+// событий мира (T-03-14, FIX-3): state читает вести последнего возврата, а
+// пустой журнал отдаёт пустой массив, не null.
+func TestChatStateReturnNews(t *testing.T) {
+	path := seedChatWorld(t)
+
+	rr := chatRequest(t, handleChatState, http.MethodGet, chatStatePath+"?world=alpha", "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET /api/state: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	var empty chatStateResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &empty); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if empty.ReturnNews == nil || len(empty.ReturnNews) != 0 {
+		t.Fatalf("return_news пустого журнала = %v, want []", empty.ReturnNews)
+	}
+	if !strings.Contains(rr.Body.String(), `"return_news":[]`) {
+		t.Fatalf("return_news в JSON = %s, want []", rr.Body.String())
+	}
+
+	core, err := db.OpenWriterAs(path, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	insert := func(kind, payload string) {
+		t.Helper()
+		if _, err := core.Exec("events",
+			`INSERT INTO events (day, kind, payload_json, source) VALUES (0, ?, ?, 'core')`,
+			kind, payload); err != nil {
+			_ = core.Close()
+			t.Fatalf("insert %s: %v", kind, err)
+		}
+	}
+	// Давний возврат, сводка и текущий возврат: state отдаёт вести последнего.
+	insert(turn.NewsEventKind, `{"texts":["Весть: дальний круг мира продвинулся (1)."]}`)
+	insert("digest", `{"summary":"Пока тебя не было, мир изменился.","absent_min":540,"deferred_fired":1}`)
+	insert(turn.NewsEventKind, `{"texts":["Весть: дальний круг мира продвинулся (1).","Весть: дальний круг мира продвинулся (2)."]}`)
+	_ = core.Close()
+
+	rr = chatRequest(t, handleChatState, http.MethodGet, chatStatePath+"?world=alpha", "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET /api/state после возврата: status = %d, want 200", rr.Code)
+	}
+	var out chatStateResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	want := []string{
+		"Весть: дальний круг мира продвинулся (1).",
+		"Весть: дальний круг мира продвинулся (2).",
+	}
+	if len(out.ReturnNews) != len(want) {
+		t.Fatalf("return_news = %v, want %v", out.ReturnNews, want)
+	}
+	for i := range want {
+		if out.ReturnNews[i] != want[i] {
+			t.Fatalf("return_news[%d] = %q, want %q", i, out.ReturnNews[i], want[i])
+		}
+	}
+
+	// Запись старого формата (одна весть в событии) читается как одна весть.
+	core, err = db.OpenWriterAs(path, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := core.Exec("events",
+		`INSERT INTO events (day, kind, payload_json, source) VALUES (0, ?, ?, 'core')`,
+		turn.NewsEventKind, `{"text":"Весть: старая запись."}`); err != nil {
+		_ = core.Close()
+		t.Fatal(err)
+	}
+	_ = core.Close()
+
+	rr = chatRequest(t, handleChatState, http.MethodGet, chatStatePath+"?world=alpha", "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET /api/state со старой вестью: status = %d, want 200", rr.Code)
+	}
+	var legacy chatStateResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &legacy); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if len(legacy.ReturnNews) != 1 || legacy.ReturnNews[0] != "Весть: старая запись." {
+		t.Fatalf("return_news старой записи = %v, want одну весть", legacy.ReturnNews)
+	}
+}
+
+// TestChatStateReturnNewsAfterAbsence — возврат после ночного отсутствия:
+// ход пишет вести в журнал событий, GET /api/state отдаёт их непустым массивом
+// (T-03-14, FIX-3).
+func TestChatStateReturnNewsAfterAbsence(t *testing.T) {
+	path := seedChatWorld(t)
+	chatLastActive["alpha"] = time.Now().Add(-500 * time.Minute)
+
+	// Лицо дальнего круга: за отсутствие продвигается вектор судьбы и по
+	// возврату приходит весть.
+	core, err := db.OpenWriterAs(path, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := core.Exec("characters",
+		`INSERT INTO characters (id, name, psychotype, estate, card_json) VALUES (1, '', 'INTJ', 'крестьянин', '{}')`); err != nil {
+		_ = core.Close()
+		t.Fatal(err)
+	}
+	_ = core.Close()
+
+	rr := chatRequest(t, handleChatTurn, http.MethodPost, chatTurnPath, `{"world":"alpha","text":"Я вернулся."}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("POST /api/turn: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+
+	rr = chatRequest(t, handleChatState, http.MethodGet, chatStatePath+"?world=alpha", "")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET /api/state: status = %d, want 200", rr.Code)
+	}
+	var out chatStateResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if len(out.ReturnNews) == 0 {
+		t.Fatalf("return_news пуст после возврата с вестями; body=%s", rr.Body.String())
+	}
+	for _, news := range out.ReturnNews {
+		if strings.TrimSpace(news) == "" {
+			t.Fatalf("return_news содержит пустую весть: %v", out.ReturnNews)
+		}
 	}
 }
 

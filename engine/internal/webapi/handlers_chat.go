@@ -222,7 +222,7 @@ func handleChatState(w http.ResponseWriter, r *http.Request) {
 		Hero:          readChatHero(h),
 		System:        readChatSystem(h),
 		ReturnSummary: chatReturnSummary(slug),
-		ReturnNews:    []string{},
+		ReturnNews:    readChatReturnNews(h),
 		Turns:         readChatTurns(h),
 	})
 }
@@ -340,6 +340,32 @@ func chatReturnSummary(slug string) string {
 		return ""
 	}
 	return chatSummaryText
+}
+
+// readChatReturnNews читает вести последнего возврата из журнала событий мира
+// (T-03-14, шаг 2): стадия digest пишет одно событие news со списком текстов,
+// поэтому последнее такое событие — вести текущего возврата. Пустой срез —
+// вестей не было; ответ всегда отдаёт массив, а не null.
+func readChatReturnNews(h *db.Handle) []string {
+	var raw string
+	if err := h.QueryRow(`SELECT payload_json FROM events WHERE kind = ? ORDER BY id DESC LIMIT 1`,
+		turn.NewsEventKind).Scan(&raw); err != nil {
+		return []string{}
+	}
+	var payload struct {
+		Texts []string `json:"texts"`
+		Text  string   `json:"text"`
+	}
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		return []string{}
+	}
+	if len(payload.Texts) > 0 {
+		return payload.Texts
+	}
+	if payload.Text != "" {
+		return []string{payload.Text}
+	}
+	return []string{}
 }
 
 // chatLastActiveAt возвращает момент последней реплики игрока по миру.

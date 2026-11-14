@@ -22,6 +22,11 @@ const (
 	newsEventKind   = "news"
 )
 
+// NewsEventKind — вид события запаздывающих вестей (T-03-14, шаг 2). Один
+// возврат пишет одно событие со списком вестей: последнее событие news — вести
+// последнего возврата, его читает GET /api/state в поле return_news.
+const NewsEventKind = newsEventKind
+
 // digestSummaryText — сводка при возврате (T-03-14, шаг 1): непустая строка,
 // которую игрок видит первой после отсутствия.
 const digestSummaryText = "Пока тебя не было, мир изменился."
@@ -59,7 +64,8 @@ func buildDigest(report AbsenceReport, absentFor time.Duration, cfg TimeConfig) 
 }
 
 // writeDigestEvents пишет сводку и вести в events оперативной базы мира хэндлом
-// core: сводка — одно событие digest, каждая весть — событие news.
+// core: сводка — одно событие digest, вести возврата — одно событие news со
+// списком текстов.
 func writeDigestEvents(h *db.Handle, d Digest) error {
 	if h == nil {
 		return nil
@@ -79,8 +85,8 @@ func writeDigestEvents(h *db.Handle, d Digest) error {
 			return err
 		}
 	}
-	for _, n := range d.News {
-		payload, err := json.Marshal(map[string]string{"text": n})
+	if len(d.News) > 0 {
+		payload, err := json.Marshal(map[string][]string{"texts": d.News})
 		if err != nil {
 			return err
 		}

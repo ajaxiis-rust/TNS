@@ -2,6 +2,7 @@ package turn
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -122,8 +123,24 @@ func TestDigest(t *testing.T) {
 		if err := p.DB.QueryRow(`SELECT COUNT(*) FROM events WHERE kind = ?`, newsEventKind).Scan(&news); err != nil {
 			t.Fatalf("COUNT(news): %v", err)
 		}
-		if news == 0 {
-			t.Fatal("вестей в events нет")
+		if news != 1 {
+			t.Fatalf("событий news = %d, want 1 (один возврат — одно событие)", news)
+		}
+
+		// Вести одного возврата лежат в одном событии со списком текстов: их
+		// читает GET /api/state в поле return_news.
+		var raw string
+		if err := p.DB.QueryRow(`SELECT payload_json FROM events WHERE kind = ? ORDER BY id DESC LIMIT 1`, newsEventKind).Scan(&raw); err != nil {
+			t.Fatalf("payload news: %v", err)
+		}
+		var batch struct {
+			Texts []string `json:"texts"`
+		}
+		if err := json.Unmarshal([]byte(raw), &batch); err != nil {
+			t.Fatalf("payload news: %v", err)
+		}
+		if strings.Join(batch.Texts, "\n") != strings.Join(st.DigestNews, "\n") {
+			t.Fatalf("вести в events = %v, want %v", batch.Texts, st.DigestNews)
 		}
 
 		if slot.Calls() != 0 {
