@@ -892,6 +892,83 @@ func TestModelStatusEndpoint(t *testing.T) {
 	}
 }
 
+// TestModelStatusJobVariant — задание загрузки привязано к варианту роли: у
+// embed два квантования, и задание Q8_0 не перебивает статус установленной
+// карточки Q4_K_M (T-13-11).
+func TestModelStatusJobVariant(t *testing.T) {
+	seedModelAdoptEnv(t)
+	const (
+		refQ4 = "bge-m3-Q4_K_M"
+		refQ8 = "bge-m3-Q8_0"
+		file  = "bge-m3-Q4_K_M.gguf"
+	)
+	dir := modelDir("embed")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	content := []byte("gguf")
+	sum := sha256.Sum256(content)
+	if err := os.WriteFile(filepath.Join(dir, file), content, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := writeModelManifest(dir, modelManifest{
+		Role: "embed", ModelRef: refQ4, Source: "https://huggingface.co/org/" + file,
+		File: file, SHA256: hex.EncodeToString(sum[:]), Size: int64(len(content)),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// readStatus читает статус-маршрут: одно задание с wantJobRef и карточка embed.
+	readStatus := func(wantJobRef string) (modelJobState, modelStatus) {
+		t.Helper()
+		rr := mcpRequest(t, handleSettingsModelStatus, http.MethodGet, settingsModelsStatusPath, nil, "")
+		if rr.Code != http.StatusOK {
+			t.Fatalf("status: %d, want 200", rr.Code)
+		}
+		var out struct {
+			Jobs   []modelJobState `json:"jobs"`
+			Models []modelStatus   `json:"models"`
+		}
+		if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+			t.Fatal(err)
+		}
+		if len(out.Jobs) != 1 || out.Jobs[0].ModelRef != wantJobRef {
+			t.Fatalf("jobs = %+v, want одно задание %q", out.Jobs, wantJobRef)
+		}
+		for _, m := range out.Models {
+			if m.Role == "embed" {
+				return out.Jobs[0], m
+			}
+		}
+		t.Fatal("карточки embed нет в ответе")
+		return modelJobState{}, modelStatus{}
+	}
+
+	// Задание чужого варианта: карточка Q4_K_M остаётся установленной.
+	setModelJob("embed", refQ8, "downloading", 0.5, "")
+	job, card := readStatus(refQ8)
+	if job.Progress != 0.5 {
+		t.Fatalf("job = %+v, want прогресс 0.5", job)
+	}
+	if card.ModelRef != refQ4 || card.Status != modelStatusInstalled || card.Progress != 1 {
+		t.Fatalf("карточка %s = %+v, want installed: чужой вариант её не трогает", refQ4, card)
+	}
+
+	// Задание своего варианта: статус и прогресс карточки — от задания.
+	setModelJob("embed", refQ4, "downloading", 0.25, "")
+	_, card = readStatus(refQ4)
+	if card.Status != "downloading" || card.Progress != 0.25 {
+		t.Fatalf("карточка %s = %+v, want downloading/0.25", refQ4, card)
+	}
+
+	// Наследие: задание без ref матчится по роли.
+	setModelJob("embed", "", "downloading", 0.75, "")
+	_, card = readStatus("")
+	if card.Status != "downloading" || card.Progress != 0.75 {
+		t.Fatalf("карточка при задании без ref = %+v", card)
+	}
+}
+
 // TestModelRollbackIntegrity — откат на повреждённую прежнюю версию отвергается.
 func TestModelRollbackIntegrity(t *testing.T) {
 	seedSettingsWorld(t)

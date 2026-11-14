@@ -313,7 +313,7 @@ func handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 		}
 		bindings = enrichBindings(meta, bindings)
 	}
-	models = readModelStatuses()
+	models = modelCardStatuses(readModelStatuses())
 	// Привязка, у которой нет файла или ключа, не показывается как рабочая:
 	// экран отвечает реальной картине, а не прежним записям в model_bindings.
 	bindings = validateBindings(bindings, models, keys)
@@ -1243,6 +1243,21 @@ func modelJob(role string) (modelJobState, bool) {
 	return j, ok
 }
 
+// modelCardStatuses — карточки статуса с поправкой на вариант: задание роли
+// несёт model_ref, и чужой вариант не перебивает статус установленной модели
+// другого варианта (T-13-11). Задание без ref (наследие) матчится по роли.
+func modelCardStatuses(models []modelStatus) []modelStatus {
+	for i := range models {
+		j, ok := modelJob(models[i].Role)
+		if !ok || j.ModelRef == "" || j.ModelRef == models[i].ModelRef {
+			continue
+		}
+		models[i].Status = modelStatusInstalled
+		models[i].Progress = 1
+	}
+	return models
+}
+
 // beginModelJob занимает роль под загрузку: одна активная установка на роль,
 // вторая параллельная получает отказ (T-13-02, шаг 6).
 func beginModelJob(role, modelRef string) bool {
@@ -1526,7 +1541,7 @@ func handleSettingsModelStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	modelJobsMu.Unlock()
 	sort.Slice(jobs, func(i, j int) bool { return jobs[i].Role < jobs[j].Role })
-	models := fillModelCardSizes(readModelStatusesVerify(verify))
+	models := modelCardStatuses(fillModelCardSizes(readModelStatusesVerify(verify)))
 	if role != "" {
 		kept := models[:0]
 		for _, m := range models {
@@ -2317,7 +2332,7 @@ func writeFirstRunState(st firstRunState) error {
 func buildFirstRunResponse(st firstRunState) firstRunResponse {
 	return firstRunResponse{
 		Complete: st.Complete, Steps: st.Steps,
-		Station: probeFirstRunStation(), Models: readModelStatuses(),
+		Station: probeFirstRunStation(), Models: modelCardStatuses(readModelStatuses()),
 	}
 }
 
@@ -2331,7 +2346,7 @@ func probeFirstRunStation() firstRunStation {
 	st.GenPortFree = supervisor.CheckPortFree(5001) == nil
 	st.EmbedPortFree = supervisor.CheckPortFree(5002) == nil
 	st.Children = stationChildren()
-	for _, m := range readModelStatuses() {
+	for _, m := range modelCardStatuses(readModelStatuses()) {
 		if m.Role == "embed" && m.Status == modelStatusInstalled {
 			st.EmbedModel = m.ModelRef
 			break
