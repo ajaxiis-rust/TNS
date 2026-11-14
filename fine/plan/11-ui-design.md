@@ -27,7 +27,7 @@ TrueNeverStory (`2.png`…`6.png`, снимки `Снимок экрана_2026-
   2. Переписать `engine/web/static/theme.css` под норму вида: CSS-переменные тем, тёмная терминальная тема по умолчанию, моноширинный шрифт, пилюли-кнопки, карточки, статус-чипы, таблицы, формы, модалки — по контракту вида ниже.
   3. Править `engine/web/static/app.css`: раскладка пяти страниц (верхняя панель навигации «пилюлями», сетки карточек, разделы настроек), адаптив от 480px сохранён.
   4. Править разметку пяти страниц: классы, обёртки и порядок блоков под норму вида; каждый `id`, каждый `data-i18n`, все формы и их поля сохраняются.
-  5. В `engine/web/settings.html` в раздел «Провайдеры» добавить блок «Быстрое добавление»: `select` с 21 опцией каталога из таблицы ниже (label опции дословно; base URL — в `data-base-url` без схемы) и строка подсказки с URL выбранного провайдера.
+  5. В `engine/web/settings.html` в раздел «Провайдеры» добавить блок «Быстрое добавление»: `select` с 27 опциями каталога из таблицы ниже (label опции дословно; base URL — в `data-base-url` без схемы) и строка подсказки с URL выбранного провайдера.
   6. Создать `engine/web/static/providers.js`: обработчик выбора в каталоге подставляет имя провайдера в `settings-provider-name` и показывает base URL в строке подсказки; только клиентская подстановка полей формы, новых запросов нет; подключить файл тегом `<script src>` в `settings.html`.
   7. Дописать в `engine/web/static/i18n.js` ключи нового блока (`settings.providers.catalog.*`); существующие ключи и значения не менять.
   8. Выполнить «Проверку».
@@ -46,38 +46,59 @@ TrueNeverStory (`2.png`…`6.png`, снимки `Снимок экрана_2026-
 - Существующий переключатель тем в настройках остаётся рабочим: тёмная тема — по умолчанию и по референсу; светлые темы приводятся к той же системе переменных.
 - Тексты интерфейса не переписываются: норма имен — `GLO-2`, `GLO-3` сохраняется.
 
-## Контракт каталога провайдеров (21 запись)
+## Контракт каталога провайдеров (27 записей)
 
-Источник — `RAW/design/TrueNeverStory — Providers.html` (только чтение);
-таблица ниже извлечена из него дословно. В `engine/web/` URL пишутся без
-схемы: линтер `ui-lint.sh` (правило 1) запрещает `https?://` в статике.
+Порядок строк — по алфавиту по имени провайдера. Строки из референса
+`RAW/design/TrueNeverStory — Providers.html` (только чтение) перенесены
+дословно; 7 строк добавлены из списка владельца от 2026-11-14 — бесплатные
+и почти бесплатные OpenAI-совместимые провайдеры для небольших тестов
+(ориентир до ~1 млн токенов в день). Провайдеры, уже имеющиеся в
+таблице (Groq, Gemini, Mistral, Cohere, Zhipu), не дублируются. В
+`engine/web/` URL пишутся без схемы: линтер `ui-lint.sh` (правило 1)
+запрещает `https?://` в статике. Список «Быстрое добавление» в реализации
+наполняется живьём из реестра `providers.toml`; таблица ниже — эталонный
+состав каталога, новый провайдер появляется в UI после добавления в реестр
+и `netgate.allowed_hosts`.
 
-| # | Label опции (дословно из HTML) | Base URL (без схемы) |
+| # | Label опции | Base URL (без схемы) |
 |---|---|---|
-| 1 | OpenAI — GPT-4o, o-series ($) \| en de fr es ja zh ru | api.openai.com/v1 |
+| 1 | Alibaba (Qwen) — Qwen-MAX/Plus \| en zh ru ja ko | dashscope.aliyuncs.com/compatible-mode/v1 |
 | 2 | Anthropic — Claude 4/3 ($) \| en de fr es ja zh ru | api.anthropic.com |
-| 3 | Google Gemini — 2.5/2.0 (free) \| en de fr es ja zh ru ar ko hi | generativelanguage.googleapis.com/v1beta/openai |
-| 4 | Cohere — Command A/R (free) \| en de fr es ja zh ru | api.cohere.com/v2 |
-| 5 | Mistral AI — Large/Small, Codestral (free) \| en de fr es ja zh ru | api.mistral.ai/v1 |
-| 6 | Together AI — Llama, Qwen, DeepSeek ($1 free) \| en | api.together.xyz/v1 |
-| 7 | Groq — Ultra-fast Llama, Mixtral (free) \| en | api.groq.com/openai/v1 |
-| 8 | Fireworks AI — OSS inference (free) \| en | api.fireworks.ai/inference/v1 |
-| 9 | Perplexity — Sonar search-augmented LLM ($) \| en | api.perplexity.ai |
-| 10 | DeepSeek — V3/R1 reasoning \| en zh ru | api.deepseek.com/v1 |
-| 11 | Moonshot (Kimi) — 128K context \| en zh | api.moonshot.cn/v1 |
-| 12 | Zhipu (GLM) — GLM-4 family \| en zh | open.bigmodel.cn/api/paas/v4 |
-| 13 | Baichuan — Baichuan 4 \| en zh | api.baichuan-ai.com/v1 |
-| 14 | MiniMax — Text-01, 4M context \| en zh | api.minimax.chat/v1 |
-| 15 | SenseNova — SenseTime LLM \| en zh | api.sensenova.cn/v1 |
-| 16 | 01.AI (Yi) — Yi-Lightning \| en zh | api.lingyiwanwu.com/v1 |
-| 17 | Alibaba (Qwen) — Qwen-MAX/Plus \| en zh ru ja ko | dashscope.aliyuncs.com/compatible-mode/v1 |
-| 18 | Baidu (Ernie) — ERNIE 4.0/3.5 \| en zh | qianfan.baidubce.com/v2 |
-| 19 | Tencent (Hunyuan) — text + vision \| en zh | api.hunyuan.cloud.tencent.com/v1 |
-| 20 | ByteDance (Doubao) — Doubao 1.5 \| en zh | ark.cn-beijing.volces.com/api/v3 |
-| 21 | StepFun — step-2, vision \| en zh | api.stepfun.com/v1 |
+| 3 | Baichuan — Baichuan 4 \| en zh | api.baichuan-ai.com/v1 |
+| 4 | Baidu (Ernie) — ERNIE 4.0/3.5 \| en zh | qianfan.baidubce.com/v2 |
+| 5 | ByteDance (Doubao) — Doubao 1.5 \| en zh | ark.cn-beijing.volces.com/api/v3 |
+| 6 | Cerebras — Ultra-fast inference (free) \| en | api.cerebras.ai/v1 |
+| 7 | Cloudflare Workers AI — Serverless OSS inference (free) \| en | api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1 |
+| 8 | Cohere — Command A/R (free) \| en de fr es ja zh ru | api.cohere.com/v2 |
+| 9 | DeepSeek — V3/R1 reasoning \| en zh ru | api.deepseek.com/v1 |
+| 10 | Fireworks AI — OSS inference (free) \| en | api.fireworks.ai/inference/v1 |
+| 11 | Google Gemini — 2.5/2.0 (free) \| en de fr es ja zh ru ar ko hi | generativelanguage.googleapis.com/v1beta/openai |
+| 12 | Groq — Ultra-fast Llama, Mixtral (free) \| en | api.groq.com/openai/v1 |
+| 13 | MiniMax — Text-01, 4M context \| en zh | api.minimax.chat/v1 |
+| 14 | Mistral AI — Large/Small, Codestral (free) \| en de fr es ja zh ru | api.mistral.ai/v1 |
+| 15 | Moonshot (Kimi) — 128K context \| en zh | api.moonshot.cn/v1 |
+| 16 | Novita AI — OSS inference (free) \| en | api.novita.ai/v3/openai |
+| 17 | NVIDIA NIM — OSS model catalog (free) \| en | integrate.api.nvidia.com/v1 |
+| 18 | OpenAI — GPT-4o, o-series ($) \| en de fr es ja zh ru | api.openai.com/v1 |
+| 19 | OpenRouter — Router, many :free models (free) \| en | openrouter.ai/api/v1 |
+| 20 | Perplexity — Sonar search-augmented LLM ($) \| en | api.perplexity.ai |
+| 21 | SambaNova — Ultra-fast OSS inference (free) \| en | api.sambanova.ai/v1 |
+| 22 | SenseNova — SenseTime LLM \| en zh | api.sensenova.cn/v1 |
+| 23 | SiliconFlow — Qwen, DeepSeek, GLM (free) \| en zh | api.siliconflow.cn/v1 |
+| 24 | StepFun — step-2, vision \| en zh | api.stepfun.com/v1 |
+| 25 | Tencent (Hunyuan) — text + vision \| en zh | api.hunyuan.cloud.tencent.com/v1 |
+| 26 | Together AI — Llama, Qwen, DeepSeek ($1 free) \| en | api.together.xyz/v1 |
+| 27 | Zhipu (GLM) — GLM-4 family \| en zh | open.bigmodel.cn/api/paas/v4 |
 
 Первая опция каталога — «Choose a provider to auto-fill —» (пустое значение,
 выбрана по умолчанию), как в референсе.
+
+Заметки владельца к дополнению (2026-11-14): OpenRouter — лучший выбор
+(много моделей с суффиксом `:free`; после пополнения баланса на $10 —
+1000 запросов/день); Groq — самый быстрый; Google Gemini — самый щедрый
+по объёму; Cerebras — часто даёт около 1 млн токенов/день; Cloudflare
+Workers AI — стабильные 10k Neurons/день, данные не используются для
+обучения.
 
 ## Инварианты волны
 
