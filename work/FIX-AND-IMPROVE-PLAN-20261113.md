@@ -338,22 +338,53 @@ GLO-5). Числа помечены «канон» / «рабочее значе
 
 ### IMP-7. Ограничение 2000 токенов: сообщение игрока и описание мира + счётчик в UI
 
-**Задание на регистрацию (этот запуск):** дописать настоящий раздел до полного блока по шаблону плана (Факт / Решение владельца / Файлы / Шаги / Проверка / Исполнитель) с реальными анкерами кода, найденными через MCP. Реализация — отдельным запуском **в самом конце очереди** (решение владельца: «можно ее в конце работы применить»). Задача считается закрытой, когда блок внесён в план и закоммичен.
+> 📝 Регистрация 2026-11-14: раздел дополнен до полного блока по коду HEAD (анкеры найдены через MCP fff). Реализация — отдельным запуском **в самом конце очереди** (решение владельца: «можно ее в конце работы применить»), после DOC-1…3.
 
 **Решение владельца (2026-11-14, дословно):** «размер текста ответа игрока и описания мира — надо ограничить 2к токенов; поэтому наверное нужен счётчик в интерфейсе, причём считать токены нужно исходя из языка (русский длиннее и больше токенов берёт)».
 
-**Трактовка для проработки:** «ответ игрока» = входящее сообщение игрока в чате (текст хода), «описание мира» = поле описания мира (анкета рождения / world_meta). Оба — вводимые тексты.
+**Трактовка:** «ответ игрока» = входящее сообщение игрока в чате (текст хода), «описание мира» = поле `description` анкеты рождения (оно же `world_meta.description`). Оба — вводимые тексты, оба ограничиваются 2000 токенов.
 
-**Требования для внесения в блок:**
-1. Лимит 2000 токенов на оба текста; порог — в конфиг (по умолчанию 2000).
-2. Оценка токенов с учётом языка: кириллица берёт больше токенов на символ, латиница меньше; единая функция оценки в движке и та же формула в UI (JS), чтобы счётчик совпадал с серверной валидацией.
-3. Серверная валидация: превышение — отказ с подсказкой (чат веб и Telegram, сохранение описания мира).
-4. UI: счётчик «N / 2000» у поля чата и поля описания мира, подсветка превышения.
-5. Проверка: тесты оценки по языкам (русский текст даёт больше токенов на символ, чем английский той же длины), отказ при превышении, совпадение формул UI и сервера; браузерная проверка счётчика.
+**Факт:**
+- **Реплика игрока** — POST /api/turn: `chatTurnRequest{World, Text}` (`engine/internal/webapi/handlers_chat.go:73-77`), вход `handleChatTurn` (`:125`). Ограничений длины нет: единственная проверка — непустота после `strings.TrimSpace` (`:136-139`, отказ `text required`); дальше `turn.TurnInput{PlayerText: text}` (`:193`) уходит в конвейер (`engine/internal/turn/pipeline.go:18`), там реплику режут и разбирают стадии (`internal/turn/stages.go:193`, `:348`).
+- **Описание мира** — `birth.Ancketa.Description` (`engine/internal/birth/ancketa.go:36-40`; ключи `Fields` `:17-33`, 15 полей → `world_meta`). `birth.Validate` (`ancketa.go:106`) ограничивает только `synopsis` (1–3 предложения, `:116-121`); `description` не проверяется вовсе. Рождение — `birth.Birth` (`internal/birth/birth.go:92`, `Validate` на `:109`); образец отказа по полю из настроек рождения — `validateLangForConfig` (`internal/birth/langbase.go:74`, вызов `birth.go:137`). webapi: `decodeAncketa` (`internal/webapi/handlers_atlas.go:274`), `handleAtlasBirth` (`:285`), отказ полей — `writeBirthError` (`:483`) → `writeFieldError` (`internal/webapi/routes.go:51`, контракт `{error:{code,message,fields[]}}`).
+- **UI чата:** `#chat-form`/`#chat-input` (`engine/web/index.html:52-54`), отправка — `submitTurn` (`engine/web/static/chat.js:282`), подписка на submit — `chat.js:327`.
+- **UI анкеты:** `#atlas-birth-description` (`engine/web/atlas.html:107`). Готовый образец счётчика рядом — `#atlas-synopsis-count` у синопсиса (`atlas.html:60-61`), JS — `updateSynopsisCount` (`engine/web/static/app.js:1129-1134`); карта ID — `IDS` (`app.js:8`, `:37-38`), клиентская проверка — `validateAtlasBirth` (`app.js:1171`), отправка — `submitAtlasBirth` (`app.js:1365`); подсветка поля — `app.css:673-675` (`.atlas-field textarea.is-invalid`).
+- **Telegram:** входящий текст → `relayChat` (`engine/internal/webapi/tunnel.go:614`) → `ForwardChat` (`tunnel.go:390`) → loopback POST /api/turn (`chatPath`, `tunnel.go:55`). Ответ 400 сейчас превращается в общее «не получилось передать реплику» (`tunnel.go:625-627`): подсказка сервера игроку не доходит.
+- **Оценка токенов уже есть, но частная и без языка:** `estimateTokens` — руны/4 (`engine/internal/paganel/deep_scout.go:254-260`, для журнала стоимости `:203`, `:231`). Общей функции в движке нет.
+- **Конфиг:** секции `engine/config.yaml` (`slots:` `:77`, `confirm:` `:95`, `sediment:` `:103`, `saw:` `:109`) читаются пакетными загрузчиками по образцу `LoadConfirmConfig` (`internal/turn/confirm.go:36-47`); webapi уже читает `config.yaml` (`settingsConfigPath = "config.yaml"`, `internal/webapi/handlers_settings.go:80`, `LoadConfig` на `:322`).
+- **Статика вшита в бинарник:** `//go:embed index.html … static` (`engine/web/embed.go:9`) — новый файл внутри `static/` отдельного упоминания в embed не требует.
 
-**Файлы (ориентиры):** этот план (`work/FIX-AND-IMPROVE-PLAN-20261113.md`, раздел IMP-7 — дописать блок). Для будущего блока реализации (внести после исследования): вход сообщения игрока (webapi chat → конвейер хода), поле описания мира (анкета рождения/настройки, world_meta), поля ввода `engine/web/` (чата и анкеты), Telegram-путь, общая функция оценки токенов в движке; тесты webapi/turn.
+**Создаётся:**
+- `engine/internal/textlimit/textlimit.go` — общая оценка токенов с учётом языка, лимит, загрузка секции `limits`.
+- `engine/internal/textlimit/textlimit_test.go` — оценка по языкам, границы лимита, разбор конфига.
+- `engine/internal/textlimit/js_parity_test.go` — сверка формулы и констант с `web/static/tokenlimit.js`.
+- `engine/web/static/tokenlimit.js` — та же формула для счётчика в браузере.
 
-**Шаги (этот запуск):** 1) через MCP (fff, codebase-memory) найти: вход сообщения игрока (webapi chat → конвейер хода), поле описания мира (анкета рождения/настройки, world_meta), поля ввода в `engine/web/`, Telegram-путь; 2) дописать этот блок до полного по шаблону с найденными анкерами; 3) коммит.
+**Правится:**
+- `engine/config.yaml` — секция `limits:` (`player_message_tokens: 2000`, `world_description_tokens: 2000`).
+- `engine/internal/webapi/handlers_chat.go` — отказ при превышении рядом с проверкой `text required` (`:136-139`).
+- `engine/internal/webapi/server.go` — чтение `limits` при старте рядом с `LoadConfig` (`:187`).
+- `engine/internal/webapi/tunnel.go` — `ForwardChat` (`:390`) разбирает тело отказа, `relayChat` (`:614`) шлёт игроку подсказку.
+- `engine/internal/birth/birth.go`, `engine/internal/birth/ancketa.go` — лимит в `Config` (`birth.go:40-57`) и проверка `description`.
+- `engine/web/index.html`, `engine/web/atlas.html` — разметка счётчиков.
+- `engine/web/static/chat.js`, `engine/web/static/app.js`, `engine/web/static/i18n.js`, `engine/web/static/app.css` — счётчик, блокировка отправки, подсветка, тексты.
+- `engine/internal/webapi/handlers_chat_test.go`, `engine/internal/webapi/tunnel_test.go`, `engine/internal/birth/ancketa_test.go` — тесты отказов.
+
+**Документы:** `DOCS/03-LIVE-TURN.md` (лимит реплики в таблице параметров, `:314`), `DOCS/11-ATLAS.md` (поле описания), `fine/04-spec/03-birth.md`, `fine/04-spec/08-ui.md` — зеркала по правилу docs-check.
+
+**Шаги:**
+1. Формула — одна для Go и JS, целочисленная (float в JS и Go разойдётся на округлении): вес руны 2 для кириллицы (U+0400–U+04FF, включая ё), 1 для остальных; `units` — сумма весов, `tokens = (units + 3) / 4` (округление вверх, как в `deep_scout.go:254`). Русский текст на той же длине даёт вдвое больше единиц, значит больше токенов; латиница — как в текущей оценке.
+2. Пакет `textlimit`: `Estimate(text string) int`, `DefaultLimit = 2000`, `Limits{PlayerMessage, WorldDescription int}`, `LoadConfig(path string) (Limits, error)` по образцу `LoadConfirmConfig` (нет секции/ключа — умолчание), типизированный отказ `TooLongError{Kind, Tokens, Limit}` с русской подсказкой «…длиннее 2000 токенов (≈N): сократите текст». Оценку промпта в `paganel` не трогаем — там другой предмет.
+3. Конфиг: секция `limits:` в `engine/config.yaml` с двумя ключами и умолчанием 2000; webapi читает её при старте (как `LoadConfig` в `handlers_settings.go:322`) и передаёт в хендлеры.
+4. Чат: в `handleChatTurn` после проверки непустоты — `textlimit.Estimate`; превышение — 400, `codeBadRequest` (новый код не вводим: таблица кодов и `ROUTES.md` — зеркала), сообщение = подсказка. Ход не начинается, `turn.TurnInput` не собирается.
+5. Telegram: `ForwardChat` при 400 читает тело `{error:{code,message}}` (`routes.go:45`) и возвращает `textlimit.TooLongError` с подсказкой; `relayChat` (`:614`) на такую ошибку шлёт её игроку, остальные сбои — прежней фразой.
+6. Рождение: `birth.Config.MaxDescriptionTokens int` (0 → 2000), проверка в `Birth` до/рядом с `Validate` (образец `validateLangForConfig`, `langbase.go:74`) → `*ValidationError{Field:"description", Reason: подсказка}` → `writeBirthError` отдаёт 400 с полем, форма подсвечивает `description`.
+7. UI: `web/static/tokenlimit.js` — чистая функция `estimate(text)` и константы (веса, делитель, лимит по умолчанию) в размеченном JSON-маркере `// TOKENLIMIT-CONST {…}`, чтобы Go-тест мог их прочитать; подключается в `index.html` и `atlas.html`. Счётчики «N / 2000» у поля чата (`index.html:52-54`) и у описания мира (`atlas.html:107`), класс превышения — красный; `submitTurn` при превышении не отправляет запрос и показывает подсказку, `validateAtlasBirth` повторяет серверный отказ по `description`.
+8. Тесты: `textlimit` — русский текст даёт больше токенов на символ, чем английский той же длины; 2000 проходит, 2001 — отказ; конфиг с секцией и без. `js_parity_test` — читает `web.FS` (`static/tokenlimit.js`), сверяет JSON-константы с Go; если в PATH есть `node` — исполняет файл на наборе текстов и сверяет числа (политика node как в `scripts/ui-check.sh`: на машине игрока node нет, без него тест исполнения пропускается с явной причиной). webapi — `/api/turn` сверх лимита → 400 + подсказка, ход не создан; под лимитом — как раньше. birth — длинный `description` → поле `description` в отказе. tunnel — фейковый loopback с 400 и подсказкой → `relayChat` отправляет подсказку. Ручная браузерная проверка счётчика: чат и анкета.
+
+**Проверка:** `cd engine && go test ./internal/textlimit ./internal/webapi ./internal/birth -count=1 && bash scripts/gates.sh` — оба зелёные (gates включает `docs-check`); плюс браузерная проверка счётчика в чате и анкете (N / 2000, подсветка превышения, отправка блокируется). Флейк `internal/supervisor TestNoShortReadyBudget` — перезапуск решает.
+
+**Исполнитель:** кодер deepseek-flash → ревьюер mimo-2.6-pro.
 
 ---
 
