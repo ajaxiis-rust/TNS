@@ -2,11 +2,13 @@ package workshop_test
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"tns65/internal/db"
+	"tns65/internal/journal"
 	"tns65/internal/testkit"
 	"tns65/internal/workshop"
 )
@@ -180,5 +182,138 @@ func TestEditorRetry(t *testing.T) {
 	}
 	if slot.calls != 4 {
 		t.Fatalf("вызовов слота: %d, want 4 (два мусорных + правка + содержание)", slot.calls)
+	}
+}
+
+// editorJournalWorld собирает мир с одной главой и журналом станка, подключённым
+// к мастерской; возвращает хэндл, путь журнала и слот без ответов.
+func editorJournalWorld(t *testing.T, text string) (*db.Handle, string) {
+	t.Helper()
+	dir := t.TempDir()
+	worldPath := filepath.Join(dir, "world(a).db")
+	newDB(t, worldPath, "world", "shared")
+	world, err := db.OpenWriterAs(worldPath, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(world): %v", err)
+	}
+	t.Cleanup(func() { world.Close() })
+
+	logPath := filepath.Join(dir, "engine.log")
+	logger, err := journal.New(logPath)
+	if err != nil {
+		t.Fatalf("journal.New: %v", err)
+	}
+	workshop.SetLogger(logger)
+	t.Cleanup(func() { workshop.SetLogger(nil) })
+
+	insertEditorChapter(t, world, 1)
+	insertEditorText(t, world, 1, 1, text)
+	return world, logPath
+}
+
+// journalRole — значение поля role у события журнала.
+func journalRole(rec sedimentJournalEvent) string {
+	for _, f := range rec.Fields {
+		if f.Key == "role" {
+			return f.Value
+		}
+	}
+	return ""
+}
+
+// journalReason — значение поля reason у события журнала.
+func journalReason(rec sedimentJournalEvent) string {
+	for _, f := range rec.Fields {
+		if f.Key == "reason" {
+			return f.Value
+		}
+	}
+	return ""
+}
+
+// TestEditorJournal — «Проверка» FIX-5: после прогона главы в журнале станка есть
+// editor.digest.call; вызов и ответ пишутся по обеим ролям слота, отказ Цензора
+// правок — событием с причиной.
+func TestEditorJournal(t *testing.T) {
+	workshop.SetLemmatizer(fakeEditLemmatizer{forms: editorLexicon()})
+	defer workshop.SetLemmatizer(nil)
+
+	world, logPath := editorJournalWorld(t, "Иван шёл по этому городу.")
+
+	slot := testkit.NewFakeSlot()
+	slot.SetResponse(workshop.EditorRole,
+		`{"edits":[{"before":"по этому","after":"поэтому"},{"before":"Иван","after":"Гастон"}]}`)
+	slot.SetResponse(workshop.EditorDigestRole, `{"summary":"Иван шёл по городу."}`)
+
+	if _, err := workshop.EditChapter(context.Background(), world, slot, 1); err != nil {
+		t.Fatalf("EditChapter: %v", err)
+	}
+
+	recs := sedimentJournalRecords(t, logPath)
+	byEvent := make(map[string][]sedimentJournalEvent)
+	for _, rec := range recs {
+		byEvent[rec.Event] = append(byEvent[rec.Event], rec)
+	}
+
+	calls := byEvent["editor.digest.call"]
+	if len(calls) != 2 {
+		t.Fatalf("событий editor.digest.call = %d, want 2 (правки сцены + краткое содержание)", len(calls))
+	}
+	roles := map[string]bool{}
+	for _, rec := range calls {
+		roles[journalRole(rec)] = true
+	}
+	if !roles[workshop.EditorRole] || !roles[workshop.EditorDigestRole] {
+		t.Fatalf("роли в editor.digest.call: %v, want %s и %s", roles, workshop.EditorRole, workshop.EditorDigestRole)
+	}
+	if got := len(byEvent["editor.digest.reply"]); got != 2 {
+		t.Fatalf("событий editor.digest.reply = %d, want 2", got)
+	}
+	if got := len(byEvent["editor.digest.refuse"]); got != 0 {
+		t.Fatalf("событий editor.digest.refuse = %d, want 0", got)
+	}
+
+	rejects := byEvent["editor.censor_reject"]
+	if len(rejects) != 1 {
+		t.Fatalf("событий editor.censor_reject = %d, want 1 (правка имени)", len(rejects))
+	}
+	if journalReason(rejects[0]) == "" {
+		t.Fatal("editor.censor_reject без причины брака")
+	}
+}
+
+// TestEditorJournalRefuse — отказ слота Редактора пишется событием
+// editor.digest.refuse по каждой попытке и с причиной.
+func TestEditorJournalRefuse(t *testing.T) {
+	workshop.SetLemmatizer(fakeEditLemmatizer{forms: editorLexicon()})
+	defer workshop.SetLemmatizer(nil)
+
+	world, logPath := editorJournalWorld(t, "по этому городу")
+
+	slot := testkit.NewFakeSlot()
+	slot.FailWith(errors.New("слот: тайм-аут"))
+
+	if _, err := workshop.EditChapter(context.Background(), world, slot, 1); err == nil {
+		t.Fatal("EditChapter при отказе слота вернул nil, want ошибку")
+	}
+
+	var refuses []sedimentJournalEvent
+	for _, rec := range sedimentJournalRecords(t, logPath) {
+		if rec.Event == "editor.digest.refuse" {
+			refuses = append(refuses, rec)
+		}
+	}
+	// Попытки 0..2 (maxEditorRetries=2) — три отказа подряд.
+	const wantRefuses = 3
+	if len(refuses) != wantRefuses {
+		t.Fatalf("событий editor.digest.refuse = %d, want %d", len(refuses), wantRefuses)
+	}
+	for _, rec := range refuses {
+		if journalRole(rec) != workshop.EditorRole {
+			t.Fatalf("роль отказа = %q, want %s", journalRole(rec), workshop.EditorRole)
+		}
+		if journalReason(rec) == "" {
+			t.Fatal("editor.digest.refuse без причины отказа")
+		}
 	}
 }

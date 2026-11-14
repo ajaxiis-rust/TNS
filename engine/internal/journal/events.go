@@ -28,6 +28,12 @@ const (
 	EventTurnFallback          = "turn.fallback"
 	EventTurnComposition       = "turn.composition"
 	EventDeepreadCall          = "deepread.call"
+	// Слот Редактора и Цензор правок (FIX-5): вызов, принятый ответ и отказ
+	// модельного шага видны в журнале станка.
+	EventEditorDigestCall   = "editor.digest.call"
+	EventEditorDigestReply  = "editor.digest.reply"
+	EventEditorDigestRefuse = "editor.digest.refuse"
+	EventEditorCensorReject = "editor.censor_reject"
 )
 
 // Имена полей событий, общих для нескольких пакетов.

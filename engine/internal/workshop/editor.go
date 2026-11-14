@@ -11,9 +11,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"strconv"
 	"strings"
 
 	"tns65/internal/db"
+	"tns65/internal/journal"
 )
 
 // Роли слота Редактора: одна модель, два запроса — правки и краткое содержание.
@@ -168,16 +170,20 @@ func splitEditorScenes(text string) []string {
 func askEditorEdits(ctx context.Context, slot Slot, scene string) ([]EditorEdit, error) {
 	var lastErr error
 	for attempt := 0; attempt <= maxEditorRetries; attempt++ {
+		logEditorCall(EditorRole, attempt)
 		raw, err := slot.Generate(ctx, EditorRole, editorEditPrompt(scene))
 		if err != nil {
 			lastErr = err
+			logEditorRefuse(EditorRole, attempt, err)
 			continue
 		}
 		edits, err := parseEditorEdits(raw)
 		if err != nil {
 			lastErr = err
+			logEditorRefuse(EditorRole, attempt, err)
 			continue
 		}
+		logEditorReply(EditorRole, attempt)
 		return edits, nil
 	}
 	if lastErr == nil {
@@ -217,7 +223,8 @@ func applyEdits(world *db.Handle, scene string, edits []EditorEdit, applied *[]E
 		if strings.Count(scene, e.Before) != 1 {
 			continue
 		}
-		if ok, _ := Validate(world, e.Before, e.After); !ok {
+		if ok, reason := Validate(world, e.Before, e.After); !ok {
+			logEditorCensorReject(reason)
 			continue
 		}
 		scene = strings.Replace(scene, e.Before, e.After, 1)
@@ -226,21 +233,66 @@ func applyEdits(world *db.Handle, scene string, edits []EditorEdit, applied *[]E
 	return scene
 }
 
+// logEditorCall пишет вызов слота Редактора: роль шага и номер попытки.
+func logEditorCall(role string, attempt int) {
+	logEditorEvent(journal.EventEditorDigestCall, role, attempt, nil)
+}
+
+// logEditorReply пишет принятый ответ слота Редактора.
+func logEditorReply(role string, attempt int) {
+	logEditorEvent(journal.EventEditorDigestReply, role, attempt, nil)
+}
+
+// logEditorRefuse пишет отказ модельного шага Редактора с причиной.
+func logEditorRefuse(role string, attempt int, err error) {
+	logEditorEvent(journal.EventEditorDigestRefuse, role, attempt, err)
+}
+
+// logEditorEvent пишет событие шага Редактора; без журнала станка — пропуск.
+func logEditorEvent(event, role string, attempt int, err error) {
+	logger := loggerOf()
+	if logger == nil {
+		return
+	}
+	fields := []journal.Field{
+		{Key: "role", Value: role},
+		{Key: "attempt", Value: strconv.Itoa(attempt)},
+	}
+	if err != nil {
+		fields = append(fields, journal.Field{Key: "reason", Value: err.Error()})
+	}
+	_ = logger.Event("workshop", event, fields...)
+}
+
+// logEditorCensorReject пишет отказ Цензора правок с причиной брака.
+func logEditorCensorReject(reason string) {
+	logger := loggerOf()
+	if logger == nil {
+		return
+	}
+	_ = logger.Event("workshop", journal.EventEditorCensorReject,
+		journal.Field{Key: "reason", Value: reason})
+}
+
 // askEditorSummary вызывает Редактора за кратким содержанием обработанной главы;
 // политика отказов та же, что у списка правок.
 func askEditorSummary(ctx context.Context, slot Slot, text string) (string, error) {
 	var lastErr error
 	for attempt := 0; attempt <= maxEditorRetries; attempt++ {
+		logEditorCall(EditorDigestRole, attempt)
 		raw, err := slot.Generate(ctx, EditorDigestRole, editorSummaryPrompt(text))
 		if err != nil {
 			lastErr = err
+			logEditorRefuse(EditorDigestRole, attempt, err)
 			continue
 		}
 		summary, err := parseEditorSummary(raw)
 		if err != nil {
 			lastErr = err
+			logEditorRefuse(EditorDigestRole, attempt, err)
 			continue
 		}
+		logEditorReply(EditorDigestRole, attempt)
 		return summary, nil
 	}
 	if lastErr == nil {
