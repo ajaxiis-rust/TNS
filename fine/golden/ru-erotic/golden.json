@@ -360,8 +360,7 @@
      "present": true,
      "intensity": 0.25,
      "anchors": [
-      "амбар",
-      "мерка"
+      "амбар"
      ]
     },
     "emotion": {
@@ -372,13 +371,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.45,
-     "anchors": [
-      "обнять",
-      "толкнуть",
-      "приподнять"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -411,11 +406,9 @@
      ]
     },
     "violence": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "толкнуть"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "battle": {
      "present": false,
@@ -515,11 +508,9 @@
      ]
     },
     "erotic": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "любовь"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "violence": {
      "present": false,
