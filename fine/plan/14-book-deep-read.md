@@ -240,6 +240,8 @@ CREATE TABLE dict_staging (
 - **Документы:** нет.
 - **Исполнитель:** код.
 
+> ✅ закрыт 2026-11-14 — коммит 19baa5a (lemmas.go: Lemmatize/ChunkLemmas через lemmarpc-резидента, TestLemmas; ревью 1/3), LEDGER 4939e2a.
+
 ---
 
 ### T-14-05. Salience и теги чанков: триада
