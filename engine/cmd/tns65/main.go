@@ -24,6 +24,7 @@ import (
 	"tns65/internal/netgate"
 	"tns65/internal/paganel"
 	"tns65/internal/portgate"
+	"tns65/internal/providercfg"
 	"tns65/internal/providerroute"
 	"tns65/internal/structural"
 	"tns65/internal/supervisor"
@@ -162,7 +163,13 @@ func run() int {
 	// читаются при сборке слота на старте. Без него путь weaver коммитит
 	// статическую заготовку вместо прозы модели. Уже подключённый слот
 	// (e2e-хук --fake-slot) сеттер не перезаписывает.
-	webapi.SetChatWeaver(providerroute.DefaultChatWeaver(logger))
+	weaver := providerroute.DefaultChatWeaver(logger)
+	webapi.SetChatWeaver(weaver)
+	// Э3: слот мастерской по маршруту sources. Нет слота Ткача (e2e-сборка,
+	// нечитаемый конфиг) — маршруты не собраны, мастерская остаётся без слота.
+	if weaver != nil {
+		wireWorkshopSlot(logger)
+	}
 
 	wl, err := portgate.LoadWhitelist("config.yaml")
 	if err != nil {
@@ -618,6 +625,26 @@ func launchSwarmTask(args []string) error {
 	return nil
 }
 
+// wireWorkshopSlot подключает слот мастерской по маршруту sources (Э3):
+// разбор и варка книги-источника идут списком провайдеров route_sources, один
+// кусок — одной моделью за один запрос. Маршруты, ключи и модели читаются
+// здесь один раз, на старте процесса. Конфиг не прочитался — слот не
+// подключён, ковка идёт существующей деградацией, а отказ виден событием
+// slot.wiring_fail.
+func wireWorkshopSlot(logger *journal.Logger) {
+	cfg, err := providerroute.LoadSettings("config.yaml", "settings.toml")
+	if err != nil {
+		if logger != nil {
+			_ = logger.Event("workshop", journal.EventSlotWiring,
+				journal.Field{Key: "role", Value: "forge-book"},
+				journal.Field{Key: "error", Value: err.Error()})
+		}
+		return
+	}
+	router := providerroute.NewRouter(cfg, providercfg.Load("providers.toml"), logger)
+	workshop.SetSlot(workshop.NewRoutedWorkshopSlot(router.Slot(providerroute.TaskSources)))
+}
+
 // runSwarmTask — скрытая точка входа однозадачной задачи роя: первой строкой
 // stdout печатает рукопожатие, затем выполняет работу и печатает результат.
 // forge-card получает три аргумента (задача, литературная база, payload);
@@ -690,6 +717,11 @@ func runForgeBookTask(payloadJSON string) int {
 	defer lit.Close()
 
 	fams, _ := structural.LoadFamilies(filepath.Join(db.BaseRoot, "archetypes.json"))
+
+	// Э3: ковка чанков книги идёт по маршруту sources этого процесса —
+	// отдельный запуск роя собирает слот сам, слот ядра сюда не переходит.
+	forgeLogger, _ := journal.New(filepath.Join("state", "journal", "engine.log"))
+	wireWorkshopSlot(forgeLogger)
 
 	name := filepath.Base(payload.InputPath)
 	_ = webapi.SetForgeProgress(slug, name, 0)
