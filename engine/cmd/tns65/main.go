@@ -833,5 +833,37 @@ func runDeepreadTask(literaryPath, payloadJSON string) int {
 		return 0
 	}
 	fmt.Printf("%s: чанков %d, рейтинг %q\n", deepread.KindDeepread, report.Chunks, report.Summary.SuggestedRating)
+
+	// Э6: карта книги-источника строится отдельным проходом картографа по
+	// местам и временам разбора (book_place/book_scene) под маршрутом
+	// sources_map; проза повторно не читается. Пропуск прохода (нет режима
+	// походов, пустые выписки, нет ключей) не отменяет завершённый разбор.
+	if bm, err := buildBookMap(world, lit, bookID, deepLogger); err == nil {
+		fmt.Printf("%s: карта книги — мест %d, сцен %d\n", deepread.KindDeepread, len(bm.Places), len(bm.Scenes))
+	}
 	return 0
+}
+
+// buildBookMap собирает проход картографа (Э6, PROVIDER-ROUTING-PLAN §6.5):
+// режим походов мира выбирает роль, провайдера — маршрут sources_map с
+// каскадом на sources и slots.default. Слот собирается здесь же: запуск роя
+// не наследует слот ядра.
+func buildBookMap(world, lit *db.Handle, bookID int64, logger *journal.Logger) (*deepread.BookMap, error) {
+	mode, err := paganel.ReadTravelMode(world)
+	if err != nil {
+		return nil, err
+	}
+	cfg, err := providerroute.LoadSettings("config.yaml", "settings.toml")
+	if err != nil {
+		return nil, err
+	}
+	router := providerroute.NewRouter(cfg, providercfg.Load("providers.toml"), logger)
+	// Значения deepread.MapMode совпадают с paganel.TravelMode: пакет разбора
+	// не берёт тип атласа, иначе цикл импортов paganel → workshop → deepread.
+	slot := workshop.NewRoutedWorkshopSlot(router.Slot(providerroute.TaskSourcesMap))
+	return deepread.BuildBookMap(context.Background(), lit, deepread.MapInput{
+		BookID: bookID,
+		Mode:   deepread.MapMode(mode),
+		Slot:   slot,
+	})
 }
