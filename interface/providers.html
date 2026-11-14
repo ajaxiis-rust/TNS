@@ -197,7 +197,6 @@ body{height:100%;background:var(--black);font-family:var(--font-mono);font-size:
             <option value="baichuan">Baichuan — Baichuan 4 | en zh</option>
             <option value="minimax">MiniMax — Text-01, 4M context | en zh</option>
             <option value="sensenova">SenseNova — SenseTime LLM | en zh</option>
-            <option value="01ai">01.AI (Yi) — Yi-Lightning | en zh</option>
             <option value="alibaba">Alibaba (Qwen) — Qwen-MAX/Plus | en zh ru ja ko</option>
             <option value="baidu">Baidu (Ernie) — ERNIE 4.0/3.5 | en zh</option>
             <option value="tencent">Tencent (Hunyuan) — text + vision | en zh</option>
@@ -466,7 +465,6 @@ const PRESETS = {
   baichuan:   { name:'Baichuan',   type:'openai',    baseUrl:'https://api.baichuan-ai.com/v1',                     defaultModel:'Baichuan4-Turbo',   models:['Baichuan4-Turbo','Baichuan4-Air','Baichuan4','Baichuan3-Turbo','Baichuan3-Turbo-128k'], url:'https://baichuan-ai.com', langs:['en','zh'] },
   minimax:    { name:'MiniMax',    type:'openai',    baseUrl:'https://api.minimax.chat/v1',                         defaultModel:'MiniMax-Text-01',   models:['MiniMax-Text-01','MiniMax-Text-01-20k','abab6.5s-chat','abab5.5-chat'], url:'https://www.minimaxi.com', langs:['en','zh'] },
   sensenova:  { name:'SenseNova',  type:'openai',    baseUrl:'https://api.sensenova.cn/v1',                         defaultModel:'nova-32k',          models:['nova-32k','nova-128k','nova-pro','nova-lite'], url:'https://platform.sensenova.cn', langs:['en','zh'] },
-  '01ai':     { name:'01.AI (Yi)', type:'openai',    baseUrl:'https://api.lingyiwanwu.com/v1',                      defaultModel:'yi-lightning',      models:['yi-lightning','yi-large','yi-medium','yi-medium-200k','yi-spark'], url:'https://01.ai', langs:['en','zh'] },
   alibaba:    { name:'Alibaba (Qwen)', type:'openai', baseUrl:'https://dashscope.aliyuncs.com/compatible-mode/v1', defaultModel:'qwen-max',          models:['qwen-max','qwen-plus','qwen-turbo','qwen-long','qwen-vl-max','qwen-vl-plus','text-embedding-v3'], url:'https://dashscope.aliyun.com', langs:['en','zh','ru','ja','ko'] },
   baidu:      { name:'Baidu (Ernie)', type:'openai',  baseUrl:'https://qianfan.baidubce.com/v2',                   defaultModel:'ernie-4.0-turbo-8k', models:['ernie-4.0-turbo-8k','ernie-4.0-8k','ernie-3.5-8k','ernie-3.5-128k','ernie-speed-8k','ernie-lite-8k'], url:'https://yiyan.baidu.com', langs:['en','zh'] },
   tencent:    { name:'Tencent (Hunyuan)', type:'openai', baseUrl:'https://api.hunyuan.cloud.tencent.com/v1',      defaultModel:'hunyuan-pro',       models:['hunyuan-pro','hunyuan-standard','hunyuan-turbo','hunyuan-lite','hunyuan-vision'], url:'https://hunyuan.tencent.com', langs:['en','zh'] },
