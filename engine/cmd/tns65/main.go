@@ -18,6 +18,7 @@ import (
 	"tns65/internal/birth"
 	"tns65/internal/book"
 	"tns65/internal/db"
+	"tns65/internal/deepread"
 	"tns65/internal/journal"
 	"tns65/internal/langpack"
 	"tns65/internal/models"
@@ -589,21 +590,24 @@ func runTunnelScript() error {
 // swarm-task; ядро сверяет версию по рукопожатию (swarm.Launch).
 func runSwarm(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("tns65 swarm: missing task (forge-card)")
+		return fmt.Errorf("tns65 swarm: missing task (forge-card, deepread)")
 	}
 	switch args[0] {
 	case "forge-card":
-		return launchSwarmTask(args[1:])
+		return launchSwarmTask("forge-card", args[1:])
+	case "deepread":
+		return launchSwarmTask("deepread", args[1:])
 	default:
 		return fmt.Errorf("tns65 swarm: unknown task %q", args[0])
 	}
 }
 
-// launchSwarmTask запускает задачу ковки карточки роя: аргументы задачи —
-// литературная база мира и payload заказа complement.
-func launchSwarmTask(args []string) error {
+// launchSwarmTask запускает однозадачный прогон роя: аргументы задачи —
+// литературная база мира и payload заказа; имя задачи задаёт подкоманду
+// swarm-task.
+func launchSwarmTask(name string, args []string) error {
 	if len(args) != 2 {
-		return fmt.Errorf("tns65 swarm forge-card: expected <literary_db> <payload_json>")
+		return fmt.Errorf("tns65 swarm %s: expected <literary_db> <payload_json>", name)
 	}
 	exe, err := os.Executable()
 	if err != nil {
@@ -614,9 +618,9 @@ func launchSwarmTask(args []string) error {
 		return err
 	}
 	res, err := swarm.Launch(logger, swarm.Spec{
-		Name: "forge-card",
+		Name: name,
 		Cmd:  exe,
-		Args: []string{"swarm-task", "forge-card", args[0], args[1]},
+		Args: []string{"swarm-task", name, args[0], args[1]},
 	}, version.Version)
 	if err != nil {
 		return err
@@ -649,14 +653,16 @@ func wireWorkshopSlot(logger *journal.Logger) {
 
 // runSwarmTask — скрытая точка входа однозадачной задачи роя: первой строкой
 // stdout печатает рукопожатие, затем выполняет работу и печатает результат.
-// forge-card получает три аргумента (задача, литературная база, payload);
-// forge-book — два (задача, payload), базы открывает сам по слагу мира.
+// forge-card, deepread получают три аргумента (задача, литературная база,
+// payload); forge-book — два (задача, payload), базы открывает сам по слагу мира.
 func runSwarmTask(args []string) int {
 	hs, _ := json.Marshal(swarm.Handshake{Version: version.Version})
 	fmt.Println(string(hs))
 	switch {
 	case len(args) == 3 && args[0] == "forge-card":
 		return runForgeCardTask(args[1], args[2])
+	case len(args) == 3 && args[0] == "deepread":
+		return runDeepreadTask(args[1], args[2])
 	case len(args) == 2 && args[0] == "forge-book":
 		return runForgeBookTask(args[1])
 	default:
@@ -730,6 +736,7 @@ func runForgeBookTask(payloadJSON string) int {
 
 	_, err = workshop.RunForgeBook(context.Background(), world, lit, payload.InputPath, workshop.ForgeBookOptions{
 		Families: fams,
+		Deepread: true,
 		Progress: func(done, total int) {
 			p := 0.0
 			if total > 0 {
@@ -745,5 +752,86 @@ func runForgeBookTask(payloadJSON string) int {
 		return 1
 	}
 	fmt.Println("done")
+	return 0
+}
+
+// runDeepreadTask выполняет задачу роя deepread (T-14-13): по ключу пересчёта
+// прогоняет разбор книги — литературная база приходит аргументом, оперативная
+// открывается по слагу мира; чанки режет разбор входа ковки. Сводка прогона
+// пишется в forge_log kind='deepread'.
+func runDeepreadTask(literaryPath, payloadJSON string) int {
+	var payload deepread.Payload
+	if err := json.Unmarshal([]byte(payloadJSON), &payload); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
+	slug := payload.WorldSlug
+	if slug == "" {
+		slug = filepath.Base(filepath.Dir(literaryPath))
+	}
+	world, err := db.OpenWriterAs(
+		filepath.Join(db.WorldsRoot, "worlds", slug, slug+".db"), db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer world.Close()
+
+	lit, err := db.OpenWriterAs(literaryPath, db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer lit.Close()
+
+	parsed, err := workshop.ParseBookInput(payload.InputPath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	bookID := payload.BookID
+	if bookID <= 0 {
+		name := parsed.Meta.Title
+		if name == "" {
+			name = filepath.Base(payload.InputPath)
+		}
+		bookID, err = workshop.EnsureBook(lit, name)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+	}
+
+	chunks := make([]deepread.RunChunk, len(parsed.Chunks))
+	for i, chunk := range parsed.Chunks {
+		chunks[i] = deepread.RunChunk{Ord: i, Chapter: chunk.Chapter, Text: chunk.Text}
+	}
+
+	// Спорные случаи разбора адресуются слоту роя тем же маршрутом источников,
+	// что и ковка: слот ядра сюда не переходит.
+	deepLogger, _ := journal.New(filepath.Join("state", "journal", "engine.log"))
+	var slot deepread.DisputeSlot
+	if cfg, err := providerroute.LoadSettings("config.yaml", "settings.toml"); err == nil {
+		router := providerroute.NewRouter(cfg, providercfg.Load("providers.toml"), deepLogger)
+		slot = workshop.NewRoutedWorkshopSlot(router.Slot(providerroute.TaskSources))
+	}
+
+	report, err := deepread.RunPipeline(world, lit, deepread.RunInput{
+		BookID: bookID,
+		Author: parsed.Meta.Author,
+		Chunks: chunks,
+		Slot:   slot,
+		Logger: deepLogger,
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if report.Skipped {
+		fmt.Printf("%s: %s\n", deepread.KindDeepread, report.Reason)
+		return 0
+	}
+	fmt.Printf("%s: чанков %d, рейтинг %q\n", deepread.KindDeepread, report.Chunks, report.Summary.SuggestedRating)
 	return 0
 }

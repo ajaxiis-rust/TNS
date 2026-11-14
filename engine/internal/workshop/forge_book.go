@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"tns65/internal/db"
+	"tns65/internal/deepread"
 	"tns65/internal/models"
 	"tns65/internal/structural"
 )
@@ -37,11 +38,14 @@ type ForgeBookResult struct {
 	Progress float64
 }
 
-// ForgeBookOptions — зависимости ковки книги: реестр семей композиции и
-// репортёр прогресса по чанкам.
+// ForgeBookOptions — зависимости ковки книги: реестр семей композиции,
+// репортёр прогресса по чанкам и признак разбора книги после цикла чанков.
 type ForgeBookOptions struct {
 	Families []structural.Family
 	Progress func(done, total int)
+	// Deepread — прогнать разбор книги после цикла чанков (T-14-13): разбор
+	// пишет векторы в literary.db, таблица vectors приходит миграцией shared.
+	Deepread bool
 }
 
 // RunForgeBook куёт одну книгу (P11 §5.6): разбор входа, регистрация книги в
@@ -104,6 +108,23 @@ func RunForgeBook(ctx context.Context, world, lit *db.Handle, inputPath string, 
 		}
 		report(i + 1)
 	}
+	if opts.Deepread {
+		runChunks := make([]deepread.RunChunk, len(parsed.Chunks))
+		for i, chunk := range parsed.Chunks {
+			runChunks[i] = deepread.RunChunk{Ord: i, Chapter: chunk.Chapter, Text: chunk.Text}
+		}
+		if _, err := deepread.RunPipeline(world, lit, deepread.RunInput{
+			BookID: bookID,
+			Author: parsed.Meta.Author,
+			Chunks: runChunks,
+		}); err != nil {
+			return res, fmt.Errorf("workshop: разбор книги %d: %w", bookID, err)
+		}
+		// Разбор — отдельная фаза после чанков: прогресс идёт тем же репортёром.
+		if opts.Progress != nil {
+			opts.Progress(len(parsed.Chunks)+1, len(parsed.Chunks)+1)
+		}
+	}
 	return res, nil
 }
 
@@ -120,6 +141,13 @@ func ensureForgeBook(lit *db.Handle, name string) (int64, error) {
 		return 0, err
 	}
 	return InsertBook(lit, Book{Name: name, Lang: forgeBookLang, Status: ForgeBookStatusReady})
+}
+
+// EnsureBook находит строку реестра книги по имени (не книгу игрока) или
+// создаёт её status='ready': задача роя deepread адресует книгу по имени
+// заголовка входа, когда в заказе нет book_id (T-14-13).
+func EnsureBook(lit *db.Handle, name string) (int64, error) {
+	return ensureForgeBook(lit, name)
 }
 
 // attachBookToBank привязывает выкованную запись банка к книге реестра (P11
