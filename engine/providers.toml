@@ -24,32 +24,39 @@
 # Хост каждого провайдера должен быть в netgate.allowed_hosts (config.yaml),
 # иначе запрос не выйдет наружу.
 
-# --- Gemini (родной протокол) ---------------------------------------------
+# --- Провайдеры (по алфавиту) ----------------------------------------------
 
 [[providers]]
-name = "gemini-flash"
-label = "Google Gemini Flash"
-protocol = "gemini"
-base_url = "https://generativelanguage.googleapis.com"
-default_model = "gemini-3.8-flash"
-
-[[providers]]
-name = "gemini-pro"
-label = "Google Gemini Pro"
-protocol = "gemini"
-base_url = "https://generativelanguage.googleapis.com"
-default_model = "gemini-3.1-pro-preview"
-
-# --- Gemini через OpenAI-совместимый вход ----------------------------------
-
-[[providers]]
-name = "gemini-openai"
-label = "Google Gemini (OpenAI-совместимый)"
+name = "cerebras"
+label = "Cerebras"
 protocol = "openai"
-base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
-default_model = "gemini-3.8-flash"
+base_url = "https://api.cerebras.ai/v1"
+default_model = "llama-3.3-70b"
 
-# --- OpenAI-совместимые провайдеры -----------------------------------------
+# Cloudflare Workers AI: в base_url подставьте ACCOUNT_ID и раскомментируйте
+# строки. Хост api.cloudflare.com уже в netgate.allowed_hosts.
+#
+# [[providers]]
+# name = "cloudflare"
+# label = "Cloudflare Workers AI"
+# protocol = "openai"
+# base_url = "https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/v1"
+# default_model = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+# models = ["@cf/meta/llama-3.3-70b-instruct-fp8-fast"]
+
+[[providers]]
+name = "cohere"
+label = "Cohere"
+protocol = "openai"
+base_url = "https://api.cohere.ai/compatibility/v1"
+default_model = "command-r-plus"
+
+[[providers]]
+name = "deepinfra"
+label = "DeepInfra"
+protocol = "openai"
+base_url = "https://api.deepinfra.com/v1/openai"
+default_model = "meta-llama/Llama-3.3-70B-Instruct"
 
 [[providers]]
 name = "deepseek"
@@ -59,11 +66,98 @@ base_url = "https://api.deepseek.com/v1"
 default_model = "deepseek-chat"
 
 [[providers]]
+name = "fireworks"
+label = "Fireworks AI"
+protocol = "openai"
+base_url = "https://api.fireworks.ai/inference/v1"
+default_model = "accounts/fireworks/models/llama-v3p3-70b-instruct"
+
+[[providers]]
+name = "gemini-flash"
+label = "Google Gemini Flash"
+protocol = "gemini"
+base_url = "https://generativelanguage.googleapis.com"
+default_model = "gemini-3.8-flash"
+
+[[providers]]
+name = "gemini-openai"
+label = "Google Gemini (OpenAI-совместимый)"
+protocol = "openai"
+base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
+default_model = "gemini-3.8-flash"
+
+[[providers]]
+name = "gemini-pro"
+label = "Google Gemini Pro"
+protocol = "gemini"
+base_url = "https://generativelanguage.googleapis.com"
+default_model = "gemini-3.1-pro-preview"
+
+[[providers]]
+name = "github"
+label = "GitHub Models"
+protocol = "openai"
+base_url = "https://models.github.ai/inference"
+default_model = "openai/gpt-4o-mini"
+
+[[providers]]
+name = "groq"
+label = "Groq"
+protocol = "openai"
+base_url = "https://api.groq.com/openai/v1"
+default_model = "llama-3.3-70b-versatile"
+
+[[providers]]
+name = "huggingface"
+label = "Hugging Face Inference Providers"
+protocol = "openai"
+base_url = "https://router.huggingface.co/v1"
+default_model = "meta-llama/Llama-3.3-70B-Instruct"
+
+[[providers]]
 name = "mimo"
 label = "Xiaomi MiMo"
 protocol = "openai"
 base_url = "https://api.xiaomimimo.com/v1"
 default_model = "mimo-v2-flash"
+
+[[providers]]
+name = "mistral"
+label = "Mistral AI"
+protocol = "openai"
+base_url = "https://api.mistral.ai/v1"
+default_model = "mistral-large-latest"
+
+[[providers]]
+name = "nebius"
+label = "Nebius Token Factory"
+protocol = "openai"
+base_url = "https://api.tokenfactory.nebius.com/v1"
+default_model = "meta-llama/Llama-3.3-70B-Instruct"
+
+# SiliconFlow и Novita AI — бесплатные и почти бесплатные уровни для небольших
+# тестов, до ~1 млн токенов в день (список владельца, 2026-11-14).
+
+[[providers]]
+name = "novita"
+label = "Novita AI"
+protocol = "openai"
+base_url = "https://api.novita.ai/v3/openai"
+default_model = "meta-llama/llama-3.3-70b-instruct"
+
+[[providers]]
+name = "nvidia"
+label = "NVIDIA NIM"
+protocol = "openai"
+base_url = "https://integrate.api.nvidia.com/v1"
+default_model = "meta/llama-3.3-70b-instruct"
+
+[[providers]]
+name = "openrouter"
+label = "OpenRouter"
+protocol = "openai"
+base_url = "https://openrouter.ai/api/v1"
+default_model = "openrouter/auto"
 
 [[providers]]
 name = "qwen"
@@ -83,34 +177,6 @@ default_model = "qwen-plus"
 # default_model = "qwen-plus"
 
 [[providers]]
-name = "mistral"
-label = "Mistral AI"
-protocol = "openai"
-base_url = "https://api.mistral.ai/v1"
-default_model = "mistral-large-latest"
-
-[[providers]]
-name = "cohere"
-label = "Cohere"
-protocol = "openai"
-base_url = "https://api.cohere.ai/compatibility/v1"
-default_model = "command-r-plus"
-
-[[providers]]
-name = "openrouter"
-label = "OpenRouter"
-protocol = "openai"
-base_url = "https://openrouter.ai/api/v1"
-default_model = "openrouter/auto"
-
-[[providers]]
-name = "groq"
-label = "Groq"
-protocol = "openai"
-base_url = "https://api.groq.com/openai/v1"
-default_model = "llama-3.3-70b-versatile"
-
-[[providers]]
 name = "sambanova"
 label = "SambaNova Cloud"
 protocol = "openai"
@@ -118,32 +184,11 @@ base_url = "https://api.sambanova.ai/v1"
 default_model = "Meta-Llama-3.3-70B-Instruct"
 
 [[providers]]
-name = "cerebras"
-label = "Cerebras"
+name = "siliconflow"
+label = "SiliconFlow"
 protocol = "openai"
-base_url = "https://api.cerebras.ai/v1"
-default_model = "llama-3.3-70b"
-
-[[providers]]
-name = "nvidia"
-label = "NVIDIA NIM"
-protocol = "openai"
-base_url = "https://integrate.api.nvidia.com/v1"
-default_model = "meta/llama-3.3-70b-instruct"
-
-[[providers]]
-name = "github"
-label = "GitHub Models"
-protocol = "openai"
-base_url = "https://models.github.ai/inference"
-default_model = "openai/gpt-4o-mini"
-
-[[providers]]
-name = "huggingface"
-label = "Hugging Face Inference Providers"
-protocol = "openai"
-base_url = "https://router.huggingface.co/v1"
-default_model = "meta-llama/Llama-3.3-70B-Instruct"
+base_url = "https://api.siliconflow.cn/v1"
+default_model = "Qwen/Qwen3-8B"
 
 [[providers]]
 name = "zai"
@@ -151,38 +196,6 @@ label = "Z.ai / Zhipu AI"
 protocol = "openai"
 base_url = "https://api.z.ai/api/paas/v4"
 default_model = "glm-4.6"
-
-[[providers]]
-name = "fireworks"
-label = "Fireworks AI"
-protocol = "openai"
-base_url = "https://api.fireworks.ai/inference/v1"
-default_model = "accounts/fireworks/models/llama-v3p3-70b-instruct"
-
-[[providers]]
-name = "deepinfra"
-label = "DeepInfra"
-protocol = "openai"
-base_url = "https://api.deepinfra.com/v1/openai"
-default_model = "meta-llama/Llama-3.3-70B-Instruct"
-
-[[providers]]
-name = "nebius"
-label = "Nebius Token Factory"
-protocol = "openai"
-base_url = "https://api.tokenfactory.nebius.com/v1"
-default_model = "meta-llama/Llama-3.3-70B-Instruct"
-
-# Cloudflare Workers AI: в base_url подставьте ACCOUNT_ID и раскомментируйте
-# строки. Хост api.cloudflare.com уже в netgate.allowed_hosts.
-#
-# [[providers]]
-# name = "cloudflare"
-# label = "Cloudflare Workers AI"
-# protocol = "openai"
-# base_url = "https://api.cloudflare.com/client/v4/accounts/ACCOUNT_ID/ai/v1"
-# default_model = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
-# models = ["@cf/meta/llama-3.3-70b-instruct-fp8-fast"]
 
 # --- Справочник цен (за 1M токенов, USD) -----------------------------------
 
