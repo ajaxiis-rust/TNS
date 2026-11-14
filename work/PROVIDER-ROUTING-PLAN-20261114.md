@@ -248,6 +248,8 @@ MCP); `engine/config.yaml` (секция маршрутов §4); тесты pro
 
 ### Э3. Обработка источников через маршрут (RoutedWorkshopSlot + проводка мастерской)
 
+> ✅ Выполнено 2026-11-14 (коммит 8157d40): адаптер RoutedWorkshopSlot и проводка через маршрут sources, тесты варки и отката.
+
 **Факт:** этап описан в §12.3 и §6.2. Адаптер `RoutedWorkshopSlot` для
 `workshop.Slot` (`Generate(ctx, role, prompt)`); `workshop.SetSlot(...)` в
 `cmd/tns65/main.go` сейчас не вызывается — подключение одновременно закрывает
