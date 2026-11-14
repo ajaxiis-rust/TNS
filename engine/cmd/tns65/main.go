@@ -24,6 +24,7 @@ import (
 	"tns65/internal/netgate"
 	"tns65/internal/paganel"
 	"tns65/internal/portgate"
+	"tns65/internal/providerroute"
 	"tns65/internal/structural"
 	"tns65/internal/supervisor"
 	"tns65/internal/swarm"
@@ -157,10 +158,11 @@ func run() int {
 	// Чат без лемматизатора не строит гипотезу намерения: каждый ход уходит в
 	// переспрос и не коммитится. Подключаем лемматизатор пакета по умолчанию.
 	webapi.SetChatLemmatizer(webapi.DefaultPackLemmatizer(logger))
-	// T-03-08: слот Ткача по секции slots конфигурации экземпляра. Без него путь
-	// weaver коммитит статическую заготовку вместо прозы модели. Уже подключённый
-	// слот (e2e-хук --fake-slot) сеттер не перезаписывает.
-	webapi.SetChatWeaver(webapi.DefaultChatWeaver(logger))
+	// T-03-08/Э1: слот Ткача по маршруту route_chat — маршрут, ключи и модели
+	// читаются при сборке слота на старте. Без него путь weaver коммитит
+	// статическую заготовку вместо прозы модели. Уже подключённый слот
+	// (e2e-хук --fake-slot) сеттер не перезаписывает.
+	webapi.SetChatWeaver(providerroute.DefaultChatWeaver(logger))
 
 	wl, err := portgate.LoadWhitelist("config.yaml")
 	if err != nil {

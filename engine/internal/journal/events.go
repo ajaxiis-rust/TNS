@@ -38,6 +38,11 @@ const (
 	// оседание её отчёта видны в журнале станка для отладки.
 	EventScoutCall   = "scout.call"
 	EventScoutReport = "scout.report"
+	// Маршруты провайдеров (Э1): выбор провайдера по кругу, откат на
+	// следующего и полный отказ цепочки видны в журнале станка.
+	EventProviderRotate    = "provider.rotate"
+	EventProviderFailover  = "provider.failover"
+	EventProviderExhausted = "provider.exhausted"
 )
 
 // Имена полей событий, общих для нескольких пакетов.

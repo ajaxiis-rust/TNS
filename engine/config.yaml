@@ -78,6 +78,22 @@ slots:
   default: local
   gemini_host: generativelanguage.googleapis.com
 
+# Маршруты провайдеров (Э1, PROVIDER-ROUTING-PLAN §4): задача — упорядоченный
+# список имён из providers.toml, порядок задаёт ротацию. Рабочие маршруты игрока
+# живут в settings.toml ключами route_<задача> и главнее значений отсюда. Пусто —
+# запасной путь: chat/sources/editor берут slots.default, sources_map —
+# route_sources, разведка выключена. local разрешён последним элементом цепочки;
+# провайдер без ключа в settings.toml пропускается при выборе. Маршруты читаются
+# на старте ядра — изменения применяются после перезапуска.
+routes:
+  chat: ""
+  sources: ""
+  sources_map: ""
+  editor: ""
+  scout_real: ""
+  scout_fiction: ""
+  scout_mixed: ""
+
 # Исходящий туннель (T-08-03, F-04.3): станок сам подключается к краю cloudflared
 # и пробрасывает loopback-адрес веб-интерфейса. Поля внешнего слушающего адреса
 # нет — только исходящие параметры (edge, local). Telegram-канал (F-04.4) решает
