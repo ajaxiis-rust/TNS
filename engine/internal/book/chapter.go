@@ -1,11 +1,15 @@
 package book
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"tns65/internal/db"
 	"tns65/internal/lemmarpc"
@@ -66,6 +70,13 @@ type Lexicon struct {
 // SleepIntent — имя намерения «сон» в лексиконе намерений.
 const SleepIntent = "сон"
 
+// UnconsciousIntent — имя намерения «обморок» в лексиконе намерений: потеря
+// сознания и «отключился» закрывают главу тем же путём, что и сон (CB-03.4).
+const UnconsciousIntent = "обморок"
+
+// CloseIntents — намерения, закрывающие главу явной репликой игрока.
+var CloseIntents = []string{SleepIntent, UnconsciousIntent}
+
 // LoadLexicon читает лексикон намерений из каталога языкового пакета dir.
 func LoadLexicon(dir string) (*Lexicon, error) {
 	b, err := os.ReadFile(filepath.Join(dir, "lexicon_intents.jsonl"))
@@ -87,17 +98,22 @@ func LoadLexicon(dir string) (*Lexicon, error) {
 	return &lex, nil
 }
 
-// SleepLemmas возвращает леммы намерения «сон»; пусто, если намерения нет.
-func (l *Lexicon) SleepLemmas() []string {
+// IntentLemmas возвращает леммы намерения intent; пусто, если намерения нет.
+func (l *Lexicon) IntentLemmas(intent string) []string {
 	if l == nil {
 		return nil
 	}
 	for _, e := range l.Intents {
-		if e.Intent == SleepIntent {
+		if e.Intent == intent {
 			return e.Lemmas
 		}
 	}
 	return nil
+}
+
+// SleepLemmas возвращает леммы намерения «сон»; пусто, если намерения нет.
+func (l *Lexicon) SleepLemmas() []string {
+	return l.IntentLemmas(SleepIntent)
 }
 
 // IsSleep распознаёт намерение «сон» по леммам реплики без LLM (шаг 3): хотя бы
@@ -112,6 +128,21 @@ func IsSleep(lemmas []string, lex *Lexicon) bool {
 		}
 	}
 	return false
+}
+
+// CloseIntentOf возвращает намерение закрытия главы, найденное в леммах реплики
+// (CB-03.4): сон, потеря сознания и «отключился» ведут общим путём Close.
+func CloseIntentOf(lemmas []string, lex *Lexicon) (string, bool) {
+	for _, intent := range CloseIntents {
+		for _, needle := range lex.IntentLemmas(intent) {
+			for _, l := range lemmas {
+				if l == needle {
+					return intent, true
+				}
+			}
+		}
+	}
+	return "", false
 }
 
 // Lemmatizer — минимальный контракт клиента лемматизации (T-01-09): разбор
@@ -136,6 +167,24 @@ func DetectSleep(lem Lemmatizer, lex *Lexicon, text string) (bool, error) {
 	return IsSleep(lemmas, lex), nil
 }
 
+// DetectClose лемматизирует реплику и распознаёт намерение закрытия главы
+// (CB-03.4): сон, потеря сознания и «отключился» ведут общим путём Close.
+func DetectClose(lem Lemmatizer, lex *Lexicon, text string) (string, bool, error) {
+	if lem == nil {
+		return "", false, errors.New("book: нет лемматизатора для распознавания финала главы")
+	}
+	toks, err := lem.Lemmatize(text)
+	if err != nil {
+		return "", false, err
+	}
+	lemmas := make([]string, 0, len(toks))
+	for _, t := range toks {
+		lemmas = append(lemmas, t.Lemma)
+	}
+	intent, ok := CloseIntentOf(lemmas, lex)
+	return intent, ok, nil
+}
+
 // ErrChapterNotOpen — закрываемая глава не в статусе open.
 var ErrChapterNotOpen = errors.New("book: глава не открыта")
 
@@ -146,6 +195,18 @@ var ErrSessionNotOpen = errors.New("book: сессия не открыта")
 // сессию (ended_at=now) и ставит задачу редактуры edit на главу (T-05-09).
 // Следующую сессию ядро не создаёт — она откроется только приходом игрока (шаг 5).
 func (c Chapter) Close(h *db.Handle, now string) error {
+	if err := closeChapter(h, c, now); err != nil {
+		return err
+	}
+
+	// Шаг 4: по закрытию главы — задача редактуры на главу (T-05-09).
+	_, err := workshop.EnqueueEditorTask(h, c.ID)
+	return err
+}
+
+// closeChapter переводит главу в closed и закрывает её сессию одной транзакцией
+// писателя core (шаги 2–3); задачу редактуры ставит вызывающий.
+func closeChapter(h *db.Handle, c Chapter, now string) error {
 	if h == nil {
 		return errors.New("book: нет хэндла мира")
 	}
@@ -159,7 +220,7 @@ func (c Chapter) Close(h *db.Handle, now string) error {
 		return errors.New("book: время закрытия не задано")
 	}
 
-	if err := h.Tx(db.WriterCore, func(tx *db.Tx) error {
+	return h.Tx(db.WriterCore, func(tx *db.Tx) error {
 		res, err := tx.Exec("book_chapters",
 			`UPDATE book_chapters SET status = ? WHERE id = ? AND status = ?`,
 			string(StatusClosed), c.ID, string(StatusOpen))
@@ -184,13 +245,255 @@ func (c Chapter) Close(h *db.Handle, now string) error {
 			return ErrSessionNotOpen
 		}
 		return nil
-	}); err != nil {
-		return err
+	})
+}
+
+// CloseReason — причина закрытия главы (CB-03): явная реплика игрока или
+// автозакрытие по лимиту открытой главы.
+type CloseReason string
+
+const (
+	CloseByPlayer CloseReason = "player"
+	CloseByLimit  CloseReason = "autoclose"
+)
+
+// AutoCloseAfter — предел открытой главы (CB-03.5): более 20 часов от started_at
+// сессии — глава закрывается автоматически.
+const AutoCloseAfter = 20 * time.Hour
+
+// AutoCloseEventKind — событие-пометка автозакрытия главы в events.
+const AutoCloseEventKind = "chapter_autoclose"
+
+// WorldNotesRole — роль заметок о жизни мира: слот Редактора, пишущий прозу
+// книги (существующая роль мастерской).
+const WorldNotesRole = workshop.EditorRole
+
+// AutoClose закрывает открытую главу, если с начала её сессии прошло больше
+// 20 часов (CB-03.5): молчание главу не закрывает, лимит открытия закрывает.
+// Сессия главы — последняя открытая (колонки сессии в book_chapters нет).
+// Заметки о жизни мира вписываются сценой главы (CB-03.6): слот необязателен,
+// при его недоступности заметки собираются кодом из событий простоя. Ошибки
+// заметок автозакрытие не отменяют — ход не валится. Возвращает главу, признак
+// закрытия и ошибку; отсутствие открытой главы — (Chapter{}, false, nil).
+func AutoClose(h *db.Handle, now string, slot Slot) (Chapter, bool, error) {
+	if h == nil {
+		return Chapter{}, false, errors.New("book: нет хэндла мира")
+	}
+	closedAt, err := time.Parse(time.RFC3339, now)
+	if err != nil {
+		return Chapter{}, false, fmt.Errorf("book: время автозакрытия не разобрано: %w", err)
 	}
 
-	// Шаг 4: по закрытию главы — задача редактуры на главу (T-05-09).
-	_, err := workshop.EnqueueEditorTask(h, c.ID)
+	ch, startedAt, ok, err := openChapterForClose(h)
+	if err != nil {
+		return Chapter{}, false, err
+	}
+	if !ok {
+		return Chapter{}, false, nil
+	}
+
+	openedAt, err := time.Parse(time.RFC3339, startedAt)
+	if err != nil {
+		return Chapter{}, false, nil
+	}
+	elapsed := closedAt.Sub(openedAt)
+	if elapsed <= AutoCloseAfter {
+		return ch, false, nil
+	}
+
+	notes := worldNotes(h, ch, startedAt, now, slot)
+	if err := closeChapter(h, ch, now); err != nil {
+		if errors.Is(err, ErrChapterNotOpen) || errors.Is(err, ErrSessionNotOpen) {
+			return Chapter{}, false, nil
+		}
+		return Chapter{}, false, err
+	}
+	if notes != "" {
+		_ = writeWorldNotesScene(h, ch, notes)
+	}
+	_ = markAutoClose(h, ch, startedAt, now, elapsed)
+	_, _ = workshop.EnqueueEditorTask(h, ch.ID)
+	return ch, true, nil
+}
+
+// openChapterForClose читает открытую главу и started_at сессии, к которой она
+// привязана: открытую главу держит последняя открытая сессия — её закрывает тот
+// же closeChapter.
+func openChapterForClose(h *db.Handle) (Chapter, string, bool, error) {
+	var ch Chapter
+	var status, kind, startedAt string
+	err := h.QueryRow(
+		`SELECT c.id, c.day, c.title, c.status, c.kind, s.id, s.started_at
+		 FROM book_chapters c, sessions s
+		 WHERE c.status = ? AND s.ended_at IS NULL
+		 ORDER BY c.id DESC, s.id DESC LIMIT 1`,
+		string(StatusOpen)).Scan(&ch.ID, &ch.Day, &ch.Title, &status, &kind, &ch.SessionID, &startedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Chapter{}, "", false, nil
+	}
+	if err != nil {
+		return Chapter{}, "", false, err
+	}
+	ch.Status = ChapterStatus(status)
+	ch.Kind = ChapterKind(kind)
+	return ch, startedAt, true, nil
+}
+
+// markAutoClose пишет событие-пометку автозакрытия с причиной и временем
+// открытия главы.
+func markAutoClose(h *db.Handle, ch Chapter, startedAt, closedAt string, elapsed time.Duration) error {
+	payload, err := json.Marshal(map[string]any{
+		"chapter_id": ch.ID,
+		"session_id": ch.SessionID,
+		"started_at": startedAt,
+		"closed_at":  closedAt,
+		"hours_open": int64(elapsed / time.Hour),
+		"reason":     string(CloseByLimit),
+	})
+	if err != nil {
+		return err
+	}
+	_, err = h.Exec("events",
+		`INSERT INTO events (day, kind, payload_json, source) VALUES (?, ?, ?, ?)`,
+		ch.Day, AutoCloseEventKind, string(payload), "book")
 	return err
+}
+
+// writeWorldNotesScene вписывает заметки о жизни мира сценой сессии главы: текст
+// главы собирается из журнала сессии, поэтому заметки видны в книге.
+func writeWorldNotesScene(h *db.Handle, ch Chapter, notes string) error {
+	_, err := h.Exec("scenes",
+		`INSERT INTO scenes (session_id, day, status, prose) VALUES (?, ?, ?, ?)`,
+		ch.SessionID, ch.Day, "closed", notes)
+	return err
+}
+
+// worldNotes собирает заметки о жизни мира для автозакрытой главы (CB-03.6):
+// сначала слот Редактора по фактам простоя, при пустом или неудачном ответе —
+// детерминированная сборка из событий. Пробуждение T-07-02 не переиспользуется:
+// это заранее выкованный текст утра, а не заметки о прошедшем времени. Факты
+// простоя всегда собираются кодом: слот получает их готовыми и не считает сам.
+func worldNotes(h *db.Handle, ch Chapter, startedAt, now string, slot Slot) string {
+	facts := worldFacts(h, startedAt)
+	var b strings.Builder
+	b.WriteString("Заметки о жизни мира.\n")
+	b.WriteString("Пока игрока не было, мир жил своей жизнью.\n")
+	for _, f := range facts {
+		b.WriteString(f)
+		b.WriteString("\n")
+	}
+	fallback := strings.TrimSpace(b.String())
+
+	if slot == nil {
+		return fallback
+	}
+	raw, err := slot.Generate(context.Background(), WorldNotesRole, worldNotesPrompt(ch, startedAt, now, facts))
+	if err != nil {
+		return fallback
+	}
+	if text := strings.TrimSpace(raw); text != "" {
+		return text
+	}
+	return fallback
+}
+
+// worldFacts собирает факты простоя из существующих источников: сработавшие
+// отложенные вести, векторы судьбы дальнего круга и вести возврата.
+func worldFacts(h *db.Handle, since string) []string {
+	var facts []string
+
+	rows, err := h.Query(
+		`SELECT kind, created_at FROM deferred_events WHERE status = ? AND created_at >= ? ORDER BY created_at, id`,
+		"fired", since)
+	if err == nil {
+		for rows.Next() {
+			var kind, createdAt string
+			if rows.Scan(&kind, &createdAt) == nil {
+				facts = append(facts, fmt.Sprintf("Отложенная весть «%s» дошла (%s).", kind, createdAt))
+			}
+		}
+		rows.Close()
+	}
+
+	rows, err = h.Query(`SELECT payload_json FROM events WHERE kind = ? ORDER BY id DESC LIMIT 5`, "fate_vector")
+	if err == nil {
+		var raws []string
+		for rows.Next() {
+			var raw string
+			if rows.Scan(&raw) == nil {
+				raws = append(raws, raw)
+			}
+		}
+		rows.Close()
+		// Имена лиц читаются после закрытия курсора: в базе мира одно соединение.
+		for _, raw := range raws {
+			if line := fateFact(h, raw); line != "" {
+				facts = append(facts, line)
+			}
+		}
+	}
+
+	var raw string
+	if err := h.QueryRow(`SELECT payload_json FROM events WHERE kind = ? ORDER BY id DESC LIMIT 1`, "news").Scan(&raw); err == nil {
+		var payload struct {
+			Texts []string `json:"texts"`
+			Text  string   `json:"text"`
+		}
+		if json.Unmarshal([]byte(raw), &payload) == nil {
+			texts := payload.Texts
+			if len(texts) == 0 && payload.Text != "" {
+				texts = []string{payload.Text}
+			}
+			if len(texts) > 0 {
+				facts = append(facts, "Вести возврата: "+strings.Join(texts, " "))
+			}
+		}
+	}
+
+	return facts
+}
+
+// fateFact переводит коммит вектора судьбы в строку заметок: имя лица из пачки
+// мира, положение и домены жизни (достаток, здоровье, связи).
+func fateFact(h *db.Handle, raw string) string {
+	var commit struct {
+		Fate struct {
+			CharacterID int64   `json:"character_id"`
+			Position    string  `json:"position"`
+			Wealth      int64   `json:"wealth"`
+			Health      int64   `json:"health"`
+			Connections []int64 `json:"connections"`
+		} `json:"fate"`
+	}
+	if err := json.Unmarshal([]byte(raw), &commit); err != nil {
+		return ""
+	}
+	if commit.Fate.CharacterID <= 0 {
+		return ""
+	}
+	name := fmt.Sprintf("лицо #%d", commit.Fate.CharacterID)
+	var got string
+	if err := h.QueryRow(`SELECT name FROM characters WHERE id = ?`, commit.Fate.CharacterID).Scan(&got); err == nil && strings.TrimSpace(got) != "" {
+		name = got
+	}
+	position := commit.Fate.Position
+	if position == "" {
+		position = "на месте"
+	}
+	return fmt.Sprintf("Судьба дальнего круга: %s — %s, достаток %d, здоровье %d, связей %d.",
+		name, position, commit.Fate.Wealth, commit.Fate.Health, len(commit.Fate.Connections))
+}
+
+// worldNotesPrompt — запрос заметок к слоту: только факты простоя из журнала
+// мира, без вопросов игроку и обещаний будущих событий.
+func worldNotesPrompt(ch Chapter, startedAt, now string, facts []string) string {
+	data := "фактов простоя нет"
+	if len(facts) > 0 {
+		data = strings.Join(facts, "\n")
+	}
+	return fmt.Sprintf(
+		"Глава %d закрыта автоматически: открыта %s, закрыта %s. Напиши 3–5 предложений заметок о жизни мира за это время: что случилось без участия игрока, как сложились судьбы NPC. Без вопросов игроку и без обещаний будущих событий. Факты журнала мира:\n%s",
+		ch.Day, startedAt, now, data)
 }
 
 // Text собирает текст главы из журнала сессии без правок (шаг 1): ходы

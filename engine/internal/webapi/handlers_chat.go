@@ -22,7 +22,8 @@ import (
 // порциями по WS-топику turn.stream, панель мир/герой/система читается из
 // GET /api/state, сигналы сцены пишутся в scene_signals. Ход коммитится
 // конвейером (писатель core, T-03-05); webapi сам пишет только sessions через
-// book.EnsureSession и scene_signals (точка вызова T-04-06).
+// book.EnsureSession, запускает автозакрытие главы book.AutoClose (CB-03.5) и
+// scene_signals (точка вызова T-04-06).
 
 const (
 	chatTurnPath     = "/api/turn"
@@ -149,7 +150,17 @@ func handleChatTurn(w http.ResponseWriter, r *http.Request) {
 	}
 	defer h.Close()
 
-	sessionID, err := book.EnsureSession(h, nowUTCString())
+	// Автозакрытие главы (CB-03.5): открытая глава старше 20 часов закрывается
+	// до прихода игрока, иначе она осталась бы открытой вечно. Заметки о жизни
+	// мира собираются кодом: слот мастерской на этом шаге не подключён. Сбой
+	// автозакрытия ход не валит.
+	now := nowUTCString()
+	if _, _, err := book.AutoClose(h, now, nil); err != nil && chatLogger != nil {
+		_ = chatLogger.Event("book", "book.autoclose",
+			journal.Field{Key: "error", Value: err.Error()})
+	}
+
+	sessionID, err := book.EnsureSession(h, now)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, codeInternal, "session failed")
 		return
