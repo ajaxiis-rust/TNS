@@ -104,9 +104,9 @@ mechanics-from-chat.md. Статусы сверены с кодом на HEAD `8
 
 ## 3. Открытые работы по маршрутизации провайдеров (код не начат — подтверждено)
 
-- [ ] Э1. Роутер + чат: `internal/providerroute`, `RoutedProseSlot`,
+- [x] Э1. Роутер + чат: `internal/providerroute`, `RoutedProseSlot`,
   `route_chat`, события журнала, `usage.provider`; откат только до первого
-  чанка; 18+ → local.
+  чанка; 18+ → local. (коммит 802a70d, 2026-11-14)
 - [ ] Э2. API и UI маршрутов: `GET/PUT /api/providers/routes`, блок
   «Маршруты», предупреждение о перезапуске; валидация имён + `local`.
 - [ ] Э3. Обработка источников: `RoutedWorkshopSlot`, `workshop.SetSlot` в
