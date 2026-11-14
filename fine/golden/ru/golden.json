@@ -49,19 +49,15 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.3,
-     "anchors": [
-      "вскочить",
-      "замычать"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
      "intensity": 0.35,
      "anchors": [
-      "объявить",
-      "думать"
+      "объявить"
      ]
     },
     "time": {
@@ -149,8 +145,7 @@
      "present": true,
      "intensity": 0.4,
      "anchors": [
-      "выбежать",
-      "вздрогнуть"
+      "выбежать"
      ]
     },
     "speech": {
@@ -158,7 +153,6 @@
      "intensity": 0.45,
      "anchors": [
       "спросить",
-      "думать",
       "сказать"
      ]
     },
@@ -239,18 +233,14 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.3,
-     "anchors": [
-      "встать",
-      "позвонить"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
      "intensity": 0.4,
      "anchors": [
-      "твердить",
       "спросить"
      ]
     },
@@ -321,9 +311,7 @@
      "present": true,
      "intensity": 0.3,
      "anchors": [
-      "зеркало",
-      "комната",
-      "ковёр"
+      "комната"
      ]
     },
     "emotion": {
@@ -335,12 +323,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.3,
-     "anchors": [
-      "разорвать",
-      "кивнуть"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -364,8 +349,7 @@
      "intensity": 0.45,
      "anchors": [
       "барин",
-      "сударь",
-      "присутствие"
+      "сударь"
      ]
     }
    },
@@ -437,12 +421,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.35,
-     "anchors": [
-      "скинуть",
-      "выйти"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -507,12 +488,9 @@
      "anchors": []
     },
     "clothing": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "шляпа",
-      "сюртук"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "nature": {
      "present": false,
@@ -541,8 +519,7 @@
      "present": true,
      "intensity": 0.3,
      "anchors": [
-      "говорить",
-      "статья"
+      "говорить"
      ]
     },
     "time": {
@@ -620,13 +597,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.5,
-     "anchors": [
-      "вбежать",
-      "обнять",
-      "поцеловать"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -692,11 +665,9 @@
      ]
     },
     "clothing": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "шляпа"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "nature": {
      "present": false,
@@ -721,13 +692,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.4,
-     "anchors": [
-      "поцеловать",
-      "закурить",
-      "отворить"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -808,7 +775,6 @@
      "intensity": 0.45,
      "anchors": [
       "комната",
-      "шифоньерка",
       "дом"
      ]
     },
@@ -822,20 +788,15 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.6,
-     "anchors": [
-      "сжаться",
-      "затрястись",
-      "оглядеть"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
      "intensity": 0.3,
      "anchors": [
-      "сказать",
-      "подумать"
+      "сказать"
      ]
     },
     "time": {
@@ -876,7 +837,6 @@
      "intensity": 0.6,
      "anchors": [
       "лицо",
-      "слеза",
       "губы"
      ]
     },
@@ -891,12 +851,9 @@
      "anchors": []
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "шифоньерка",
-      "стул"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "emotion": {
      "present": true,
@@ -911,9 +868,7 @@
      "present": true,
      "intensity": 0.7,
      "anchors": [
-      "вскрикнуть",
-      "захлопнуть",
-      "пошатнуться"
+      "захлопнуть"
      ]
     },
     "speech": {
@@ -926,18 +881,14 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "год"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "дети"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     }
    },
    "characters": [
@@ -1006,13 +957,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.6,
-     "anchors": [
-      "закричать",
-      "встать",
-      "уйти"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -1024,11 +971,9 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "нынче"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "social": {
      "present": true,
@@ -1103,13 +1048,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.4,
-     "anchors": [
-      "надеть",
-      "выйти",
-      "крикнуть"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -1130,8 +1071,7 @@
      "present": true,
      "intensity": 0.3,
      "anchors": [
-      "часовщик",
-      "домашний"
+      "часовщик"
      ]
     }
    },
@@ -1193,11 +1133,9 @@
      "anchors": []
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "дом"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "emotion": {
      "present": true,
@@ -1207,8 +1145,8 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.1,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     },
     "speech": {
@@ -1308,9 +1246,7 @@
      "present": true,
      "intensity": 0.4,
      "anchors": [
-      "войти",
-      "пожать",
-      "сесть"
+      "пожать"
      ]
     },
     "speech": {
@@ -1360,8 +1296,7 @@
      "intensity": 0.5,
      "anchors": [
       "борода",
-      "плечо",
-      "мундир"
+      "плечо"
      ]
     },
     "clothing": {
@@ -1476,11 +1411,9 @@
      "anchors": []
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "кабинет"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "emotion": {
      "present": true,
@@ -1491,16 +1424,14 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.2,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     },
     "speech": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "смеяться"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "time": {
      "present": true,
@@ -1546,8 +1477,7 @@
      "intensity": 0.5,
      "anchors": [
       "палец",
-      "ноготь",
-      "запонка"
+      "ноготь"
      ]
     },
     "clothing": {
@@ -1594,8 +1524,8 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.1,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     },
     "social": {
@@ -1645,16 +1575,14 @@
      "present": true,
      "intensity": 0.35,
      "anchors": [
-      "лицо",
-      "покраснеть"
+      "лицо"
      ]
     },
     "clothing": {
      "present": true,
      "intensity": 0.5,
      "anchors": [
-      "платье",
-      "портной"
+      "платье"
      ]
     },
     "nature": {
@@ -1663,11 +1591,9 @@
      "anchors": []
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "кабинет"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "emotion": {
      "present": true,
@@ -1679,11 +1605,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.3,
-     "anchors": [
-      "покраснеть"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -1695,8 +1619,8 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.1,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     },
     "social": {
@@ -1772,12 +1696,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.3,
-     "anchors": [
-      "выйти",
-      "прокричать"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -1837,9 +1758,7 @@
      "present": true,
      "intensity": 0.5,
      "anchors": [
-      "ножка",
-      "чулок",
-      "шубка"
+      "ножка"
      ]
     },
     "clothing": {
@@ -1873,16 +1792,14 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.1,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     },
     "speech": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "говорить"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "time": {
      "present": true,
@@ -1944,11 +1861,9 @@
    "words": 355,
    "categories": {
     "appearance": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "порт"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "clothing": {
      "present": false,
@@ -1961,11 +1876,9 @@
      "anchors": []
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "кабинет"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "emotion": {
      "present": true,
@@ -1977,17 +1890,14 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.15,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     },
     "speech": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "письмо",
-      "возражение"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "time": {
      "present": true,
@@ -2059,11 +1969,9 @@
      ]
     },
     "clothing": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "очки"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "nature": {
      "present": false,
@@ -2071,11 +1979,9 @@
      "anchors": []
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "кабинет"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "emotion": {
      "present": true,
@@ -2086,11 +1992,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "приехать"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -2147,12 +2051,9 @@
    "words": 397,
    "categories": {
     "appearance": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "бурлак",
-      "очки"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "clothing": {
      "present": false,
@@ -2229,8 +2130,8 @@
    "words": 396,
    "categories": {
     "appearance": {
-     "present": true,
-     "intensity": 0.15,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     },
     "clothing": {
@@ -2239,15 +2140,13 @@
      "anchors": []
     },
     "nature": {
-     "present": true,
-     "intensity": 0.05,
-     "anchors": [
-      "имение"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.05,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     },
     "emotion": {
@@ -2260,11 +2159,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.25,
-     "anchors": [
-      "встать"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -2276,8 +2173,8 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.1,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     },
     "social": {
@@ -2320,11 +2217,9 @@
    "words": 377,
    "categories": {
     "appearance": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "почерк"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "clothing": {
      "present": false,
@@ -2353,20 +2248,15 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.4,
-     "anchors": [
-      "поехать",
-      "слезть",
-      "пойти"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "speech": {
      "present": true,
      "intensity": 0.5,
      "anchors": [
-      "сказать",
-      "прочесть"
+      "сказать"
      ]
     },
     "time": {
@@ -2433,8 +2323,7 @@
      "intensity": 0.4,
      "anchors": [
       "шляпа",
-      "жакетка",
-      "конёк"
+      "жакетка"
      ]
     },
     "nature": {
@@ -2549,11 +2438,9 @@
      ]
     },
     "architecture": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "каток"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "emotion": {
      "present": true,
@@ -2580,13 +2467,13 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.1,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     },
     "social": {
-     "present": true,
-     "intensity": 0.2,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     }
    },
@@ -2624,8 +2511,7 @@
      "present": true,
      "intensity": 0.35,
      "anchors": [
-      "пальто",
-      "конёк"
+      "пальто"
      ]
     },
     "nature": {
@@ -2670,8 +2556,8 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.05,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     },
     "social": {
@@ -2717,11 +2603,9 @@
      ]
     },
     "clothing": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "конёк"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "nature": {
      "present": true,
@@ -2764,13 +2648,13 @@
      ]
     },
     "time": {
-     "present": true,
-     "intensity": 0.05,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     },
     "social": {
-     "present": true,
-     "intensity": 0.2,
+     "present": false,
+     "intensity": 0.0,
      "anchors": []
     }
    },
@@ -2819,11 +2703,9 @@
      ]
     },
     "nature": {
-     "present": true,
-     "intensity": 0.15,
-     "anchors": [
-      "сад"
-     ]
+     "present": false,
+     "intensity": 0.0,
+     "anchors": []
     },
     "architecture": {
      "present": true,
