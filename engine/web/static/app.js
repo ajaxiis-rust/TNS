@@ -126,6 +126,9 @@
     settingsProviderName: "settings-provider-name",
     settingsProviderKey: "settings-provider-key",
     settingsProviderSave: "settings-provider-save",
+    settingsRoutes: "settings-routes",
+    settingsRoutesWarnings: "settings-routes-warnings",
+    settingsRoutesList: "settings-routes-list",
     settingsModels: "settings-models",
     settingsModelsCurrent: "settings-models-current",
     settingsModelsForm: "settings-models-form",
@@ -2060,6 +2063,7 @@
     bindSettingsNav();
     bindChannelExtras();
     bindProviderModels();
+    bindProviderRoutes();
     applyFieldHints(viewSettings);
     renderRoleNameOptions();
 
@@ -2389,11 +2393,24 @@
     });
   }
 
+  // Карточки провайдеров и маршруты читаются вместе: список маршрута показывает
+  // модель и наличие ключа из карточки.
   function loadProvidersData() {
-    apiJSON("/api/providers").then(function (data) {
-      renderSettingsProviders(data.providers || []);
-    }).catch(function () {
-      renderSettingsProviders([]);
+    var providersP = apiJSON("/api/providers").catch(function () {
+      return { providers: [] };
+    });
+    var routesP = apiJSON("/api/providers/routes").catch(function () {
+      return null;
+    });
+    return Promise.all([providersP, routesP]).then(function (res) {
+      var providers = res[0] ? res[0].providers || [] : [];
+      providerRoutesState.providers = providers;
+      renderSettingsProviders(providers);
+      if (res[1]) {
+        providerRoutesState.routes = res[1].routes || {};
+        renderRouteWarnings(res[1].warnings || []);
+      }
+      renderProviderRoutes();
     });
   }
 
@@ -2756,6 +2773,179 @@
         ' · ' + (dict["settings.providers.cost"] || "Стоимость") + ': ' + cost + '</div>' +
         '</div>';
     }).join("");
+  }
+
+  // Задачи маршрутов: подписи и подсказки дублируют i18n.js, порядок — как в
+  // providerroute.Tasks. Внутренние термины в подписи не выносятся.
+  var ROUTE_TASKS = [
+    { id: "chat", label: "settings.routes.chat", text: "Чат",
+      hint: "settings.routes.chat.hint", hintText: "Ответы в игре: каждый запрос — следующий провайдер списка." },
+    { id: "sources", label: "settings.routes.sources", text: "Обработка источников",
+      hint: "settings.routes.sources.hint", hintText: "Разбор и варка книги-источника." },
+    { id: "sources_map", label: "settings.routes.sources_map", text: "Карта книги-источника",
+      hint: "settings.routes.sources_map.hint", hintText: "По местам и временам, выписанным при разборе книги, строится карта книги-источника. Нужна при варке мира по книге, например для фанфика." },
+    { id: "editor", label: "settings.routes.editor", text: "Литературная обработка главы",
+      hint: "settings.routes.editor.hint", hintText: "Правка и дайджест готовой главы." },
+    { id: "scout_real", label: "settings.routes.scout_real", text: "Разведка: реальный мир",
+      hint: "settings.routes.scout_real.hint", hintText: "Походы по реальному миру: земля из справочников эпохи." },
+    { id: "scout_fiction", label: "settings.routes.scout_fiction", text: "Разведка: вымышленный мир",
+      hint: "settings.routes.scout_fiction.hint", hintText: "Походы по вымышленному миру: земля из голоса книги." },
+    { id: "scout_mixed", label: "settings.routes.scout_mixed", text: "Разведка: смешанный мир",
+      hint: "settings.routes.scout_mixed.hint", hintText: "Книжные точки ложатся на реальный холст." }
+  ];
+
+  var providerRoutesState = { routes: {}, providers: [] };
+
+  function routeText(key, fallback) {
+    var dict = window.I18N || {};
+    return typeof dict[key] === "string" && dict[key] ? dict[key] : fallback;
+  }
+
+  // providerRouteLabel — имя провайдера с моделью и наличием ключа; провайдер
+  // без ключа выбрать можно, но он помечен.
+  function providerRouteLabel(name) {
+    if (name === "local") {
+      return "local (:5001)";
+    }
+    var meta = null;
+    providerRoutesState.providers.forEach(function (p) {
+      if (p.name === name) {
+        meta = p;
+      }
+    });
+    var label = meta && meta.label ? meta.label + " — " + name : name;
+    if (meta && meta.model) {
+      label += " · " + meta.model;
+    }
+    if (!meta) {
+      label += " · " + routeText("settings.routes.unknown", "неизвестный провайдер");
+    } else if (!meta.key_set) {
+      label += " · " + routeText("settings.routes.no_key", "без ключа");
+    }
+    return label;
+  }
+
+  function routeOptions(selected) {
+    var names = ["local"];
+    providerRoutesState.providers.forEach(function (p) {
+      if (names.indexOf(p.name) < 0) {
+        names.push(p.name);
+      }
+    });
+    return names.filter(function (name) {
+      return selected.indexOf(name) < 0;
+    }).map(function (name) {
+      return '<option value="' + escapeHTML(name) + '">' + escapeHTML(providerRouteLabel(name)) + "</option>";
+    }).join("");
+  }
+
+  function renderProviderRoutes() {
+    var box = byId(IDS.settingsRoutesList);
+    if (!box) {
+      return;
+    }
+    box.innerHTML = ROUTE_TASKS.map(function (task) {
+      var list = providerRoutesState.routes[task.id] || [];
+      var items = list.map(function (name, index) {
+        return '<li class="settings-route__item">' +
+          '<span class="settings-route__name">' + escapeHTML(providerRouteLabel(name)) + '</span>' +
+          '<span class="settings-route__actions">' +
+          '<button type="button" class="btn btn--ghost" data-route-action="up" data-route-task="' +
+          escapeHTML(task.id) + '" data-route-index="' + index + '"' + (index === 0 ? " disabled" : "") +
+          ' title="' + escapeHTML(routeText("settings.routes.up", "Выше")) + '">↑</button>' +
+          '<button type="button" class="btn btn--ghost" data-route-action="down" data-route-task="' +
+          escapeHTML(task.id) + '" data-route-index="' + index + '"' + (index === list.length - 1 ? " disabled" : "") +
+          ' title="' + escapeHTML(routeText("settings.routes.down", "Ниже")) + '">↓</button>' +
+          '<button type="button" class="btn btn--ghost" data-route-action="remove" data-route-task="' +
+          escapeHTML(task.id) + '" data-route-index="' + index + '"' +
+          ' title="' + escapeHTML(routeText("settings.routes.remove", "Убрать")) + '">×</button>' +
+          "</span></li>";
+      }).join("");
+      var empty = list.length === 0
+        ? '<p class="settings-route__empty">' + escapeHTML(routeText("settings.routes.empty", "не задан — работает запасной путь")) + "</p>"
+        : "";
+      return '<div class="settings-route" data-route-task="' + escapeHTML(task.id) + '">' +
+        '<div class="settings-route__head"><b>' + escapeHTML(routeText(task.label, task.text)) + "</b></div>" +
+        '<p class="settings-route__hint">' + escapeHTML(routeText(task.hint, task.hintText)) + "</p>" +
+        empty +
+        (list.length ? '<ol class="settings-route__items">' + items + "</ol>" : "") +
+        '<select class="settings-routes__add" data-route-add="' + escapeHTML(task.id) + '">' +
+        '<option value="">' + escapeHTML(routeText("settings.routes.add", "— добавить провайдера —")) + "</option>" +
+        routeOptions(list) +
+        "</select></div>";
+    }).join("");
+  }
+
+  function renderRouteWarnings(warnings) {
+    var box = byId(IDS.settingsRoutesWarnings);
+    if (!box) {
+      return;
+    }
+    if (!warnings || warnings.length === 0) {
+      box.hidden = true;
+      box.textContent = "";
+      return;
+    }
+    box.hidden = false;
+    box.textContent = warnings.join("; ");
+  }
+
+  function providerRouteList(task) {
+    return (providerRoutesState.routes[task] || []).slice();
+  }
+
+  function saveProviderRoute(task, providers) {
+    return putJSON("/api/providers/routes", { task: task, providers: providers }).then(function () {
+      providerRoutesState.routes[task] = providers;
+      renderProviderRoutes();
+      toast(routeText("settings.routes.saved", "Маршрут сохранён. Применится после перезапуска движка."), true);
+    }).catch(function (err) {
+      toast((err && err.message) || String(err), false);
+    });
+  }
+
+  // bindProviderRoutes — ↑/↓/× и добавление из списка сразу пишут маршрут
+  // задачи в settings.toml (restart_required отвечает сервер).
+  function bindProviderRoutes() {
+    var box = byId(IDS.settingsRoutes);
+    if (!box) {
+      return;
+    }
+    box.addEventListener("click", function (event) {
+      var btn = event.target.closest("button[data-route-action]");
+      if (!btn) {
+        return;
+      }
+      var task = btn.getAttribute("data-route-task");
+      var index = parseInt(btn.getAttribute("data-route-index"), 10);
+      var action = btn.getAttribute("data-route-action");
+      var list = providerRouteList(task);
+      if (action === "remove") {
+        list.splice(index, 1);
+      } else if (action === "up" && index > 0) {
+        list.splice(index - 1, 0, list.splice(index, 1)[0]);
+      } else if (action === "down" && index < list.length - 1) {
+        list.splice(index + 1, 0, list.splice(index, 1)[0]);
+      } else {
+        return;
+      }
+      saveProviderRoute(task, list);
+    });
+    box.addEventListener("change", function (event) {
+      var select = event.target.closest("select[data-route-add]");
+      if (!select || !select.value) {
+        return;
+      }
+      var task = select.getAttribute("data-route-add");
+      var list = providerRouteList(task);
+      if (list.indexOf(select.value) >= 0) {
+        toast(routeText("settings.routes.duplicate", "Этот провайдер уже в маршруте."), false);
+        select.value = "";
+        return;
+      }
+      list.push(select.value);
+      saveProviderRoute(task, list);
+    });
   }
 
   // bindProviderModels — «Список» читает модели у провайдера по сохранённому

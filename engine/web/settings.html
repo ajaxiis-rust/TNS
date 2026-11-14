@@ -251,6 +251,12 @@
   <section class="settings-section" id="settings-section-providers" aria-label="Провайдеры">
     <h2 data-i18n="settings.providers">Провайдеры</h2>
     <p class="settings-readonly" data-i18n="settings.providers.counters">Внешние слоты: ключ, модель, лимит вызовов; рядом — остаток лимита и стоимость по тарифу из журнала вызовов. Без данных поле помечается «недоступно».</p>
+    <div class="settings-routes" id="settings-routes">
+      <h3 data-i18n="settings.routes.title">Маршруты</h3>
+      <p class="settings-routes__hint" data-i18n="settings.routes.hint">Запросы идут по кругу; при ошибке — следующий. Изменения применяются после перезапуска движка.</p>
+      <p class="settings-routes__warnings" id="settings-routes-warnings" hidden></p>
+      <div class="settings-routes__list" id="settings-routes-list"></div>
+    </div>
     <div class="settings-catalog">
       <label class="settings-field">
         <span data-i18n="settings.providers.catalog.title">Быстрое добавление</span>

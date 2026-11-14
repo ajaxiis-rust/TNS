@@ -59,6 +59,8 @@
 | GET | `/api/first-run` | — | `{"complete":bool,"steps":{"0":{"done":bool,"at":"…"},…},"station":{"llama_server":{"found":bool,"path":"…","version":"…","source":"…"},"gen_port_free":bool,"embed_port_free":bool,"embed_model":"…","children":[{"name","port","ready"}],"ram_gb":N},"models":[{"role","model_ref","source","file","size","status","progress","integrity_ok","has_previous"}]}` — состояние мастера первого запуска, проверка станции с живыми детьми и карточки установленных моделей | `method_not_allowed` |
 | PUT | `/api/first-run/step` | `{"step":"0|1|2|3|4"}` | `{"complete":bool,"steps":{…},"station":{…},"models":[…]}` — отметка шага пройденным, идемпотентно; шаг 4 завершает мастера | `method_not_allowed`, `bad_request`, `internal` |
 | GET | `/api/providers` | — | `{"providers":[{name,label,key_set,model,price,price_note,quota,cost_millis}]}` — внешние слоты из `providers.toml`: ключ, выбранная модель, справочная цена за 1M, остаток лимита вызовов («недоступно» без лимита), стоимость по тарифу из журнала вызовов | `method_not_allowed` |
+| GET | `/api/providers/routes` | — | `{"routes":{"chat":[…],"sources":[…],"sources_map":[…],"editor":[…],"scout_real":[],"scout_fiction":[],"scout_mixed":[]},"warnings":["…"]}` — маршруты задач из `settings.toml` `route_<задача>` иначе `config.yaml` `routes.<задача>`; предупреждения — неизвестное имя, `local` не последним | `method_not_allowed`, `internal` |
+| PUT | `/api/providers/routes` | `{"task":"sources","providers":["mimo","qwen"]}` | `{"status":"ok","task":"…","providers":[…],"restart_required":true}` — имена проверяются по `providers.toml`, повторы и `local` не последним отклоняются, маршрут пишется в `settings.toml`; применяется после перезапуска ядра | `method_not_allowed`, `bad_request`, `internal` |
 | GET | `/api/providers/models` | query `provider=<имя из providers.toml>` | `{"provider":"…","model":"…","models":[{"id","display_name","input_tokens","output_tokens","price":{"input_usd_per_m","output_usd_per_m","note"}}]}` — список моделей провайдера: курируемый `models = […]` из файла без сети, иначе Gemini ListModels или OpenAI-совместимый `/models` по сохранённому ключу; цена — из `providers.toml` | `method_not_allowed`, `bad_request`, `conflict` (ключ не задан), `internal` |
 | PUT | `/api/providers/model` | `{"provider":"deepseek","model":"deepseek-chat"}` | `{"status":"ok","provider":"…","model":"…","price":{…},"restart_required":true}` — выбранная модель пишется в `settings.toml` рядом с ключом; имя модели может содержать `/`, `:`, `@`; применяется после перезапуска ядра | `method_not_allowed`, `bad_request`, `internal` |
 | GET | `/api/monitor` | — | `{"slots":[…],"roles":[…],"machines":[…],"degradations":N,"journal_tail":[…]}` — пять блоков мониторинга, только чтение; `roles` считаются из журнала вызовов `state/usage.jsonl` (роль, ошибки, время, среднее), `limit_remaining` — остаток лимита из заголовков ответа провайдера | `method_not_allowed` |
@@ -120,6 +122,8 @@ POST /api/settings/llama/install
 GET /api/first-run
 PUT /api/first-run/step
 GET /api/providers
+GET /api/providers/routes
+PUT /api/providers/routes
 GET /api/providers/models
 PUT /api/providers/model
 GET /api/monitor

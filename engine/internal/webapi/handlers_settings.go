@@ -28,6 +28,7 @@ import (
 	"tns65/internal/models"
 	"tns65/internal/paganel"
 	"tns65/internal/providercfg"
+	"tns65/internal/providerroute"
 	"tns65/internal/supervisor"
 	web "tns65/web"
 )
@@ -50,6 +51,7 @@ const (
 	settingsModelsAdoptPath    = "/api/settings/models/adopt"
 	settingsModelsStatusPath   = "/api/settings/models/status"
 	settingsModelsRollbackPath = "/api/settings/models/rollback"
+	settingsRoutesPath         = "/api/providers/routes"
 )
 
 // embeddingDimension — размерность эмбеддинга BGE-M3 (D-16, MD-03.2).
@@ -449,6 +451,140 @@ func buildSettingsPresets(keys map[string]string) ([]settingsPreset, []settingsP
 		})
 	}
 	return presets, providers
+}
+
+// providerRoutesResponse — GET /api/providers/routes: маршрут каждой задачи в
+// порядке интерфейса и предупреждения о сохранённых значениях, которые ядро на
+// старте отбросит или переставит (неизвестный провайдер, local не последним).
+type providerRoutesResponse struct {
+	Routes   map[string][]string `json:"routes"`
+	Warnings []string            `json:"warnings"`
+}
+
+// taskRoutesSnapshot читает сохранённые маршруты: settings.toml route_<задача>
+// главнее config.yaml routes.<задача> (providerroute.LoadSettings). Список
+// отдаётся как записан, чтобы игрок видел и снял негодное имя; предупреждения
+// объясняют, что с ним сделает старт.
+func taskRoutesSnapshot() (map[string][]string, []string, error) {
+	cfg, err := providerroute.LoadSettings(settingsConfigPath, settingsTOMLPath)
+	if err != nil {
+		return nil, nil, err
+	}
+	cat := readProviderCatalog(providersTOMLPath)
+	routes := make(map[string][]string, len(providerroute.Tasks()))
+	warnings := []string{}
+	for _, task := range providerroute.Tasks() {
+		list := make([]string, 0, len(cfg.Routes[task]))
+		localSeen, localLast := false, true
+		for _, name := range cfg.Routes[task] {
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			if name == providerroute.LocalProvider {
+				localSeen = true
+			} else {
+				if localSeen {
+					localLast = false
+				}
+				if _, ok := cat.Provider(name); !ok {
+					warnings = append(warnings, fmt.Sprintf("%s: провайдер %q не найден в реестре", task, name))
+				}
+			}
+			list = append(list, name)
+		}
+		if localSeen && !localLast {
+			warnings = append(warnings, fmt.Sprintf("%s: local должен быть последним", task))
+		}
+		routes[string(task)] = list
+	}
+	return routes, warnings, nil
+}
+
+// handleProviderRoutesGet — GET /api/providers/routes: списки провайдеров на
+// каждую задачу и предупреждения. Только чтение.
+func handleProviderRoutesGet(w http.ResponseWriter, _ *http.Request) {
+	routes, warnings, err := taskRoutesSnapshot()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, codeInternal, "routes unavailable")
+		return
+	}
+	writeJSON(w, http.StatusOK, providerRoutesResponse{Routes: routes, Warnings: warnings})
+}
+
+// routeTaskByName — задача маршрута по имени из тела запроса.
+func routeTaskByName(name string) (providerroute.Task, bool) {
+	name = strings.TrimSpace(name)
+	for _, task := range providerroute.Tasks() {
+		if string(task) == name {
+			return task, true
+		}
+	}
+	return "", false
+}
+
+// validateRoute проверяет список перед записью: имена только из реестра,
+// повторов нет, local — последним.
+func validateRoute(cat providercfg.Config, raw []string) ([]string, error) {
+	list := make([]string, 0, len(raw))
+	seen := make(map[string]bool, len(raw))
+	localIndex := -1
+	for _, item := range raw {
+		name := strings.TrimSpace(item)
+		if name == "" {
+			continue
+		}
+		if seen[name] {
+			return nil, fmt.Errorf("duplicate provider %q", name)
+		}
+		seen[name] = true
+		if name == providerroute.LocalProvider {
+			localIndex = len(list)
+		} else if _, ok := cat.Provider(name); !ok {
+			return nil, fmt.Errorf("unknown provider %q", name)
+		}
+		list = append(list, name)
+	}
+	if localIndex >= 0 && localIndex != len(list)-1 {
+		return nil, errors.New("local must be last")
+	}
+	return list, nil
+}
+
+// handleProviderRoutesPut — PUT /api/providers/routes: маршрут задачи пишется в
+// settings.toml ключом route_<задача>. Новый маршрут читается ядром на старте,
+// поэтому ответ помечает перезапуск.
+func handleProviderRoutesPut(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Task      string   `json:"task"`
+		Providers []string `json:"providers"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "bad routes body")
+		return
+	}
+	task, ok := routeTaskByName(req.Task)
+	if !ok {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "unknown route task")
+		return
+	}
+	list, err := validateRoute(readProviderCatalog(providersTOMLPath), req.Providers)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, codeBadRequest, err.Error())
+		return
+	}
+	keys := readSettingsKeys(settingsTOMLPath)
+	keys["route_"+string(task)] = strings.Join(list, ", ")
+	if err := writeSettingsKeys(settingsTOMLPath, keys); err != nil {
+		writeError(w, http.StatusInternalServerError, codeInternal, "settings write failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":           "ok",
+		"task":             string(task),
+		"providers":        list,
+		"restart_required": true,
+	})
 }
 
 // handleSettingsBindings — PUT /api/settings/bindings: привязки слотов пишутся в
