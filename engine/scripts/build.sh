@@ -66,6 +66,14 @@ REQUIRED_PACK_FILES=(
     detectors_time.json
     lexicon_intents.jsonl
     manifest.json
+    nature.json             # словари разбора книги (W-22)
+    architecture.json
+    social.json
+    action_dramatic.json
+    erotic.json
+    violence.json
+    battle.json
+    styles.json             # канон ярлыков стиля (W-27.2)
 )
 
 echo "verifying packs/ru"

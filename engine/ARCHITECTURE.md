@@ -108,3 +108,22 @@ var ErrDeniedHost = errors.New("netgate: denied host")
 
 Настройки станка — раскладка по `config.yaml`, `settings.toml`, `world_meta` и настройка Telegram/туннеля — описаны в `DOCS/10-STATION-SETTINGS.md` (от корня репозитория).
 
+## 7. Состав языкового пакета packs/ru
+
+| Файл | Назначение |
+| --- | --- |
+| manifest.json | манифест пака: лемматизатор и sha256 пинимых файлов |
+| stoplist.txt | базовый словарь запретных лемм цензора |
+| stoplist_16.txt | усилитель словаря цензора для рейтинга 16+ |
+| refusals.txt | фразы-маркеры отказов LLM |
+| descriptions.json | оси описаний внешности, одежды и характера (W-22.2) |
+| detectors_mood.json | словари эмоций (W-22.2) |
+| detectors_time.json | маркеры времени (W-22.2) |
+| lexicon_intents.jsonl | лексикон интентов хода |
+| nature.json, architecture.json, social.json, action_dramatic.json, erotic.json, violence.json, battle.json | словари категорий разбора книги: ключ категории → леммы с весом 1–3 (W-22.1) |
+| styles.json | канон ярлыков стиля и пороги их признаков (W-27.2) |
+
+Полнота поставки: каждый файл пака перечислен в `REQUIRED_PACK_FILES` сборки
+`scripts/build.sh`, пинимые файлы сверяются по sha256 из `manifest.json`.
+
+

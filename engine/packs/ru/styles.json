@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "features": [
+    "avg_sentence_len",
+    "dialogue_share",
+    "exclaim_density",
+    "question_density",
+    "ellipsis_density",
+    "lexical_diversity"
+  ],
+  "labels": [
+    {
+      "name": "описательный",
+      "min": {
+        "avg_sentence_len": 12
+      },
+      "max": {
+        "dialogue_share": 0.15
+      }
+    },
+    {
+      "name": "динамичный",
+      "min": {
+        "exclaim_density": 0.3
+      },
+      "max": {
+        "avg_sentence_len": 10
+      }
+    },
+    {
+      "name": "диалоговый",
+      "min": {
+        "dialogue_share": 0.4
+      }
+    },
+    {
+      "name": "лирический",
+      "min": {
+        "ellipsis_density": 0.2
+      },
+      "max": {
+        "lexical_diversity": 0.55
+      }
+    },
+    {
+      "name": "сухой",
+      "max": {
+        "exclaim_density": 0.05,
+        "question_density": 0.05
+      }
+    }
+  ]
+}
