@@ -290,10 +290,10 @@ func (b *builder) createWorldDB() error {
 	return createDB(b.worldDB, "world", "shared")
 }
 
-// createLiteraryDB — литературная база literary.db по схеме literary
-// (shared-векторы к литературной не подключены, D-19.2).
+// createLiteraryDB — литературная база literary.db по схеме literary и общей
+// миграции векторов shared (D-20.2, T-14-02).
 func (b *builder) createLiteraryDB() error {
-	return createDB(b.literaryDB, "literary")
+	return createDB(b.literaryDB, "literary", "shared")
 }
 
 // createDB ставит схему мигратором и закрывает служебный хэндл записи.
