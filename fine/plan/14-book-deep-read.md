@@ -263,6 +263,8 @@ CREATE TABLE dict_staging (
 - **Документы:** `engine/config.yaml` (дефолты — данные), `engine/ARCHITECTURE.md` (пакет deepread).
 - **Исполнитель:** код.
 
+> ✅ закрыт 2026-11-14 — коммит cbc66c5 (salience: IDF, полосы конфига, якоря, book_chunk_tag идемпотентно; ревью 1/3), LEDGER 10f5257.
+
 ---
 
 ### T-14-06. Золотые отрывки: гейт калибровки
