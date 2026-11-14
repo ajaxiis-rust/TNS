@@ -30,8 +30,9 @@ const (
 
 // commitTurn фиксирует ход одной транзакцией: turns, scenes, events, vectors,
 // token_bindings, character_state — либо все, либо ни одной (T-03-05, шаг 1).
-// Неподтверждённый смысл записей не оставляет; слеш-команда и подтверждённый ход
-// коммитятся.
+// Состояние героя пишет writeHeroPosition: место рамки и настроение, а при сдвиге
+// события — новые x/y (T-03-15). Неподтверждённый смысл записей не оставляет;
+// слеш-команда и подтверждённый ход коммитятся.
 // failTable — тестовый крючок: имя таблицы, после записи которой вернуть ошибку
 // для проверки отката; пусто в проде.
 func commitTurn(st *TurnState, h *db.Handle, failTable string) error {
@@ -76,7 +77,7 @@ func commitTurn(st *TurnState, h *db.Handle, failTable string) error {
 			return fmt.Errorf("turn: инъекция отказа на таблице token_bindings")
 		}
 
-		if err := writeHeroState(tx, st); err != nil {
+		if err := writeHeroPosition(tx, st); err != nil {
 			return err
 		}
 		if failTable == "character_state" {
@@ -197,14 +198,4 @@ func writeBindings(tx *db.Tx, st *TurnState, sceneID int64) error {
 		}
 	}
 	return nil
-}
-
-// writeHeroState обновляет состояние героя: место из рамки сцены и настроение
-// реплики; строку героя заводит, если её ещё нет.
-func writeHeroState(tx *db.Tx, st *TurnState) error {
-	_, err := tx.Exec("character_state",
-		`INSERT INTO character_state (character_id, place_id, mood) VALUES (?, ?, ?)
-		 ON CONFLICT(character_id) DO UPDATE SET place_id = excluded.place_id, mood = excluded.mood`,
-		heroCharacterID, st.Prepath.Frame.HeroPlaceID, st.Prepath.Mood)
-	return err
 }

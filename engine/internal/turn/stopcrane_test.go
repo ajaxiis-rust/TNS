@@ -174,6 +174,59 @@ func TestStopCrane(t *testing.T) {
 	})
 }
 
+// TestCommitTurnWritesPosition — единственный коммит хода (FIX-2): commitTurn
+// пишет и ответ хода, и положение героя — при сдвиге события в character_state
+// ложатся новые x/y; инъекция отказа на character_state откатывает весь ход.
+func TestCommitTurnWritesPosition(t *testing.T) {
+	whole, _ := constEmbed{}.Embed(context.Background(), "x")
+	confirmed := func() *TurnState {
+		return &TurnState{
+			Input:    TurnInput{SessionID: 7, PlayerText: "идти ехать плыть", At: time.Now()},
+			Reply:    fallbackReply,
+			Path:     "fallback",
+			Confirm:  Confirmation{Decision: DecisionConfirmed},
+			Prepath:  Prepath{Frame: SceneFrame{HeroPlaceID: 0}, LexiconLoaded: true},
+			Position: HeroPosition{Shifted: true, X: -30, Y: 20},
+			Embedder: constEmbed{},
+			Cut:      Cut{Whole: whole},
+		}
+	}
+
+	t.Run("сдвиг ложится в character_state", func(t *testing.T) {
+		p, _ := newTestPipeline(t)
+
+		if err := commitTurn(confirmed(), p.DB, ""); err != nil {
+			t.Fatalf("commitTurn: %v", err)
+		}
+
+		if n := tableCount(t, p, "turns"); n != 1 {
+			t.Fatalf("строк turns = %d, want 1", n)
+		}
+		var x, y float64
+		if err := p.DB.QueryRow(`SELECT x, y FROM character_state WHERE character_id = ?`, heroCharacterID).
+			Scan(&x, &y); err != nil {
+			t.Fatalf("character_state: %v", err)
+		}
+		if x != -30 || y != 20 {
+			t.Fatalf("x, y = %v, %v, want -30, 20", x, y)
+		}
+	})
+
+	t.Run("отказ на character_state откатывает ход", func(t *testing.T) {
+		p, _ := newTestPipeline(t)
+
+		if err := commitTurn(confirmed(), p.DB, "character_state"); err == nil {
+			t.Fatal("отказ на character_state не вернул ошибку")
+		}
+
+		for _, table := range []string{"turns", "scenes", "character_state"} {
+			if n := tableCount(t, p, table); n != 0 {
+				t.Fatalf("%s: %d строк после отката, want 0", table, n)
+			}
+		}
+	})
+}
+
 // TestSelectorTurns — Селектор записывает решение и рекомендацию Пилы в turns
 // (T-03-09, шаг 2, «Проверка»): поля saw_recommendation и selector_decision
 // заполнены на коммите, при конфликтной рекомендации исполняется решение

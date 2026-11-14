@@ -656,7 +656,7 @@ func (*commitStage) Name() string { return "commit" }
 
 func (s *commitStage) Run(_ context.Context, st *TurnState) error {
 	st.LatencyMS = time.Since(st.StartedAt).Milliseconds()
-	if err := commitTurnPosition(st, s.db, s.FailTable); err != nil {
+	if err := commitTurn(st, s.db, s.FailTable); err != nil {
 		return err
 	}
 	if s.db == nil {

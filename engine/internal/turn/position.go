@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"math"
 
 	"tns65/internal/db"
@@ -116,62 +115,6 @@ func writeHeroPosition(tx *db.Tx, st *TurnState) error {
 		 ON CONFLICT(character_id) DO UPDATE SET place_id = excluded.place_id, mood = excluded.mood`,
 		heroCharacterID, st.Prepath.Frame.HeroPlaceID, st.Prepath.Mood)
 	return err
-}
-
-// commitTurnPosition — коммит хода с положением героя (T-03-15): та же единая
-// транзакция, что и commitTurn (T-03-05), но состояние героя пишет
-// writeHeroPosition — при сдвиге события новые x/y ложатся в character_state
-// вместе с ответом хода.
-func commitTurnPosition(st *TurnState, h *db.Handle, failTable string) error {
-	if h == nil || !shouldCommit(st) {
-		return nil
-	}
-	return h.Tx(db.WriterCore, func(tx *db.Tx) error {
-		turnID, err := writeTurn(tx, st)
-		if err != nil {
-			return err
-		}
-		if failTable == "turns" {
-			return fmt.Errorf("turn: инъекция отказа на таблице turns")
-		}
-
-		sceneID, err := writeScene(tx, st, turnID)
-		if err != nil {
-			return err
-		}
-		if failTable == "scenes" {
-			return fmt.Errorf("turn: инъекция отказа на таблице scenes")
-		}
-
-		if err := writeTurnEvent(tx, turnID); err != nil {
-			return err
-		}
-		if failTable == "events" {
-			return fmt.Errorf("turn: инъекция отказа на таблице events")
-		}
-
-		if err := writeVectors(tx, st, turnID); err != nil {
-			return err
-		}
-		if failTable == "vectors" {
-			return fmt.Errorf("turn: инъекция отказа на таблице vectors")
-		}
-
-		if err := writeBindings(tx, st, sceneID); err != nil {
-			return err
-		}
-		if failTable == "token_bindings" {
-			return fmt.Errorf("turn: инъекция отказа на таблице token_bindings")
-		}
-
-		if err := writeHeroPosition(tx, st); err != nil {
-			return err
-		}
-		if failTable == "character_state" {
-			return fmt.Errorf("turn: инъекция отказа на таблице character_state")
-		}
-		return nil
-	})
 }
 
 // nearEdge сообщает, близко ли положение героя к краю известной земли: вокруг
