@@ -590,9 +590,8 @@
     },
     "action_dramatic": {
      "present": true,
-     "intensity": 0.5,
+     "intensity": 0.65,
      "anchors": [
-      "обнять",
       "унести",
       "схватиться"
      ]
@@ -601,8 +600,7 @@
      "present": true,
      "intensity": 0.55,
      "anchors": [
-      "прошептать",
-      "стонать"
+      "прошептать"
      ]
     },
     "time": {
@@ -625,7 +623,8 @@
      "anchors": [
       "поцелуй",
       "обнять",
-      "кровать"
+      "кровать",
+      "стонать"
      ]
     },
     "violence": {
@@ -698,12 +697,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.55,
-     "anchors": [
-      "стегать",
-      "изъесть"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "speech": {
      "present": true,
