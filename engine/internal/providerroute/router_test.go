@@ -194,18 +194,8 @@ func TestRouterRotation(t *testing.T) {
 		t.Fatalf("ProviderName = %q, ожидалось beta (поле provider в usage.jsonl)", slot.ProviderName())
 	}
 
-	rotates := eventsOf(readJournal(t, logPath), journal.EventProviderRotate)
-	if len(rotates) != 2 {
-		t.Fatalf("событий provider.rotate = %d, ожидалось 2", len(rotates))
-	}
-	if rotates[0].field("provider") != "alpha" || rotates[0].field("index") != "0" {
-		t.Fatalf("первая ротация = %+v, ожидались alpha/0", rotates[0])
-	}
-	if rotates[1].field("provider") != "beta" || rotates[1].field("index") != "1" {
-		t.Fatalf("вторая ротация = %+v, ожидались beta/1", rotates[1])
-	}
-	if rotates[0].field("task") != "chat" {
-		t.Fatalf("задача в ротации = %q, ожидалась chat", rotates[0].field("task"))
+	if rotates := eventsOf(readJournal(t, logPath), journal.EventProviderRotate); len(rotates) != 0 {
+		t.Fatalf("события provider.rotate = %+v, ожидалось пусто: выбор провайдера идёт в usage.jsonl (DOC-6)", rotates)
 	}
 }
 
