@@ -94,6 +94,9 @@ type TurnState struct {
 	// Farewell — сцена прощания выдана: здоровье героя упало до порога смерти
 	// (T-03-19, LT-16.7). До порога — false, смерть не навязывается.
 	Farewell bool
+	// Feedback — план хода по сигналам игрока о последних сценах (W-04.3/4):
+	// дизлайк подряд даёт регенерацию или откат к сырому ходу игрока.
+	Feedback FeedbackPlan
 }
 
 // fallbackReply — нейтральная запись fallback из банка (T-03-01, шаг 5): до путей
@@ -125,6 +128,7 @@ func (p *Pipeline) stages() []Stage {
 		&compositionStage{lit: p.LitDB, world: p.DriftDB, logger: p.Logger},
 		&confirmStage{configPath: "config.yaml"},
 		&selectStage{weaver: p.Weaver, bank: shuttle},
+		&feedbackStage{db: p.DB, logger: p.Logger},
 		&executeStage{weaver: p.Weaver, bank: shuttle, logger: p.Logger},
 		&timejumpStage{db: p.DB},
 		&safetyStage{},
@@ -531,6 +535,12 @@ func (s *executeStage) Run(ctx context.Context, st *TurnState) error {
 		st.Reply = reaskReply
 		return nil
 	}
+	// Второй дизлайк подряд — откат к сырому ходу игрока (W-04.3/4): сцена не
+	// генерируется, второй отказ возвращает ход игрока и останавливает движок.
+	if st.Feedback.RollbackReady() {
+		st.Reply = st.Feedback.Rollback
+		return nil
+	}
 	// Путь Ткача (T-03-08): генерация прозы со стримингом и порогом тишины.
 	if st.Path == pathWeaver {
 		reply, degraded := s.weaverReply(ctx, st)
@@ -555,7 +565,13 @@ func (s *executeStage) Run(ctx context.Context, st *TurnState) error {
 	}
 	// Путь Челнока (T-03-07): запись из банка рутины по тегам сцены.
 	if s.bank != nil {
-		if rec, err := s.bank.Pick(sceneTags(st)); err == nil {
+		// Мягкая регенерация на рутине (W-04.3/4): тег перевыбора меняет ключ
+		// окна повторяемости — банк выбирает запись заново, слот не вызывается.
+		tags := sceneTags(st)
+		if st.Feedback.Regenerating() {
+			tags = append(tags, feedbackTag)
+		}
+		if rec, err := s.bank.Pick(tags); err == nil {
 			st.Reply = rec.Text
 			// Положительная ветка — живой ответ модели — не вошла в ход и
 			// становится кандидатом в оседание (T-03-10, шаги 2–3).
@@ -581,6 +597,11 @@ func (s *executeStage) weaverReply(ctx context.Context, st *TurnState) (string, 
 	instruction := models.WeaverInstruction
 	if guide := compositionGuide(st.Composition); guide != "" {
 		instruction += "\n" + guide
+	}
+	// Мягкая регенерация отклонённой сцены (W-04.3/4): новый промпт с причиной
+	// отказа и требованием другого хода.
+	if regen := st.Feedback.regenerationInstruction(); regen != "" {
+		instruction += "\n" + regen
 	}
 	prompt := models.BuildPrompt(st.Prepath.Prompt, instruction)
 	if models.HasReplacementTokens(prompt) {

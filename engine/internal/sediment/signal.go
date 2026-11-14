@@ -59,6 +59,40 @@ func SceneSignals(h *db.Handle, sceneID int64) ([]Signal, error) {
 	return signals, nil
 }
 
+// Уровни эскалации дизлайка подряд (W-04.3/4, DOCS/03-LIVE-TURN.md §2.8):
+// первый отказ — мягкая регенерация сцены, второй — откат к сырому ходу игрока.
+const (
+	EscalationNone     = 0 // отказов подряд нет.
+	EscalationSoft     = 1 // мягкая регенерация последней сцены.
+	EscalationRollback = 2 // откат к сырому ходу игрока.
+)
+
+// DislikeStreak — число дизлайков подряд по последним сигналам сцен от свежей к
+// ранней: серию обрывают лайк и отсутствие сигнала.
+func DislikeStreak(latest []SignalKind) int {
+	streak := 0
+	for _, kind := range latest {
+		if kind != SignalDislike {
+			break
+		}
+		streak++
+	}
+	return streak
+}
+
+// Escalation — уровень эскалации по числу дизлайков подряд: выше
+// EscalationRollback не растёт — второй отказ останавливает навязчивость.
+func Escalation(streak int) int {
+	switch {
+	case streak <= EscalationNone:
+		return EscalationNone
+	case streak == EscalationSoft:
+		return EscalationSoft
+	default:
+		return EscalationRollback
+	}
+}
+
 // SignalGate — отбор сцены по сигналам игрока (T-04-06, шаг 1): like поднимает
 // приоритет заказа оседания в очереди на likePriorityBoost, dislike отклоняет
 // сцену до очистки. Возвращает приоритет заказа; при дизлайке — ErrSceneDisliked.
