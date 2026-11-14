@@ -107,8 +107,8 @@ mechanics-from-chat.md. Статусы сверены с кодом на HEAD `8
 - [x] Э1. Роутер + чат: `internal/providerroute`, `RoutedProseSlot`,
   `route_chat`, события журнала, `usage.provider`; откат только до первого
   чанка; 18+ → local. (коммит 802a70d, 2026-11-14)
-- [ ] Э2. API и UI маршрутов: `GET/PUT /api/providers/routes`, блок
-  «Маршруты», предупреждение о перезапуске; валидация имён + `local`.
+- [x] Э2. API и UI маршрутов: `GET/PUT /api/providers/routes`, блок
+  «Маршруты», предупреждение о перезапуске; валидация имён + `local`. (коммит 8f3c806, 2026-11-14)
 - [ ] Э3. Обработка источников: `RoutedWorkshopSlot`, `workshop.SetSlot` в
   `cmd/tns65/main.go` (закрывает проводку слота мастерской — остаток фазы
   P4); предварительно решить зависимость от фазы P13 (см. §1).
