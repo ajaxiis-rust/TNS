@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"time"
+
+	"tns65/internal/models"
 )
 
 // Путь Ткача (T-03-08, LT-01): генерация прозы слотом модели со стримингом чанков
@@ -12,6 +14,39 @@ import (
 
 // pathWeaver — путь Ткача в конвейере: проза генерируется слотом модели.
 const pathWeaver = "weaver"
+
+// roleWeaver — роль слота Ткача в журнале вызовов (FIX-4).
+const roleWeaver = "weaver"
+
+// slotMeta — слот, знающий провайдера и остаток лимита из ответа (FIX-4).
+// Метаданные пишутся в журнал вызовов вместе с вызовом слота.
+type slotMeta interface {
+	ProviderName() string
+	LimitRemaining() string
+}
+
+// recordCall пишет строку вызова слота Ткача в журнал вызовов: время, роль,
+// провайдер, длительность, ошибка и остаток лимита из ответа. Слот без
+// метаданных провайдера (подставной в тестах) не пишется — журнал ведётся для
+// сконфигурированного слота станка.
+func recordCall(slot ProseSlot, started time.Time, degraded bool) {
+	meta, ok := slot.(slotMeta)
+	if !ok || meta.ProviderName() == "" {
+		return
+	}
+	rec := models.CallRecord{
+		TS:             started.UTC().Format(time.RFC3339),
+		Role:           roleWeaver,
+		Provider:       meta.ProviderName(),
+		Calls:          1,
+		DurationMS:     time.Since(started).Milliseconds(),
+		LimitRemaining: meta.LimitRemaining(),
+	}
+	if degraded {
+		rec.Error = "slot degraded"
+	}
+	_ = models.AppendCall(models.CallJournalPath, rec)
+}
 
 // SilenceThreshold — порог тишины Ткача (LT-14.1, T-03-08, шаг 3): «молчание» —
 // ни одного нового чанка за это время от последнего чанка (или от старта, если

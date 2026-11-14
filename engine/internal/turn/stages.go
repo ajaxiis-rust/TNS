@@ -586,6 +586,7 @@ func (s *executeStage) weaverReply(ctx context.Context, st *TurnState) (string, 
 	if models.HasReplacementTokens(prompt) {
 		return fallbackReply, true
 	}
+	started := time.Now()
 	var underlay, reply string
 	degraded := false
 	for p := range streamScene(ctx, st, s.weaver, prompt, clock) {
@@ -597,6 +598,7 @@ func (s *executeStage) weaverReply(ctx context.Context, st *TurnState) (string, 
 			degraded = p.Degraded
 		}
 	}
+	recordCall(s.weaver, started, degraded)
 	if degraded {
 		return reply, true
 	}

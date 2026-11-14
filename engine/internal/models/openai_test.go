@@ -19,6 +19,7 @@ func TestOpenAIStream(t *testing.T) {
 		if got := r.Header.Get("Authorization"); got != "Bearer sk-test" {
 			t.Errorf("Authorization = %q", got)
 		}
+		w.Header().Set("X-RateLimit-Remaining-Requests", "42")
 		fl, _ := w.(http.Flusher)
 		lines := []string{
 			`data: {"choices":[{"delta":{"content":"Смотрит "}}]}`,
@@ -50,6 +51,12 @@ func TestOpenAIStream(t *testing.T) {
 	}
 	if got.String() != "Смотрит на тебя." {
 		t.Fatalf("текст = %q", got.String())
+	}
+	if got := c.LimitRemaining(); got != "42" {
+		t.Fatalf("остаток лимита = %q, want 42", got)
+	}
+	if got := c.ProviderName(); got != "" {
+		t.Fatalf("провайдер без SetProvider = %q, want пусто", got)
 	}
 }
 

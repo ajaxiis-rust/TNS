@@ -129,6 +129,64 @@ func TestDegradationCounter(t *testing.T) {
 	}
 }
 
+// TestMonitorRolesAndLimit — «Проверка» FIX-4: блок «Роли» и limit_remaining
+// заполняются из журнала вызовов на фикстуре вызова слота.
+func TestMonitorRolesAndLimit(t *testing.T) {
+	seedMonitor(t, "")
+	usagePath := seedProviderCounters(t)
+	writeProviderUsage(t, usagePath, strings.Join([]string{
+		`{"ts":"2026-11-14T10:00:00Z","role":"weaver","provider":"gemini-flash","calls":1,"duration_ms":120}`,
+		`{"ts":"2026-11-14T10:05:00Z","role":"weaver","provider":"gemini-flash","calls":1,"duration_ms":80,"error":"slot degraded","limit_remaining":"1234"}`,
+		`{"ts":"2026-11-14T10:06:00Z","role":"editor","calls":1,"duration_ms":40}`,
+	}, "\n")+"\n")
+
+	rr := monitorRequest(t, http.MethodGet, monitorPath)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("GET %s: status = %d, want 200; body=%s", monitorPath, rr.Code, rr.Body.String())
+	}
+	var out monitorResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &out); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+
+	roles := map[string]monitorRole{}
+	for _, r := range out.Roles {
+		roles[r.Name] = r
+	}
+	weaver, ok := roles["weaver"]
+	if !ok {
+		t.Fatalf("в блоке «Роли» нет weaver: %s", rr.Body.String())
+	}
+	if weaver.Calls != 2 || weaver.Errors != 1 {
+		t.Fatalf("weaver calls/errors = %d/%d, want 2/1", weaver.Calls, weaver.Errors)
+	}
+	if weaver.ErrorPercent != 50 {
+		t.Fatalf("weaver error_percent = %v, want 50", weaver.ErrorPercent)
+	}
+	if weaver.AvgResponseMS != 100 {
+		t.Fatalf("weaver avg_response_ms = %v, want 100", weaver.AvgResponseMS)
+	}
+	if weaver.LastCallAt != "2026-11-14T10:05:00Z" {
+		t.Fatalf("weaver last_call_at = %q, want 2026-11-14T10:05:00Z", weaver.LastCallAt)
+	}
+	if editor := roles["editor"]; editor.Calls != 1 || editor.Errors != 0 {
+		t.Fatalf("editor calls/errors = %d/%d, want 1/0", editor.Calls, editor.Errors)
+	}
+
+	var flash *monitorSlot
+	for i := range out.Slots {
+		if out.Slots[i].Name == "gemini-flash" {
+			flash = &out.Slots[i]
+		}
+	}
+	if flash == nil || flash.LimitRemaining != "1234" {
+		t.Fatalf("у слота gemini-flash нет остатка лимита: %+v", out.Slots)
+	}
+	if !strings.Contains(rr.Body.String(), `"limit_remaining":"1234"`) {
+		t.Fatalf("в ответе нет поля limit_remaining: %s", rr.Body.String())
+	}
+}
+
 func appendJournalEvent(t *testing.T, path, event, reason string) {
 	t.Helper()
 	rec := map[string]any{

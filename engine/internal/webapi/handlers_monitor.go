@@ -2,13 +2,16 @@ package webapi
 
 import (
 	"encoding/json"
+	"math"
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"tns65/internal/journal"
+	"tns65/internal/models"
 	"tns65/internal/providercfg"
 )
 
@@ -110,13 +113,15 @@ func handleMonitor(w http.ResponseWriter, _ *http.Request) {
 func monitorSlots() []monitorSlot {
 	keys := readSettingsKeys(settingsTOMLPath)
 	llm := readLLMSettings(settingsConfigPath, keys)
+	limits := latestLimits()
 	slots := []monitorSlot{
 		{
-			Name:     "generation",
-			Kind:     "slot",
-			Online:   machineAlive(llm.Gen.Addr),
-			KeyValid: llm.Gen.KeySet,
-			Addr:     llm.Gen.Addr,
+			Name:           "generation",
+			Kind:           "slot",
+			Online:         machineAlive(llm.Gen.Addr),
+			KeyValid:       llm.Gen.KeySet,
+			LimitRemaining: limits[generationProvider()],
+			Addr:           llm.Gen.Addr,
 		},
 		{
 			Name:     "embedding",
@@ -131,18 +136,98 @@ func monitorSlots() []monitorSlot {
 			continue
 		}
 		slots = append(slots, monitorSlot{
-			Name:     def.Name,
-			Kind:     "provider",
-			KeyValid: keys[def.Name] != "",
+			Name:           def.Name,
+			Kind:           "provider",
+			KeyValid:       keys[def.Name] != "",
+			LimitRemaining: limits[def.Name],
 		})
 	}
 	return slots
 }
 
-// monitorRoles — метрики ролей. Первый срез берётся из журнала вызовов (UI-09.6);
-// пока ни один производитель не пишет событий с полем role, список пуст.
+// generationProvider — имя провайдера слота генерации из секции slots
+// config.yaml; пусто — конфигурация не прочитана.
+func generationProvider() string {
+	cfg, err := models.LoadSlotsConfig(filepath.Join(instanceRoot(), "config.yaml"))
+	if err != nil {
+		return ""
+	}
+	return string(cfg.Default)
+}
+
+// latestLimits — остаток лимита по провайдеру из последней записи журнала
+// вызовов (поле limit_remaining ответа провайдера, FIX-4). Провайдер без
+// остатка в журнале в карту не попадает.
+func latestLimits() map[string]string {
+	out := map[string]string{}
+	for _, rec := range models.ReadCalls(providerUsagePath) {
+		if rec.LimitRemaining == "" {
+			continue
+		}
+		if rec.Provider != "" {
+			out[rec.Provider] = rec.LimitRemaining
+		}
+		out[rec.Role] = rec.LimitRemaining
+	}
+	return out
+}
+
+// monitorRoles — метрики ролей из журнала вызовов (UI-09.6, FIX-4): вызовы,
+// ошибки, их доля, среднее время ответа и момент последнего вызова. Роль без
+// записей в журнале в блок не попадает.
 func monitorRoles() []monitorRole {
-	return []monitorRole{}
+	type roleAgg struct {
+		calls       int64
+		errors      int64
+		durationSum int64
+		durationN   int64
+		last        time.Time
+	}
+	order := []string{}
+	aggs := map[string]*roleAgg{}
+	for _, rec := range models.ReadCalls(providerUsagePath) {
+		a, ok := aggs[rec.Role]
+		if !ok {
+			a = &roleAgg{}
+			aggs[rec.Role] = a
+			order = append(order, rec.Role)
+		}
+		if rec.Calls > 0 {
+			a.calls += rec.Calls
+		} else {
+			a.calls++
+		}
+		if rec.Error != "" {
+			a.errors++
+		}
+		if rec.DurationMS > 0 {
+			a.durationSum += rec.DurationMS
+			a.durationN++
+		}
+		if ts, err := time.Parse(time.RFC3339, rec.TS); err == nil && ts.After(a.last) {
+			a.last = ts
+		}
+	}
+	out := make([]monitorRole, 0, len(order))
+	for _, name := range order {
+		a := aggs[name]
+		role := monitorRole{
+			Name:   name,
+			Calls:  a.calls,
+			Errors: a.errors,
+		}
+		if a.calls > 0 {
+			role.ErrorPercent = math.Round(float64(a.errors)*1000/float64(a.calls)) / 10
+		}
+		if a.durationN > 0 {
+			role.AvgResponseMS = math.Round(float64(a.durationSum)*10/float64(a.durationN)) / 10
+		}
+		if !a.last.IsZero() {
+			role.LastCallAt = a.last.UTC().Format(time.RFC3339)
+		}
+		out = append(out, role)
+	}
+	return out
 }
 
 // monitorMachines — локальные машины генерации и эмбеддингов: жива/мертва по

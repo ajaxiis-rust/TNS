@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"tns65/internal/journal"
 	"tns65/internal/netgate"
@@ -176,6 +177,10 @@ type ProviderClient struct {
 	url   string
 	model string
 	key   string
+	name  string // имя провайдера для журнала вызовов (ProviderSlot).
+
+	mu    sync.Mutex
+	limit string // остаток лимита запросов из заголовков последнего ответа.
 }
 
 // NewProviderClient создаёт клиент внешнего провайдера. baseURL — https-адрес
@@ -196,6 +201,41 @@ func NewProviderClient(baseURL, model, apiKey string) (*ProviderClient, error) {
 		model: m,
 		key:   apiKey,
 	}, nil
+}
+
+// SetProvider задаёт имя провайдера для журнала вызовов слота (FIX-4).
+func (c *ProviderClient) SetProvider(name string) { c.name = name }
+
+// ProviderName — имя провайдера для журнала вызовов; пусто — не задано.
+func (c *ProviderClient) ProviderName() string { return c.name }
+
+// LimitRemaining — остаток лимита запросов из заголовков ответа провайдера;
+// пусто, если провайдер лимита не отдал.
+func (c *ProviderClient) LimitRemaining() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.limit
+}
+
+func (c *ProviderClient) setLimit(v string) {
+	c.mu.Lock()
+	c.limit = v
+	c.mu.Unlock()
+}
+
+// limitRemaining читает остаток лимита запросов из заголовков ответа
+// провайдера. Пусто — провайдер лимит не отдал (значение не выдумывается).
+func limitRemaining(h http.Header) string {
+	for _, key := range []string{
+		"X-Ratelimit-Remaining-Requests",
+		"X-Ratelimit-Remaining",
+		"X-Ratelimit-Remaining-Tokens",
+	} {
+		if v := strings.TrimSpace(h.Get(key)); v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // geminiGenerateRequest — тело запроса Gemini generateContent (стриминг).
@@ -252,6 +292,7 @@ func (c *ProviderClient) Stream(ctx context.Context, prompt string) (<-chan stri
 		resp.Body.Close()
 		return nil, fmt.Errorf("%w: status %d", ErrProviderRefused, resp.StatusCode)
 	}
+	c.setLimit(limitRemaining(resp.Header))
 	ch := make(chan string)
 	go func() {
 		defer close(ch)
@@ -316,19 +357,35 @@ var fallbackChat = func() (Chat, error) {
 	return NewWeaver(DefaultWeaverURL)
 }
 
-// usageRecord — одна JSON-строка журнала вызовов (шаг 4, «Писатель»): роль слота
-// и его счётчики вызовов, токенов и денег.
-type usageRecord struct {
-	Role   string `json:"role"`
-	Calls  int64  `json:"calls"`
-	Tokens int64  `json:"tokens"`
-	Cost   int64  `json:"cost_millis"`
+// CallJournalPath — журнал вызовов станка (engine/state/usage.jsonl)
+// относительно рабочей папки ядра; подменяется в тестах.
+var CallJournalPath = filepath.Join("state", "usage.jsonl")
+
+// CallRecord — одна JSON-строка журнала вызовов слота (FIX-4, шаг 4): роль и
+// провайдер слота, время вызова, длительность, ошибка и остаток лимита из
+// ответа провайдера. Calls/Tokens/Cost — счётчики слота (T-03-18).
+type CallRecord struct {
+	TS             string `json:"ts,omitempty"`
+	Role           string `json:"role"`
+	Provider       string `json:"provider,omitempty"`
+	Calls          int64  `json:"calls"`
+	Tokens         int64  `json:"tokens"`
+	Cost           int64  `json:"cost_millis"`
+	DurationMS     int64  `json:"duration_ms,omitempty"`
+	Error          string `json:"error,omitempty"`
+	LimitRemaining string `json:"limit_remaining,omitempty"`
 }
 
 // AppendUsage дописывает счётчики слота role одной JSON-строкой в журнал вызовов
 // path (engine/state/usage.jsonl). Каталог создаётся; пустой path — запись
 // пропускается.
 func AppendUsage(path, role string, u Usage) error {
+	return AppendCall(path, CallRecord{Role: role, Calls: u.Calls, Tokens: u.Tokens, Cost: u.Cost})
+}
+
+// AppendCall дописывает строку вызова слота в журнал вызовов path. Каталог
+// создаётся; пустой path — запись пропускается.
+func AppendCall(path string, rec CallRecord) error {
 	if path == "" {
 		return nil
 	}
@@ -337,7 +394,7 @@ func AppendUsage(path, role string, u Usage) error {
 			return err
 		}
 	}
-	b, err := json.Marshal(usageRecord{Role: role, Calls: u.Calls, Tokens: u.Tokens, Cost: u.Cost})
+	b, err := json.Marshal(rec)
 	if err != nil {
 		return err
 	}
@@ -348,6 +405,28 @@ func AppendUsage(path, role string, u Usage) error {
 	defer f.Close()
 	_, err = f.Write(append(b, '\n'))
 	return err
+}
+
+// ReadCalls читает журнал вызовов path. Нет файла — пустой срез; битые строки и
+// строки без роли пропускаются: журнал — снимок, не источник истины.
+func ReadCalls(path string) []CallRecord {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var out []CallRecord
+	for _, raw := range strings.Split(string(data), "\n") {
+		line := strings.TrimSpace(raw)
+		if line == "" {
+			continue
+		}
+		var rec CallRecord
+		if json.Unmarshal([]byte(line), &rec) != nil || rec.Role == "" {
+			continue
+		}
+		out = append(out, rec)
+	}
+	return out
 }
 
 // CompleteChat — один чат-вызов провайдера с деградацией на локальную запаску

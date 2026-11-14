@@ -3,10 +3,13 @@ package turn
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"tns65/internal/models"
 	"tns65/internal/testkit"
 	"tns65/internal/workshop"
 )
@@ -183,4 +186,69 @@ func TestStream(t *testing.T) {
 			t.Fatalf("вид кандидата = %q, ожидался %q", c.Kind, BranchBank)
 		}
 	})
+}
+
+// metaProseSlot — подставной слот с метаданными журнала вызовов (FIX-4).
+type metaProseSlot struct {
+	fakeProseSlot
+	provider string
+	limit    string
+}
+
+func (s *metaProseSlot) ProviderName() string   { return s.provider }
+func (s *metaProseSlot) LimitRemaining() string { return s.limit }
+
+// TestWeaverCallJournal — «Проверка» FIX-4: вызов слота Ткача пишется в журнал
+// вызовов с ролью, провайдером, временем, длительностью, ошибкой и остатком
+// лимита из ответа провайдера.
+func TestWeaverCallJournal(t *testing.T) {
+	journalPath := filepath.Join(t.TempDir(), "usage.jsonl")
+	old := models.CallJournalPath
+	models.CallJournalPath = journalPath
+	t.Cleanup(func() { models.CallJournalPath = old })
+
+	ch := make(chan string, 1)
+	ch <- "Он шагает навстречу."
+	close(ch)
+	slot := &metaProseSlot{
+		fakeProseSlot: fakeProseSlot{ch: ch},
+		provider:      "deepseek",
+		limit:         "17",
+	}
+	stage := &executeStage{weaver: slot}
+	st := &TurnState{Path: pathWeaver, Prepath: Prepath{Prompt: "Иван смотрит"}}
+	if _, degraded := stage.weaverReply(context.Background(), st); degraded {
+		t.Fatal("живой ответ слота помечен деградацией")
+	}
+
+	calls := models.ReadCalls(journalPath)
+	if len(calls) != 1 {
+		t.Fatalf("записей журнала = %d, want 1", len(calls))
+	}
+	rec := calls[0]
+	if rec.Role != roleWeaver || rec.Provider != "deepseek" || rec.Calls != 1 {
+		t.Fatalf("запись вызова = %+v", rec)
+	}
+	if rec.Error != "" {
+		t.Fatalf("успешный вызов помечен ошибкой: %+v", rec)
+	}
+	if rec.LimitRemaining != "17" {
+		t.Fatalf("остаток лимита = %q, want 17", rec.LimitRemaining)
+	}
+	if _, err := time.Parse(time.RFC3339, rec.TS); err != nil {
+		t.Fatalf("время вызова %q не RFC3339: %v", rec.TS, err)
+	}
+
+	// Отказ слота — запись с ошибкой.
+	bad := &metaProseSlot{
+		fakeProseSlot: fakeProseSlot{err: errors.New("отказ")},
+		provider:      "deepseek",
+	}
+	if _, degraded := (&executeStage{weaver: bad}).weaverReply(context.Background(), st); !degraded {
+		t.Fatal("отказ слота не помечен деградацией")
+	}
+	calls = models.ReadCalls(journalPath)
+	if len(calls) != 2 || calls[1].Error == "" {
+		t.Fatalf("запись отказа = %+v", calls)
+	}
 }

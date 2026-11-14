@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"tns65/internal/netgate"
 )
@@ -25,6 +26,10 @@ type OpenAIClient struct {
 	endpoint string
 	model    string
 	key      string
+	name     string // имя провайдера для журнала вызовов (ProviderSlot).
+
+	mu    sync.Mutex
+	limit string // остаток лимита запросов из заголовков последнего ответа.
 }
 
 // NewOpenAIClient создаёт клиент OpenAI-совместимого провайдера. baseURL —
@@ -42,6 +47,26 @@ func NewOpenAIClient(baseURL, model, apiKey string) (*OpenAIClient, error) {
 		model:    strings.TrimSpace(model),
 		key:      apiKey,
 	}, nil
+}
+
+// SetProvider задаёт имя провайдера для журнала вызовов слота (FIX-4).
+func (c *OpenAIClient) SetProvider(name string) { c.name = name }
+
+// ProviderName — имя провайдера для журнала вызовов; пусто — не задано.
+func (c *OpenAIClient) ProviderName() string { return c.name }
+
+// LimitRemaining — остаток лимита запросов из заголовков ответа провайдера;
+// пусто, если провайдер лимита не отдал.
+func (c *OpenAIClient) LimitRemaining() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.limit
+}
+
+func (c *OpenAIClient) setLimit(v string) {
+	c.mu.Lock()
+	c.limit = v
+	c.mu.Unlock()
 }
 
 // openAIChatRequest — тело запроса /chat/completions со стримингом.
@@ -108,6 +133,7 @@ func (c *OpenAIClient) Stream(ctx context.Context, prompt string) (<-chan string
 		}
 		return nil, fmt.Errorf("%w: status %d", ErrProviderRefused, resp.StatusCode)
 	}
+	c.setLimit(limitRemaining(resp.Header))
 	ch := make(chan string)
 	go func() {
 		defer close(ch)

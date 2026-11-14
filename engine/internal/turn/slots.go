@@ -206,19 +206,36 @@ func nonEmpty(v, fallback string) string {
 // /chat/completions. Оба внешних клиента ходят только через сетевой гейт.
 // Модель — model, при пустом значении заводская из providers.toml.
 func ProviderSlot(def providercfg.Provider, apiKey, model string) (ProseSlot, error) {
+	name := strings.TrimSpace(def.Name)
+	if name == "" {
+		name = string(providercfg.ProtocolLocal)
+	}
 	if def.Protocol == providercfg.ProtocolLocal {
-		return models.NewWeaver(models.DefaultWeaverURL)
+		slot, err := models.NewWeaver(models.DefaultWeaverURL)
+		if err != nil {
+			return nil, err
+		}
+		slot.SetProvider(name)
+		return slot, nil
 	}
 	if strings.TrimSpace(model) == "" {
 		model = def.DefaultModel
 	}
 	switch def.Protocol {
-	case providercfg.ProtocolLocal:
-		return models.NewWeaver(models.DefaultWeaverURL)
 	case providercfg.ProtocolGemini:
-		return models.NewProviderClient(def.BaseURL, model, apiKey)
+		slot, err := models.NewProviderClient(def.BaseURL, model, apiKey)
+		if err != nil {
+			return nil, err
+		}
+		slot.SetProvider(name)
+		return slot, nil
 	case providercfg.ProtocolOpenAI:
-		return models.NewOpenAIClient(def.BaseURL, model, apiKey)
+		slot, err := models.NewOpenAIClient(def.BaseURL, model, apiKey)
+		if err != nil {
+			return nil, err
+		}
+		slot.SetProvider(name)
+		return slot, nil
 	default:
 		return nil, fmt.Errorf("turn: неизвестный протокол провайдера %q", def.Protocol)
 	}

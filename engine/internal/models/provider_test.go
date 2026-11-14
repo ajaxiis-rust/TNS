@@ -199,6 +199,56 @@ func TestProviderContract(t *testing.T) {
 		}
 	})
 
+	t.Run("журнал вызовов слота — роль, ошибка и время", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "usage.jsonl")
+		rec := CallRecord{
+			TS:             "2026-11-14T10:00:00Z",
+			Role:           "weaver",
+			Provider:       "gemini-flash",
+			Calls:          1,
+			DurationMS:     120,
+			Error:          "slot degraded",
+			LimitRemaining: "9",
+		}
+		if err := AppendCall(path, rec); err != nil {
+			t.Fatalf("AppendCall: %v", err)
+		}
+		calls := ReadCalls(path)
+		if len(calls) != 1 || calls[0] != rec {
+			t.Fatalf("записи журнала = %+v, want %+v", calls, rec)
+		}
+		if err := AppendCall("", rec); err != nil {
+			t.Fatalf("AppendCall с пустым путём: %v", err)
+		}
+	})
+
+	t.Run("gemini — остаток лимита из заголовков ответа", func(t *testing.T) {
+		allowLoopback(t)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("X-RateLimit-Remaining-Requests", "7")
+			_, _ = w.Write([]byte("Ответ\n"))
+		}))
+		defer srv.Close()
+
+		c, err := NewProviderClient(srv.URL, "", "")
+		if err != nil {
+			t.Fatalf("NewProviderClient: %v", err)
+		}
+		c.SetProvider("gemini-flash")
+		ch, err := c.Stream(context.Background(), "промпт")
+		if err != nil {
+			t.Fatalf("Stream: %v", err)
+		}
+		for range ch {
+		}
+		if got := c.LimitRemaining(); got != "7" {
+			t.Fatalf("остаток лимита = %q, want 7", got)
+		}
+		if got := c.ProviderName(); got != "gemini-flash" {
+			t.Fatalf("провайдер = %q, want gemini-flash", got)
+		}
+	})
+
 	t.Run("разделённые ошибки", func(t *testing.T) {
 		if !errors.Is(classifyDoErr(netgate.ErrDeniedHost), netgate.ErrDeniedHost) {
 			t.Fatalf("ошибка гейта не сохранена: %v", classifyDoErr(netgate.ErrDeniedHost))

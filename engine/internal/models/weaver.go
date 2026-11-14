@@ -20,7 +20,17 @@ import (
 type Weaver struct {
 	http *http.Client
 	url  string
+	name string // имя провайдера для журнала вызовов (ProviderSlot).
 }
+
+// SetProvider задаёт имя провайдера для журнала вызовов слота (FIX-4).
+func (w *Weaver) SetProvider(name string) { w.name = name }
+
+// ProviderName — имя провайдера для журнала вызовов; пусто — не задано.
+func (w *Weaver) ProviderName() string { return w.name }
+
+// LimitRemaining — локальная запаска лимита не отдаёт.
+func (w *Weaver) LimitRemaining() string { return "" }
 
 // NewWeaver создаёт клиент слота прозы по адресу weaverURL (loopback,
 // netgate.Local — все вызовы слота только через сетевой гейт).
