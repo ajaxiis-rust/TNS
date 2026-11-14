@@ -2,12 +2,14 @@ package webapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
 	"testing"
 
 	"tns65/internal/providerroute"
+	"tns65/internal/textlimit"
 )
 
 // routesGet — чтение маршрутов через хэндл GET /api/providers/routes.
@@ -143,6 +145,96 @@ func TestProviderRoutesWarnings(t *testing.T) {
 	for _, want := range []string{"ghost", "local должен быть последним"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("Warnings = %v, нет %q", resp.Warnings, want)
+		}
+	}
+}
+
+// TestRouteTablePaths — таблица ROUTES.md не расходится с роутером: у каждой
+// строки находится маршрут по методу и пути, устаревших путей нет. Шаблон
+// `{id}` проходит по префиксу-каталогу — так его матчит pathMatch.
+func TestRouteTablePaths(t *testing.T) {
+	data, err := os.ReadFile("ROUTES.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	routes := routeLines(NewHub())
+	rows := 0
+	for _, line := range strings.Split(string(data), "\n") {
+		method, path, ok := routeTableRow(line)
+		if !ok {
+			continue
+		}
+		rows++
+		if !routeDocumented(method, path, routes) {
+			t.Errorf("ROUTES.md: маршрута %s %s нет в роутере", method, path)
+		}
+	}
+	if rows == 0 {
+		t.Fatal("ROUTES.md: не найдено ни одной строки таблицы маршрутов")
+	}
+}
+
+// routeTableRow разбирает строку таблицы маршрутов: метод и путь. Заголовок
+// таблицы, разделитель и прочие строки дают ok=false.
+func routeTableRow(line string) (method, path string, ok bool) {
+	cells := strings.Split(line, "|")
+	if len(cells) < 3 {
+		return "", "", false
+	}
+	method = strings.TrimSpace(cells[1])
+	switch method {
+	case http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete:
+	default:
+		return "", "", false
+	}
+	path = strings.Trim(strings.TrimSpace(cells[2]), "`")
+	if !strings.HasPrefix(path, "/") {
+		return "", "", false
+	}
+	return method, path, true
+}
+
+// routeDocumented — маршрут роутера подходит под строку таблицы: тот же метод и
+// дословный путь либо путь-каталог с «/» на конце (шаблон `{id}` в документе).
+func routeDocumented(method, path string, routes []string) bool {
+	for _, r := range routes {
+		m, p, ok := strings.Cut(r, " ")
+		if !ok || m != method {
+			continue
+		}
+		if p == path || (strings.HasSuffix(p, "/") && strings.HasPrefix(path, p)) {
+			return true
+		}
+	}
+	return false
+}
+
+// TestRouteTableLimits — числовое зеркало IMP-7: потолок вводимых текстов в
+// ROUTES.md берётся из textlimit.DefaultLimit, отдельной цифры в документе нет.
+func TestRouteTableLimits(t *testing.T) {
+	data, err := os.ReadFile("ROUTES.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf("%d токенов", textlimit.DefaultLimit)
+	rows := []string{
+		"| POST | `/api/turn` |",
+		"| POST | `/api/atlas/worlds/birth` |",
+		"| POST | `/api/atlas/worlds/replay` |",
+	}
+	for _, prefix := range rows {
+		line := ""
+		for _, l := range strings.Split(string(data), "\n") {
+			if strings.HasPrefix(l, prefix) {
+				line = l
+				break
+			}
+		}
+		if line == "" {
+			t.Fatalf("ROUTES.md: нет строки %s", prefix)
+		}
+		if !strings.Contains(line, want) {
+			t.Errorf("ROUTES.md: строка %q без потолка «%s»", prefix, want)
 		}
 	}
 }
