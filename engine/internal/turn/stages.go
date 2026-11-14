@@ -10,6 +10,7 @@ import (
 	"tns65/internal/models"
 	"tns65/internal/selector"
 	"tns65/internal/structural"
+	"tns65/internal/workshop"
 )
 
 // Stage — одна стадия конвейера хода (T-03-01, шаг 2).
@@ -82,6 +83,9 @@ type TurnState struct {
 	DigestSummary string
 	// DigestNews — запаздывающие вести, накопленные в отсутствие (T-03-14, шаг 2).
 	DigestNews []string
+	// DigestScene — весть, поданная сценой с диалогом НПС (IMP-5); NewsIndex=-1 —
+	// все вести поданы текстом.
+	DigestScene NewsScene
 	// PositionShift — сдвиг положения героя событием хода (T-03-15); nil — сдвига
 	// нет. Заполняет источник события, стадия position применяет его кодом.
 	PositionShift *PositionShift
@@ -132,7 +136,7 @@ func (p *Pipeline) stages() []Stage {
 		&executeStage{weaver: p.Weaver, bank: shuttle, logger: p.Logger},
 		&timejumpStage{db: p.DB},
 		&safetyStage{},
-		&digestStage{db: p.DB},
+		&digestStage{db: p.DB, scene: workshop.GenerationSlot(), sceneCfg: DefaultNewsSceneConfig()},
 		&positionStage{db: p.DB},
 		&deathStage{db: p.DB},
 		&commitStage{db: p.DB},

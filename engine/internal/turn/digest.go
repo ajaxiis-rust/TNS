@@ -102,15 +102,23 @@ func writeDigestEvents(h *db.Handle, d Digest) error {
 // digestStage — разделение сводки и вести (T-03-14, «Правится» stages.go): на
 // возврате игрока сводка ложится перед ответом хода, вести — следом. Сводка
 // формируется при сработавшем отложенном событии или отсутствии дольше порога
-// ночи; LLM не вызывается.
+// ночи. Выбранная весть может подаваться сценой с диалогом НПС (IMP-5); сцена
+// недоступна — весть остаётся текстом.
 type digestStage struct {
 	db  *db.Handle
 	cfg TimeConfig // порог ночи; нулевое значение заменяется дефолтом.
+	// scene — слот мастерской для сцены вести (IMP-5); nil — слот не подключён,
+	// вести подаются только текстом.
+	scene NewsSceneSlot
+	// sceneCfg — настройка сценовой подачи вестей; нулевое значение — сцена
+	// выключена.
+	sceneCfg NewsSceneConfig
 }
 
 func (*digestStage) Name() string { return "digest" }
 
-func (s *digestStage) Run(_ context.Context, st *TurnState) error {
+func (s *digestStage) Run(ctx context.Context, st *TurnState) error {
+	st.DigestScene = NewsScene{NewsIndex: -1}
 	d := buildDigest(st.Absence, st.AbsentFor, s.cfg)
 	if d.Summary == "" && len(d.News) == 0 {
 		return nil
@@ -120,11 +128,46 @@ func (s *digestStage) Run(_ context.Context, st *TurnState) error {
 	}
 	st.DigestSummary = d.Summary
 	st.DigestNews = d.News
+	reply := st.Reply
 	if d.Summary != "" {
-		st.Reply = d.Summary + "\n" + st.Reply
+		reply = d.Summary + "\n" + reply
 	}
 	if len(d.News) > 0 {
-		st.Reply += "\n" + strings.Join(d.News, "\n")
+		reply += "\n" + strings.Join(d.News, "\n")
 	}
+	// Сценовая подача (IMP-5): брак или недоступность слота — весть текстом,
+	// ход не валится.
+	if idx := sceneNewsIndex(d.News, s.sceneCfg); idx >= 0 {
+		if scene, ok := s.makeNewsScene(ctx, st, d.News[idx], idx); ok {
+			st.DigestScene = scene
+			reply = strings.Replace(reply, d.News[idx], scene.Prose, 1)
+		}
+	}
+	st.Reply = reply
 	return nil
+}
+
+// makeNewsScene пишет сцену вести штатным путём в scenes хэндлом core; false —
+// сцена не удалась (слот не подключён, отказ, брак или ошибка записи), весть
+// остаётся текстовой.
+func (s *digestStage) makeNewsScene(ctx context.Context, st *TurnState, news string, idx int) (NewsScene, bool) {
+	if s.scene == nil || s.db == nil {
+		return NewsScene{}, false
+	}
+	out, err := s.scene.Generate(ctx, newsSceneRole, newsScenePrompt(news, st.Roster))
+	if err != nil {
+		return NewsScene{}, false
+	}
+	prose := strings.TrimSpace(out)
+	if !sceneProseUsable(prose) {
+		return NewsScene{}, false
+	}
+	res, err := s.db.Exec("scenes",
+		`INSERT INTO scenes (session_id, day, place_id, status, prose, turn_id) VALUES (?, 0, ?, ?, ?, NULL)`,
+		st.Input.SessionID, st.Prepath.Frame.HeroPlaceID, sceneStatusOpen, prose)
+	if err != nil {
+		return NewsScene{}, false
+	}
+	id, _ := res.LastInsertId()
+	return NewsScene{NewsIndex: idx, SceneID: id, Prose: prose}, true
 }

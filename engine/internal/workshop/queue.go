@@ -178,6 +178,12 @@ func slotForProvider(_ Provider) Slot {
 	return curSlot
 }
 
+// GenerationSlot отдаёт слот генерации мастерской сценовому пути вестей (IMP-5):
+// nil — слот не подключён, сцена не пишется.
+func GenerationSlot() Slot {
+	return slotForProvider(DefaultProvider)
+}
+
 // Enqueue ставит заказ kind в очередь мира хэндлом core (статус queued),
 // привязывает его к слоту по пресету через model_bindings (шаг 3) и пробует
 // выполнить через слот (T-02-14). Статус заказа меняет только ядро; снаружи заказ
