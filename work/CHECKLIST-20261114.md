@@ -81,7 +81,7 @@ mechanics-from-chat.md. Статусы сверены с кодом на HEAD `8
 
 | Пункт | Статус | Суть и проверка |
 |---|---|---|
-| FIX-2 дубль `commitTurn` | ⬜ открыт | `stopcrane.go:37` против `commitTurnPosition` (`position.go:125`, вызов `stages.go:659`); после правки `grep -c 'func commitTurn('` → 1, `go test ./internal/turn -race` |
+| FIX-2 дубль `commitTurn` | ✅ закрыт (9f16039, 2026-11-14) | `stopcrane.go:37` против `commitTurnPosition` (`position.go:125`, вызов `stages.go:659`); после правки `grep -c 'func commitTurn('` → 1, `go test ./internal/turn -race` |
 | FIX-3 `return_news` пуст | ⬜ открыт | `handlers_chat.go:118,225` — только инициализация; решение владельца: проводить из журнала отсутствия или снять поле; e2e с отложенным событием |
 | FIX-4 монитор: лимиты и «Роли» | ⬜ открыт | `LimitRemaining` не заполняется (`handlers_monitor.go:66`); нужен журнал вызовов с `role` + метаданные стрима; совместить с полем `provider` из плана маршрутизации §8 |
 | FIX-5 `editor.digest.call` | ⬜ открыт | Константа события + логгер слота Редактора и Цензора правок; расширить `TestEventsUnique`; вести через `RoutedWorkshopSlot`, если раньше придёт этап Э4 |
