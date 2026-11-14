@@ -35,7 +35,11 @@
 
 ## Источники
 
-- `GLOSSARY.md`, `TNS65-PARADIGM.md`, `TNS65-PARADIGM-draft.md`
+- `GLOSSARY.md` — словарь терминов.
+- `TNS65-PARADIGM.md` — канон, пункты 1–21.
 - `RAW/base.md`, `basically-arcs-20261011.md`
-- `RAW/owner-qa-tns-relevant-20261012.md`, `RAW/owner-rules-telegram-20261012.md`
-- текущие `DOCS/*.md` — содержание сохранить, язык переписать
+- `work/mechanics-from-chat.md` — дословные формулировки владельца из переписки.
+- текущие `DOCS/*.md` — содержание сохранить, язык переписать.
+
+`RAW/pon-paradigm.md` — не источник: агентам не читать, в список источников не
+вносить.
