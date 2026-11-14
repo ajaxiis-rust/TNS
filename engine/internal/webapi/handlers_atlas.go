@@ -266,6 +266,7 @@ func atlasBirthConfig(a birth.Ancketa, isekai bool) birth.Config {
 		Embed:      atlasEmbed,
 		Logger:     atlasLogger,
 		Isekai:     isekai,
+		Scout:      atlasDeepScout(),
 	}
 }
 

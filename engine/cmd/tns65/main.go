@@ -19,7 +19,9 @@ import (
 	"tns65/internal/db"
 	"tns65/internal/journal"
 	"tns65/internal/langpack"
+	"tns65/internal/models"
 	"tns65/internal/netgate"
+	"tns65/internal/paganel"
 	"tns65/internal/portgate"
 	"tns65/internal/structural"
 	"tns65/internal/supervisor"
@@ -419,6 +421,10 @@ func runWorldBirth(args []string) error {
 	if hooks != nil {
 		cfg = hooks.config()
 	}
+	// Глубокая разведка при рождении (DEC-4, B-14.4) — из конфигурации экземпляра;
+	// выключена или без ключа — nil.
+	cfg.Scout = paganel.LoadDeepScout("config.yaml", "providers.toml", "settings.toml",
+		models.CallJournalPath, nil)
 	res, err := birth.Birth(&a, cfg)
 	if err != nil {
 		return err

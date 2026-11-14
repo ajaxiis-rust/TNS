@@ -34,6 +34,10 @@ const (
 	EventEditorDigestReply  = "editor.digest.reply"
 	EventEditorDigestRefuse = "editor.digest.refuse"
 	EventEditorCensorReject = "editor.censor_reject"
+	// Разведка Паганеля (DEC-4, B-14.4): каждый вызов глубокой разведки и
+	// оседание её отчёта видны в журнале станка для отладки.
+	EventScoutCall   = "scout.call"
+	EventScoutReport = "scout.report"
 )
 
 // Имена полей событий, общих для нескольких пакетов.

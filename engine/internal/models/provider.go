@@ -374,6 +374,9 @@ type CallRecord struct {
 	DurationMS     int64  `json:"duration_ms,omitempty"`
 	Error          string `json:"error,omitempty"`
 	LimitRemaining string `json:"limit_remaining,omitempty"`
+	Endpoint       string `json:"endpoint,omitempty"`     // адрес провайдера вызова.
+	PromptBytes    int64  `json:"prompt_bytes,omitempty"` // размер промпта в байтах.
+	Result         string `json:"result,omitempty"`       // краткая сводка ответа.
 }
 
 // AppendUsage дописывает счётчики слота role одной JSON-строкой в журнал вызовов

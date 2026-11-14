@@ -53,14 +53,16 @@ type Config struct {
 	GazetteerPath  string          // путь к газетиру seed/gazetteer.jsonl; пусто — "seed/gazetteer.jsonl".
 	GeoRadiusDays  float64         // радиус стартового региона в днях пути; 0 — 3.
 	DayNormKm      float64         // норма дня пути в км; 0 — 25 (T-06-02).
+	Scout          DeepScout       // фоновая глубокая разведка при рождении; nil — выключена (B-14.4).
 }
 
 // Result — созданный мир.
 type Result struct {
 	Slug       string
 	Dir        string
-	WorldDB    string // оперативная база <slug>.db.
-	LiteraryDB string // литературная база literary.db.
+	WorldDB    string          // оперативная база <slug>.db.
+	LiteraryDB string          // литературная база literary.db.
+	ScoutDone  <-chan struct{} // закрывается по завершении фоновой разведки; nil — разведки нет.
 }
 
 // Состояния рождения (шаг 4): creating → ready или откат.
@@ -208,11 +210,25 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 		return nil, err
 	}
 
+	// Глубокая разведка — фоновая задача после готовности мира (DEC-4, B-14.4):
+	// рождение не ждёт внешних вызовов и от их отказа не валится (B-14.3).
+	var scoutDone <-chan struct{}
+	if cfg.Scout != nil {
+		done := make(chan struct{})
+		scoutDone = done
+		topics := deepScoutTopics(a)
+		go func() {
+			defer close(done)
+			runDeepScout(b.worldDB, cfg.Logger, cfg.Scout, topics)
+		}()
+	}
+
 	return &Result{
 		Slug:       a.Slug,
 		Dir:        dir,
 		WorldDB:    b.worldDB,
 		LiteraryDB: b.literaryDB,
+		ScoutDone:  scoutDone,
 	}, nil
 }
 
