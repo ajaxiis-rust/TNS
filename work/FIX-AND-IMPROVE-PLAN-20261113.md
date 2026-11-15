@@ -685,6 +685,38 @@ NOUN) матчит {граната,NOUN}; go test и gates.sh зелёные; о
 
 **Исполнитель:** кодер deepseek-flash → ревьюер mimo-2.6-pro.
 
+### IMP-11. Golden ru-erotic: рассинхрон stats.uncertain / uncertain_chunks
+
+> Регистрация оркестратора 15.11.2026 (решение владельца 15.11 «править кодером»; находка сабагента при правке чанка 18, коммит 8fc8bec).
+
+**Факт:** в `fine/golden/ru-erotic/golden.json` `stats.uncertain` = 6, фактически
+чанков с `uncertain: true` — 5; чанк 2 имеет `uncertain: false`, но значится в
+`uncertain_chunks`. Рассинхрон существовал до коммита 14197de (пересчёт
+stats-блоков) и в правку чанка 18 не входил. На гейт precision не влияет
+(гейт читает только chunks), но ломает доверие к stats как «пересчитанному
+блоку».
+
+**Файлы (ориентиры):** `fine/golden/ru-erotic/golden.json` (stats.uncertain,
+uncertain_chunks, возможно флаг чанка 2), схема сверяется с `git show 14197de`.
+
+**Шаги:**
+1. Установить истину по чанку 2: по git-истории файла и содержимому чанка
+   определить, что авторитетно — флаг `uncertain` чанка или запись в
+   `uncertain_chunks` (ожидаются производные поля от флагов чанков, как в
+   14197de: флаги чанков — авторитет, stats/списки — производные).
+2. Выровнять три представления: флаги `uncertain` чанков, список
+   `uncertain_chunks`, `stats.uncertain` — из авторитета пересчитать остальные.
+3. Проверить те же поля в `fine/golden/ru-battle/golden.json` и
+   `fine/golden/ru/golden.json` — рассинхронов быть не должно, исправить при
+   обнаружении.
+4. Гейт: JSON валиден; `go test ./internal/deepread -run TestGoldenPrecision`
+   зелёный (approved:true уже стоит — SKIP не случится).
+
+**Проверка:** `stats.uncertain` == число чанков с `uncertain: true`;
+`uncertain_chunks` == id этих чанков; гейт 1.00/1.00/1.00.
+
+**Исполнитель:** кодер deepseek-flash → ревьюер mimo-2.6-pro.
+
 ### DOC-1. Закрыть `repair-card-20261012.md`
 
 > ✅ Выполнено 2026-11-14 (коммит 127a46c): баннер закрытия в карточке; контур — fine/plan + 99-LEDGER; карточка не поддерживается.
