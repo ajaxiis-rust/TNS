@@ -1,3 +1,5 @@
+<img width="216" height="272" alt="tns--crop-x0y204-720x909--scale-216x272--time-3s669ms-10s26ms" src="https://github.com/user-attachments/assets/1efcc58c-4513-4df5-8a83-335525662a54" />
+
 # TNS — True Never Story
 
 **Пиши свою книгу просто играя.**
