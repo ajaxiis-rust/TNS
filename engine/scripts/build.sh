@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# --update-web-manifest — пересчитать манифест фронта (web/manifest.json).
+# Обычная сборка манифест только сверяет: правка UI без обновления пинов падает
+# с подсказкой, как packs/ru.
+UPDATE_WEB_MANIFEST=0
+case "${1:-}" in
+    --update-web-manifest) UPDATE_WEB_MANIFEST=1 ;;
+    "") ;;
+    *) echo "build.sh: неизвестный флаг: $1" >&2; exit 2 ;;
+esac
+
 # Resolve the engine root (this script lives in engine/scripts).
 cd "$(dirname "$0")/.."
 ENGINE_ROOT="$(pwd)"
@@ -97,3 +107,71 @@ echo "packs/ru OK: словари цензора и маркеры отказо�
 # Сборка папки поставки (прод): копировать из корня движка bin/, base/, seed/,
 # config.yaml, providers.toml и packs/ целиком. Выборочное копирование пака уже
 # однажды ломало варку книг в проде.
+
+# Веб-статика (IMP-12): гибрид «диск прежде embed». Фронт ездит каталогом web/
+# рядом с бинарником — правка UI на станции подхватывается рестартом движка, без
+# пересборки. Манифест пинит sha256 файлов фронта на момент сборки: его пишет
+# этот скрипт, по нему движок в journal сигналит о разошедшемся файле.
+WEB_ROOT="web"
+REQUIRED_WEB_FILES=(
+    index.html
+    atlas.html
+    history.html
+    mcp.html
+    settings.html
+    wizard.html
+    static/app.js
+    manifest.json
+)
+
+generate_web_manifest() {
+    local tmp first=1 f sha
+    tmp="$(mktemp)"
+    {
+        printf '{\n  "id": "web",\n  "files": {\n'
+        while IFS= read -r f; do
+            sha="$(sha256sum "$WEB_ROOT/$f" | cut -d' ' -f1)"
+            [ "$first" -eq 1 ] || printf ',\n'
+            first=0
+            printf '    "%s": "%s"' "$f" "$sha"
+        done < <(cd "$WEB_ROOT" && find . -type f ! -name 'manifest.json' ! -name '*.go' \
+                     | sed 's|^\./||' | LC_ALL=C sort)
+        printf '\n  }\n}\n'
+    } >"$tmp"
+    mv "$tmp" "$WEB_ROOT/manifest.json"
+}
+
+if [ "$UPDATE_WEB_MANIFEST" -eq 1 ]; then
+    generate_web_manifest
+    echo "web/manifest.json обновлён"
+fi
+
+echo "verifying web"
+for f in "${REQUIRED_WEB_FILES[@]}"; do
+    if [ ! -f "$WEB_ROOT/$f" ]; then
+        echo "FAIL: web/$f отсутствует — без него фронт поставки неполон, движок уйдёт на embed" >&2
+        exit 1
+    fi
+done
+while IFS=$'\t' read -r name sha; do
+    [ -n "$name" ] || continue
+    if [ ! -f "$WEB_ROOT/$name" ]; then
+        echo "FAIL: web/$name из манифеста отсутствует" >&2
+        exit 1
+    fi
+    got="$(sha256sum "$WEB_ROOT/$name" | cut -d' ' -f1)"
+    if [ "$got" != "$sha" ]; then
+        echo "FAIL: web/$name sha256 $got != манифест $sha — правка фронта без обновления манифеста" >&2
+        echo "      пересчитай пины: bash scripts/build.sh --update-web-manifest" >&2
+        exit 1
+    fi
+done < <(jq -r '.files | to_entries[] | "\(.key)\t\(.value)"' "$WEB_ROOT/manifest.json")
+echo "web OK: фронт и манифест сходятся"
+
+# Копия фронта в поставку: bin/web ложится рядом с bin/tns65, а rsync bin/ в
+# папку станции кладёт web/ рядом с бинарником (гибрид IMP-12).
+rm -rf bin/web
+cp -R "$WEB_ROOT" bin/web
+# В поставке только статика: embed.go — исходник движка, на станции не нужен.
+find bin/web -name '*.go' -delete
+echo "bin/web собран: $(find bin/web -type f | wc -l) файлов"

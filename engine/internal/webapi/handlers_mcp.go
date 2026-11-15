@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -19,7 +18,6 @@ import (
 	"tns65/internal/swarm"
 	"tns65/internal/version"
 	"tns65/internal/workshop"
-	web "tns65/web"
 )
 
 // Вкладка «MCP» (T-08-08, UI-07): дашборд ковки, книги-источники и кольца
@@ -690,16 +688,8 @@ func mcpWorldReady(slug string) bool {
 	return err == nil
 }
 
-// handleMcpScreen — GET /mcp.html: экран вкладки MCP из embed (статика из
-// бинарника). app.js загружает вкладку через fetch("/mcp.html").
+// handleMcpScreen — GET /mcp.html: экран вкладки MCP из источника статики
+// (диск web/ или embed, IMP-12). app.js загружает вкладку через fetch("/mcp.html").
 func handleMcpScreen(w http.ResponseWriter, _ *http.Request) {
-	data, err := fs.ReadFile(web.FS, "mcp.html")
-	if err != nil {
-		writeError(w, http.StatusNotFound, codeNotFound, "mcp screen not found")
-		return
-	}
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+	serveScreen(w, "mcp.html", "mcp screen not found")
 }

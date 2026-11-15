@@ -49,6 +49,10 @@ const (
 	EventSourceError       = "source.error"
 	EventSourceWarning     = "source.warning"
 	EventForgeLaunchFailed = "forge.launch_failed"
+	// Гибридная статика веба (IMP-12): источник фронта (disk|embed) и файлы,
+	// чей sha256 разошёлся с манифестом сборки — фронт новее бинарника.
+	EventWebStaticSource = "web.static.source"
+	EventWebStaticDrift  = "web.static.drift"
 )
 
 // Имена полей событий, общих для нескольких пакетов.

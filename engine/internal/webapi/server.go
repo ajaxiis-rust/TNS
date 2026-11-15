@@ -34,6 +34,9 @@ type Config struct {
 	Host   string
 	Port   int
 	Logger *journal.Logger
+	// WebDir — каталог web/ на диске (гибрид IMP-12); пусто — web/ рядом с
+	// бинарником, а если каталога нет или он неполон — встроенный фронт.
+	WebDir string
 }
 
 // withDefaults заполняет пустые host/port значениями по умолчанию (loopback).
@@ -56,7 +59,8 @@ func Listen(host string, port int) (net.Listener, error) {
 	return net.Listen("tcp", net.JoinHostPort(host, strconv.Itoa(port)))
 }
 
-// Server — веб-сервер на loopback: статика из embed и JSON/WS-эндпоинты.
+// Server — веб-сервер на loopback: статика (web/ на диске или embed) и
+// JSON/WS-эндпоинты.
 type Server struct {
 	cfg     Config
 	hub     *Hub
@@ -72,6 +76,7 @@ func New(cfg Config) *Server {
 	coeffLogger = cfg.Logger
 	chatLogger = cfg.Logger
 	inputLimits = loadInputLimits(settingsConfigPath)
+	currentStatic = resolveStatic(cfg.WebDir, cfg.Logger)
 	hub := NewHub()
 	router := newRouter(hub)
 	bindMonitorJournal(cfg.Logger)
@@ -90,6 +95,7 @@ func NewHandler(cfg Config) http.Handler {
 	coeffLogger = cfg.Logger
 	chatLogger = cfg.Logger
 	inputLimits = loadInputLimits(settingsConfigPath)
+	currentStatic = resolveStatic(cfg.WebDir, cfg.Logger)
 	hub := NewHub()
 	router := newRouter(hub)
 	bindMonitorJournal(cfg.Logger)

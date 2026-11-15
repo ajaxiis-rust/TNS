@@ -1,0 +1,24 @@
+{
+  "id": "web",
+  "files": {
+    "atlas.html": "3a476781cef0e471be93f918f053ec481216613d43bebb4b99ad4de3e1b9129e",
+    "history.html": "8d4da962f936b00c54adc9ce6ede6a6680d6e67cffcc7ea72cea0d55a2722f2a",
+    "index.html": "96bd738df9908426e048309395603ab2e37483ede676e1647b7daf7956834a6f",
+    "mcp.html": "c472b0cbfdb5f50720d3a43676ee21cde36c9fdfd7815bc2be7e403dadd32693",
+    "settings.html": "e49c965fd7e7708c9cd2699982ad9dbe153e13de6f48beaab7313d4039ae81e9",
+    "static/app.css": "6b66266b57e7ae4083f897bd28416546c0e739d1b77d81584567ab88f46a1476",
+    "static/app.js": "827acbb03d0fd64241915b18d01e9ee7cffc3738707b3389922fc3b668b0c504",
+    "static/chat.js": "d06cdcb38a380ba46235c02cb712de561ad796f9b6ab3628b52652121a971c0d",
+    "static/coeffs.js": "d373c2746dbca4e4d67e4aaa4ba28e8cdbcc22f81edaa261ec2ecf0dedb29da0",
+    "static/graph.js": "022bbc7767e6fe2fc129deec7c19e5e82b79b4c63999e8d8af32274152803daa",
+    "static/i18n.js": "c244292713b01ac183e25e25059b6ce8d4f8a36a5657c19198f7f465da93a54d",
+    "static/map.js": "1b843cea247a738644567a5155d05e543b6eed695b92f10b513afae5c4f17558",
+    "static/names.js": "c430cff8617b654b999e707f944cde66a001d3fe16c63430640b933e039b0f6e",
+    "static/providers.js": "722e75bd6cc0de69a359851f139d3bc83dc8af2d3bca341ccd98c8d8323a91aa",
+    "static/theme-init.js": "aa170d0d1ae2e77de404c7682d8ad005b59b94643146b72ebb2d338677cef272",
+    "static/theme.css": "e059bef9b53c3325a0721f2cc820047ca0be4505581d052cde9171eaeb439b2f",
+    "static/tokenlimit.js": "1f450a76c2e83f899be6f733f623cff6748fdb5643ba72a29adbaa73042eb3d8",
+    "static/wizard.js": "af439499b69ebbbd55c2d9946fd9605407677b69ce4e66e8b0fd781a68c69251",
+    "wizard.html": "3125669939355167db65115b5e7375ff16328995d1bb86b665e59736052b44c8"
+  }
+}

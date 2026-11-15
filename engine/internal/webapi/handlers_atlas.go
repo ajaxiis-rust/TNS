@@ -3,7 +3,6 @@ package webapi
 import (
 	"encoding/json"
 	"errors"
-	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,7 +15,6 @@ import (
 	"tns65/internal/journal"
 	"tns65/internal/models"
 	"tns65/internal/workshop"
-	web "tns65/web"
 )
 
 // Атлас (T-08-05): список миров карточками, анкета рождения, мастер рождения,
@@ -170,17 +168,10 @@ func atlasRootDir() string {
 	return atlasRoot
 }
 
-// handleAtlasScreen — GET /atlas.html: экран Атласа из embed (T-08-05, статика
-// из бинарника).
+// handleAtlasScreen — GET /atlas.html: экран Атласа из источника статики
+// (диск web/ или embed, IMP-12; T-08-05).
 func handleAtlasScreen(w http.ResponseWriter, _ *http.Request) {
-	data, err := fs.ReadFile(web.FS, "atlas.html")
-	if err != nil {
-		writeError(w, http.StatusNotFound, codeNotFound, "atlas not found")
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+	serveScreen(w, "atlas.html", "atlas not found")
 }
 
 // atlasWorldCard — карточка мира в списке (UI-05.1): имя мира, счётчики
