@@ -14,13 +14,14 @@
     "detectors_time.json": "0c40320dc43cdb9121c494bc487613865b99453bf8eab52e0d79a2995543fcdb",
     "lexicon_intents.jsonl": "55366a9b754836107c6ba39323ca12fd4ee37630f0600db4be5c5bf30e27d3d4",
     "stoplist.txt": "6e31ddd8a5f401e3db3d286da6476fac4948d58032a3370067997719a1794c64",
-    "nature.json": "77ed0357c91914daa67bbde666f2676dc96bafa19806a4d46a1baeea58149714",
-    "architecture.json": "5af851c3bdcd977f52d59b45aebf3fceded6a64970d1f56253db636c1550908a",
-    "social.json": "7916781ff129c4c161b354ff183d2e29dc2217e0e97aa4958c562abda78cb563",
-    "action_dramatic.json": "70990a86fbbc2081439ed4cc8ce831836bd860a3bc03ae5a082fb89267485923",
-    "erotic.json": "e676d47764f9ae36e503b4ccdbbc0c0f5d71122e092e6808f8984d389dd27a32",
-    "violence.json": "bf422b6eb3cc7ae240575e77829e7d950f2a76a9cc813a3466e693fe9f9cde48",
-    "battle.json": "d714d2d6ba8bcf1f22078aaa6ffb8002c3ee8ce491d3814b3422f52afec9bf7b",
+    "nature.json": "1ce675ce5aab1cc2901836fdc818bec36624a783f32aa724bc31cdee630bd2cd",
+    "architecture.json": "efa63927aedd2661613ecd982ce3440dcd4fefd65549e33b9b7917aae48873ac",
+    "social.json": "c0a1695a79ae1fce26b9e1f26a7f85bec8c061ea04e4037ca9bb5cbdaf5caf2b",
+    "action_dramatic.json": "f58b702048f323af72fcd3f954fb1f32618ffe1a5deeaf464eb08991c5149bd7",
+    "erotic.json": "dda29b4e97f0f3792a5267589bd64b1699c9145aa9fb21052c6417b8a149eaa6",
+    "violence.json": "bca3ceafd92d5807946ce1740620dfec777128e889300cb623077fe60dd80223",
+    "battle.json": "93db272d081efb5484db7eda2c419b587ea8941d9ad76f4bf77e1cfa35145e4a",
+    "appearance.json": "ad0a0925d0deeddf0dca938f16dc62c1c2745ccb03ea0cc07cdad5950a398b42",
     "styles.json": "bed3797ffe136de948364ff27411d7d5194405b61f9390104b2de526383469b1"
   }
 }

@@ -66,8 +66,8 @@ func TestRunPipeline(t *testing.T) {
 
 	// Пять таблиц разбора: теги, места, сцены, стиль, staging.
 	tagRows := countRows(t, lit, `SELECT COUNT(*) FROM book_chunk_tag`)
-	if tagRows != len(texts)*7 {
-		t.Errorf("строк book_chunk_tag = %d, want %d (чанк × ключ словаря)", tagRows, len(texts)*7)
+	if tagRows != len(texts)*len(deepread.DictionaryKeys) {
+		t.Errorf("строк book_chunk_tag = %d, want %d (чанк × ключ словаря)", tagRows, len(texts)*len(deepread.DictionaryKeys))
 	}
 	if n := countRows(t, lit, `SELECT COUNT(*) FROM book_place WHERE book_id = ?`, bookID); n == 0 {
 		t.Error("book_place: мест нет")

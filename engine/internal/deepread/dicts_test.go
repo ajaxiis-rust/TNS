@@ -66,8 +66,10 @@ func TestDictGates(t *testing.T) {
 				t.Errorf("словарь %q не загружен", key)
 				continue
 			}
-			if n := len(d.Lemmas); n < 40 || n > 80 {
-				t.Errorf("%s: лемм %d, ожидалось 40–80", key, n)
+			// Верхняя граница 80 — размер словарей v1; IMP-9 добавил золотые
+			// якоря, social дошёл до 142 лемм.
+			if n := len(d.Lemmas); n < 40 || n > 160 {
+				t.Errorf("%s: лемм %d, ожидалось 40–160", key, n)
 			}
 			for lemma, weight := range d.Lemmas {
 				if weight < 1 || weight > 3 {

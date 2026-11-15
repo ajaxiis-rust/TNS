@@ -34,8 +34,8 @@ const (
 )
 
 // CategoryKeys — реестр ключей категорий разбора: перечень из §3 плана волны
-// 14. appearance, clothing, emotion и time берутся из существующих файлов пака
-// (W-22.2), остальные — из собственных файлов словарей.
+// 14. clothing, emotion и time берутся из существующих файлов пака (W-22.2),
+// остальные — из собственных файлов словарей (appearance — с IMP-9).
 var CategoryKeys = []string{
 	KeyAppearance,
 	KeyClothing,
@@ -61,11 +61,13 @@ var DictionaryKeys = []string{
 	KeyErotic,
 	KeyViolence,
 	KeyBattle,
+	KeyAppearance,
 }
 
-// dictFiles — имя файла пака для ключа категории (W-22.2: appearance, clothing
-// и character — оси descriptions.json, emotion — detectors_mood.json, time —
-// detectors_time.json; параллельные словари запрещены).
+// dictFiles — имя файла пака для ключа категории (W-22.2: clothing и character
+// — оси descriptions.json, emotion — detectors_mood.json, time —
+// detectors_time.json; параллельные словари запрещены). appearance с IMP-9
+// имеет собственный словарь анатомии (решение владельца 15.11).
 var dictFiles = map[string]string{
 	KeyNature:         "nature.json",
 	KeyArchitecture:   "architecture.json",
@@ -74,6 +76,7 @@ var dictFiles = map[string]string{
 	KeyErotic:         "erotic.json",
 	KeyViolence:       "violence.json",
 	KeyBattle:         "battle.json",
+	KeyAppearance:     "appearance.json",
 }
 
 // Канон ярлыков стиля книги (W-27.2): ярлык вне этого списка не присваивается.
@@ -135,7 +138,7 @@ type dictFile struct {
 	Phrases []Phrase       `json:"phrases"`
 }
 
-// LoadDictionaries читает семь словарей категорий из каталога пака. Отсутствие
+// LoadDictionaries читает восемь словарей категорий из каталога пака. Отсутствие
 // файла или пустой словарь — ошибка: тихий пустой словарь выключил бы разбор
 // категории.
 func LoadDictionaries(packDir string) (map[string]*Dictionary, error) {
