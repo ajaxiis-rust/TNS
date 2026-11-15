@@ -1934,9 +1934,13 @@
    "words": 438,
    "categories": {
     "appearance": {
-     "present": false,
-     "intensity": 0,
-     "anchors": []
+     "present": true,
+     "intensity": 0.4,
+     "anchors": [
+      "кудри",
+      "щека",
+      "палец"
+     ]
     },
     "clothing": {
      "present": false,
@@ -1964,9 +1968,13 @@
      ]
     },
     "action_dramatic": {
-     "present": false,
-     "intensity": 0,
-     "anchors": []
+     "present": true,
+     "intensity": 0.7,
+     "anchors": [
+      "схватить",
+      "кинуться",
+      "вскрикнуть"
+     ]
     },
     "speech": {
      "present": true,
@@ -2961,12 +2969,12 @@
    23
   ],
   "categories_present": {
-   "appearance": 8,
+   "appearance": 9,
    "clothing": 12,
    "nature": 10,
    "architecture": 23,
    "emotion": 24,
-   "action_dramatic": 8,
+   "action_dramatic": 9,
    "speech": 22,
    "time": 16,
    "social": 22,
