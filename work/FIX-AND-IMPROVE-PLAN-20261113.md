@@ -687,6 +687,7 @@ NOUN) матчит {граната,NOUN}; go test и gates.sh зелёные; о
 
 ### IMP-11. Golden ru-erotic: рассинхрон stats.uncertain / uncertain_chunks
 
+> ✅ Выполнено 2026-11-15 (коммит d869c42): stats.uncertain и uncertain_chunks выровнены с авторитетными флагами чанков (чанк 2).
 > Регистрация оркестратора 15.11.2026 (решение владельца 15.11 «править кодером»; находка сабагента при правке чанка 18, коммит 8fc8bec).
 
 **Факт:** в `fine/golden/ru-erotic/golden.json` `stats.uncertain` = 6, фактически
