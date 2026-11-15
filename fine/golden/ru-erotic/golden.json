@@ -2959,10 +2959,9 @@
   "chunks_max_words": 476,
   "scenes": 9,
   "characters": 7,
-  "uncertain": 6,
+  "uncertain": 5,
   "uncertain_chunks": [
    1,
-   2,
    11,
    14,
    22,
