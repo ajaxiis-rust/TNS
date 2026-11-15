@@ -132,8 +132,11 @@ func TestAncketaData(t *testing.T) {
 	if !reflect.DeepEqual(d.EconomyMods, wantEconomyMods) {
 		t.Fatalf("экономики: %v\nwant: %v", d.EconomyMods, wantEconomyMods)
 	}
-	if len(d.Ratings) != 2 {
-		t.Fatalf("рейтингов: %d, want 2", len(d.Ratings))
+	if len(d.Ratings) != 3 {
+		t.Fatalf("рейтингов: %d, want 3 (16+, 18+, 21+)", len(d.Ratings))
+	}
+	if !sameSet(d.Ratings, []string{"16+", "18+", "21+"}) {
+		t.Fatalf("рейтинги: %v", d.Ratings)
 	}
 	if !sameSet(d.Langs, []string{"ru", "en", "de", "fr", "es", "ja", "zh"}) {
 		t.Fatalf("языки: %v", d.Langs)

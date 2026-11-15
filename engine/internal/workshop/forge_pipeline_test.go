@@ -12,7 +12,7 @@ import (
 )
 
 // countingCensor — словарный фильтр фикстуры: текст с forbidden-словом
-// отклоняется, каждый вызов считается (проверка «банк чистится один раз»).
+// отклоняется, каждый вызов считается.
 type countingCensor struct {
 	forbidden string
 	calls     int
@@ -51,12 +51,12 @@ func TestForgePipeline(t *testing.T) {
 	seedForgeCharacter(t, world, "Иван")
 	seedForgePlace(t, worldPath, "Киев")
 
-	cen := &countingCensor{}
+	cen := &countingCensor{forbidden: "дебил"}
 	workshop.SetCensor(cen)
 	defer workshop.SetCensor(nil)
 
 	// Шаги 1–3: чистая ковка — конкретные имена и места заменяются
-	// слот-токенами во всех вхождениях, запись после Цензора попадает в банк.
+	// слот-токенами во всех вхождениях, запись попадает в банк.
 	good := workshop.ForgeMaterial{
 		Origin: "forge-book:test:1",
 		Kind:   "drama",
@@ -86,12 +86,11 @@ func TestForgePipeline(t *testing.T) {
 	if got := bankTrust(t, lit, id); got != sediment.TrustLevelVerified {
 		t.Fatalf("trust_level ковки = %d, want %d", got, sediment.TrustLevelVerified)
 	}
-	if got := cen.Calls(); got != 1 {
-		t.Fatalf("вызовов Цензора после первой ковки: %d, want 1", got)
+	if got := cen.Calls(); got != 0 {
+		t.Fatalf("Цензор вызван при ковке: %d раз, want 0 (IMP-13)", got)
 	}
 
-	// Повторная выдача той же записи Цензора заново не запускает.
-	calls := cen.Calls()
+	// Повторная выдача той же записи новых строк банка не даёт.
 	id2, err := workshop.ForgeBankRecord(world, lit, good)
 	if err != nil {
 		t.Fatalf("ForgeBankRecord (повтор): %v", err)
@@ -102,25 +101,23 @@ func TestForgePipeline(t *testing.T) {
 	if got := countBankOrigin(t, lit, good.Origin); got != 1 {
 		t.Fatalf("строк банка с origin=%q: %d, want 1", good.Origin, got)
 	}
-	if got := cen.Calls(); got != calls {
-		t.Fatalf("повторная выдача вызвала Цензора: %d → %d", calls, got)
-	}
 
-	// Запись с запретным словом в банк не попадает.
-	cen.forbidden = "дурак"
+	// Цензора в ковке нет: запись со стоп-словом пишется в банк без отбраковки.
 	bad := workshop.ForgeMaterial{
 		Origin: "forge-book:test:2",
 		Kind:   "drama",
 		Lang:   "ru",
-		Text:   "он дурак",
+		Text:   "он дебил",
 	}
-	if _, err := workshop.ForgeBankRecord(world, lit, bad); err == nil {
-		t.Fatal("запись с запретным словом прошла Цензора")
+	if _, err := workshop.ForgeBankRecord(world, lit, bad); err != nil {
+		t.Fatalf("ForgeBankRecord (стоп-слово): %v", err)
 	}
-	if got := countBankOrigin(t, lit, bad.Origin); got != 0 {
-		t.Fatalf("запретная запись попала в банк: %d строк", got)
+	if got := countBankOrigin(t, lit, bad.Origin); got != 1 {
+		t.Fatalf("запись со стоп-словом не попала в банк: %d строк", got)
 	}
-	cen.forbidden = ""
+	if got := cen.Calls(); got != 0 {
+		t.Fatalf("Цензор вызван при ковке: %d раз, want 0 (IMP-13)", got)
+	}
 
 	// Расхождение фактов помечается в forge_log (шаг 1).
 	mismatch := workshop.ForgeMaterial{

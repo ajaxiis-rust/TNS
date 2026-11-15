@@ -113,7 +113,7 @@ func RunForgeBook(ctx context.Context, world, lit *db.Handle, inputPath string, 
 		for i, chunk := range parsed.Chunks {
 			runChunks[i] = deepread.RunChunk{Ord: i, Chapter: chunk.Chapter, Text: chunk.Text}
 		}
-		if _, err := deepread.RunPipeline(world, lit, deepread.RunInput{
+		if _, err := deepread.RunPipeline(lit, world, deepread.RunInput{
 			BookID: bookID,
 			Author: parsed.Meta.Author,
 			Chunks: runChunks,

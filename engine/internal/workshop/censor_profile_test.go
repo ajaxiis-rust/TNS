@@ -2,7 +2,6 @@ package workshop_test
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -159,38 +158,54 @@ func TestRunHoroscopeForgeRating18UsesLocalSlot(t *testing.T) {
 	}
 }
 
-// TestForgeBankRecordRatingDictionary — 16+ расширяет словарь файлом
-// stoplist_16.txt: слово «дурак» (только в 16+) отклоняется при 16+ и проходит
-// при 18+ (база его не содержит), T-12-07.
-func TestForgeBankRecordRatingDictionary(t *testing.T) {
+// TestRatingProfiles — профиль цензора по рейтингу мира (IMP-13): 16+ отклоняет
+// слово stoplist_16 («дебил»), «дурак» из stoplist_16 убран как шум и проходит,
+// 21+ разрешает все слова (stoplist_21 в поставке пуст, база не применяется).
+// Профиль проверяется на ковке гороскопа — оставшемся пути, читающем рейтинг
+// мира; ковка книг цензора больше не зовёт.
+func TestRatingProfiles(t *testing.T) {
 	if lemmatizerBinary(t) == "" {
 		t.Skip("бинарник лемматизатора недоступен — реальный словарь не проверяется")
 	}
 
-	material := func(origin string) workshop.ForgeMaterial {
-		return workshop.ForgeMaterial{Origin: origin, Kind: "drama", Lang: "ru", Text: "он дурак"}
-	}
+	for _, tc := range []struct {
+		name   string
+		rating string
+		word   string
+		reject bool
+	}{
+		{"16+ стоп-слово", workshop.Rating16Plus, "дебил", true},
+		{"16+ «дурак» убран", workshop.Rating16Plus, "дурак", false},
+		{"21+ разрешает всё", workshop.Rating21Plus, "блядь", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			worldPath := filepath.Join(dir, "world(a).db")
+			litPath := filepath.Join(dir, "literary.db")
+			newDB(t, worldPath, "world", "shared")
+			newDB(t, litPath, "literary")
+			seedCensorship(t, worldPath, tc.rating)
 
-	// 16+: «дурак» только в stoplist_16 — расширенный словарь отклоняет.
-	dir16 := t.TempDir()
-	world16 := filepath.Join(dir16, "world(a).db")
-	lit16 := filepath.Join(dir16, "literary.db")
-	newDB(t, world16, "world", "shared")
-	newDB(t, lit16, "literary")
-	seedCensorship(t, world16, workshop.Rating16Plus)
-	if _, err := workshop.ForgeBankRecord(openForgeWorld(t, world16), openForgeLiterary(t, lit16), material("forge:16")); !errors.Is(err, workshop.ErrCensorReject) {
-		t.Fatalf("16+: «дурак» = %v, want ErrCensorReject", err)
-	}
+			world := openForgeWorld(t, worldPath)
+			lit := openForgeLiterary(t, litPath)
+			sceneID := insertScene(t, world, "open")
 
-	// 18+: база не содержит «дурак» — запись проходит.
-	dir18 := t.TempDir()
-	world18 := filepath.Join(dir18, "world(a).db")
-	lit18 := filepath.Join(dir18, "literary.db")
-	newDB(t, world18, "world", "shared")
-	newDB(t, lit18, "literary")
-	seedCensorship(t, world18, workshop.Rating18Plus)
-	if _, err := workshop.ForgeBankRecord(openForgeWorld(t, world18), openForgeLiterary(t, lit18), material("forge:18")); err != nil {
-		t.Fatalf("18+: «дурак» = %v, want ok", err)
+			slot := testkit.NewFakeSlot()
+			slot.SetResponse(workshop.HoroscopeRole, horoscopeOutput(tc.word))
+			workshop.SetSlot(slot)
+			defer workshop.SetSlot(nil)
+			workshop.SetEmbedder(testkit.NewFakeEmbed())
+			defer workshop.SetEmbedder(nil)
+
+			payload := workshop.HoroscopePayload{SceneID: sceneID, Pythia: "карта игрока", Forecast: "echo"}
+			_, err := workshop.RunHoroscopeForge(world, lit, payload)
+			if tc.reject && err == nil {
+				t.Fatalf("16+: %q прошло цензора, want отказ", tc.word)
+			}
+			if !tc.reject && err != nil {
+				t.Fatalf("рейтинг %s: %q отклонено: %v", tc.rating, tc.word, err)
+			}
+		})
 	}
 }
 

@@ -27,8 +27,16 @@ const stoplistFile = "stoplist.txt"
 // усиленный словарь поверх базы.
 const stoplist16File = "stoplist_16.txt"
 
+// stoplist21File — имя файла профиля рейтинга 21+ (IMP-13): словарь игрока,
+// в поставке пустой; база на 21+ не применяется.
+const stoplist21File = "stoplist_21.txt"
+
 // rating16Plus — рейтинг 16+: профиль усиливается файлом stoplist_16.txt (T-12-05).
 const rating16Plus = "16+"
+
+// rating21Plus — рейтинг 21+: только файл stoplist_21.txt, пустой словарь
+// отключает цензора (IMP-13).
+const rating21Plus = "21+"
 
 // Checker — словарный фильтр: лемматизатор и множество запретных лемм.
 type Checker struct {
@@ -158,10 +166,14 @@ func LoadStoplist(packDir string) ([]string, error) {
 }
 
 // LoadStoplistProfile читает профиль запретных лемм рейтинга rating (T-12-05).
-// База — stoplist.txt; рейтинг 16+ усиливается файлом stoplist_16.txt (база + 16+),
-// остальные рейтинги (18+) используют только базу. Отсутствие файла 16+ при
-// рейтинге 16+ — ошибка, а не тихое ослабление словаря (fail-closed).
+// База — stoplist.txt; рейтинг 16+ усиливается файлом stoplist_16.txt (база + 16+);
+// рейтинг 21+ берёт только файл stoplist_21.txt (пустой словарь отключает
+// цензора, база не применяется); остальные рейтинги (18+) используют только базу.
+// Отсутствие файла профиля — ошибка, а не тихое ослабление словаря (fail-closed).
 func LoadStoplistProfile(packDir, rating string) ([]string, error) {
+	if rating == rating21Plus {
+		return loadStoplistFile(filepath.Join(packDir, stoplist21File))
+	}
 	base, err := LoadStoplist(packDir)
 	if err != nil {
 		return nil, err

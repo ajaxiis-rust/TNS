@@ -724,6 +724,17 @@ func runForgeBookTask(payloadJSON string) int {
 	}
 	defer lit.Close()
 
+	// IMP-13: ребёнок-форжер доносит миграции схемы до баз мира до работы —
+	// существующий мир получает таблицы новых волн без перерождения.
+	if err := world.EnsureMigrated(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := lit.EnsureMigrated(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
 	fams, _ := structural.LoadFamilies(filepath.Join(db.BaseRoot, "archetypes.json"))
 
 	// Э3: ковка чанков книги идёт по маршруту sources этого процесса —
@@ -817,7 +828,7 @@ func runDeepreadTask(literaryPath, payloadJSON string) int {
 		slot = workshop.NewRoutedWorkshopSlot(router.Slot(providerroute.TaskSources))
 	}
 
-	report, err := deepread.RunPipeline(world, lit, deepread.RunInput{
+	report, err := deepread.RunPipeline(lit, world, deepread.RunInput{
 		BookID: bookID,
 		Author: parsed.Meta.Author,
 		Chunks: chunks,

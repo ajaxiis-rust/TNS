@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"io/fs"
 	"path"
@@ -111,6 +112,29 @@ func Migrate(db *sql.DB, dirs ...string) error {
 		return err
 	}
 	return nil
+}
+
+// schemaDirs — каталоги схемы по идентичности базы: оперативная и литературная
+// базы несут общие векторы (shared); base собирается запеканием (bake.go).
+var schemaDirs = map[DB][]string{
+	DBWorld:    {"world", "shared"},
+	DBLiterary: {"literary", "shared"},
+}
+
+// EnsureMigrated доносит миграции схемы до открытой базы (IMP-13): идемпотентно,
+// уже применённые файлы пропускаются, недостающие таблицы создаются. Вызывается
+// на путях открытия мира (webapi, ребёнок forge-book), чтобы существующий мир
+// получил таблицы новых волн без перерождения. Хэндл должен быть на запись;
+// параллельный доступ безопасен (busy_timeout в DSN).
+func (h *Handle) EnsureMigrated() error {
+	if h == nil {
+		return errors.New("db: нет хэндла для миграции")
+	}
+	dirs, ok := schemaDirs[h.dbName]
+	if !ok {
+		return fmt.Errorf("db: миграции базы %q не определены", h.dbName)
+	}
+	return Migrate(h.db, dirs...)
 }
 
 // ensureMigrationsTable создаёт таблицу учёта и перестраивает легаси-версию
