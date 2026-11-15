@@ -513,6 +513,12 @@ func handleMcpForge(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, codeNotFound, "world not found")
 		return
 	}
+	// IMP-13: миграции схемы доносятся до баз мира до запуска ковки — старый
+	// мир получает таблицы новых волн (0006) без перерождения.
+	if err := ensureWorldSchema(slug); err != nil {
+		writeError(w, http.StatusInternalServerError, codeInternal, "world open failed")
+		return
+	}
 
 	exe, err := os.Executable()
 	if err != nil {

@@ -29,6 +29,10 @@ const epochTag = "epoch"
 // epochOriginPrefix — префикс origin записи справочника: одна эпоха — одна запись.
 const epochOriginPrefix = "epoch:"
 
+// ErrCensorReject — Цензор при варке справочника эпохи не пропустил выход ковки;
+// в банк запись не попадает (W-19.3).
+var ErrCensorReject = errors.New("workshop: Цензор не пропустил запись банка")
+
 // worldDescriptionKey — ключ world_meta с описанием мира (B-01, T-02-03).
 const worldDescriptionKey = "description"
 

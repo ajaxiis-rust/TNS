@@ -251,6 +251,7 @@ func TestLoadStoplistProfile(t *testing.T) {
 	dir := t.TempDir()
 	writePackFile(t, dir, stoplistFile, "блядь\nхуй\n")
 	writePackFile(t, dir, stoplist16File, "дурак\nидиот\n")
+	writePackFile(t, dir, stoplist21File, "тварь\n")
 
 	base, err := LoadStoplist(dir)
 	if err != nil {
@@ -281,6 +282,26 @@ func TestLoadStoplistProfile(t *testing.T) {
 		if !contains(got, want) {
 			t.Fatalf("профиль 16+ = %v, want содержит %q", got, want)
 		}
+	}
+
+	// 21+: только stoplist_21.txt, база не применяется (IMP-13).
+	got21, err := LoadStoplistProfile(dir, "21+")
+	if err != nil {
+		t.Fatalf("LoadStoplistProfile(21+): %v", err)
+	}
+	if len(got21) != 1 || got21[0] != "тварь" {
+		t.Fatalf("профиль 21+ = %v, want только stoplist_21 [тварь]", got21)
+	}
+}
+
+// TestLoadStoplistProfileMissing21 — при рейтинге 21+ отсутствие stoplist_21.txt
+// — ошибка, а не тихое ослабление словаря (fail-closed, IMP-13).
+func TestLoadStoplistProfileMissing21(t *testing.T) {
+	dir := t.TempDir()
+	writePackFile(t, dir, stoplistFile, "блядь\n")
+
+	if _, err := LoadStoplistProfile(dir, "21+"); err == nil {
+		t.Fatal("профиль 21+ без stoplist_21.txt собрался, want ошибка")
 	}
 }
 
@@ -327,6 +348,21 @@ func TestRealStoplistProfile(t *testing.T) {
 	if len(profile) <= len(base) {
 		t.Fatalf("профиль 16+ (%d) не расширил базу (%d)", len(profile), len(base))
 	}
+	// «дурак» и «тварь» убраны из stoplist_16 как бытовой шум (IMP-13, п.2a).
+	for _, noise := range []string{"дурак", "тварь"} {
+		if contains(profile, noise) {
+			t.Fatalf("шум %q остался в профиле 16+", noise)
+		}
+	}
+
+	// 21+ в поставке — пустой словарь: цензор выключен, игрок наполняет сам.
+	profile21, err := LoadStoplistProfile(packDir, "21+")
+	if err != nil {
+		t.Fatalf("LoadStoplistProfile(21+): %v", err)
+	}
+	if len(profile21) != 0 {
+		t.Fatalf("профиль 21+ поставки = %v, want пустой", profile21)
+	}
 }
 
 // TestRealProfileCensor — на реальном резиденте пакета: обычная проза проходит,
@@ -371,10 +407,10 @@ func TestRealProfileCensor(t *testing.T) {
 		t.Fatalf("брань прошла базу: hits=%v", hits)
 	}
 
-	if ok, _ := baseC.Check("дурак идёт"); !ok {
+	if ok, _ := baseC.Check("дебил идёт"); !ok {
 		t.Fatal("18+ (база) поймал слово из stoplist_16, want только в профиле 16+")
 	}
-	if ok, hits := profile16C.Check("дурак идёт"); ok {
+	if ok, hits := profile16C.Check("дебил идёт"); ok {
 		t.Fatalf("16+ не поймал слово из stoplist_16: hits=%v", hits)
 	}
 }

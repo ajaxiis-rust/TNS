@@ -786,3 +786,49 @@ func TestSourceReforge(t *testing.T) {
 		t.Fatalf("POST reforge несуществующего мира: status = %d, want 404", rr.Code)
 	}
 }
+
+// TestMcpForgeMigratesWorld — IMP-13: «Ковать» доносит миграции схемы до баз
+// мира до запуска ковки — существующий мир получает таблицы 0006 без
+// перерождения (на проде это лечит kventin).
+func TestMcpForgeMigratesWorld(t *testing.T) {
+	seedMcpWorld(t)
+
+	raw, err := db.OpenWriter(litDBPath("alpha"))
+	if err != nil {
+		t.Fatalf("OpenWriter(literary): %v", err)
+	}
+	for _, q := range []string{
+		`DROP TABLE book_chunk_tag`,
+		`DROP TABLE book_place`,
+		`DROP TABLE book_scene`,
+		`DROP TABLE book_style`,
+		`DROP TABLE dict_staging`,
+		`DELETE FROM schema_migrations WHERE version = 6 AND name = '0006_book_deepread'`,
+	} {
+		if _, err := raw.Exec(q); err != nil {
+			_ = raw.Close()
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("Close(literary): %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]string{"world": "alpha"})
+	rr := mcpRequest(t, handleMcpForge, http.MethodPost, mcpForgePath, body, "application/json")
+	if rr.Code != http.StatusOK {
+		t.Fatalf("POST forge: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+
+	lit, err := db.OpenReaderAs(litDBPath("alpha"), db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		t.Fatalf("OpenReaderAs(literary): %v", err)
+	}
+	defer lit.Close()
+	for _, table := range []string{"book_chunk_tag", "book_place", "book_scene", "book_style", "dict_staging"} {
+		var n int
+		if err := lit.QueryRow(`SELECT COUNT(*) FROM ` + table).Scan(&n); err != nil {
+			t.Fatalf("таблица %s после «Ковать»: %v", table, err)
+		}
+	}
+}

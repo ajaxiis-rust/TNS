@@ -4,17 +4,12 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 
 	"tns65/internal/db"
 	"tns65/internal/sediment"
 	"tns65/internal/structural"
 	"tns65/internal/version"
 )
-
-// ErrCensorReject — Цензор при варке не пропустил выход ковки; в банк запись не
-// попадает (W-14.4, шаг 2).
-var ErrCensorReject = errors.New("workshop: Цензор не пропустил запись банка")
 
 // ErrRemeltNotUnchecked — переплавить можно только осевшую запись с
 // trust_level=1 (шаг 4); уже проверенная запись Гефесту не нужна.
@@ -67,15 +62,16 @@ func Delexify(sourceSceneID int64, text string, facts []sediment.Fact, bindings 
 }
 
 // ForgeBankRecord — конвейер ковки записи банка (шаги 1–3): идемпотентность по
-// origin, делексификация, проверка фактов, Цензор на выходе и сборка записи.
-// Повторная выдача той же записи (тот же origin) Цензора заново не запускает.
+// origin, делексификация, проверка фактов и сборка записи. Цензора при ковке нет
+// (IMP-13): он контролирует только выбор при ходе, записи банка пишутся без
+// отбраковки.
 func ForgeBankRecord(world *db.Handle, lit *db.Handle, m ForgeMaterial) (int64, error) {
 	if m.Origin == "" {
 		return 0, errors.New("workshop: ковка без origin")
 	}
 
 	// Шаг 3: банк чистится один раз при ковке — повторная выдача записи
-	// цензуру заново не запускает.
+	// заново не пишет.
 	if id, ok, err := findBankByOrigin(lit, m.Origin); err != nil {
 		return 0, err
 	} else if ok {
@@ -89,12 +85,6 @@ func ForgeBankRecord(world *db.Handle, lit *db.Handle, m ForgeMaterial) (int64, 
 
 	if _, err := FactCheck(world, lit, m.Facts); err != nil {
 		return 0, err
-	}
-
-	// Шаг 2: Цензор при варке — на выходе ковки, до записи в банк. Профиль
-	// словаря выбирается по рейтингу мира (16+ — расширенный, 18+ — база).
-	if ok, hits := censorForWorld(world).Check(text); !ok {
-		return 0, fmt.Errorf("%w: %s", ErrCensorReject, strings.Join(hits, ", "))
 	}
 
 	return writeBankRecord(lit, m, text)

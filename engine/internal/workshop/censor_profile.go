@@ -1,6 +1,7 @@
-// Профиль цензуры и слота по рейтингу мира (T-12-07, W-14.3): рейтинг
+// Профиль цензуры и слота по рейтингу мира (T-12-07, W-14.3, IMP-13): рейтинг
 // world_meta.censorship выбирает словарь (16+ — база + stoplist_16.txt, 18+ —
-// база) и ограничивает пресет слота (18+ — только локальный).
+// база, 21+ — только stoplist_21.txt) и ограничивает пресет слота (18+ — только
+// локальный).
 package workshop
 
 import (
@@ -16,10 +17,12 @@ import (
 	"tns65/internal/lemmarpc"
 )
 
-// Rating16Plus / Rating18Plus — рейтинги цензуры мира (B-01, W-14.3).
+// Rating16Plus / Rating18Plus / Rating21Plus — рейтинги цензуры мира (B-01,
+// W-14.3, IMP-13).
 const (
 	Rating16Plus = "16+"
 	Rating18Plus = "18+"
+	Rating21Plus = "21+"
 )
 
 // censorshipKey — ключ world_meta с рейтингом цензуры мира (T-02-01, поле 14).
@@ -109,37 +112,54 @@ func (w checkerCensor) Check(text string) (bool, []string) {
 	return w.c.Check(text)
 }
 
-// rating16Once — профиль 16+ собирается один раз на процесс: резидент
-// лемматизатора и расширенный словарь не пересоздаются на каждый вызов.
-var rating16Once sync.Once
+// rating16Once / rating21Once — профили собираются один раз на процесс: резидент
+// лемматизатора и словарь не пересоздаются на каждый вызов.
+var (
+	rating16Once sync.Once
+	rating21Once sync.Once
+)
 
-// rating16Censor — собранный профиль 16+; nil — сборка не удалась (fail-closed).
-var rating16Censor *censor.Checker
+// rating16Censor / rating21Censor — собранные профили; nil — сборка не удалась
+// (fail-closed).
+var (
+	rating16Censor *censor.Checker
+	rating21Censor *censor.Checker
+)
+
+// buildRatingCensor собирает чекер профиля рейтинга из пакета ru; nil — пакет
+// или резидент лемматизатора недоступны (fail-closed).
+func buildRatingCensor(rating string) *censor.Checker {
+	root := editEngineRoot()
+	if root == "" {
+		return nil
+	}
+	packDir := filepath.Join(root, "packs", censorPackLang)
+	stoplist, err := censor.LoadStoplistProfile(packDir, rating)
+	if err != nil {
+		return nil
+	}
+	binary := editPackBinary(root)
+	if binary == "" {
+		return nil
+	}
+	return censor.New(lemmarpc.NewClient(binary, nil), stoplist)
+}
 
 // censorForRating возвращает Цензора рейтинга: 16+ — база + stoplist_16.txt,
-// остальные (18+, пустой) — только база. Тестовая подмена (SetCensor) имеет
-// приоритет и разрешается в censorForWorld.
+// 21+ — только stoplist_21.txt (пустой словарь отключает цензора), остальные
+// (18+, пустой) — только база. Тестовая подмена (SetCensor) имеет приоритет и
+// разрешается в censorForWorld.
 func censorForRating(rating string) Censor {
-	if rating != Rating16Plus {
+	switch rating {
+	case Rating16Plus:
+		rating16Once.Do(func() { rating16Censor = buildRatingCensor(Rating16Plus) })
+		return checkerCensor{c: rating16Censor}
+	case Rating21Plus:
+		rating21Once.Do(func() { rating21Censor = buildRatingCensor(Rating21Plus) })
+		return checkerCensor{c: rating21Censor}
+	default:
 		return censorAdapter{}
 	}
-	rating16Once.Do(func() {
-		root := editEngineRoot()
-		if root == "" {
-			return
-		}
-		packDir := filepath.Join(root, "packs", censorPackLang)
-		stoplist, err := censor.LoadStoplistProfile(packDir, Rating16Plus)
-		if err != nil {
-			return
-		}
-		binary := editPackBinary(root)
-		if binary == "" {
-			return
-		}
-		rating16Censor = censor.New(lemmarpc.NewClient(binary, nil), stoplist)
-	})
-	return checkerCensor{c: rating16Censor}
 }
 
 // censorForWorld возвращает Цензора ковки по рейтингу мира: тестовая подмена

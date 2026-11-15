@@ -39,6 +39,27 @@ var forgeBookRun = func(world, lit *db.Handle, inputPath string, progress func(d
 	return err
 }
 
+// ensureWorldSchema доносит миграции схемы до баз мира перед ковкой (IMP-13):
+// существующий мир получает таблицы новых волн без перерождения. Базы
+// открываются на запись и закрываются сразу; мигратор идемпотентен.
+func ensureWorldSchema(slug string) error {
+	world, err := db.OpenWriterAs(worldDBPath(slug), db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		return err
+	}
+	defer world.Close()
+	if err := world.EnsureMigrated(); err != nil {
+		return err
+	}
+
+	lit, err := db.OpenWriterAs(litDBPath(slug), db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		return err
+	}
+	defer lit.Close()
+	return lit.EnsureMigrated()
+}
+
 // languageReadyPath — путь метки language_ready мира.
 func languageReadyPath(slug string) string {
 	return filepath.Join(atlasRootDir(), "worlds", slug, languageReadyFile)
@@ -147,6 +168,13 @@ func forgeSourceBook(slug string, bookID int64, progress *float64) error {
 		return err
 	}
 	defer lit.Close()
+
+	if err := world.EnsureMigrated(); err != nil {
+		return err
+	}
+	if err := lit.EnsureMigrated(); err != nil {
+		return err
+	}
 
 	book, err := workshop.BookByID(lit, bookID)
 	if err != nil {
