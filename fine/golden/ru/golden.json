@@ -3134,15 +3134,15 @@
    29
   ],
   "categories_present": {
-   "appearance": 28,
-   "clothing": 19,
-   "nature": 6,
-   "architecture": 28,
+   "appearance": 24,
+   "clothing": 15,
+   "nature": 4,
+   "architecture": 20,
    "emotion": 30,
-   "action_dramatic": 28,
-   "speech": 30,
-   "time": 29,
-   "social": 30
+   "action_dramatic": 10,
+   "speech": 27,
+   "time": 21,
+   "social": 27
   },
   "dialogue_share_avg": 0.34
  }

@@ -4674,18 +4674,18 @@
    30
   ],
   "categories_present": {
-   "appearance": 33,
-   "clothing": 20,
-   "nature": 14,
-   "architecture": 23,
+   "appearance": 29,
+   "clothing": 13,
+   "nature": 9,
+   "architecture": 17,
    "emotion": 35,
-   "action_dramatic": 31,
-   "speech": 34,
-   "time": 27,
+   "action_dramatic": 20,
+   "speech": 32,
+   "time": 13,
    "social": 29,
-   "erotic": 4,
-   "violence": 20,
-   "battle": 27
+   "erotic": 2,
+   "violence": 14,
+   "battle": 19
   },
   "dialogue_share_avg": 0.36
  }
