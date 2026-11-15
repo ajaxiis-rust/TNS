@@ -240,8 +240,7 @@
      "intensity": 0.45,
      "anchors": [
       "галерея",
-      "амбар",
-      "коромысло"
+      "амбар"
      ]
     },
     "emotion": {
@@ -253,12 +252,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.25,
-     "anchors": [
-      "вешать",
-      "выбросить"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -285,18 +281,14 @@
      ]
     },
     "erotic": {
-     "present": true,
-     "intensity": 0.2,
-     "anchors": [
-      "рука"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "violence": {
-     "present": true,
-     "intensity": 0.1,
-     "anchors": [
-      "вешать"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "battle": {
      "present": false,
@@ -325,8 +317,7 @@
    "dialogue_share": 0.81,
    "quoted_share": 0.06,
    "scene": 2,
-   "uncertain": true,
-   "uncertain_reason": "«свинью живую вешали» даёт ложный сигнал violence (шутка на весах), а флирт с рукопожатием — пограничная erotic 0.2."
+   "uncertain": false
   },
   {
    "id": 3,
@@ -1032,12 +1023,9 @@
      ]
     },
     "action_dramatic": {
-     "present": true,
-     "intensity": 0.25,
-     "anchors": [
-      "обнять",
-      "бросить"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "speech": {
      "present": true,
@@ -1064,8 +1052,7 @@
      "present": true,
      "intensity": 0.5,
      "anchors": [
-      "обнять",
-      "ковёр"
+      "обнять"
      ]
     },
     "violence": {
@@ -1574,11 +1561,9 @@
      "anchors": []
     },
     "erotic": {
-     "present": true,
-     "intensity": 0.4,
-     "anchors": [
-      "постель"
-     ]
+     "present": false,
+     "intensity": 0,
+     "anchors": []
     },
     "violence": {
      "present": true,
@@ -2981,12 +2966,12 @@
    "nature": 11,
    "architecture": 23,
    "emotion": 24,
-   "action_dramatic": 23,
+   "action_dramatic": 8,
    "speech": 22,
    "time": 19,
    "social": 22,
-   "erotic": 20,
-   "violence": 13,
+   "erotic": 10,
+   "violence": 7,
    "battle": 0
   },
   "dialogue_share_avg": 0.47
