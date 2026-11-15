@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"net"
 	"net/http"
 	"os"
@@ -30,7 +29,6 @@ import (
 	"tns65/internal/providercfg"
 	"tns65/internal/providerroute"
 	"tns65/internal/supervisor"
-	web "tns65/web"
 )
 
 // Вкладка «Настройки» (T-08-09, UI-08): всё станочное. Мировые параметры
@@ -272,18 +270,10 @@ type advancedSettings struct {
 	DayNormKm           float64  `json:"dayNormKm"`
 }
 
-// handleSettingsScreen — GET /settings.html: экран Настроек из embed (статика из
-// бинарника, F-11.3).
+// handleSettingsScreen — GET /settings.html: экран Настроек из источника статики
+// (диск web/ или embed, IMP-12; F-11.3).
 func handleSettingsScreen(w http.ResponseWriter, _ *http.Request) {
-	data, err := fs.ReadFile(web.FS, "settings.html")
-	if err != nil {
-		writeError(w, http.StatusNotFound, codeNotFound, "settings screen not found")
-		return
-	}
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+	serveScreen(w, "settings.html", "settings screen not found")
 }
 
 // handleSettingsGet — GET /api/settings?world=<slug>: чтение станочных настроек,
@@ -2378,17 +2368,10 @@ type firstRunResponse struct {
 	Models   []modelStatus                `json:"models"`
 }
 
-// handleWizardScreen — GET /wizard.html: экран мастера первого запуска из embed.
+// handleWizardScreen — GET /wizard.html: экран мастера первого запуска из
+// источника статики (диск web/ или embed, IMP-12).
 func handleWizardScreen(w http.ResponseWriter, _ *http.Request) {
-	data, err := fs.ReadFile(web.FS, "wizard.html")
-	if err != nil {
-		writeError(w, http.StatusNotFound, codeNotFound, "wizard screen not found")
-		return
-	}
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(data)
+	serveScreen(w, "wizard.html", "wizard screen not found")
 }
 
 // handleFirstRunGet — GET /api/first-run: состояние мастера и проверка станции.

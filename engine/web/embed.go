@@ -3,8 +3,10 @@ package web
 
 import "embed"
 
-// FS — корень engine/web: index.html и static/*. Статика отдаётся из бинарника,
-// не с диска.
+// FS — корень engine/web: index.html и static/*. Встроенный фронт — фолбэк:
+// если рядом с бинарником лежит полный каталог web/, webapi раздаёт статику с
+// диска и правка UI не требует пересборки (гибрид IMP-12). manifest.json не
+// вшивается — им пинится sha256 поставки фронта на диске.
 //
 //go:embed index.html atlas.html history.html mcp.html settings.html wizard.html static
 var FS embed.FS

@@ -6,3 +6,7 @@ useDefault = true
 [[allowlists]]
 description = "Общий preview-OAuth клиент платформы grok-sandbox: публичный по замыслу, низкопривилегированный, только *.grok-sandbox.com, на брокере хранится лишь хэш секрета (см. комментарий в файле)"
 paths = ['''map/grok-workspace/src/lib/auth/preview\.ts''']
+
+[[allowlists]]
+description = "Манифест фронта (IMP-12): sha256-пины файлов web/ — не секреты; имя static/tokenlimit.js триггерит generic-api-key"
+paths = ['''engine/web/manifest\.json''']
