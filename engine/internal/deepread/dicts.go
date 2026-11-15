@@ -118,6 +118,22 @@ func CategoryID(key string) int {
 	return -1
 }
 
+// POSTags — части речи OpenCorpora, допустимые в слое "pos" словаря (IMP-10).
+var POSTags = []string{
+	"NOUN", "ADJF", "ADJS", "COMP", "VERB", "INFN", "PRTF", "PRTS", "GRND",
+	"NUMR", "ADVB", "NPRO", "PRED", "PREP", "CONJ", "PRCL", "INTJ",
+}
+
+// ValidPOS сообщает, что pos — часть речи из набора OpenCorpora POSTags.
+func ValidPOS(pos string) bool {
+	for _, known := range POSTags {
+		if pos == known {
+			return true
+		}
+	}
+	return false
+}
+
 // Phrase — композиция лемм словаря. Формат зафиксирован (W-22.1, §3), второй
 // шаг волны поле не заполняет.
 type Phrase struct {
@@ -126,16 +142,21 @@ type Phrase struct {
 }
 
 // Dictionary — словарь категории: леммы с весом и композиции (W-22.1).
+// Pos — необязательная часть речи леммы (лемма в нижнем регистре): ключ с POS
+// матчится только разбором с этой частью речи, ключ без POS — леммой любого
+// разбора (IMP-10).
 type Dictionary struct {
 	Key     string
 	Lemmas  map[string]int
+	Pos     map[string]string
 	Phrases []Phrase
 }
 
-// dictFile — формат файла словаря категории (§3).
+// dictFile — формат файла словаря категории (§3); слой "pos" необязателен.
 type dictFile struct {
-	Lemmas  map[string]int `json:"lemmas"`
-	Phrases []Phrase       `json:"phrases"`
+	Lemmas  map[string]int    `json:"lemmas"`
+	Pos     map[string]string `json:"pos"`
+	Phrases []Phrase          `json:"phrases"`
 }
 
 // LoadDictionaries читает восемь словарей категорий из каталога пака. Отсутствие
@@ -186,6 +207,20 @@ func LoadDictionary(packDir, key string) (*Dictionary, error) {
 			return nil, fmt.Errorf("deepread: %s: лемма %q повторяется", name, lemma)
 		}
 		d.Lemmas[lemma] = weight
+	}
+	if len(f.Pos) > 0 {
+		d.Pos = make(map[string]string, len(f.Pos))
+		for lemma, pos := range f.Pos {
+			lemma = strings.ToLower(strings.TrimSpace(lemma))
+			if _, ok := d.Lemmas[lemma]; !ok {
+				return nil, fmt.Errorf("deepread: %s: часть речи задана для леммы %q вне словаря", name, lemma)
+			}
+			pos = strings.ToUpper(strings.TrimSpace(pos))
+			if !ValidPOS(pos) {
+				return nil, fmt.Errorf("deepread: %s: лемма %q: часть речи %q вне набора OpenCorpora", name, lemma, pos)
+			}
+			d.Pos[lemma] = pos
+		}
 	}
 	return d, nil
 }

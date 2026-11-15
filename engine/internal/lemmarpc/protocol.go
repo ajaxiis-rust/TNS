@@ -7,12 +7,31 @@ import (
 	"io"
 )
 
+// Parse — один разбор токена: лемма и часть речи OpenCorpora (IMP-10).
+type Parse struct {
+	Lemma string `json:"lemma"`
+	Pos   string `json:"pos"`
+}
+
 // Token — один токен лемматизатора: форма, лемма, часть речи и метки (D-13.2).
+// Parses — все разборы токена, лучший первым (IMP-10); Lemma и Pos дублируют
+// первый разбор для клиентов, читающих одно чтение. Прежний резидент поля
+// Parses не присылает.
 type Token struct {
-	Form  string   `json:"form"`
-	Lemma string   `json:"lemma"`
-	Pos   string   `json:"pos"`
-	Tags  []string `json:"tags"`
+	Form   string   `json:"form"`
+	Lemma  string   `json:"lemma"`
+	Pos    string   `json:"pos"`
+	Tags   []string `json:"tags"`
+	Parses []Parse  `json:"parses,omitempty"`
+}
+
+// AllParses возвращает все разборы токена; токен без поля Parses даёт
+// единственный разбор из Lemma и Pos (IMP-10).
+func (t Token) AllParses() []Parse {
+	if len(t.Parses) > 0 {
+		return t.Parses
+	}
+	return []Parse{{Lemma: t.Lemma, Pos: t.Pos}}
 }
 
 // Request — запрос протокола stdio/JSON (T-01-09, шаг 1).

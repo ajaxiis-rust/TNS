@@ -86,6 +86,29 @@ func TestProtocol(t *testing.T) {
 	if resp.Tokens[1].Pos != "VERB" {
 		t.Fatalf("pos = %q, want VERB", resp.Tokens[1].Pos)
 	}
+
+	// Мультиразбор (IMP-10): все разборы токена едут в поле parses, а токен
+	// без поля даёт единственный разбор из lemma/pos.
+	var multi bytes.Buffer
+	multiTokens := []Token{{
+		Form: "жила", Lemma: "жить", Pos: "VERB",
+		Parses: []Parse{{Lemma: "жить", Pos: "VERB"}, {Lemma: "жила", Pos: "NOUN"}},
+	}}
+	if err := WriteResponse(&multi, 8, multiTokens); err != nil {
+		t.Fatalf("WriteResponse(мультиразбор): %v", err)
+	}
+	multiResp, err := ReadResponse(bufio.NewReader(&multi))
+	if err != nil {
+		t.Fatalf("ReadResponse(мультиразбор): %v", err)
+	}
+	if got := multiResp.Tokens[0].AllParses(); len(got) != 2 ||
+		got[0] != (Parse{Lemma: "жить", Pos: "VERB"}) || got[1] != (Parse{Lemma: "жила", Pos: "NOUN"}) {
+		t.Fatalf("разборы = %+v, want жить VERB и жила NOUN", got)
+	}
+	if got := (Token{Form: "не", Lemma: "не", Pos: "PART"}).AllParses(); len(got) != 1 ||
+		got[0] != (Parse{Lemma: "не", Pos: "PART"}) {
+		t.Fatalf("AllParses без поля parses = %+v, want единственный разбор", got)
+	}
 }
 
 // TestClient — клиент запускает fake_lemmatizer: «не хочу» разбирается на
