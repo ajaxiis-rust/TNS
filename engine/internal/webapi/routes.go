@@ -92,6 +92,7 @@ func routeSpecs(hub *Hub) []routeSpec {
 		{method: http.MethodGet, path: "/api/mcp/sources", handle: handleMcpSources},
 		{method: http.MethodPost, path: "/api/mcp/import", handle: handleMcpImport},
 		{method: http.MethodPost, path: "/api/mcp/forge", handle: handleMcpForge},
+		{method: http.MethodPost, path: "/api/mcp/reforge", handle: handleMcpReforge},
 		{method: http.MethodDelete, path: "/api/mcp/source/", handle: handleMcpSourceDelete},
 		{method: http.MethodGet, path: "/api/mcp/rings", handle: handleMcpRings},
 		{method: http.MethodGet, path: "/api/mcp/coeffs", handle: handleMcpCoeffsGet},

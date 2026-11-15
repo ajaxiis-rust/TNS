@@ -129,6 +129,7 @@ window.I18N = {
   "mcp.books.chapters": "глав",
   "mcp.books.templates": "шаблонов",
   "mcp.books.delete": "Удалить сырьё",
+  "mcp.books.reforge": "Перековать",
   "mcp.books.status.queued": "в очереди",
   "mcp.books.status.forging": "куётся",
   "mcp.books.status.done": "готово",

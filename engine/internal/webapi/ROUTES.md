@@ -30,9 +30,10 @@
 | DELETE | `/api/atlas/worlds/delete` | query `world=<slug>&confirm=<slug>` | `{"status":"ok"}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | POST | `/api/atlas/worlds/forge` | `{"world":"<slug>"}` | `{"status":"ok","language_ready":true,"warning":"…","progress":0..1}` — синхронная ковка книги фанфика после рождения | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | GET | `/api/mcp/dash` | query `world=<slug>` | `{"world":"…","queue":N,"current":0..1,"stats":{…}}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
-| GET | `/api/mcp/sources` | query `world=<slug>` | `{"world":"…","sources":[{id,name,format,status,progress,chapters,templates}]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| GET | `/api/mcp/sources` | query `world=<slug>` | `{"world":"…","sources":[{id,name,format,status,progress,chapters,templates,error}]}` — `error` — причина отказа, пустая строка значит «ошибки нет» (IMP-8) | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | POST | `/api/mcp/import` | multipart `file` + `world` | `{"world":"…","sources":[…]}` | `method_not_allowed`, `bad_request`, `conflict`, `not_found`, `internal` |
 | POST | `/api/mcp/forge` | `{"world":"<slug>"}` | `{"world":"…","sources":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
+| POST | `/api/mcp/reforge` | query `world=<slug>` | `{"world":"…","sources":[…]}` — карточки `error` с файлом сырья на месте → `queued` (IMP-8) | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | DELETE | `/api/mcp/source/{id}` | query `world=<slug>` | `{"world":"…","sources":[…]}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | GET | `/api/mcp/rings` | query `world=<slug>` | `{"world":"…","journal":{…}}` | `method_not_allowed`, `bad_request`, `not_found`, `internal` |
 | GET | `/api/mcp/coeffs` | — | `{"confirm":{…},"sediment":{…},"saw":{…},"time":{…}}` | `method_not_allowed`, `internal` |
@@ -96,6 +97,7 @@ GET /api/mcp/dash
 GET /api/mcp/sources
 POST /api/mcp/import
 POST /api/mcp/forge
+POST /api/mcp/reforge
 DELETE /api/mcp/source/
 GET /api/mcp/rings
 GET /api/mcp/coeffs

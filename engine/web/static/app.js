@@ -1794,6 +1794,11 @@
         html += '<div class="mcp-book__counters">' + escapeHTML(castLine) + "</div>";
       }
       html += mcpCastHeroes(cast);
+      if (item.status === "error") {
+        // Причина отказа конвейера (IMP-8): карточка показывает её дословно.
+        html += '<div class="mcp-book__counters mcp-book__error">' + escapeHTML(item.error || "") + "</div>";
+        html += '<button type="button" class="mcp-book__delete" data-action="reforge-source">' + (dict["mcp.books.reforge"] || "Перековать") + "</button>";
+      }
       html += '<button type="button" class="mcp-book__delete" data-action="delete-source" data-id="' + escapeHTML(item.id || item.name) + '">' + (dict["mcp.books.delete"] || "Удалить сырьё") + "</button>";
       html += "</div>";
       return html;
@@ -1874,9 +1879,31 @@
     });
   }
 
+  // «Перековать» (IMP-8): карточки с ошибкой, у которых файл сырья на месте,
+  // возвращаются в очередь; ковку запускает отдельная кнопка.
+  function reforgeMcpSource() {
+    apiJSON("/api/mcp/reforge?world=" + encodeURIComponent(activeSlugValue()), { method: "POST" })
+      .then(function () {
+        loadMcpData();
+      })
+      .catch(function (err) {
+        var box = byId(IDS.mcpBooks);
+        if (box) {
+          box.textContent = err.message;
+        }
+      });
+  }
+
   function onMcpBooksClick(event) {
     var btn = event.target.closest("button[data-action]");
-    if (!btn || btn.getAttribute("data-action") !== "delete-source") {
+    if (!btn) {
+      return;
+    }
+    if (btn.getAttribute("data-action") === "reforge-source") {
+      reforgeMcpSource();
+      return;
+    }
+    if (btn.getAttribute("data-action") !== "delete-source") {
       return;
     }
     var id = btn.getAttribute("data-id") || "";

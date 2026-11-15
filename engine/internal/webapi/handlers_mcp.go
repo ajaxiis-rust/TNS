@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"tns65/internal/db"
@@ -31,6 +32,7 @@ const (
 	mcpSourcesPath = "/api/mcp/sources"
 	mcpImportPath  = "/api/mcp/import"
 	mcpForgePath   = "/api/mcp/forge"
+	mcpReforgePath = "/api/mcp/reforge"
 	mcpSourcePath  = "/api/mcp/source"
 	mcpRingsPath   = "/api/mcp/rings"
 )
@@ -101,6 +103,9 @@ type sourceManifest struct {
 	Templates     int64   `json:"templates"`
 	CensorRejects int64   `json:"censor_rejects"`
 	DelexReplaces int64   `json:"delex_replaces"`
+	// Error — причина отказа конвейера (IMP-8): пустая строка значит «ошибки
+	// нет», непустая уходит в карточку и в журнал станка дословно.
+	Error string `json:"error"`
 }
 
 const sourceManifestName = "sources.json"
@@ -370,14 +375,30 @@ func handleMcpImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items = append(items, sourceManifest{
+	card := sourceManifest{
 		ID:       name,
 		Name:     name,
 		Format:   format,
 		Status:   sourceStatusQueued,
 		Progress: 0,
-		Chapters: parseSourceChapters(dst, format),
-	})
+	}
+	// Кодировка сырья (IMP-8): до разбора файл перекодируется в utf-8, иначе
+	// fb2 с чужой декларацией и однобайтовые txt не читаются вовсе.
+	tc, err := workshop.NormalizeBookFile(dst)
+	if err != nil {
+		_ = os.Remove(dst)
+		card.Status = sourceStatusError
+		card.Error = err.Error()
+		logSourceError(name, err)
+	} else if chapters, parseErr := parseSourceChapters(dst, format); parseErr != nil {
+		card.Status = sourceStatusError
+		card.Error = parseErr.Error()
+		logSourceError(name, parseErr)
+	} else {
+		card.Chapters = chapters
+		logSourceImport(name, format, chapters, tc)
+	}
+	items = append(items, card)
 	if err := writeSourceManifest(slug, items); err != nil {
 		_ = os.Remove(dst)
 		writeError(w, http.StatusInternalServerError, codeInternal, "source manifest write failed")
@@ -387,18 +408,50 @@ func handleMcpImport(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, mcpSourcesResponse{World: slug, Sources: items})
 }
 
+// logMcpEvent пишет событие журнала станка; журнала нет — событие пропускается.
+func logMcpEvent(event string, fields ...journal.Field) {
+	if mcpLogger == nil {
+		return
+	}
+	_ = mcpLogger.Event("webapi", event, fields...)
+}
+
+// logSourceImport — событие импорта книги (IMP-8): имя, формат, главы и из
+// какой кодировки каким методом перекодировано сырьё.
+func logSourceImport(name, format string, chapters int64, tc workshop.Transcode) {
+	fields := []journal.Field{
+		{Key: "name", Value: name},
+		{Key: "format", Value: format},
+		{Key: "chapters", Value: strconv.FormatInt(chapters, 10)},
+		{Key: "encoding", Value: tc.Source},
+		{Key: "method", Value: tc.Method},
+	}
+	if tc.Score > 0 {
+		fields = append(fields, journal.Field{Key: "score", Value: strconv.FormatFloat(tc.Score, 'f', 2, 64)})
+	}
+	logMcpEvent(journal.EventSourceImport, fields...)
+}
+
+// logSourceError — событие отказа импорта книги с причиной (IMP-8): причина
+// уходит и в карточку, и в журнал станка.
+func logSourceError(name string, err error) {
+	logMcpEvent(journal.EventSourceError,
+		journal.Field{Key: "name", Value: name},
+		journal.Field{Key: "reason", Value: err.Error()})
+}
+
 // parseSourceChapters считает главы книги сразу при импорте через вход ковки
-// (T-05-06): txt напрямую чанкером, fb2 вставкой перед чанкером. При отказе
-// разбора счётчик остаётся нулём — карточка не ломается.
-func parseSourceChapters(path, format string) int64 {
+// (T-05-06): txt напрямую чанкером, fb2 вставкой перед чанкером. Отказ разбора
+// возвращается причиной в карточку (IMP-8), а не теряется молча.
+func parseSourceChapters(path, format string) (int64, error) {
 	if format != "txt" && format != "fb2" {
-		return 0
+		return 0, nil
 	}
 	parsed, err := workshop.ParseBookInput(path)
 	if err != nil {
-		return 0
+		return 0, err
 	}
-	return int64(len(parsed.Chunks))
+	return int64(len(parsed.Chunks)), nil
 }
 
 // sourceFormat возвращает формат карточки по расширению (txt/md/fb2).
@@ -493,9 +546,14 @@ func handleMcpForge(w http.ResponseWriter, r *http.Request) {
 		if _, err := forgeLaunch(mcpLogger, spec, version.Version); err != nil {
 			items[i].Status = sourceStatusError
 			items[i].Progress = 0
+			items[i].Error = err.Error()
+			logMcpEvent(journal.EventForgeLaunchFailed,
+				journal.Field{Key: "name", Value: items[i].Name},
+				journal.Field{Key: "reason", Value: err.Error()})
 		} else {
 			items[i].Status = sourceStatusDone
 			items[i].Progress = 1
+			items[i].Error = ""
 		}
 		changed = true
 	}
@@ -505,6 +563,48 @@ func handleMcpForge(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		broadcastMcp(slug, "forge")
+	}
+	writeJSON(w, http.StatusOK, mcpSourcesResponse{World: slug, Sources: items})
+}
+
+// handleMcpReforge — POST /api/mcp/reforge?world=<slug>: карточки с ошибкой, у
+// которых файл сырья на месте, возвращаются в очередь (IMP-8). Ковку не
+// запускает: «Перековать» ставит книгу обратно в очередь, ковку жмёт отдельная
+// кнопка. Карточка без файла остаётся с ошибкой.
+func handleMcpReforge(w http.ResponseWriter, r *http.Request) {
+	slug := strings.TrimSpace(r.URL.Query().Get("world"))
+	if slug == "" {
+		writeError(w, http.StatusBadRequest, codeBadRequest, "world slug required")
+		return
+	}
+	if !mcpWorldReady(slug) {
+		writeError(w, http.StatusNotFound, codeNotFound, "world not found")
+		return
+	}
+	items, err := readSourceManifest(slug)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, codeInternal, "source manifest read failed")
+		return
+	}
+	changed := false
+	for i := range items {
+		if items[i].Status != sourceStatusError {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(mcpSourcesDir(slug), items[i].Name)); err != nil {
+			continue
+		}
+		items[i].Status = sourceStatusQueued
+		items[i].Progress = 0
+		items[i].Error = ""
+		changed = true
+	}
+	if changed {
+		if err := writeSourceManifest(slug, items); err != nil {
+			writeError(w, http.StatusInternalServerError, codeInternal, "source manifest write failed")
+			return
+		}
+		broadcastMcp(slug, "reforge")
 	}
 	writeJSON(w, http.StatusOK, mcpSourcesResponse{World: slug, Sources: items})
 }
