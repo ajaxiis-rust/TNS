@@ -412,6 +412,63 @@ GLO-5). Числа помечены «канон» / «рабочее значе
 
 ## 4. Гигиена документации
 
+### IMP-8. Импорт книг: перекодировка кодовых страниц при загрузке и честное логирование ковки
+
+> Регистрация оркестратора 15.11.2026 (решение владельца: «сделай сразу чтобы
+> при импорте кодовая страница перекодировалась, лучше с тестом, логирование
+> у нас ужасное»). Живой случай: Флибустьер.fb2 (windows-1251) на проде
+> TNS-GAME — «xml: encoding "windows-1251" declared but Decoder.CharsetReader
+> is nil», журнал 15.11 00:09:56; карточки источников уходят в error молча,
+> без причины.
+
+**Факт:** `parseFB2` (`engine/internal/workshop/forge_input.go`, `xml.NewDecoder`
+без `CharsetReader`) жёстко падает на любом fb2 с declared encoding ≠ utf-8 —
+а windows-1251 это самый частый формат русских fb2. Обработчик загрузки
+источника (`engine/internal/webapi/handlers_mcp.go`, секция `append(sourceManifest{Status: sourceStatusQueued…})`)
+ставит `queued` без перекодировки; `handleMcpForge` при ошибке `forgeLaunch`
+ставит `error, progress=0` молча — причина не попадает ни в карточку
+(`sources.json`), ни в журнал станка; событий жизненного цикла ковки нет.
+Карточки в `error` не перезапускаются: POST `/api/mcp/forge` берёт только
+`queued`, кнопки reset нет.
+
+**Файлы (ориентиры):** `engine/internal/workshop/forge_input.go` (parseFB2/
+чтение книги), `engine/internal/webapi/handlers_mcp.go` (загрузка, карточка,
+события журнала), `engine/internal/webapi/mcp.html` + `engine/web/static/app.js`
+(кнопка «Перековать»), `engine/go.mod`/`go.sum` (новая зависимость
+`golang.org/x/text`), тесты `forge_input_test.go`/`handlers_mcp_test.go`;
+строку в `work/CHECKLIST-20261114.md` §2 добавляет и закрывает ревьюер.
+
+**Шаги:**
+1. Загрузка: после приёма файла сырья прочитать байты, взять кодировку из
+   декларации XML (BOM — тоже признак); если она не utf-8 — декодировать
+   (windows-1251 через `golang.org/x/text/encoding/charmap`, utf-16 через
+   `unicode`) и **перезаписать файл в utf-8**, декларацию заменить на
+   `encoding="utf-8"`; не удалось декодировать — карточка `error` с причиной,
+   файл удалить.
+2. `parseFB2`: подстраховка — `CharsetReader` с windows-1251/utf-16, чтобы
+   старые не-перекодированные файлы тоже читались; декларация-ложь
+   («utf-8» заявлен, байты не utf-8) — предупреждение в журнал, разбор
+   продолжается как сейчас.
+3. Карточка источника: новое поле `error` (строка) в `sourceManifest`; все
+   места, ставящие `sourceStatusError`, пишут туда причину; JSON-ключ
+   `error`, пустая строка = нет ошибки.
+4. Логирование (формат существующих событий журнала): `source.import`
+   (имя, формат, chapters, из какой кодировки перекодировано), `source.error`
+   (имя + причина), `forge.launch_failed` в `handleMcpForge` при ошибке
+   `forgeLaunch`.
+5. «Перековать»: POST `/api/mcp/reforge?world=<slug>` — карточки `error`
+   (файлы на месте) → `queued`; кнопка рядом с карточкой в mcp.html/app.js.
+6. Тесты: (а) минимальная fb2-фикстура в windows-1251 (2 главы) — импорт →
+   файл на диске валидный utf-8 с `encoding="utf-8"`, карточка `queued`,
+   главы посчитаны; (б) `parseFB2` от 1251-байтов с `CharsetReader` — главы
+   читаются; (в) битый файл → карточка `error` с непустым `error`; (г)
+   reforge переводит `error` → `queued`.
+
+**Проверка:** новые тесты зелёные; `gates.sh` (known flake
+`TestNoShortReadyBudget` — перезапуск решает); `docs-check.sh`.
+
+**Исполнитель:** кодер deepseek-flash → ревьюер mimo-2.6-pro.
+
 ### DOC-1. Закрыть `repair-card-20261012.md`
 
 > ✅ Выполнено 2026-11-14 (коммит 127a46c): баннер закрытия в карточке; контур — fine/plan + 99-LEDGER; карточка не поддерживается.
