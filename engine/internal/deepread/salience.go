@@ -141,18 +141,23 @@ type ChunkTags struct {
 }
 
 // IDF считает idf лемм книги (W-23.1): idf = log(1 + N/(1+df)), N — чанков,
-// df — чанков, где лемма встречается хотя бы раз.
+// df — чанков, где лемма встречается хотя бы раз среди разборов токенов (IMP-10).
 func IDF(chunks []SalienceChunk) map[string]float64 {
 	n := len(chunks)
 	df := make(map[string]int)
 	for _, chunk := range chunks {
 		seen := make(map[string]struct{}, len(chunk.Lemmas))
 		for _, lemma := range chunk.Lemmas {
-			if _, dup := seen[lemma.Lemma]; dup {
-				continue
+			for _, parse := range lemma.parses() {
+				if parse.Lemma == "" {
+					continue
+				}
+				if _, dup := seen[parse.Lemma]; dup {
+					continue
+				}
+				seen[parse.Lemma] = struct{}{}
+				df[parse.Lemma]++
 			}
-			seen[lemma.Lemma] = struct{}{}
-			df[lemma.Lemma]++
 		}
 	}
 	idf := make(map[string]float64, len(df))
@@ -164,8 +169,9 @@ func IDF(chunks []SalienceChunk) map[string]float64 {
 
 // TagChunks считает теги всех ключей словарей для каждого чанка книги
 // (W-23.1–W-23.3): скор ключа чанка — сумма «вес словаря × idf» по леммам
-// словаря в чанке, нормированная по максимуму скора книги (единый максимум по
-// всем ключам и чанкам — полосы категорий сравнимы между собой); полоса — по
+// словаря, найденным в чанке (ключ с частью речи — только разбором той же пары
+// «лемма, POS», IMP-10), нормированная по максимуму скора книги (единый максимум
+// по всем ключам и чанкам — полосы категорий сравнимы между собой); полоса — по
 // порогам cfg; якоря — до трёх подстрок чанка вокруг опорных лемм ключа.
 func TagChunks(chunks []SalienceChunk, dicts map[string]*Dictionary, cfg SalienceConfig) ([]ChunkTags, error) {
 	if cfg == (SalienceConfig{}) {
@@ -196,17 +202,14 @@ func TagChunks(chunks []SalienceChunk, dicts map[string]*Dictionary, cfg Salienc
 	scores := make([][]chunkKey, len(chunks))
 	maxRaw := 0.0
 	for i, chunk := range chunks {
-		present := make(map[string]struct{}, len(chunk.Lemmas))
-		for _, lemma := range chunk.Lemmas {
-			present[lemma.Lemma] = struct{}{}
-		}
+		present := chunkParses(chunk.Lemmas)
 		forms := lemmaForms(chunk.Lemmas)
 		scores[i] = make([]chunkKey, len(keys))
 		for ki, key := range keys {
 			var raw float64
 			var support []string
 			for lemma, weight := range dicts[key].Lemmas {
-				if _, ok := present[lemma]; !ok {
+				if !keyMatches(present, lemma, dicts[key].Pos[lemma]) {
 					continue
 				}
 				raw += float64(weight) * idf[lemma]
@@ -260,7 +263,41 @@ func bandFor(score float64, cfg SalienceConfig) string {
 	}
 }
 
-// lemmaForms строит карту «лемма → формы токенов» в порядке появления.
+// chunkParses строит карту «лемма → части речи разборов» по токенам чанка:
+// одно слово может дать несколько лемм с разными POS (IMP-10).
+func chunkParses(lemmas []Lemma) map[string]map[string]struct{} {
+	out := make(map[string]map[string]struct{}, len(lemmas))
+	for _, lemma := range lemmas {
+		for _, parse := range lemma.parses() {
+			if parse.Lemma == "" {
+				continue
+			}
+			if out[parse.Lemma] == nil {
+				out[parse.Lemma] = make(map[string]struct{}, 2)
+			}
+			out[parse.Lemma][parse.Pos] = struct{}{}
+		}
+	}
+	return out
+}
+
+// keyMatches сообщает, что ключ словаря присутствует среди разборов чанка:
+// ключ с частью речи — только парой (лемма, POS), ключ без POS — леммой любого
+// разбора (IMP-10).
+func keyMatches(present map[string]map[string]struct{}, lemma, pos string) bool {
+	poses, ok := present[lemma]
+	if !ok {
+		return false
+	}
+	if pos == "" {
+		return true
+	}
+	_, hit := poses[pos]
+	return hit
+}
+
+// lemmaForms строит карту «лемма → формы токенов» в порядке появления; лемма
+// берётся из любого разбора токена (IMP-10), повторы схлопываются.
 func lemmaForms(lemmas []Lemma) map[string][]string {
 	out := make(map[string][]string)
 	seen := make(map[string]map[string]struct{})
@@ -269,14 +306,19 @@ func lemmaForms(lemmas []Lemma) map[string][]string {
 		if form == "" {
 			continue
 		}
-		if seen[lemma.Lemma] == nil {
-			seen[lemma.Lemma] = make(map[string]struct{})
+		for _, parse := range lemma.parses() {
+			if parse.Lemma == "" {
+				continue
+			}
+			if seen[parse.Lemma] == nil {
+				seen[parse.Lemma] = make(map[string]struct{})
+			}
+			if _, dup := seen[parse.Lemma][form]; dup {
+				continue
+			}
+			seen[parse.Lemma][form] = struct{}{}
+			out[parse.Lemma] = append(out[parse.Lemma], form)
 		}
-		if _, dup := seen[lemma.Lemma][form]; dup {
-			continue
-		}
-		seen[lemma.Lemma][form] = struct{}{}
-		out[lemma.Lemma] = append(out[lemma.Lemma], form)
 	}
 	return out
 }

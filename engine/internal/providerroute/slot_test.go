@@ -120,9 +120,8 @@ route_chat = "first,second"
 	}
 
 	records := readJournal(t, logPath)
-	rotates := eventsOf(records, journal.EventProviderRotate)
-	if len(rotates) != 1 || rotates[0].field("provider") != "first" || rotates[0].field("task") != "chat" {
-		t.Fatalf("события provider.rotate = %+v, ожидался выбор first для задачи chat", rotates)
+	if rotates := eventsOf(records, journal.EventProviderRotate); len(rotates) != 0 {
+		t.Fatalf("события provider.rotate = %+v, ожидалось пусто: выбор провайдера идёт в usage.jsonl (DOC-6)", rotates)
 	}
 	fails := eventsOf(records, journal.EventProviderFailover)
 	if len(fails) != 1 || fails[0].field("from") != "first" || fails[0].field("to") != "second" {
@@ -140,7 +139,8 @@ route_chat = "first,second"
 }
 
 // TestChatWeaverRotation — два рабочих провайдера: запросы идут по кругу,
-// выбор виден событиями provider.rotate.
+// провайдер последнего вызова виден в ProviderName (поле provider журнала
+// вызовов), события provider.rotate в журнале станка нет (DOC-6).
 func TestChatWeaverRotation(t *testing.T) {
 	allowLoopbackGate(t)
 	dir := t.TempDir()
@@ -174,11 +174,11 @@ route_chat = "first,second"
 	if got, err := streamSlot(t, weaver, "промпт"); err != nil || got != "второй" {
 		t.Fatalf("второй запрос = %q, %v; ожидался второй", got, err)
 	}
-	rotates := eventsOf(readJournal(t, logPath), journal.EventProviderRotate)
-	if len(rotates) != 2 ||
-		rotates[0].field("provider") != "first" ||
-		rotates[1].field("provider") != "second" {
-		t.Fatalf("ротация в журнале = %+v, ожидались first → second", rotates)
+	if weaver.ProviderName() != "second" {
+		t.Fatalf("ProviderName = %q, ожидалось second (поле provider в usage.jsonl)", weaver.ProviderName())
+	}
+	if rotates := eventsOf(readJournal(t, logPath), journal.EventProviderRotate); len(rotates) != 0 {
+		t.Fatalf("события provider.rotate = %+v, ожидалось пусто: выбор провайдера идёт в usage.jsonl (DOC-6)", rotates)
 	}
 }
 

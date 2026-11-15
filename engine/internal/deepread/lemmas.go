@@ -18,12 +18,25 @@ var ErrNoResident = errors.New("deepread: пакет не задаёт бина�
 
 // Lemma — токен разбора книги: форма, лемма, часть речи и позиция токена.
 // Line — номер строки текста с 1, Index — позиция токена в строке с 0.
+// Parses — все разборы токена (лемма и часть речи, лучший первым), леммы в
+// нижнем регистре; Lemma и POS дублируют первый разбор (IMP-10).
 type Lemma struct {
-	Form  string
-	Lemma string
-	POS   string
-	Line  int
-	Index int
+	Form   string
+	Lemma  string
+	POS    string
+	Parses []lemmarpc.Parse
+	Line   int
+	Index  int
+}
+
+// parses возвращает все разборы токена; токен без Parses даёт единственный
+// разбор из Lemma и POS — так сопоставление со словарём работает и на
+// резиденте без мультиразбора (IMP-10).
+func (l Lemma) parses() []lemmarpc.Parse {
+	if len(l.Parses) > 0 {
+		return l.Parses
+	}
+	return []lemmarpc.Parse{{Lemma: l.Lemma, Pos: l.POS}}
 }
 
 // Run — резидент лемматизатора прогона книги (W-23.6): один процесс на прогон
@@ -114,15 +127,26 @@ func (r *Run) lemmatizeText(text string) ([]Lemma, error) {
 		}
 		for j, tok := range tokens {
 			out = append(out, Lemma{
-				Form:  tok.Form,
-				Lemma: strings.ToLower(tok.Lemma),
-				POS:   tok.Pos,
-				Line:  i + 1,
-				Index: j,
+				Form:   tok.Form,
+				Lemma:  strings.ToLower(tok.Lemma),
+				POS:    tok.Pos,
+				Parses: lowerParses(tok.AllParses()),
+				Line:   i + 1,
+				Index:  j,
 			})
 		}
 	}
 	return out, nil
+}
+
+// lowerParses приводит леммы разборов к нижнему регистру — в таком виде
+// словарь категорий сверяет пару (лемма, часть речи) (IMP-10).
+func lowerParses(parses []lemmarpc.Parse) []lemmarpc.Parse {
+	out := make([]lemmarpc.Parse, len(parses))
+	for i, p := range parses {
+		out[i] = lemmarpc.Parse{Lemma: strings.ToLower(p.Lemma), Pos: p.Pos}
+	}
+	return out
 }
 
 // lemmatizerBinary возвращает путь бинарника лемматизатора из manifest.json

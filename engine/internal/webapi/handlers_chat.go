@@ -15,6 +15,7 @@ import (
 	"tns65/internal/db"
 	"tns65/internal/journal"
 	"tns65/internal/sediment"
+	"tns65/internal/textlimit"
 	"tns65/internal/turn"
 )
 
@@ -69,6 +70,10 @@ var (
 	chatLastActiveMu sync.Mutex
 	chatLastActive   = map[string]time.Time{}
 )
+
+// inputLimits — лимиты вводимых текстов из секции limits config.yaml (IMP-7);
+// грузятся при старте сервера.
+var inputLimits = textlimit.DefaultLimits()
 
 // chatTurnRequest — тело POST /api/turn (шаг 1).
 type chatTurnRequest struct {
@@ -136,6 +141,12 @@ func handleChatTurn(w http.ResponseWriter, r *http.Request) {
 	text := strings.TrimSpace(req.Text)
 	if text == "" {
 		writeError(w, http.StatusBadRequest, codeBadRequest, "text required")
+		return
+	}
+	// Потолок реплики (IMP-7): оценка с поправкой на язык; превышение — отказ
+	// с подсказкой, ход не начинается и конвейер не запускается.
+	if err := textlimit.Check(textlimit.KindPlayerMessage, text, inputLimits.PlayerMessage); err != nil {
+		writeError(w, http.StatusBadRequest, codeBadRequest, err.Error())
 		return
 	}
 	if !chatWorldReady(slug) {

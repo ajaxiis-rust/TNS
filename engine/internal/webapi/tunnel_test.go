@@ -622,6 +622,62 @@ func TestTelegramBotLoopbackErrorDoesNotStopPoll(t *testing.T) {
 	}
 }
 
+// TestTelegramBotRelaysTooLongHint — отказ /api/turn по лимиту (IMP-7) доходит
+// до игрока подсказкой сервера, а не общей фразой о сбое.
+func TestTelegramBotRelaysTooLongHint(t *testing.T) {
+	setActiveSlug("alpha")
+	t.Cleanup(func() { setActiveSlug("") })
+
+	hint := "Реплика игрока длиннее 2000 токенов (≈2001): сократите текст"
+	loopSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusBadRequest, errorBody{Error: errorDetail{
+			Code:    codeBadRequest,
+			Message: hint,
+		}})
+	}))
+	defer loopSrv.Close()
+
+	tgCh := make(chan requestCapture, 4)
+	tgSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "sendMessage") {
+			b, _ := io.ReadAll(r.Body)
+			tgCh <- requestCapture{method: r.Method, path: r.URL.Path, body: string(b)}
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":     true,
+			"result": []telegramUpdate{{UpdateID: 1, Message: &telegramMessage{Text: "привет", Chat: &telegramChat{ID: 42}}}},
+		})
+	}))
+	defer tgSrv.Close()
+
+	bot := newBot(t, TunnelConfig{
+		Edge:           "region1.v2.argotunnel.com",
+		Local:          loopSrv.URL,
+		TelegramToken:  "tok",
+		TelegramChatID: "42",
+	}, loopSrv, tgSrv, nil)
+
+	if _, err := bot.PollOnce(context.Background(), 0); err != nil {
+		t.Fatalf("PollOnce после отказа по лимиту: %v", err)
+	}
+
+	select {
+	case got := <-tgCh:
+		vals, err := url.ParseQuery(got.body)
+		if err != nil {
+			t.Fatalf("parse telegram form: %v", err)
+		}
+		if vals.Get("text") != hint {
+			t.Fatalf("игроку ушло %q, want подсказку сервера %q", vals.Get("text"), hint)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("подсказка о длинной реплике не отправлена")
+	}
+}
+
 // TestTelegramBotStaleTurnReplyNotSent — ответ на устаревший turn_id не
 // отправляется (хода уже нет в журнале GET /api/state).
 func TestTelegramBotStaleTurnReplyNotSent(t *testing.T) {

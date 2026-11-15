@@ -35,10 +35,6 @@ func (s *RoutedProseSlot) Stream(ctx context.Context, prompt string) (<-chan str
 			journal.Field{Key: "errors_count", Value: "0"})
 		return nil, fmt.Errorf("%w: задача %s", ErrNoProvider, s.task)
 	}
-	s.router.logTask(journal.EventProviderRotate, s.task,
-		journal.Field{Key: "provider", Value: cands[0].name},
-		journal.Field{Key: "index", Value: strconv.Itoa(cands[0].index)})
-
 	var lastErr error
 	for i, cand := range cands {
 		client, err := s.router.client(cand.name)

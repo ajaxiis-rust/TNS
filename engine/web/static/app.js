@@ -59,6 +59,7 @@
     fanficImportSubmit: "fanfic-import-submit",
     fanficProgress: "fanfic-progress",
     atlasSynopsisCount: "atlas-synopsis-count",
+    atlasDescriptionCount: "atlas-description-count",
     atlasGenres: "atlas-birth-genres",
     atlasGenresFrequent: "atlas-birth-genres-frequent",
     atlasGenresGroups: "atlas-birth-genres-groups",
@@ -1007,6 +1008,10 @@
     if (synopsis) {
       synopsis.addEventListener("input", updateSynopsisCount);
     }
+    var description = byId(IDS.atlasBirthDescription);
+    if (description) {
+      description.addEventListener("input", updateDescriptionCount);
+    }
     var start = byId(IDS.atlasWizardStart);
     if (start) {
       start.addEventListener("click", startAtlasWizard);
@@ -1040,6 +1045,7 @@
     });
     document.addEventListener("keydown", onAtlasModalKeydown);
     updateSynopsisCount();
+    updateDescriptionCount();
   }
 
   // Окна Атласа: анкета нового мира и мастер новой жизни. Клик по фону и Esc
@@ -1140,6 +1146,39 @@
     }
   }
 
+  // Лимит описания мира (IMP-7): формула и лимит — в tokenlimit.js, те же
+  // числа проверяет рождение мира.
+  function tokenLimit() {
+    return (window.TokenLimit && window.TokenLimit.DEFAULT_LIMIT) || 2000;
+  }
+
+  function tokenEstimate(text) {
+    return window.TokenLimit ? window.TokenLimit.estimate(text) : 0;
+  }
+
+  function tokenHint(kind, tokens, limit) {
+    if (window.TokenLimit) {
+      return window.TokenLimit.hint(kind, tokens, limit);
+    }
+    return "Описание мира длиннее " + limit + " токенов: сократите текст";
+  }
+
+  function updateDescriptionCount() {
+    var box = byId(IDS.atlasDescriptionCount);
+    var field = byId(IDS.atlasBirthDescription);
+    var tokens = tokenEstimate(field ? field.value : "");
+    var limit = tokenLimit();
+    var over = tokens > limit;
+    if (box) {
+      box.textContent = tokens + " / " + limit;
+      box.classList.toggle("is-over", over);
+    }
+    if (field) {
+      field.classList.toggle("is-invalid", over);
+      field.setAttribute("aria-invalid", over ? "true" : "false");
+    }
+  }
+
   function showAtlasBirthError(text) {
     var box = byId(IDS.atlasBirthError);
     if (box) {
@@ -1192,6 +1231,12 @@
       fail("synopsis", "Расскажите, о чём история: 1–3 предложения.");
     } else if (sentences > 3) {
       fail("synopsis", "Слишком длинно: нужно 1–3 предложения.");
+    }
+    var descriptionTokens = tokenEstimate(body.description);
+    if (descriptionTokens > tokenLimit()) {
+      fail("description", tokenHint(
+        window.TokenLimit ? window.TokenLimit.KINDS.worldDescription : "Описание мира",
+        descriptionTokens, tokenLimit()));
     }
     if (body.genres.length === 0) {
       fail("genres", "Выберите хотя бы один жанр.");
@@ -1749,6 +1794,11 @@
         html += '<div class="mcp-book__counters">' + escapeHTML(castLine) + "</div>";
       }
       html += mcpCastHeroes(cast);
+      if (item.status === "error") {
+        // Причина отказа конвейера (IMP-8): карточка показывает её дословно.
+        html += '<div class="mcp-book__counters mcp-book__error">' + escapeHTML(item.error || "") + "</div>";
+        html += '<button type="button" class="mcp-book__delete" data-action="reforge-source">' + (dict["mcp.books.reforge"] || "Перековать") + "</button>";
+      }
       html += '<button type="button" class="mcp-book__delete" data-action="delete-source" data-id="' + escapeHTML(item.id || item.name) + '">' + (dict["mcp.books.delete"] || "Удалить сырьё") + "</button>";
       html += "</div>";
       return html;
@@ -1829,9 +1879,31 @@
     });
   }
 
+  // «Перековать» (IMP-8): карточки с ошибкой, у которых файл сырья на месте,
+  // возвращаются в очередь; ковку запускает отдельная кнопка.
+  function reforgeMcpSource() {
+    apiJSON("/api/mcp/reforge?world=" + encodeURIComponent(activeSlugValue()), { method: "POST" })
+      .then(function () {
+        loadMcpData();
+      })
+      .catch(function (err) {
+        var box = byId(IDS.mcpBooks);
+        if (box) {
+          box.textContent = err.message;
+        }
+      });
+  }
+
   function onMcpBooksClick(event) {
     var btn = event.target.closest("button[data-action]");
-    if (!btn || btn.getAttribute("data-action") !== "delete-source") {
+    if (!btn) {
+      return;
+    }
+    if (btn.getAttribute("data-action") === "reforge-source") {
+      reforgeMcpSource();
+      return;
+    }
+    if (btn.getAttribute("data-action") !== "delete-source") {
       return;
     }
     var id = btn.getAttribute("data-id") || "";

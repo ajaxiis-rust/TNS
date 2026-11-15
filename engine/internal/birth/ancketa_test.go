@@ -259,3 +259,38 @@ func sameSet(a, b []string) bool {
 	}
 	return true
 }
+
+// TestBirthDescriptionTokens — описание мира ограничено 2000 токенов (IMP-7):
+// длинное отвергается полем description до создания каталога, ровно 2000
+// проходит проверку, явный лимит настроек главнее умолчания.
+func TestBirthDescriptionTokens(t *testing.T) {
+	a := validAncketa()
+	a.Description = strings.Repeat("я", 4000) // 8000 единиц → ровно 2000 токенов
+	if fe := validateDescriptionForConfig(a, Config{}); fe != nil {
+		t.Fatalf("2000 токенов отвергнуты: %+v", fe)
+	}
+
+	a.Description = strings.Repeat("я", 4001) // 8002 единицы → 2001 токен
+	_, err := Birth(a, Config{WorldsRoot: t.TempDir()})
+	var ee *ExitError
+	if !errors.As(err, &ee) || ee.Code != ExitInvalid {
+		t.Fatalf("Birth с длинным описанием: err = %v, want ExitInvalid", err)
+	}
+	var ve *ValidationError
+	if !errors.As(err, &ve) {
+		t.Fatalf("ошибка не *ValidationError: %T", err)
+	}
+	if len(ve.Fields) != 1 || ve.Fields[0].Field != "description" {
+		t.Fatalf("поля отказа = %+v, want description", ve.Fields)
+	}
+	if !strings.Contains(ve.Fields[0].Reason, "длиннее 2000 токенов") {
+		t.Fatalf("причина = %q, want подсказку про 2000 токенов", ve.Fields[0].Reason)
+	}
+
+	if fe := validateDescriptionForConfig(a, Config{MaxDescriptionTokens: 5000}); fe != nil {
+		t.Fatalf("явный лимит 5000 отвергнут: %+v", fe)
+	}
+	if fe := validateDescriptionForConfig(a, Config{MaxDescriptionTokens: 100}); fe == nil || fe.Field != "description" {
+		t.Fatalf("явный лимит 100 не отвергнут: %+v", fe)
+	}
+}

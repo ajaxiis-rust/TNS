@@ -267,6 +267,8 @@ func atlasBirthConfig(a birth.Ancketa, isekai bool) birth.Config {
 		Logger:     atlasLogger,
 		Isekai:     isekai,
 		Scout:      atlasDeepScout(),
+		// Потолок описания мира — из секции limits (IMP-7).
+		MaxDescriptionTokens: inputLimits.WorldDescription,
 	}
 }
 

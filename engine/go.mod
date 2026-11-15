@@ -6,6 +6,7 @@ toolchain go1.27.4
 
 require (
 	github.com/AlexMaxy/gomorphy v0.0.0-20260827175952-c72bdf7c48af
+	golang.org/x/text v0.33.0
 	modernc.org/sqlite v1.61.0
 )
 

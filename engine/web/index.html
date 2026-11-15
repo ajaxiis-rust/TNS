@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/names.js" defer></script>
   <script src="/static/i18n.js" defer></script>
+  <script src="/static/tokenlimit.js" defer></script>
   <script src="/static/map.js" defer></script>
   <script src="/static/graph.js" defer></script>
   <script src="/static/app.js" defer></script>
@@ -51,6 +52,7 @@
           <div class="composer-in">
             <form class="input-row" id="chat-form">
               <input type="text" id="chat-input" autocomplete="off">
+              <small class="chat-count" id="chat-count" aria-live="polite">0 / 2000</small>
               <button type="submit" id="chat-send" class="send">
                 <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m4 11 16-7-6.5 16-3.2-6.4L4 11Z"/><path d="m10.3 13.6 3.4-3.4"/></svg>
               </button>

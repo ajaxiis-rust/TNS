@@ -12,6 +12,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/deepread"
+	"tns65/internal/lemmarpc"
 )
 
 // TestSalienceBands — гейт salience и тегов чанков (W-23.1–W-23.3, приёмка
@@ -277,7 +278,7 @@ func salienceFixture() []deepread.SalienceChunk {
 		fixtureChunk(1, strings.Join([]string{
 			"Лес стоял тихо на берегу.",
 			"Река блестела под солнцем.",
-			"Дальше начиналось поле.",
+			"Дальше начинался овраг.",
 			"Небо было ясным.",
 			"Трава шелестела у дороги.",
 			"Птица пролетела над водой.",
@@ -288,7 +289,7 @@ func salienceFixture() []deepread.SalienceChunk {
 			"В коридоре горела свеча.",
 		}, "\n"), mark{"комнату": "комната", "коридоре": "коридор"}),
 		fixtureChunk(3, strings.Join([]string{
-			"Битва шла весь день.",
+			"Битва шла долго.",
 			"Войско стояло в строю.",
 			"Отряд пошёл в атаку.",
 			"Залп гремел долго.",
@@ -302,6 +303,101 @@ func salienceFixture() []deepread.SalienceChunk {
 			"Он кивнул и вышел.",
 			"Потом он посмотрел в сторону.",
 		}, "\n"), nil),
+	}
+}
+
+// TestSalienceParses — гейт мультиразбора (IMP-10): ключ словаря с частью речи
+// матчится только разбором той же пары (лемма, POS), ключ без POS — леммой
+// любого разбора. VERB-чтение «жила» (жить) существительное «жила» не ловит,
+// жила-NOUN в разборах резидента, «жилы» → жила и «гранату» → граната ловят.
+// Совпадение по второму разбору требует и idf по всем разборам токена.
+func TestSalienceParses(t *testing.T) {
+	dicts := map[string]*deepread.Dictionary{
+		deepread.KeyAppearance: {
+			Key:    deepread.KeyAppearance,
+			Lemmas: map[string]int{"жила": 1, "стопа": 1},
+			Pos:    map[string]string{"жила": "NOUN", "стопа": "NOUN"},
+		},
+		deepread.KeyBattle: {
+			Key:    deepread.KeyBattle,
+			Lemmas: map[string]int{"граната": 1},
+			Pos:    map[string]string{"граната": "NOUN"},
+		},
+	}
+
+	token := func(form, lemma, pos string, parses ...lemmarpc.Parse) deepread.Lemma {
+		return deepread.Lemma{Form: form, Lemma: lemma, POS: pos, Parses: parses}
+	}
+	chunk := func(id int64, text string, lemmas ...deepread.Lemma) deepread.SalienceChunk {
+		return deepread.SalienceChunk{ID: id, Text: text, Lemmas: lemmas}
+	}
+	verb := lemmarpc.Parse{Lemma: "жить", Pos: "VERB"}
+	noun := lemmarpc.Parse{Lemma: "жила", Pos: "NOUN"}
+
+	cases := []struct {
+		name  string
+		key   string
+		chunk deepread.SalienceChunk
+		want  bool
+	}{
+		{
+			name:  "жила VERB-чтением",
+			key:   deepread.KeyAppearance,
+			chunk: chunk(1, "Она жила у моря.", token("жила", "жить", "VERB", verb)),
+			want:  false,
+		},
+		{
+			name:  "жила с NOUN-разбором резидента",
+			key:   deepread.KeyAppearance,
+			chunk: chunk(2, "Она жила у моря.", token("жила", "жить", "VERB", verb, noun)),
+			want:  true,
+		},
+		{
+			name:  "жилы",
+			key:   deepread.KeyAppearance,
+			chunk: chunk(3, "Старые жилы ныли.", token("жилы", "жила", "NOUN", noun)),
+			want:  true,
+		},
+		{
+			name: "гранату",
+			key:  deepread.KeyBattle,
+			chunk: chunk(4, "Он бросил гранату.", token("гранату", "граната", "NOUN",
+				lemmarpc.Parse{Lemma: "граната", Pos: "NOUN"},
+				lemmarpc.Parse{Lemma: "гранат", Pos: "NOUN"})),
+			want: true,
+		},
+		{
+			name: "лемма есть, часть речи другая",
+			key:  deepread.KeyAppearance,
+			chunk: chunk(5, "Она жила у моря.", token("жила", "жила", "VERB",
+				lemmarpc.Parse{Lemma: "жила", Pos: "VERB"})),
+			want: false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tags, err := deepread.TagChunks([]deepread.SalienceChunk{tc.chunk}, dicts, deepread.DefaultSalienceConfig())
+			if err != nil {
+				t.Fatalf("TagChunks: %v", err)
+			}
+			tag, ok := tagMap(t, tags[0])[tc.key]
+			if !ok {
+				t.Fatalf("нет тега ключа %q", tc.key)
+			}
+			if !tc.want {
+				if tag.Score != 0 || tag.Band != deepread.BandReject {
+					t.Fatalf("ключ %s: скор %g, полоса %q — ждали reject", tc.key, tag.Score, tag.Band)
+				}
+				return
+			}
+			if tag.Score <= 0 {
+				t.Fatalf("ключ %s: скор %g — разборы токена %v не дали совпадения", tc.key, tag.Score, tc.chunk.Lemmas)
+			}
+			if len(tag.Anchors) == 0 {
+				t.Fatalf("ключ %s: нет якоря для леммы второго разбора", tc.key)
+			}
+		})
 	}
 }
 

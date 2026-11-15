@@ -43,6 +43,12 @@ const (
 	EventProviderRotate    = "provider.rotate"
 	EventProviderFailover  = "provider.failover"
 	EventProviderExhausted = "provider.exhausted"
+	// Импорт книг (IMP-8): приёмку, отказ и перекодировку сырья видно в журнале
+	// станка с причиной, а не только статусом карточки.
+	EventSourceImport      = "source.import"
+	EventSourceError       = "source.error"
+	EventSourceWarning     = "source.warning"
+	EventForgeLaunchFailed = "forge.launch_failed"
 )
 
 // Имена полей событий, общих для нескольких пакетов.

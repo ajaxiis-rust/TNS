@@ -66,8 +66,10 @@ func TestDictGates(t *testing.T) {
 				t.Errorf("словарь %q не загружен", key)
 				continue
 			}
-			if n := len(d.Lemmas); n < 40 || n > 80 {
-				t.Errorf("%s: лемм %d, ожидалось 40–80", key, n)
+			// Верхняя граница 80 — размер словарей v1; IMP-9 добавил золотые
+			// якоря, social дошёл до 142 лемм.
+			if n := len(d.Lemmas); n < 40 || n > 160 {
+				t.Errorf("%s: лемм %d, ожидалось 40–160", key, n)
 			}
 			for lemma, weight := range d.Lemmas {
 				if weight < 1 || weight > 3 {
@@ -124,13 +126,32 @@ func TestDictGates(t *testing.T) {
 					t.Errorf("%s: лемма %q: лемматизатор вернул 0 токенов", key, lemma)
 					continue
 				}
-				if got := strings.ToLower(tokens[0].Lemma); got != lemma {
-					t.Errorf("%s: лемма %q: лемматизатор вернул %q — словарь и резидент разошлись",
-						key, lemma, got)
+				// Ключ с частью речи проверяется парой (лемма, POS) среди всех
+				// разборов резидента, без POS — леммой любого разбора (IMP-10).
+				pos := dicts[key].Pos[lemma]
+				if !parsesContain(tokens, lemma, pos) {
+					t.Errorf("%s: лемма %q (POS %q): нет среди разборов резидента: %v",
+						key, lemma, pos, tokens[0].AllParses())
 				}
 			}
 		}
 	})
+}
+
+// parsesContain сообщает, что лемма (и часть речи, если задана) есть среди
+// разборов токенов ответа резидента (IMP-10).
+func parsesContain(tokens []lemmarpc.Token, lemma, pos string) bool {
+	for _, tok := range tokens {
+		for _, parse := range tok.AllParses() {
+			if strings.ToLower(parse.Lemma) != lemma {
+				continue
+			}
+			if pos == "" || parse.Pos == pos {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // packLemmatizerBinary возвращает путь к резиденту из манифеста пака.

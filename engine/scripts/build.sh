@@ -73,6 +73,7 @@ REQUIRED_PACK_FILES=(
     erotic.json
     violence.json
     battle.json
+    appearance.json         # словарь анатомии (IMP-9)
     styles.json             # канон ярлыков стиля (W-27.2)
 )
 

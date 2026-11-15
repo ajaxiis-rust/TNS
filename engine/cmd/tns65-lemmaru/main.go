@@ -63,8 +63,11 @@ func serve(in io.Reader, out io.Writer, morph *gomorphy.MorphAnalyzer) error {
 	}
 }
 
-// lemmatize разбирает text на слова и возвращает по одному токену на слово —
-// лучший (первый) разбор gomorphy. «не» приходит отдельным словом и леммой (D-13.3).
+// lemmatize разбирает text на слова и возвращает по одному токену на слово.
+// Токен несёт все разборы gomorphy (лемма и часть речи, лучший первым), а поля
+// Lemma и Pos дублируют лучший разбор. «не» приходит отдельным словом и леммой
+// (D-13.3). Омонимия чтений («жила» — жить VERB и жила NOUN) различается
+// клиентом по паре (лемма, часть речи) — IMP-10.
 func lemmatize(morph *gomorphy.MorphAnalyzer, text string) []lemmarpc.Token {
 	var tokens []lemmarpc.Token
 	for _, word := range strings.Fields(text) {
@@ -74,13 +77,33 @@ func lemmatize(morph *gomorphy.MorphAnalyzer, text string) []lemmarpc.Token {
 		}
 		p := parses[0]
 		tokens = append(tokens, lemmarpc.Token{
-			Form:  word,
-			Lemma: p.NormalForm,
-			Pos:   p.Tag.POS,
-			Tags:  splitTags(p.Tag.RawTagsString),
+			Form:   word,
+			Lemma:  p.NormalForm,
+			Pos:    p.Tag.POS,
+			Tags:   splitTags(p.Tag.RawTagsString),
+			Parses: parsesOf(parses),
 		})
 	}
 	return tokens
+}
+
+// parsesOf собирает разборы gomorphy в список пар (лемма, часть речи) без
+// повторов, сохраняя порядок: лучший разбор остаётся первым (IMP-10).
+func parsesOf(parses []*gomorphy.Parse) []lemmarpc.Parse {
+	out := make([]lemmarpc.Parse, 0, len(parses))
+	seen := make(map[lemmarpc.Parse]struct{}, len(parses))
+	for _, p := range parses {
+		if p.Tag == nil || p.NormalForm == "" {
+			continue
+		}
+		parse := lemmarpc.Parse{Lemma: p.NormalForm, Pos: p.Tag.POS}
+		if _, dup := seen[parse]; dup {
+			continue
+		}
+		seen[parse] = struct{}{}
+		out = append(out, parse)
+	}
+	return out
 }
 
 // splitTags раскладывает сырую строку тегов OpenCorpora вида

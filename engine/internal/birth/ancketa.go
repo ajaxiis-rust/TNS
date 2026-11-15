@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"tns65/internal/textlimit"
 )
 
 //go:embed data/ancketa.json
@@ -103,6 +105,19 @@ var slugRe = regexp.MustCompile(`^[a-z0-9-]+$`)
 
 // Validate проверяет анкету и возвращает *ValidationError с перечнем полей и
 // причин (шаги 3–4). Валидация ничего не пишет — результат в память вызывающего.
+// validateDescriptionForConfig проверяет потолок описания мира по токенам
+// (IMP-7): предел берётся из настроек рождения, 0 — textlimit.DefaultLimit.
+func validateDescriptionForConfig(a *Ancketa, cfg Config) *FieldError {
+	limit := cfg.MaxDescriptionTokens
+	if limit <= 0 {
+		limit = textlimit.DefaultLimit
+	}
+	if err := textlimit.Check(textlimit.KindWorldDescription, a.Description, limit); err != nil {
+		return &FieldError{Field: "description", Reason: err.Error()}
+	}
+	return nil
+}
+
 func Validate(a *Ancketa) error {
 	data, err := LoadData()
 	if err != nil {

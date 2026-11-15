@@ -64,6 +64,39 @@ func TestGoldenLemmaru(t *testing.T) {
 		}
 	})
 
+	t.Run("parses", func(t *testing.T) {
+		c := NewClient(bin, nil)
+		defer c.Close()
+
+		tokens, err := c.Lemmatize("жила жилы гранату")
+		if err != nil {
+			t.Fatalf("Lemmatize: %v", err)
+		}
+		if len(tokens) != 3 {
+			t.Fatalf("токенов = %d, want 3: %+v", len(tokens), tokens)
+		}
+		// IMP-10: резидент отдаёт все разборы; «жила» — жить VERB и жила NOUN.
+		got := make(map[string]map[string]bool, len(tokens))
+		for _, tok := range tokens {
+			got[tok.Form] = make(map[string]bool, len(tok.Parses))
+			if tok.Form == "жила" && len(tok.Parses) > 0 && tok.Parses[0] != (Parse{Lemma: "жить", Pos: "VERB"}) {
+				t.Errorf("первый разбор «жила» = %+v, want жить VERB", tok.Parses[0])
+			}
+			for _, p := range tok.AllParses() {
+				got[tok.Form][p.Lemma+" "+p.Pos] = true
+			}
+		}
+		for form, want := range map[string]string{
+			"жила":    "жила NOUN",
+			"жилы":    "жила NOUN",
+			"гранату": "граната NOUN",
+		} {
+			if !got[form][want] {
+				t.Errorf("токен %q: нет разбора %q среди %v", form, want, got[form])
+			}
+		}
+	})
+
 	t.Run("golden", func(t *testing.T) {
 		golden := findGolden(t)
 		pairs := loadGolden(t, golden)

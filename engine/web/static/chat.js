@@ -17,6 +17,7 @@
   var chatForm = byId("chat-form");
   var chatInput = byId("chat-input");
   var chatSend = byId("chat-send");
+  var chatCount = byId("chat-count");
   var pending = false;
   var pageActions = null;
 
@@ -25,6 +26,37 @@
 
   function activeSlug() {
     return window.__activeSlug || "";
+  }
+
+  // Лимит реплики (IMP-7): формула и лимит — в tokenlimit.js, те же числа
+  // считает сервер.
+  function tokenLimit() {
+    return (window.TokenLimit && window.TokenLimit.DEFAULT_LIMIT) || 2000;
+  }
+
+  function tokenEstimate(text) {
+    return window.TokenLimit ? window.TokenLimit.estimate(text) : 0;
+  }
+
+  function tokenHint(tokens, limit) {
+    if (window.TokenLimit) {
+      return window.TokenLimit.hint(window.TokenLimit.KINDS.playerMessage, tokens, limit);
+    }
+    return "Реплика игрока длиннее " + limit + " токенов: сократите текст";
+  }
+
+  function updateCount() {
+    var tokens = tokenEstimate(chatInput ? chatInput.value : "");
+    var limit = tokenLimit();
+    var over = tokens > limit;
+    if (chatCount) {
+      chatCount.textContent = tokens + " / " + limit;
+      chatCount.classList.toggle("is-over", over);
+    }
+    if (chatInput) {
+      chatInput.classList.toggle("is-invalid", over);
+      chatInput.setAttribute("aria-invalid", over ? "true" : "false");
+    }
   }
 
   function apiJSON(path, options) {
@@ -288,6 +320,14 @@
     if (!text) {
       return;
     }
+    // Превышение лимита: реплика не уходит, игрок сразу видит подсказку.
+    var tokens = tokenEstimate(text);
+    var limit = tokenLimit();
+    if (tokens > limit) {
+      updateCount();
+      appendMessage("system", tokenHint(tokens, limit));
+      return;
+    }
     if (!activeSlug()) {
       emptyNote("no-world");
       return;
@@ -295,6 +335,7 @@
     if (chatInput) {
       chatInput.value = "";
     }
+    updateCount();
     setPending(true);
     appendMessage("player", text);
     postJSON("/api/turn", { world: activeSlug(), text: text }).then(function () {
@@ -323,6 +364,13 @@
     if (chatSend) {
       chatSend.setAttribute("aria-label", dict["chat.send"] || "Отправить");
     }
+    if (chatCount) {
+      chatCount.title = dict["chat.tokens_hint"] || ("Лимит реплики — " + tokenLimit() + " токенов");
+    }
+    if (chatInput) {
+      chatInput.addEventListener("input", updateCount);
+    }
+    updateCount();
     if (chatForm) {
       chatForm.addEventListener("submit", submitTurn);
     }

@@ -38,22 +38,23 @@ func (e *ExitError) Unwrap() error { return e.Err }
 
 // Config — параметры рождения мира.
 type Config struct {
-	WorldsRoot     string          // корень каталога миров; пусто — db.WorldsRoot.
-	PacksRoot      string          // корень каталога пакетов; пусто — "packs".
-	Logger         *journal.Logger // журнал станка; может быть nil.
-	FailStep       string          // тестовый крючок: имя шага, на котором упасть.
-	ProseCalls     *int            // тестовый счётчик вызовов слота прозы (гвардия B-04.1).
-	PackCalls      *int            // тестовый счётчик вызовов генерации пачки (T-02-09).
-	Isekai         bool            // переигровка в том же мире (T-02-12).
-	BaseDBPath     string          // путь к замороженной базе языка; пусто — db.BaseRoot/base.<lang>.db.
-	LibraryDir     string          // каталог полки книг; пусто — <WorldsRoot>/library.
-	Embed          models.Embedder // эмбеддер векторов смысла; nil — клиент :5002.
-	EmbedURL       string          // адрес эмбеддера для клиента по умолчанию; пусто — 127.0.0.1:5002.
-	MatchThreshold float64         // порог косинусной близости якоря; 0 — 0.5.
-	GazetteerPath  string          // путь к газетиру seed/gazetteer.jsonl; пусто — "seed/gazetteer.jsonl".
-	GeoRadiusDays  float64         // радиус стартового региона в днях пути; 0 — 3.
-	DayNormKm      float64         // норма дня пути в км; 0 — 25 (T-06-02).
-	Scout          DeepScout       // фоновая глубокая разведка при рождении; nil — выключена (B-14.4).
+	WorldsRoot           string          // корень каталога миров; пусто — db.WorldsRoot.
+	PacksRoot            string          // корень каталога пакетов; пусто — "packs".
+	Logger               *journal.Logger // журнал станка; может быть nil.
+	FailStep             string          // тестовый крючок: имя шага, на котором упасть.
+	ProseCalls           *int            // тестовый счётчик вызовов слота прозы (гвардия B-04.1).
+	PackCalls            *int            // тестовый счётчик вызовов генерации пачки (T-02-09).
+	Isekai               bool            // переигровка в том же мире (T-02-12).
+	BaseDBPath           string          // путь к замороженной базе языка; пусто — db.BaseRoot/base.<lang>.db.
+	LibraryDir           string          // каталог полки книг; пусто — <WorldsRoot>/library.
+	Embed                models.Embedder // эмбеддер векторов смысла; nil — клиент :5002.
+	EmbedURL             string          // адрес эмбеддера для клиента по умолчанию; пусто — 127.0.0.1:5002.
+	MatchThreshold       float64         // порог косинусной близости якоря; 0 — 0.5.
+	GazetteerPath        string          // путь к газетиру seed/gazetteer.jsonl; пусто — "seed/gazetteer.jsonl".
+	GeoRadiusDays        float64         // радиус стартового региона в днях пути; 0 — 3.
+	DayNormKm            float64         // норма дня пути в км; 0 — 25 (T-06-02).
+	MaxDescriptionTokens int             // потолок описания мира в токенах; 0 — textlimit.DefaultLimit (IMP-7).
+	Scout                DeepScout       // фоновая глубокая разведка при рождении; nil — выключена (B-14.4).
 }
 
 // Result — созданный мир.
@@ -108,6 +109,12 @@ func Birth(a *Ancketa, cfg Config) (*Result, error) {
 	// якорь.
 	if err := Validate(a); err != nil {
 		return nil, &ExitError{Code: ExitInvalid, Err: withSynopsisHint(a, err)}
+	}
+
+	// Описание мира ограничено по токенам (IMP-7): отказ с полем description до
+	// создания каталога — форма подсвечивает поле и показывает подсказку.
+	if fe := validateDescriptionForConfig(a, cfg); fe != nil {
+		return nil, &ExitError{Code: ExitInvalid, Err: &ValidationError{Fields: []FieldError{*fe}}}
 	}
 
 	// Переигровка isekai (T-02-12): мир уже существует — каталог и обе базы не
