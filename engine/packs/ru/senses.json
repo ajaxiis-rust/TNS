@@ -1,0 +1,423 @@
+{
+  "version": 1,
+  "senses": [
+    {
+      "lemma": "замок",
+      "pos": "NOUN",
+      "sense": "строение",
+      "category": "architecture",
+      "triggers": [
+        {"lemma": "ров", "weight": 1.2},
+        {"lemma": "решётка", "weight": 1.0},
+        {"lemma": "рыцарь", "weight": 1.0},
+        {"lemma": "король", "weight": 0.8},
+        {"lemma": "принцесса", "weight": 0.7},
+        {"lemma": "стража", "weight": 0.8}
+      ]
+    },
+    {
+      "lemma": "замок",
+      "pos": "NOUN",
+      "sense": "запирающее устройство",
+      "category": "",
+      "triggers": [
+        {"lemma": "скважина", "weight": 1.2},
+        {"lemma": "засов", "weight": 1.0},
+        {"lemma": "защёлка", "weight": 0.9},
+        {"lemma": "отпереть", "weight": 1.0},
+        {"lemma": "связка", "weight": 0.7},
+        {"lemma": "слесарь", "weight": 0.6}
+      ]
+    },
+    {
+      "lemma": "ключ",
+      "pos": "NOUN",
+      "sense": "родник",
+      "category": "nature",
+      "triggers": [
+        {"lemma": "журчать", "weight": 1.2},
+        {"lemma": "напиться", "weight": 1.0},
+        {"lemma": "студёный", "weight": 0.9},
+        {"lemma": "жажда", "weight": 0.8},
+        {"lemma": "напоить", "weight": 0.7},
+        {"lemma": "жадно", "weight": 0.6}
+      ]
+    },
+    {
+      "lemma": "ключ",
+      "pos": "NOUN",
+      "sense": "отпирающее устройство",
+      "category": "",
+      "triggers": [
+        {"lemma": "скважина", "weight": 1.0},
+        {"lemma": "отпереть", "weight": 1.0},
+        {"lemma": "связка", "weight": 0.8},
+        {"lemma": "дверца", "weight": 0.7},
+        {"lemma": "слесарь", "weight": 0.6}
+      ]
+    },
+    {
+      "lemma": "коса",
+      "pos": "NOUN",
+      "sense": "причёска",
+      "category": "appearance",
+      "triggers": [
+        {"lemma": "заплести", "weight": 1.2},
+        {"lemma": "лента", "weight": 1.0},
+        {"lemma": "заколка", "weight": 1.0},
+        {"lemma": "плести", "weight": 0.9},
+        {"lemma": "распустить", "weight": 0.8},
+        {"lemma": "девичий", "weight": 0.7}
+      ]
+    },
+    {
+      "lemma": "коса",
+      "pos": "NOUN",
+      "sense": "сельскохозяйственное орудие",
+      "category": "",
+      "triggers": [
+        {"lemma": "косить", "weight": 1.2},
+        {"lemma": "сенокос", "weight": 1.0},
+        {"lemma": "покос", "weight": 1.0},
+        {"lemma": "точить", "weight": 0.9},
+        {"lemma": "грабли", "weight": 0.8},
+        {"lemma": "лезвие", "weight": 0.7}
+      ]
+    },
+    {
+      "lemma": "коса",
+      "pos": "NOUN",
+      "sense": "песчаная отмель",
+      "category": "nature",
+      "triggers": [
+        {"lemma": "мель", "weight": 1.2},
+        {"lemma": "песчаный", "weight": 1.0},
+        {"lemma": "остров", "weight": 0.9},
+        {"lemma": "обсохнуть", "weight": 0.8},
+        {"lemma": "фарватер", "weight": 0.7}
+      ]
+    },
+    {
+      "lemma": "кисть",
+      "pos": "NOUN",
+      "sense": "рука",
+      "category": "appearance",
+      "triggers": [
+        {"lemma": "пожать", "weight": 1.0},
+        {"lemma": "сжать", "weight": 1.0},
+        {"lemma": "браслет", "weight": 0.9},
+        {"lemma": "маникюр", "weight": 0.8},
+        {"lemma": "рукопожатие", "weight": 0.8}
+      ]
+    },
+    {
+      "lemma": "кисть",
+      "pos": "NOUN",
+      "sense": "инструмент для рисования",
+      "category": "",
+      "triggers": [
+        {"lemma": "краска", "weight": 1.2},
+        {"lemma": "мазок", "weight": 1.0},
+        {"lemma": "холст", "weight": 1.0},
+        {"lemma": "палитра", "weight": 0.9},
+        {"lemma": "акварель", "weight": 0.8},
+        {"lemma": "маляр", "weight": 0.7}
+      ]
+    },
+    {
+      "lemma": "кисть",
+      "pos": "NOUN",
+      "sense": "гроздь ягод",
+      "category": "nature",
+      "triggers": [
+        {"lemma": "виноград", "weight": 1.2},
+        {"lemma": "ягода", "weight": 1.0},
+        {"lemma": "гроздь", "weight": 1.0},
+        {"lemma": "рябина", "weight": 0.9},
+        {"lemma": "смородина", "weight": 0.8}
+      ]
+    },
+    {
+      "lemma": "ножка",
+      "pos": "NOUN",
+      "sense": "опора мебели",
+      "category": "architecture",
+      "triggers": [
+        {"lemma": "шататься", "weight": 1.0},
+        {"lemma": "подпилить", "weight": 1.0},
+        {"lemma": "столяр", "weight": 0.9},
+        {"lemma": "скрипеть", "weight": 0.8},
+        {"lemma": "пошатнуться", "weight": 0.8}
+      ]
+    },
+    {
+      "lemma": "ножка",
+      "pos": "NOUN",
+      "sense": "часть гриба",
+      "category": "nature",
+      "triggers": [
+        {"lemma": "гриб", "weight": 1.2},
+        {"lemma": "боровик", "weight": 1.0},
+        {"lemma": "шляпка", "weight": 0.9},
+        {"lemma": "подберёзовик", "weight": 0.9},
+        {"lemma": "корзинка", "weight": 0.7}
+      ]
+    },
+    {
+      "lemma": "ножка",
+      "pos": "NOUN",
+      "sense": "детская нога",
+      "category": "appearance",
+      "triggers": [
+        {"lemma": "топать", "weight": 1.0},
+        {"lemma": "босой", "weight": 0.9},
+        {"lemma": "пелёнка", "weight": 1.0},
+        {"lemma": "колготки", "weight": 0.8},
+        {"lemma": "коляска", "weight": 0.8}
+      ]
+    },
+    {
+      "lemma": "пол",
+      "pos": "NOUN",
+      "sense": "настил",
+      "category": "architecture",
+      "triggers": [
+        {"lemma": "паркет", "weight": 1.2},
+        {"lemma": "половица", "weight": 1.0},
+        {"lemma": "подметать", "weight": 0.9},
+        {"lemma": "линолеум", "weight": 0.8},
+        {"lemma": "плинтус", "weight": 0.8}
+      ]
+    },
+    {
+      "lemma": "пол",
+      "pos": "NOUN",
+      "sense": "биологический признак",
+      "category": "",
+      "triggers": [
+        {"lemma": "мужчина", "weight": 1.0},
+        {"lemma": "женщина", "weight": 1.0},
+        {"lemma": "самка", "weight": 0.9},
+        {"lemma": "самец", "weight": 0.9},
+        {"lemma": "род", "weight": 0.6}
+      ]
+    },
+    {
+      "lemma": "батарея",
+      "pos": "NOUN",
+      "sense": "отопление",
+      "category": "architecture",
+      "triggers": [
+        {"lemma": "тепло", "weight": 1.0},
+        {"lemma": "труба", "weight": 0.9},
+        {"lemma": "обогреватель", "weight": 1.0},
+        {"lemma": "радиатор", "weight": 0.9},
+        {"lemma": "чугунный", "weight": 0.7},
+        {"lemma": "горячий", "weight": 0.6}
+      ]
+    },
+    {
+      "lemma": "батарея",
+      "pos": "NOUN",
+      "sense": "артиллерийская",
+      "category": "battle",
+      "triggers": [
+        {"lemma": "пушка", "weight": 1.2},
+        {"lemma": "пальба", "weight": 1.0},
+        {"lemma": "канонир", "weight": 1.0},
+        {"lemma": "запал", "weight": 0.8},
+        {"lemma": "лафет", "weight": 0.9}
+      ]
+    },
+    {
+      "lemma": "батарея",
+      "pos": "NOUN",
+      "sense": "электрическая",
+      "category": "",
+      "triggers": [
+        {"lemma": "фонарик", "weight": 1.2},
+        {"lemma": "заряд", "weight": 1.0},
+        {"lemma": "аккумулятор", "weight": 1.0},
+        {"lemma": "клемма", "weight": 0.9},
+        {"lemma": "разрядиться", "weight": 0.8}
+      ]
+    },
+    {
+      "lemma": "ласка",
+      "pos": "NOUN",
+      "sense": "животное",
+      "category": "nature",
+      "triggers": [
+        {"lemma": "зверёк", "weight": 1.2},
+        {"lemma": "горностай", "weight": 1.0},
+        {"lemma": "куница", "weight": 0.9},
+        {"lemma": "норка", "weight": 0.8},
+        {"lemma": "пушистый", "weight": 0.7},
+        {"lemma": "хищный", "weight": 0.9}
+      ]
+    },
+    {
+      "lemma": "ласка",
+      "pos": "NOUN",
+      "sense": "нежность",
+      "category": "erotic",
+      "triggers": [
+        {"lemma": "утешать", "weight": 1.0},
+        {"lemma": "прикосновение", "weight": 1.0},
+        {"lemma": "забота", "weight": 0.9},
+        {"lemma": "трепетный", "weight": 0.8},
+        {"lemma": "голубить", "weight": 0.8},
+        {"lemma": "ворковать", "weight": 0.7}
+      ]
+    },
+    {
+      "lemma": "свет",
+      "pos": "NOUN",
+      "sense": "освещение",
+      "category": "nature",
+      "triggers": [
+        {"lemma": "лампа", "weight": 1.0},
+        {"lemma": "лампочка", "weight": 1.0},
+        {"lemma": "фонарь", "weight": 0.9},
+        {"lemma": "луч", "weight": 0.9},
+        {"lemma": "яркий", "weight": 0.8},
+        {"lemma": "люстра", "weight": 0.8}
+      ]
+    },
+    {
+      "lemma": "свет",
+      "pos": "NOUN",
+      "sense": "высшее общество",
+      "category": "social",
+      "triggers": [
+        {"lemma": "салон", "weight": 0.9},
+        {"lemma": "сплетня", "weight": 1.0},
+        {"lemma": "аристократ", "weight": 0.9},
+        {"lemma": "манеры", "weight": 0.8},
+        {"lemma": "бал", "weight": 0.9},
+        {"lemma": "этикет", "weight": 0.7}
+      ]
+    },
+    {
+      "lemma": "свет",
+      "pos": "NOUN",
+      "sense": "мир, вселенная",
+      "category": "",
+      "triggers": [
+        {"lemma": "вселенная", "weight": 1.2},
+        {"lemma": "мироздание", "weight": 1.0},
+        {"lemma": "сотворить", "weight": 1.0},
+        {"lemma": "бытие", "weight": 0.9},
+        {"lemma": "создатель", "weight": 0.7}
+      ]
+    },
+    {
+      "lemma": "звезда",
+      "pos": "NOUN",
+      "sense": "небесное тело",
+      "category": "nature",
+      "triggers": [
+        {"lemma": "созвездие", "weight": 1.2},
+        {"lemma": "телескоп", "weight": 1.0},
+        {"lemma": "мерцать", "weight": 0.9},
+        {"lemma": "галактика", "weight": 1.0},
+        {"lemma": "астроном", "weight": 0.9},
+        {"lemma": "небосклон", "weight": 0.8}
+      ]
+    },
+    {
+      "lemma": "звезда",
+      "pos": "NOUN",
+      "sense": "знаменитость",
+      "category": "social",
+      "triggers": [
+        {"lemma": "эстрада", "weight": 1.0},
+        {"lemma": "поклонник", "weight": 0.9},
+        {"lemma": "слава", "weight": 0.9},
+        {"lemma": "интервью", "weight": 0.8},
+        {"lemma": "фанат", "weight": 0.9},
+        {"lemma": "эфир", "weight": 0.7}
+      ]
+    },
+    {
+      "lemma": "звезда",
+      "pos": "NOUN",
+      "sense": "награда",
+      "category": "",
+      "triggers": [
+        {"lemma": "награда", "weight": 1.0},
+        {"lemma": "медаль", "weight": 1.0},
+        {"lemma": "орден", "weight": 1.0},
+        {"lemma": "герой", "weight": 0.9},
+        {"lemma": "лавры", "weight": 0.8},
+        {"lemma": "вручить", "weight": 0.7}
+      ]
+    },
+    {
+      "lemma": "гребень",
+      "pos": "NOUN",
+      "sense": "расчёска",
+      "category": "appearance",
+      "triggers": [
+        {"lemma": "расчесать", "weight": 1.2},
+        {"lemma": "пробор", "weight": 1.0},
+        {"lemma": "заколка", "weight": 0.9},
+        {"lemma": "прядь", "weight": 0.8},
+        {"lemma": "спутаться", "weight": 0.7}
+      ]
+    },
+    {
+      "lemma": "гребень",
+      "pos": "NOUN",
+      "sense": "горный",
+      "category": "nature",
+      "triggers": [
+        {"lemma": "перевал", "weight": 1.0},
+        {"lemma": "отрог", "weight": 1.0},
+        {"lemma": "седловина", "weight": 0.9},
+        {"lemma": "кряж", "weight": 0.9},
+        {"lemma": "альпинист", "weight": 0.8}
+      ]
+    },
+    {
+      "lemma": "гребень",
+      "pos": "NOUN",
+      "sense": "петушиный",
+      "category": "",
+      "triggers": [
+        {"lemma": "петух", "weight": 1.2},
+        {"lemma": "курица", "weight": 0.9},
+        {"lemma": "курятник", "weight": 1.0},
+        {"lemma": "петушок", "weight": 1.0},
+        {"lemma": "хохолок", "weight": 0.8}
+      ]
+    },
+    {
+      "lemma": "кран",
+      "pos": "NOUN",
+      "sense": "водопроводный",
+      "category": "architecture",
+      "triggers": [
+        {"lemma": "вода", "weight": 1.0},
+        {"lemma": "труба", "weight": 1.0},
+        {"lemma": "смеситель", "weight": 1.0},
+        {"lemma": "сантехник", "weight": 0.9},
+        {"lemma": "протекать", "weight": 0.8}
+      ]
+    },
+    {
+      "lemma": "кран",
+      "pos": "NOUN",
+      "sense": "подъёмный",
+      "category": "",
+      "triggers": [
+        {"lemma": "стрела", "weight": 1.0},
+        {"lemma": "стройка", "weight": 1.0},
+        {"lemma": "груз", "weight": 0.9},
+        {"lemma": "башенный", "weight": 0.9},
+        {"lemma": "монтажник", "weight": 0.8},
+        {"lemma": "поднимать", "weight": 0.6}
+      ]
+    }
+  ]
+}
