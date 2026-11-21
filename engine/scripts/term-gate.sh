@@ -14,6 +14,8 @@ set -uo pipefail
 # замечанием в том же ходу.
 # Ручной прогон: bash scripts/term-gate.sh --file DOCS/x.md
 #   exit 0 — чисто, 1 — нарушения, 2 — ошибка запуска.
+# Весь живой набор: bash scripts/term-gate.sh --check-all
+#   (Проверка T-16-06: exit 0 — набор чист).
 # Самопроверка: bash scripts/term-gate.sh --self-test.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
@@ -36,6 +38,10 @@ while [ "$#" -gt 0 ]; do
       MODE=file
       FILE="$2"
       shift 2
+      ;;
+    --check-all)
+      MODE=check-all
+      shift
       ;;
     --root)
       [ "$#" -ge 2 ] || usage
@@ -116,6 +122,16 @@ is_live() {
   base="$(basename -- "$rel")"
   [ "$base" = "brief3.md" ] && return 1
   [ "$rel" = "fine/plan/99-LEDGER.md" ] && return 1
+  # Датированные файлы work/ — история предложений, как RAW (правило T-16-06).
+  case "$rel" in
+    work/*-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].md) return 1 ;;
+  esac
+  # Артефакты прогонов конвейера и выписки из постов владельца — история и
+  # источник цитат: не нормализуются и не проверяются.
+  case "$rel" in
+    fine/04-spec/_pipeline/*) return 1 ;;
+    work/mechanics-from-chat.md) return 1 ;;
+  esac
   case "$rel" in
     DOCS/*|TNS65-PARADIGM.md|GLOSSARY.md|dev/GLOSSARY.md|fine/04-spec/*|fine/03-design/*|work/*) return 0 ;;
     fine/plan/16-distillation.md) return 0 ;;
@@ -293,7 +309,25 @@ build_tables() {
         printf "%s\t%s\n", a[i], $1
       }
     }
-  ' "$TSV" | awk -F'\t' '!seen[$1]++' >"$WORK/forbidden.tsv" || return 1
+  ' "$TSV" | awk -F'\t' '!seen[$1]++' >"$WORK/forbidden_all.tsv" || return 1
+  # Синоним, совпадающий с другим термином таблицы (например «кодер» у записи
+  # «Исполнитель») или с первым словом своего термина («биндер» у «Биндер
+  # слотов»), — правило записи, а не корпусной запрет: в запрет его не берём,
+  # иначе гейт флагает сам этот термин в текстах.
+  cut -f1 "$TSV" | tail -n +2 | awk '{ print tolower($0) }' | LC_ALL=C sort -u >"$WORK/terms_lc.txt"
+  awk -F'\t' '
+    NR == FNR {
+      t[$0] = 1
+      split($0, w, " ")
+      first[w[1]] = 1
+      next
+    }
+    {
+      p = tolower($1)
+      split(p, pw, " ")
+      if (p in t || pw[1] in first) next
+      if (!seen[$1]++) print
+    }' "$WORK/terms_lc.txt" "$WORK/forbidden_all.tsv" >"$WORK/forbidden.tsv" || return 1
   cut -f1 "$WORK/forbidden.tsv" >"$WORK/forbidden.txt" || return 1
 
   {
@@ -317,7 +351,23 @@ build_tables() {
 # check_text <текст-файл> <путь файла> — общий прогон ступеней A/B/C.
 # Возвращает 0 — нарушений нет, 1 — есть.
 check_text() {
-  local textfile="$1" file="$2" a_out b_out a_n b_n report
+  local textfile="$1" file="$2" a_out b_out a_n b_n report rel
+  # Столбец запрещённых синонимов якорных таблиц — данные, не текст: гасим
+  # его перед сверкой, иначе гейт флагает сам себя (пятая колонка строк).
+  rel="$(realpath -m -- "$file")"
+  rel="${rel#"$ROOT"/}"
+  case "$rel" in
+    GLOSSARY.md|dev/GLOSSARY.md|fine/04-spec/00-glossary.md)
+      if awk -F'|' 'BEGIN { OFS = "|" } /^\| / { $5 = " " } { print }' "$textfile" >"$WORK/masked.md" 2>/dev/null; then
+        textfile="$WORK/masked.md"
+      fi
+      ;;
+  esac
+  # Кодовые идентификаторы и пути в обратных кавычках легальны в русских
+  # текстах (закон имён): гасим их перед сверкой.
+  if sed 's/`[^`]*`/ /g' "$textfile" >"$WORK/nocode.md" 2>/dev/null; then
+    textfile="$WORK/nocode.md"
+  fi
   a_out="$(stage_a "$textfile")"
   stage_b "$textfile" "$file" || true
   [ -s "$WORK/nouns.txt" ] && stage_c "$file"
@@ -388,6 +438,21 @@ if [ "$SELF_TEST" -eq 1 ]; then
     code=$?
     if [ "$code" -eq 0 ]; then pass; else fail "never-edit/не живой путь проверялся: $f"; fi
   done
+
+  printf '| Термин | Суть | код | пайплайн, конвейер | канон |\n' >"$TMP/GLOSSARY.md"
+  gate --file "$TMP/GLOSSARY.md" >/dev/null 2>&1
+  code=$?
+  if [ "$code" -eq 0 ]; then pass; else fail "столбец синонимов якоря не загашен"; fi
+
+  printf 'Путь модуля: `internal/sediment/pipeline.go`.\n' >"$TMP/DOCS/ident.md"
+  gate --file "$TMP/DOCS/ident.md" >/dev/null 2>&1
+  code=$?
+  if [ "$code" -eq 0 ]; then pass; else fail "кодовый идентификатор в кавычках проверялся"; fi
+
+  printf 'пайплайн тут\n' >"$TMP/work/plan-20261121.md"
+  gate --file "$TMP/work/plan-20261121.md" >/dev/null 2>&1
+  code=$?
+  if [ "$code" -eq 0 ]; then pass; else fail "датированный work/ файл проверялся"; fi
 
   printf '{"tool_name":"write","tool_input":{"file_path":"%s/DOCS/lit.md","content":"пайплайн тут"}}' "$TMP" |
     TNS65_TERM_GATE_JOURNAL="$TMP/journal.log" bash "$SELF" --root "$TMP" >"$TMP/hook.out" 2>/dev/null
@@ -463,6 +528,28 @@ if [ "$SELF_TEST" -eq 1 ]; then
     exit 0
   fi
   echo "term-gate: self-test FAIL ($fails из $checks)" >&2
+  exit 1
+fi
+
+# --- проверка всего живого набора (Проверка T-16-06) ---------------------
+if [ "$MODE" = "check-all" ]; then
+  [ -f "$TSV" ] || { echo "term-gate: нет таблицы: $TSV" >&2; exit 2; }
+  build_tables || { echo "term-gate: таблица не прочитана: $TSV" >&2; exit 2; }
+  checked=0
+  bad=0
+  while IFS= read -r f; do
+    is_live "$f" || continue
+    checked=$((checked + 1))
+    if ! check_text "$f" "$f"; then
+      printf '%s\n' "$REPORT"
+      bad=$((bad + 1))
+    fi
+  done < <(find "$ROOT" -type f -name '*.md' 2>/dev/null | LC_ALL=C sort)
+  if [ "$bad" -eq 0 ]; then
+    echo "term-gate: ok — живой набор чист ($checked файлов)"
+    exit 0
+  fi
+  echo "term-gate: нарушения в $bad из $checked файлов живого набора" >&2
   exit 1
 fi
 

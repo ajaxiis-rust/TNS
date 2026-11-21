@@ -36,16 +36,16 @@
 | LLM — температура (`llm.gen_temperature`) | Настройки → LLM | `config.yaml` `llm.gen_temperature` | `0.0` | да | |
 | LLM — повторы (`llm.gen_retries`) | Настройки → LLM | `config.yaml` `llm.gen_retries` | `0` | да | |
 | LLM — конкурентность (`llm.gen_concurrency`) | Настройки → LLM | `config.yaml` `llm.gen_concurrency` | `1` | да | минимум 1 |
-| LLM — адрес эмбеддинга (`llm.embed_addr`) | Настройки → LLM | `config.yaml` `llm.embed_addr` | `:5002` | да | BGE-M3 |
-| LLM — модель эмбеддинга (`llm.embed_model`) | Настройки → LLM | `config.yaml` `llm.embed_model` | `` | да | |
-| LLM — тайм-аут эмбеддинга (`llm.embed_timeout`) | Настройки → LLM | `config.yaml` `llm.embed_timeout` | `30s` | да | |
+| LLM — адрес вектора смысла (`llm.embed_addr`) | Настройки → LLM | `config.yaml` `llm.embed_addr` | `:5002` | да | BGE-M3 |
+| LLM — модель вектора смысла (`llm.embed_model`) | Настройки → LLM | `config.yaml` `llm.embed_model` | `` | да | |
+| LLM — тайм-аут вектора смысла (`llm.embed_timeout`) | Настройки → LLM | `config.yaml` `llm.embed_timeout` | `30s` | да | |
 | LLM — путь `llama-server` (`llm.llama_server_path`) | Мастер, шаг 0 → «Движок»; Настройки → LLM (чтение) | `config.yaml` `llm.llama_server_path` | пусто | да | пусто — автоопределение: конфиг → `bin/` → PATH → типовые сборки; путь проверяется запуском `--version` (T-13-06) |
 | Движок — обнаружение и установка llama.cpp | Мастер, шаг 0 → «Движок» | — (`GET /api/settings/llama/detect`, `POST …/scan`) | — | нет | найденный бинарник показывается с путём и версией; скачивание — только при пустом обнаружении; без хостов GitHub в netgate установка отвечает 409 и мастер показывает команду скрипта |
 | Станция — дети :5001/:5002 по установленным моделям | Мастер, шаг 0 (чтение); Настройки → Модели (чтение) | `world_db/models/<роль>/manifest.json` | — | нет | дети собираются из манифестов до запуска надзирателя: роль `embed` → :5002, установленная роль генерации → :5001; `bin` ребёнка — путь обнаружения llama.cpp; готовность видна в `station.children` (`GET /api/first-run`) |
 | LLM — локальные вычисления (`llm.local`) | Настройки → LLM | `config.yaml` `llm.local` | `true` | да | |
 | LLM — семплирование (`llm.sampling`) | Настройки → LLM | `config.yaml` `llm.sampling` | `greedy` | да | `greedy`/`top_p` |
 | LLM — ключ слота генерации | Настройки → LLM | `settings.toml` `llm_gen` | пусто | нет | наружу не отдаётся (только `key_set`) |
-| LLM — ключ слота эмбеддинга | Настройки → LLM | `settings.toml` `llm_embed` | пусто | нет | наружу не отдаётся |
+| LLM — ключ слота вектора смысла | Настройки → LLM | `settings.toml` `llm_embed` | пусто | нет | наружу не отдаётся |
 | Провайдеры — ключ внешнего провайдера | Настройки → Провайдеры | `settings.toml` `<имя>` | пусто | нет | ключ не отдаётся; остаток лимита/стоимость — чтение журнала вызовов |
 | Провайдеры — пресеты реестра | Настройки → LLM (только чтение) | код `workshop.Presets()` | `local` | — | `local`/`gemini-flash`/`gemini-pro`; выбор пресета — `slots.default` |
 | Провайдеры — модель | Настройки → Провайдеры | `providers.toml` `[[providers]]` + `settings.toml` `<имя>_model` | `default_model` провайдера | да | список моделей читается у провайдера по ключу (Gemini ListModels или OpenAI-совместимый `/models`) либо берётся из `models = […]`; цена — из `providers.toml`; выбор из `settings.toml` главнее |
@@ -57,9 +57,9 @@
 | Модели — удаление модели | Настройки → Модели | `world_db/models/<роль>/` + реестр загрузок | — | нет | `DELETE /api/settings/models/delete`: перед снятием файлов ребёнок роли гасится, подтверждение вторым нажатием, активная загрузка роли — 409, повторное удаление — 404 |
 | Роли — привязка слота (роль→провайдер/модель) | Настройки → Роли | `model_bindings` (core) | — | нет | при чтении привязка сверяется с диском и ключами: локальной роли нужен установленный файл, внешнему провайдеру — ключ; невалидная показывается в свёрнутом блоке «Неактивные привязки» |
 | Роли — забыть неактивную привязку | Настройки → Роли → «Забыть» | `model_bindings` (core) | — | нет | `POST /api/settings/bindings/forget` удаляет только строку роли; файлы модели остаются |
-| Роли — температура | Настройки → Роли | `world_meta` `role.<роль>` (forge) | `0` | нет | JSON-состав роли |
-| Роли — промпты | Настройки → Роли | `world_meta` `role.<роль>` (forge) | пусто | нет | |
-| Роли — приоритет | Настройки → Роли | `world_meta` `role.<роль>` (forge) | `0` | нет | |
+| Роли — температура | Настройки → Роли | `world_meta` `role.<роль>` (`forge`) | `0` | нет | JSON-состав роли |
+| Роли — промпты | Настройки → Роли | `world_meta` `role.<роль>` (`forge`) | пусто | нет | |
+| Роли — приоритет | Настройки → Роли | `world_meta` `role.<роль>` (`forge`) | `0` | нет | |
 | World — прорисовка карты (`paganel.enabled`) | Настройки → World | `config.yaml` `paganel.enabled` | `true` | да | ковка колец |
 | World — походы наружу (`paganel.scout_enabled`) | Настройки → World | `config.yaml` `paganel.scout_enabled` | `false` | да | `false` — ноль внешних вызовов (F-08) |
 | World — ключ внешней модели Паганеля | Настройки → World | `settings.toml` `paganel` | пусто | нет | `key_ref = paganel`; живой ход доступа не имеет |
@@ -69,12 +69,12 @@
 | Канал — токен Telegram | Настройки → Канал | `settings.toml` `telegram` | пусто | да | наружу не отдаётся; `tunnel.telegram_token` — legacy fallback |
 | Plugins — список плагинов | Настройки → Plugins | — | пусто | — | сейчас плагинов нет |
 | Advanced — фича-флаги | Настройки → Advanced | `advanced.feature_flags` | `[]` | — | сейчас пусто, только чтение |
-| Advanced — `maxMemoryEntries` | Настройки → Advanced | `world_meta` tunable (forge) | `0` | нет | память NPC; пишется через `/api/world/tunables` |
-| Advanced — `similarityThreshold` | Настройки → Advanced | `world_meta` tunable (forge) | `0` | нет | |
-| Advanced — `halfLifeDays` | Настройки → Advanced | `world_meta` tunable (forge) | `0` | нет | |
+| Advanced — `maxMemoryEntries` | Настройки → Advanced | `world_meta` tunable (`forge`) | `0` | нет | память NPC; пишется через `/api/world/tunables` |
+| Advanced — `similarityThreshold` | Настройки → Advanced | `world_meta` tunable (`forge`) | `0` | нет | |
+| Advanced — `halfLifeDays` | Настройки → Advanced | `world_meta` tunable (`forge`) | `0` | нет | |
 | Advanced — `embeddingDimension` | Настройки → Advanced (чтение) | код (`models.EmbedDim`) | `1024` | — | только чтение (D-16) |
-| Advanced — `globalLuck` | Настройки → Advanced | `world_meta` tunable (forge) | `0.5` | нет | удача мира |
-| Advanced — `dayNormKm` | Настройки → Advanced | `world_meta` tunable (forge) | `25` | нет | норма дня, диапазон 20–30 км |
+| Advanced — `globalLuck` | Настройки → Advanced | `world_meta` tunable (`forge`) | `0.5` | нет | удача мира |
+| Advanced — `dayNormKm` | Настройки → Advanced | `world_meta` tunable (`forge`) | `25` | нет | норма дня, диапазон 20–30 км |
 | Мониторинг — слоты/роли/машины/деградации/журнал | Настройки → Мониторинг | чтение журнала вызовов и состояния | — | — | только чтение, управляющих кнопок нет |
 | netgate — белый список внешних хостов (`allowed_hosts`) | — (config-only) | `config.yaml` `netgate.allowed_hosts` | 5 хостов (см. §5) | да | проверка до соединения (T-01-11) |
 | ports — белый список слушающих адресов (`whitelist`) | — (config-only) | `config.yaml` `ports.whitelist` | `127.0.0.1:8720`, `:5001`, `:5002` | да | чужой сокет — отказ старта, код 3 (T-01-12) |
@@ -222,7 +222,7 @@
 - Привязка активна (`active=true`), только если она может ответить сейчас: локальной роли нужен установленный файл с целым манифестом в `world_db/models/<роль>/`, внешнему провайдеру — ключ в `settings.toml`.
 - Невалидная привязка остаётся в `bindings`, но с `active=false` и полями `state` (`no_model` — модели роли нет, `no_file` — файла нет или он повреждён/другой, `no_key` — нет ключа провайдера) и `problem` (причина для человека). Экран складывает такие роли в свёрнутый блок «Неактивные привязки».
 - «Подключить» у неактивной роли ведёт в нужный раздел: локальной — к каталогу моделей (карточка роли подсвечивается), внешней — к форме провайдера с подставленным именем. «Забыть» вызывает `POST /api/settings/bindings/forget` и убирает только строку `model_bindings`; файл модели на диске остаётся.
-- Панель «Что сейчас работает» (`station` в `GET /api/settings`) — семь проверок на момент запроса: мир, модели (установлено / без файла), привязки (активны / неактивны), слот генерации (TCP-проба адреса из конфига), эмбеддинг (health и пулинг), наличие `llama-server` и Telegram (токен, chat_id, живой бот). Каждая строка несёт `ok` и `value`; `station.ready` — все проверки в норме.
+- Панель «Что сейчас работает» (`station` в `GET /api/settings`) — семь проверок на момент запроса: мир, модели (установлено / без файла), привязки (активны / неактивны), слот генерации (TCP-проба адреса из конфига), вектор смысла (health и пулинг), наличие `llama-server` и Telegram (токен, chat_id, живой бот). Каждая строка несёт `ok` и `value`; `station.ready` — все проверки в норме.
 - Проверка llama-server дешёвая: путь из конфига, `bin/` экземпляра, `bin/` рядом с бинарником, PATH; `--version` при открытии экрана не запускается, чтобы не платить секундами за панель.
 - Счётчик в навигации у «Что сейчас работает» показывает число проверок, требующих внимания; `—` — проверка ещё не приходила.
 - Всё это только чтение: открытие настроек ничего не удаляет и не переписывает в мире. Единственная запись — явное нажатие «Забыть».
@@ -252,7 +252,7 @@
 - Протокол `openai` — стандартный OpenAI-совместимый вход: ядро шлёт `POST <base_url>/chat/completions` с `Authorization: Bearer <ключ>`, читает SSE (`data: {...}`, `delta.content`), а список моделей — `GET <base_url>/models`. Так работают DeepSeek, Xiaomi MiMo, Alibaba Qwen (DashScope), Mistral, Cohere, OpenRouter, Groq, SambaNova, Cerebras, NVIDIA NIM, GitHub Models (PAT с `models:read`), Hugging Face, Z.ai, Fireworks, DeepInfra, Nebius, Cloudflare Workers AI (в `base_url` подставьте `ACCOUNT_ID`) и OpenAI-вход Gemini (`/v1beta/openai`). Протокол `gemini` — родной `generateContent` по `base_url`.
 - В `providers.toml` уже заведены Gemini (оба протокола), DeepSeek, Xiaomi MiMo, Alibaba Qwen (DashScope, международный вход; китайский регион — готовый закомментированный блок) и перечисленные OpenAI-совместимые провайдеры. Хост провайдера обязан быть в `netgate.allowed_hosts` (`config.yaml`), иначе запрос не выйдет наружу; добавление нового хоста — правка `config.yaml` и перезапуск ядра, пересборка не нужна.
 - Файла нет — ядро работает на встроенном минимуме: `gemini-flash` и `gemini-pro`, заводские `gemini-3.8-flash` / `gemini-3.1-pro-preview`, цены неизвестны. Битые строки пропускаются, чтобы одна опечатка не убирала весь реестр.
-- «Список» вызывает `GET /api/providers/models?provider=<имя>`. Если у провайдера задан `models = […]`, список отдаётся из файла без сети и без ключа. Иначе ключ обязателен: для Gemini читается `/v1beta/models` (заголовок `x-goog-api-key`), для OpenAI-совместимых — `/models` (`Authorization`); ключ не попадает в URL и журналы. Остаются текстовые модели: `generateContent` для Gemini, для OpenAI-совместимых отсеиваются эмбеддинги, речь, картинки, реранк и модерация. Цена и `display_name` — из `providers.toml`.
+- «Список» вызывает `GET /api/providers/models?provider=<имя>`. Если у провайдера задан `models = […]`, список отдаётся из файла без сети и без ключа. Иначе ключ обязателен: для Gemini читается `/v1beta/models` (заголовок `x-goog-api-key`), для OpenAI-совместимых — `/models` (`Authorization`); ключ не попадает в URL и журналы. Остаются текстовые модели: `generateContent` для Gemini, для OpenAI-совместимых отсеиваются векторы смысла, речь, картинки, реранк и модерация. Цена и `display_name` — из `providers.toml`.
 - Ключ не задан — ответ 409 «provider key is not set», интерфейс подставляет имя провайдера в форму и ставит фокус в поле «Ключ». Провайдер отклонил ключ (401/403, у Gemini также 400) — 409 «provider key rejected» и отдельная подсказка: ключ нужно проверить и сохранить заново.
 - Цены API не отдаёт: единственный источник — `providers.toml`: вход/выход за 1M токенов, USD, примечание (срок действия цены, бесплатный уровень). Цена 0/0 без чисел — модель отключена, в интерфейсе остаётся только примечание. Модели без записи в справочнике показываются с «цена неизвестна».
 - Выбор модели пишется в `settings.toml` ключом `<имя>_model` (`PUT /api/providers/model`) и главнее `default_model` из `providers.toml`. Имя модели может содержать `/`, `:`, `@`, `.`, `-`, `_` — подходят `vendor/model`, `@cf/…`, `accounts/…`.
