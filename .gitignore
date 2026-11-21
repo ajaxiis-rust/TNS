@@ -3,3 +3,5 @@ RAW/
 *.jsonl
 .mimocode/
 AGENT-MECHANICS.md
+
+.gograph/
