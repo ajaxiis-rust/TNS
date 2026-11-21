@@ -180,6 +180,68 @@ run_checks() {
   else
     drift "нет DOCS/00-START-HERE.md"
   fi
+
+  # 8. Линейность планов (T-16-08): «Зависит от» ссылается только на задачи с
+  # меньшим номером (волна*1000+номер). Параллельные группы помечаются в плане.
+  # brief3.md и 99-LEDGER.md — защищённая история, из сверки исключены.
+  local lin_exempt=(
+    "02-birth.md:T-02-04->T-02-05"             # изъятие: снять после решения владельца (T-16-08)
+    "02-birth.md:T-02-07->T-02-15"             # изъятие: снять после решения владельца (T-16-08)
+    "02-birth.md:T-02-14->T-02-15"             # изъятие: снять после решения владельца (T-16-08)
+    "03-live-turn.md:T-03-18->T-08-09"         # изъятие: снять после решения владельца (T-16-08)
+    "04-sedimentation.md:T-04-05->T-04-11"     # изъятие: снять после решения владельца (T-16-08)
+    "05-workshop.md:T-05-08->T-05-15"          # изъятие: снять после решения владельца (T-16-08)
+    "09-acceptance.md:T-09-01->T-10-02"        # изъятие: снять после решения владельца (T-16-08)
+    "09-acceptance.md:T-09-01->T-10-03"        # изъятие: снять после решения владельца (T-16-08)
+    "09-acceptance.md:T-09-01->T-10-04"        # изъятие: снять после решения владельца (T-16-08)
+    "09-acceptance.md:T-09-01->T-10-15"        # изъятие: снять после решения владельца (T-16-08)
+    "09-acceptance.md:T-09-04->T-10-02"        # изъятие: снять после решения владельца (T-16-08)
+    "09-acceptance.md:T-09-04->T-10-15"        # изъятие: снять после решения владельца (T-16-08)
+    "13-model-download-wizard.md:T-13-03->T-13-07"  # изъятие: снять после решения владельца (T-16-08)
+  )
+  local plan_line cur_task cur_num dep_text dep deps range r1 r2 lo hi k dep_num
+  for plan in "$plan_dir"/*.md; do
+    base="$(basename "$plan")"
+    case "$base" in
+      99-LEDGER.md|_TEMPLATE.md|brief3.md) continue ;;
+    esac
+    cur_task=""
+    while IFS= read -r plan_line; do
+      case "$plan_line" in
+        "### "*)
+          cur_task="$(printf '%s\n' "$plan_line" | sed -nE 's/^### (T-[0-9]{2}-[0-9]{2})\..*/\1/p')"
+          continue
+          ;;
+        "- **Зависит от:**"*) ;;
+        *) continue ;;
+      esac
+      [ -n "$cur_task" ] || continue
+      dep_text="${plan_line#- **Зависит от:**}"
+      deps="$(printf '%s\n' "$dep_text" | grep -oE 'T-[0-9]{2}-[0-9]{2}' | tr '\n' ' ')"
+      # Диапазоны вида T-08-01 … T-08-13 разворачиваются в отдельные ссылки.
+      while IFS= read -r range; do
+        [ -n "$range" ] || continue
+        range="${range// /}"
+        r1="${range%%…*}"
+        r2="${range##*…}"
+        lo=$(( 10#${r1:2:2} * 1000 + 10#${r1:5:2} ))
+        hi=$(( 10#${r2:2:2} * 1000 + 10#${r2:5:2} ))
+        for ((k = lo; k <= hi && k <= lo + 200; k++)); do
+          deps="$deps $(printf 'T-%02d-%02d' $((k / 1000)) $((k % 1000)))"
+        done
+      done < <(printf '%s\n' "$dep_text" | grep -oE 'T-[0-9]{2}-[0-9]{2}( ?… ?|\.\.\.)T-[0-9]{2}-[0-9]{2}')
+      deps="$(printf '%s\n' $deps | sort -u | tr '\n' ' ')"
+      cur_num=$(( 10#${cur_task:2:2} * 1000 + 10#${cur_task:5:2} ))
+      for dep in $deps; do
+        dep_num=$(( 10#${dep:2:2} * 1000 + 10#${dep:5:2} ))
+        [ "$dep_num" -gt "$cur_num" ] || continue
+        case " ${lin_exempt[*]} " in
+          *" $base:$cur_task->$dep "*) continue ;;
+        esac
+        drift "план $base: $cur_task зависит от большего номера $dep"
+      done
+    done < "$plan"
+  done
 }
 
 if [ "$SELF_TEST" -eq 1 ]; then
