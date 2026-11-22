@@ -132,10 +132,12 @@ run_checks() {
     drift "нет engine/ARCHITECTURE.md"
   fi
 
-  # 5. Планы: строка задачи в журнале ↔ заголовок в fine/plan/*.md.
-  local ledger_ids id plan base ids
+  # 5. Планы: строка задачи в журнале ↔ заголовок или псевдоним в fine/plan/*.md.
+  # После перенумерации волн (T-17-08) прежний ID живёт строкой «(прежний ID: T-XX-NN)».
+  local ledger_ids id plan base ids alias aliased
   ledger_ids="$(grep -oE '^\| T-[0-9]{2}-[0-9]{2} \|' "$ledger" | grep -oE 'T-[0-9]{2}-[0-9]{2}' | sort -u)"
   declare -A id_count
+  declare -A alias_ids
   for plan in "$plan_dir"/*.md; do
     base="$(basename "$plan")"
     [ "$base" = "99-LEDGER.md" ] && continue
@@ -144,9 +146,14 @@ run_checks() {
     for id in $ids; do
       id_count[$id]=$(( ${id_count[$id]:-0} + 1 ))
     done
+    aliased="$(grep -oE '\(прежний ID: T-[0-9]{2}-[0-9]{2}\)' "$plan" | grep -oE 'T-[0-9]{2}-[0-9]{2}')"
+    for alias in $aliased; do
+      alias_ids[$alias]=1
+    done
   done
   for id in $ledger_ids; do
-    [ -n "${id_count[$id]:-}" ] || drift "задача $id в 99-LEDGER.md без заголовка в fine/plan/*.md"
+    [ -n "${id_count[$id]:-}" ] || [ -n "${alias_ids[$id]:-}" ] ||
+      drift "задача $id в 99-LEDGER.md без заголовка или псевдонима в fine/plan/*.md"
   done
   for id in "${!id_count[@]}"; do
     [ "${id_count[$id]}" -le 1 ] || drift "ID $id повторяется между файлами плана"
@@ -184,24 +191,8 @@ run_checks() {
   # 8. Линейность планов (T-16-08): «Зависит от» ссылается только на задачи с
   # меньшим номером (волна*1000+номер). Параллельные группы помечаются в плане.
   # brief3.md и 99-LEDGER.md — защищённая история, из сверки исключены.
-  # Постоянные изъятия (22.11): нарушения линейности в планах закрытых волн
-  # (P2–P13) — история исполнения; перенумерация сломает ссылки на коммиты и
-  # строки LEDGER. Правило линейности строго действует для новых волн (P15+).
-  local lin_exempt=(
-    "02-birth.md:T-02-04->T-02-05"             # закрытая волна — история, не правится
-    "02-birth.md:T-02-07->T-02-15"             # закрытая волна — история, не правится
-    "02-birth.md:T-02-14->T-02-15"             # закрытая волна — история, не правится
-    "03-live-turn.md:T-03-18->T-08-09"         # закрытая волна — история, не правится (blocked-dep на UI)
-    "04-sedimentation.md:T-04-05->T-04-11"     # закрытая волна — история, не правится
-    "05-workshop.md:T-05-08->T-05-15"          # закрытая волна — история, не правится
-    "09-acceptance.md:T-09-01->T-10-02"        # закрытая волна — история, не правится (приёмка P9 покрывает P10)
-    "09-acceptance.md:T-09-01->T-10-03"        # закрытая волна — история, не правится (приёмка P9 покрывает P10)
-    "09-acceptance.md:T-09-01->T-10-04"        # закрытая волна — история, не правится (приёмка P9 покрывает P10)
-    "09-acceptance.md:T-09-01->T-10-15"        # закрытая волна — история, не правится (приёмка P9 покрывает P10)
-    "09-acceptance.md:T-09-04->T-10-02"        # закрытая волна — история, не правится (приёмка P9 покрывает P10)
-    "09-acceptance.md:T-09-04->T-10-15"        # закрытая волна — история, не правится (приёмка P9 покрывает P10)
-    "13-model-download-wizard.md:T-13-03->T-13-07"  # закрытая волна — история, не правится
-  )
+  # Изъятий нет (T-17-08): закрытые волны перенумерованы топологически, правило
+  # действует строго для всех планов; прежние ID — в строках-псевдонимах.
   local plan_line cur_task cur_num dep_text dep deps range r1 r2 lo hi k dep_num
   for plan in "$plan_dir"/*.md; do
     base="$(basename "$plan")"
@@ -238,9 +229,6 @@ run_checks() {
       for dep in $deps; do
         dep_num=$(( 10#${dep:2:2} * 1000 + 10#${dep:5:2} ))
         [ "$dep_num" -gt "$cur_num" ] || continue
-        case " ${lin_exempt[*]} " in
-          *" $base:$cur_task->$dep "*) continue ;;
-        esac
         drift "план $base: $cur_task зависит от большего номера $dep"
       done
     done < "$plan"
