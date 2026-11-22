@@ -132,7 +132,10 @@ CREATE TABLE player_atlas (
     theme TEXT NOT NULL,
     mood TEXT NOT NULL,
     interest TEXT NOT NULL,
-    source TEXT NOT NULL
+    source TEXT NOT NULL,
+    -- психотип карты: пишется один раз, при первом вычислении (W-12.4)
+    psychotype TEXT NOT NULL DEFAULT '',
+    habits TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE player_map (

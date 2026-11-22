@@ -69,13 +69,14 @@ func TestWorldSchema(t *testing.T) {
 	// мастерской — третьей миграцией, Пила и арка сцены — четвёртой, сигналы
 	// игрока — пятой, Паганель — шестой, пробуждение — седьмой, глубокий разбор —
 	// восьмой, заявка книги — девятой, эпилог и метки пиков — десятой, лексикон
-	// мира — одиннадцатой, счётчики дрейфа — двенадцатой (user_version == 12).
+	// мира — одиннадцатой, счётчики дрейфа — двенадцатой, профиль игрока —
+	// тринадцатой (user_version == 13).
 	var uv int
 	if err := w.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 12 {
-		t.Errorf("user_version = %d, want 12", uv)
+	if uv != 13 {
+		t.Errorf("user_version = %d, want 13", uv)
 	}
 
 	type migration struct {
@@ -96,7 +97,7 @@ func TestWorldSchema(t *testing.T) {
 	}
 	mrows.Close()
 
-	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}, {5, "0005_scene_signals"}, {6, "0006_paganel"}, {7, "0007_book_wakeup"}, {8, "0008_book_deepread"}, {9, "0009_book_claim"}, {10, "0010_book_epilogue"}, {11, "0011_world_lexicon"}, {12, "0012_structural_drift"}}
+	wantMigs := []migration{{1, "0001_init"}, {2, "0002_vectors"}, {3, "0003_workshop_queue"}, {4, "0004_saw"}, {5, "0005_scene_signals"}, {6, "0006_paganel"}, {7, "0007_book_wakeup"}, {8, "0008_book_deepread"}, {9, "0009_book_claim"}, {10, "0010_book_epilogue"}, {11, "0011_world_lexicon"}, {12, "0012_structural_drift"}, {13, "0013_player_profile"}}
 	if !slices.Equal(gotMigs, wantMigs) {
 		t.Errorf("schema_migrations = %v, want %v", gotMigs, wantMigs)
 	}
@@ -340,6 +341,22 @@ func TestWorldSchema(t *testing.T) {
 	}
 	if err := insertPeak("bogus"); err == nil {
 		t.Errorf("INSERT book_peaks kind='bogus' should fail CHECK (kind)")
+	}
+
+	// 15. Контракт DDL профиля игрока (T-17-04): в player_atlas есть колонки
+	// психотипа и привычек, дефолт — пустая строка.
+	if got := colsOf(t, w, "player_atlas"); !slices.Equal(got, []string{"id", "day", "theme", "mood", "interest", "source", "psychotype", "habits"}) {
+		t.Errorf("player_atlas columns = %v", got)
+	}
+	if _, err := w.Exec(`INSERT INTO player_atlas (day, theme, mood, interest, source) VALUES (1, 'interest', 'спокойное', 'семья', 'pythia')`); err != nil {
+		t.Errorf("INSERT player_atlas: %v", err)
+	}
+	var psychotype, habits string
+	if err := w.QueryRow(`SELECT psychotype, habits FROM player_atlas WHERE day = 1`).Scan(&psychotype, &habits); err != nil {
+		t.Errorf("player_atlas defaults: %v", err)
+	}
+	if psychotype != "" || habits != "" {
+		t.Errorf("player_atlas defaults = (%q, %q), want пустые строки", psychotype, habits)
 	}
 }
 

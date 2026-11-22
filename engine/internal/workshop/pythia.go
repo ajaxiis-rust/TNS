@@ -28,8 +28,8 @@ const (
 const pythiaMaxTurns = 100
 
 // PythiaOutput — строгий JSON ночного прогона Пифии (W-12, шаг 2). Поле
-// psychotype принимается и отбрасывается: в базу оно не пишется (W-12.4 —
-// модель не пересчитывает психотип).
+// psychotype принимается и отбрасывается: в карту идёт психотип героя из пачки
+// (W-12.4 — модель психотип не пересчитывает).
 type PythiaOutput struct {
 	Mood       string   `json:"mood"`
 	Interests  []string `json:"interests"`
@@ -85,7 +85,7 @@ func RunPythia(world *db.Handle, literary *db.Handle, day int) error {
 		return err
 	}
 
-	if err := writePlayerAtlas(world, day, po); err != nil {
+	if err := writePlayerAtlas(world, day, po, psychotype); err != nil {
 		return err
 	}
 	return writePythiaLog(literary)
@@ -179,27 +179,36 @@ func validatePythiaOutput(po PythiaOutput) error {
 
 // writePlayerAtlas пишет новые строки карты игрока в player_atlas хэндлом core
 // (append-only: новая строка на прогон, старые не перезаписываются). Фасет грани
-// идёт в theme, значение — в interest.
-func writePlayerAtlas(world *db.Handle, day int, po PythiaOutput) error {
+// идёт в theme, значение — в interest; привычка дублируется в habits. Психотип
+// карты пишется при первом вычислении (W-12.4) и дальше не пересчитывается:
+// строки прогона несут его, только пока в карте психотипа нет.
+func writePlayerAtlas(world *db.Handle, day int, po PythiaOutput, psychotype string) error {
+	var known int
+	if err := world.QueryRow(`SELECT COUNT(*) FROM player_atlas WHERE psychotype <> ''`).Scan(&known); err != nil {
+		return err
+	}
+	if known > 0 {
+		psychotype = ""
+	}
 	return world.Tx(db.WriterCore, func(tx *db.Tx) error {
 		for _, v := range po.Interests {
 			if _, err := tx.Exec("player_atlas",
-				`INSERT INTO player_atlas (day, theme, mood, interest, source) VALUES (?, ?, ?, ?, ?)`,
-				day, pythiaThemeInterest, po.Mood, v, pythiaSource); err != nil {
+				`INSERT INTO player_atlas (day, theme, mood, interest, source, psychotype) VALUES (?, ?, ?, ?, ?, ?)`,
+				day, pythiaThemeInterest, po.Mood, v, pythiaSource, psychotype); err != nil {
 				return err
 			}
 		}
 		for _, v := range po.Habits {
 			if _, err := tx.Exec("player_atlas",
-				`INSERT INTO player_atlas (day, theme, mood, interest, source) VALUES (?, ?, ?, ?, ?)`,
-				day, pythiaThemeHabit, po.Mood, v, pythiaSource); err != nil {
+				`INSERT INTO player_atlas (day, theme, mood, interest, source, psychotype, habits) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+				day, pythiaThemeHabit, po.Mood, v, pythiaSource, psychotype, v); err != nil {
 				return err
 			}
 		}
 		for _, v := range po.Avoid {
 			if _, err := tx.Exec("player_atlas",
-				`INSERT INTO player_atlas (day, theme, mood, interest, source) VALUES (?, ?, ?, ?, ?)`,
-				day, pythiaThemeAvoid, po.Mood, v, pythiaSource); err != nil {
+				`INSERT INTO player_atlas (day, theme, mood, interest, source, psychotype) VALUES (?, ?, ?, ?, ?, ?)`,
+				day, pythiaThemeAvoid, po.Mood, v, pythiaSource, psychotype); err != nil {
 				return err
 			}
 		}

@@ -60,6 +60,15 @@ func TestPythia(t *testing.T) {
 	assertPythiaPsychotype(t, world, "ENTJ")
 	assertNoPsychotypeInAtlas(t, world, "INTP")
 
+	// Психотип карты записан при первом вычислении — значение героя из пачки;
+	// он лёг на все строки прогона (2 интереса, привычка, зона избегания).
+	assertAtlasPsychotype(t, world, "ENTJ")
+	if got, want := countAtlasPsychotype(t, world, "ENTJ"), countAtlasDay(t, world, day); got != want {
+		t.Fatalf("строк карты с психотипом: %d, want %d", got, want)
+	}
+	// Привычки прогона лежат в колонке habits.
+	assertAtlasHabits(t, world, "прогулки")
+
 	// В forge_log одна запись pythia со статусом done.
 	assertPythiaLog(t, lit)
 
@@ -78,6 +87,22 @@ func TestPythia(t *testing.T) {
 	}
 	if got := slot.Calls(); got != beforeCalls {
 		t.Fatalf("повторный прогон вызвал слот: %d → %d", beforeCalls, got)
+	}
+
+	// Смена психотипа в пачке карту не пересчитывает (W-12.4): прогон
+	// следующего дня пишет новые грани уже без психотипа.
+	if _, err := world.Exec("characters", `UPDATE characters SET psychotype = 'ESTJ' WHERE id = 0`); err != nil {
+		t.Fatalf("UPDATE characters.psychotype: %v", err)
+	}
+	if err := workshop.RunPythia(world, lit, day+1); err != nil {
+		t.Fatalf("RunPythia (день+1): %v", err)
+	}
+	assertAtlasPsychotype(t, world, "ENTJ")
+	if got := countAtlasPsychotype(t, world, "ESTJ"); got != 0 {
+		t.Fatalf("психотип пачки %q переписан в карту", "ESTJ")
+	}
+	if got, want := countAtlasPsychotype(t, world, "ENTJ"), countAtlasDay(t, world, day); got != want {
+		t.Fatalf("прогон следующего дня добавил строк с психотипом: %d → %d", want, got)
 	}
 }
 
@@ -139,6 +164,52 @@ func countAtlasDay(t *testing.T, h *db.Handle, day int) int {
 	return n
 }
 
+// countAtlasPsychotype — сколько строк карты несут заданный психотип.
+func countAtlasPsychotype(t *testing.T, h *db.Handle, psychotype string) int {
+	t.Helper()
+	var n int
+	if err := h.QueryRow(`SELECT COUNT(*) FROM player_atlas WHERE psychotype = ?`, psychotype).Scan(&n); err != nil {
+		t.Fatalf("COUNT player_atlas psychotype: %v", err)
+	}
+	return n
+}
+
+// assertAtlasPsychotype — непустой психотип карты равен ожидаемому и единствен.
+func assertAtlasPsychotype(t *testing.T, h *db.Handle, want string) {
+	t.Helper()
+	rows, err := h.Query(`SELECT DISTINCT psychotype FROM player_atlas WHERE psychotype <> ''`)
+	if err != nil {
+		t.Fatalf("SELECT psychotype FROM player_atlas: %v", err)
+	}
+	defer rows.Close()
+	var got []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			t.Fatalf("SELECT psychotype scan: %v", err)
+		}
+		got = append(got, p)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("SELECT psychotype rows: %v", err)
+	}
+	if len(got) != 1 || got[0] != want {
+		t.Fatalf("психотипы карты = %v, want [%q]", got, want)
+	}
+}
+
+// assertAtlasHabits — привычка прогона лежит в колонке habits.
+func assertAtlasHabits(t *testing.T, h *db.Handle, want string) {
+	t.Helper()
+	var got string
+	if err := h.QueryRow(`SELECT habits FROM player_atlas WHERE theme = 'habit' ORDER BY id LIMIT 1`).Scan(&got); err != nil {
+		t.Fatalf("SELECT habits FROM player_atlas: %v", err)
+	}
+	if got != want {
+		t.Fatalf("habits карты = %q, want %q", got, want)
+	}
+}
+
 func countPythiaLog(t *testing.T, h *db.Handle) int {
 	t.Helper()
 	var n int
@@ -162,8 +233,8 @@ func assertPythiaPsychotype(t *testing.T, h *db.Handle, want string) {
 func assertNoPsychotypeInAtlas(t *testing.T, h *db.Handle, psychotype string) {
 	t.Helper()
 	var n int
-	if err := h.QueryRow(`SELECT COUNT(*) FROM player_atlas WHERE mood = ? OR theme = ? OR interest = ?`,
-		psychotype, psychotype, psychotype).Scan(&n); err != nil {
+	if err := h.QueryRow(`SELECT COUNT(*) FROM player_atlas WHERE mood = ? OR theme = ? OR interest = ? OR psychotype = ? OR habits = ?`,
+		psychotype, psychotype, psychotype, psychotype, psychotype).Scan(&n); err != nil {
 		t.Fatalf("COUNT psychotype in player_atlas: %v", err)
 	}
 	if n != 0 {

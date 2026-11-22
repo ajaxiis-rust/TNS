@@ -62,6 +62,7 @@
 | 0010_book_epilogue | world | T-07-13 |
 | 0011_world_lexicon | world | T-07-05 |
 | 0012_structural_drift | world | T-10-10 |
+| 0013_player_profile | world | T-17-04 |
 
 Общая миграция `0002_vectors` (shared) подключается к базам base и world; с
 T-14-02 — и к literary: векторы разбора лежат в литературной базе (D-20.2).

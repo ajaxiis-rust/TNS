@@ -38,13 +38,13 @@ func newDriftWorld(t *testing.T) *db.Handle {
 func TestDriftCounters(t *testing.T) {
 	h := newDriftWorld(t)
 
-	// user_version=12 после миграции 0012_structural_drift.
+	// user_version=13 после миграции 0013_player_profile (T-17-04).
 	var uv int
 	if err := h.QueryRow(`PRAGMA user_version`).Scan(&uv); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
 	}
-	if uv != 12 {
-		t.Fatalf("user_version = %d, want 12", uv)
+	if uv != 13 {
+		t.Fatalf("user_version = %d, want 13", uv)
 	}
 
 	// Свежая область пуста.
