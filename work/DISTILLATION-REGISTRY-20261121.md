@@ -32,6 +32,7 @@
 
 - `anchorLemmaBoost` | 0.15 | `engine/internal/birth/anchor.go:34` | вес добавки за лемм-сигнал выбран рабочим значением; бенча «анкета → якорь» на живом эмбеддере нет, e2e идёт с `--fake-embed` и качество подбора не измеряет.
 - `matchThreshold` (`defaultMatchThreshold`; поле `MatchThreshold` = 0 означает 0.5) | 0.5 | `engine/internal/birth/anchor.go:30`; `engine/internal/birth/birth.go:54` | порог косинуса для пометки forced не калиброван: нет золотого набора анкет и живого прогона BGE-M3, тесты проверяют только принудительный якорь на заглушке.
+- Порог и лемм-добавка, прогон 22.11.2026 (T-17-03) | — | `engine/internal/birth/anchorbench_test.go`; `engine/internal/birth/testdata/anchorbench/set.json` | золотой набор из 8 анкет собран, режим заглушки зелёный; живой режим не прогнан — эмбеддер :5002 на станции недоступен, калибровка отложена решением владельца. Константы `anchorLemmaBoost` в коде нет (в `anchor.go` только `defaultMatchThreshold`), лемм-добавка не измеряется.
 
 Других весов подбора якоря в `engine/internal/birth/` не найдено. Ближайшие числа — `pathFrictionTrakt = 1.0`, `defaultGeoRadiusDays = 3.0`, `defaultDayNormKm = 25.0` в `engine/internal/birth/geo_seed.go:31,35,39` — относятся к геометрии стартового региона, а не к подбору якоря, и в список не включены.
 
