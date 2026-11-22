@@ -135,11 +135,11 @@ func TestINT7(t *testing.T) {
 		t.Fatalf("order_ok=false: вызовы Редактора = %v", slot.roles)
 	}
 
-	// Шаг 4: сводка мастерской дайджестом не называется — термины в i18n.js
-	// разведены, пересечений нет.
+	// Шаг 4: игроку — «дайджест возврата», мастерской — «сводка»; термины в
+	// i18n.js разведены, пересечений нет.
 	report["terms_separated"] = i18nTermsSeparated(t)
 	if report["terms_separated"] != true {
-		t.Fatal("terms_separated=false: «дайджест» и «сводка» в i18n.js пересекаются")
+		t.Fatal("terms_separated=false: ключ summary не «Дайджест возврата» или термины в i18n.js пересекаются")
 	}
 
 	writeReport(t, "int7", report)
@@ -196,9 +196,9 @@ func chapterDigest(t *testing.T, h *db.Handle, chapterID int64) string {
 // i18nPairRE — пара «ключ: значение» словаря i18n.js (ключи и значения в кавычках).
 var i18nPairRE = regexp.MustCompile(`"([^"]+)"\s*:\s*"([^"]*)"`)
 
-// i18nTermsSeparated — термины «дайджест» (игроку) и «сводка» (мастерской) в
-// i18n.js разведены: значения ключей digest содержат «дайджест», значения ключей
-// summary — «сводка», пересечений нет.
+// i18nTermsSeparated — термины в i18n.js по DEC-6: игроку «дайджест возврата»
+// (ключ summary), мастерской — «сводка»; значения ключей digest содержат
+// «дайджест», пересечений с «сводкой» нет.
 func i18nTermsSeparated(t *testing.T) bool {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join(engineRoot(t), "web", "static", "i18n.js"))
@@ -211,13 +211,13 @@ func i18nTermsSeparated(t *testing.T) bool {
 	}
 
 	const digestTerm = "дайджест"
-	const summaryTerm = "сводка"
+	const returnDigestTerm = "дайджест возврата"
+	const workshopTerm = "сводка"
 	var digestValues, summaryValues []string
 	for _, m := range matches {
 		key := strings.ToLower(m[1])
-		value := m[2]
-		low := strings.ToLower(value)
-		if strings.Contains(low, digestTerm) && strings.Contains(low, summaryTerm) {
+		value := strings.ToLower(m[2])
+		if strings.Contains(value, digestTerm) && strings.Contains(value, workshopTerm) {
 			return false
 		}
 		if strings.Contains(key, "digest") {
@@ -231,12 +231,12 @@ func i18nTermsSeparated(t *testing.T) bool {
 		return false
 	}
 	for _, v := range digestValues {
-		if !strings.Contains(strings.ToLower(v), digestTerm) || strings.Contains(strings.ToLower(v), summaryTerm) {
+		if !strings.Contains(v, digestTerm) || strings.Contains(v, workshopTerm) {
 			return false
 		}
 	}
 	for _, v := range summaryValues {
-		if !strings.Contains(strings.ToLower(v), summaryTerm) || strings.Contains(strings.ToLower(v), digestTerm) {
+		if !strings.Contains(v, returnDigestTerm) || strings.Contains(v, workshopTerm) {
 			return false
 		}
 	}
