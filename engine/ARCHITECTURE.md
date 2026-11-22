@@ -51,6 +51,7 @@
 | 0004_book | literary | T-12-10 |
 | 0005_cast | literary | T-12-21 |
 | 0006_book_deepread | literary | T-14-03 |
+| 0007_gefest_rename | literary | T-17-06 |
 | 0001_init | world | T-01-06 |
 | 0003_workshop_queue | world | T-02-11 |
 | 0004_saw | world | T-03-06 |

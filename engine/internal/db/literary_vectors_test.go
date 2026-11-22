@@ -135,16 +135,22 @@ func TestLiteraryVectors(t *testing.T) {
 		}
 		defer lw.Close()
 
-		if _, err := lw.Exec(`CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`); err != nil {
-			t.Fatalf("CREATE TABLE schema_migrations: %v", err)
+		// Схема мира на месте (иначе миграция данных 0007 не к чему приложить),
+		// учёт — легаси-ключ только по version.
+		if err := Migrate(lw, "literary"); err != nil {
+			t.Fatalf("Migrate(literary): %v", err)
 		}
-		legacy := []string{"0001_init", "0002_sediment_idempotency", "0003_composition", "0004_book", "0005_cast"}
-		for i, name := range legacy {
-			if _, err := lw.Exec(`INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)`,
-				i+1, name, "2026-01-01T00:00:00Z"); err != nil {
-				t.Fatalf("INSERT schema_migrations %s: %v", name, err)
+		for _, q := range []string{
+			`ALTER TABLE schema_migrations RENAME TO schema_migrations_new`,
+			`CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)`,
+			`INSERT INTO schema_migrations (version, name, applied_at) SELECT version, name, applied_at FROM schema_migrations_new`,
+			`DROP TABLE schema_migrations_new`,
+		} {
+			if _, err := lw.Exec(q); err != nil {
+				t.Fatalf("%s: %v", q, err)
 			}
 		}
+		legacy := []string{"0001_init", "0002_sediment_idempotency", "0003_composition", "0004_book", "0005_cast"}
 
 		if err := Migrate(lw, "literary", "shared"); err != nil {
 			t.Fatalf("Migrate поверх легаси-учёта: %v", err)
@@ -164,9 +170,9 @@ func TestLiteraryVectors(t *testing.T) {
 		if vectorsRows != 1 {
 			t.Errorf("строк учёта 0002_vectors после легаси-миграции = %d, want 1", vectorsRows)
 		}
-		// Поверх легаси-мира встаёт и 0006_book_deepread (T-14-03).
-		if uv := userVersionOf(t, lw); uv != 6 {
-			t.Errorf("user_version = %d, want 6", uv)
+		// Поверх легаси-мира встаёт и 0006_book_deepread (T-14-03), и 0007_gefest_rename.
+		if uv := userVersionOf(t, lw); uv != 7 {
+			t.Errorf("user_version = %d, want 7", uv)
 		}
 	})
 }
