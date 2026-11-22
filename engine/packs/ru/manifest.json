@@ -10,7 +10,7 @@
     "dict": "packs/ru/lemmatizer"
   },
   "files": {
-    "detectors_mood.json": "fcd1874b37ed00c651b8044ce2646ea53e5caf94ae68abe30da16bf27d8931f8",
+    "detectors_mood.json": "e22a6840c78e3418288b21fee37dc0d94163dd3d54693f69653b25212e864f12",
     "detectors_time.json": "0c40320dc43cdb9121c494bc487613865b99453bf8eab52e0d79a2995543fcdb",
     "sarcasm.json": "55edce00784bec7733900e104271889ef93730117b82aa1141219d2a3993c656",
     "lexicon_intents.jsonl": "55366a9b754836107c6ba39323ca12fd4ee37630f0600db4be5c5bf30e27d3d4",
@@ -18,7 +18,7 @@
     "nature.json": "7d188392720b119db56a5ddd8dd0a36f202e0ee784b181cf885758744b5e44d6",
     "architecture.json": "a54dafbcff99bda3a4dad54bc60c76dba1a5cfc7814badcf2217d3f215a1e64f",
     "social.json": "a897bee1d484cec502ff5b90dd06cdda61942c3955ba8847e9145a3024549d42",
-    "action_dramatic.json": "f58b702048f323af72fcd3f954fb1f32618ffe1a5deeaf464eb08991c5149bd7",
+    "action_dramatic.json": "22e0613ba4870c5cf7b7ef3d47728172b459debb9251beda78571a0e6d276caa",
     "erotic.json": "0ec7c3c3ce03d3ec04757d5b11a426320313872a6352bd860f0a13d6784287e5",
     "violence.json": "bca3ceafd92d5807946ce1740620dfec777128e889300cb623077fe60dd80223",
     "battle.json": "ca2afc57caa0eaacc18cba13e1c75f796e2d2d399de977706ac7cfff730fe57e",
