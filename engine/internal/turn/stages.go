@@ -340,7 +340,7 @@ func (s *prepathStage) Run(_ context.Context, st *TurnState) error {
 
 	lemmas := collectLemmas(st.Cut)
 	intent := hypothesizeIntent(lemmas, lex)
-	mood := detectMood(lemmas, lex)
+	mood := detectMood(st.Input.PlayerText, lemmas, lex)
 	frame := s.assembleFrame(st)
 	sel := preselect(intent, mood)
 	template := promptTemplate(sel)
