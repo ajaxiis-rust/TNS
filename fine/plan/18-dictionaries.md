@@ -87,3 +87,4 @@ GLM; решения по порогам — владелец.
 - **Проверка:** `cd engine && go test ./internal/deepread/... ./internal/turn/... -count=1` → `ok`; гейт лемм и sha256 манифеста пакета зелёные.
 - **Документы:** нет.
 - **Исполнитель:** код.
+> ✅ закрыт 2026-11-22 — коммит 3d9d79c (пласты KAINE в mood_vectors, ось emotion и action_dramatic; ревью 1/3).
