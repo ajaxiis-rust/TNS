@@ -134,7 +134,7 @@ is_live() {
   esac
   case "$rel" in
     DOCS/*|TNS65-PARADIGM.md|GLOSSARY.md|dev/GLOSSARY.md|fine/04-spec/*|fine/03-design/*|work/*) return 0 ;;
-    fine/plan/16-distillation.md) return 0 ;;
+    fine/plan/17-hole-curing.md) return 0 ;;
   esac
   return 1
 }
