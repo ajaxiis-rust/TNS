@@ -44,9 +44,9 @@ func TestManifest(t *testing.T) {
 	if m.Lemmatizer.Kind == "" || m.Lemmatizer.Protocol == "" {
 		t.Fatalf("лемматизатор не зафиксирован: %+v", m.Lemmatizer)
 	}
-	// 12 файлов v1 + appearance.json словаря анатомии (IMP-9).
-	if len(m.Files) != 13 {
-		t.Fatalf("файлов в манифесте: %d, want 13", len(m.Files))
+	// 12 файлов v1 + appearance.json (IMP-9) + sarcasm.json (T-18-02).
+	if len(m.Files) != 14 {
+		t.Fatalf("файлов в манифесте: %d, want 14", len(m.Files))
 	}
 
 	// Контракты форматов (шаг 6).

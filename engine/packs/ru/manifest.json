@@ -12,6 +12,7 @@
   "files": {
     "detectors_mood.json": "fcd1874b37ed00c651b8044ce2646ea53e5caf94ae68abe30da16bf27d8931f8",
     "detectors_time.json": "0c40320dc43cdb9121c494bc487613865b99453bf8eab52e0d79a2995543fcdb",
+    "sarcasm.json": "55edce00784bec7733900e104271889ef93730117b82aa1141219d2a3993c656",
     "lexicon_intents.jsonl": "55366a9b754836107c6ba39323ca12fd4ee37630f0600db4be5c5bf30e27d3d4",
     "stoplist.txt": "6e31ddd8a5f401e3db3d286da6476fac4948d58032a3370067997719a1794c64",
     "nature.json": "7d188392720b119db56a5ddd8dd0a36f202e0ee784b181cf885758744b5e44d6",

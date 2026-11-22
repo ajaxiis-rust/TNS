@@ -13,7 +13,8 @@ import (
 // Lexicon — лексикон языкового пакета для предпути: намерения из
 // lexicon_intents.jsonl и настроение из detectors_mood.json (T-01-08, шаг 6).
 // Гипотеза намерения и настроение реплики считаются кодом, без LLM (LT-03.7).
-// Весовые оси настроения, модификаторы и сигналы — словарь тональности T-18-01.
+// Весовые оси настроения, модификаторы и сигналы — словарь тональности T-18-01;
+// словарь сарказма — детектор издёвки T-18-02.
 type Lexicon struct {
 	Intents []IntentEntry
 	Moods   []MoodEntry
@@ -22,6 +23,7 @@ type Lexicon struct {
 	Modifiers MoodModifiers
 	Signals   MoodSignals
 	MoodAxes  map[string]MoodAxis
+	Sarcasm   *SarcasmDictionary
 	axisOrder []string
 }
 
@@ -105,7 +107,11 @@ func LoadLexicon(dir string) (*Lexicon, error) {
 	if err != nil {
 		return nil, err
 	}
-	lex := &Lexicon{Intents: intents}
+	sarcasm, err := loadSarcasmDictionary(filepath.Join(dir, "sarcasm.json"))
+	if err != nil {
+		return nil, err
+	}
+	lex := &Lexicon{Intents: intents, Sarcasm: sarcasm}
 	if dict != nil {
 		lex.Moods = dict.Moods
 		lex.Meta = dict.Meta
