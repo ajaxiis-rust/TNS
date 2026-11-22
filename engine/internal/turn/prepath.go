@@ -14,7 +14,8 @@ import (
 // lexicon_intents.jsonl и настроение из detectors_mood.json (T-01-08, шаг 6).
 // Гипотеза намерения и настроение реплики считаются кодом, без LLM (LT-03.7).
 // Весовые оси настроения, модификаторы и сигналы — словарь тональности T-18-01;
-// словарь сарказма — детектор издёвки T-18-02.
+// словарь сарказма — детектор издёвки T-18-02; чат-контур erotic.json —
+// детектор флирта и эротики T-18-03.
 type Lexicon struct {
 	Intents []IntentEntry
 	Moods   []MoodEntry
@@ -24,6 +25,7 @@ type Lexicon struct {
 	Signals   MoodSignals
 	MoodAxes  map[string]MoodAxis
 	Sarcasm   *SarcasmDictionary
+	Flirt     *FlirtDictionary
 	axisOrder []string
 }
 
@@ -83,6 +85,87 @@ type moodDictionary struct {
 	Order     []string
 }
 
+// Пределы чат-контура флирта при пустых meta (T-18-03): пороги владельца и
+// окно обращения на «ты» в токенах.
+const (
+	defaultFlirtThreshold   = 0.75
+	defaultEroticaThreshold = 1.0
+	defaultFlirtWindow      = 6
+)
+
+// FlirtDictionary — чат-контур флирта и эротики из erotic.json (T-18-03,
+// D-11): категории severity 1–4 с весами 0–1, поправки второго лица, ролевых
+// ремарок и анти-медицины. Контур книг читает тот же файл — источник один.
+type FlirtDictionary struct {
+	Meta       FlirtMeta                `json:"meta"`
+	Modifiers  FlirtModifiers           `json:"modifiers"`
+	Categories map[string]FlirtCategory `json:"categories"`
+}
+
+// FlirtMeta — пороги флирта и эротики и окно совместной встречаемости.
+type FlirtMeta struct {
+	Language                 string  `json:"language"`
+	FlirtThreshold           float64 `json:"flirt_threshold"`
+	EroticaThreshold         float64 `json:"erotica_threshold"`
+	CooccurrenceWindowTokens int     `json:"cooccurrence_window_tokens"`
+}
+
+// FlirtModifiers — поправки чат-контура: множитель второго лица, бонус
+// ролевых ремарок в звёздочках и ослабление при медицинском контексте.
+type FlirtModifiers struct {
+	SecondPersonMultiplier  float64           `json:"second_person_multiplier"`
+	SecondPersonTokens      []string          `json:"second_person_tokens"`
+	RoleplayAsterisksBonus  float64           `json:"roleplay_asterisks_bonus"`
+	AntiTriggersMedicalTech FlirtAntiTriggers `json:"anti_triggers_medical_tech"`
+}
+
+// FlirtAntiTriggers — анти-медицина: множитель ослабления и леммы-триггеры.
+type FlirtAntiTriggers struct {
+	DampenerMultiplier float64  `json:"dampener_multiplier"`
+	Tokens             []string `json:"tokens"`
+}
+
+// FlirtCategory — категория словаря: severity 1–4, признак множителя второго
+// лица и элементы с весами 0–1.
+type FlirtCategory struct {
+	Severity                    int                `json:"severity"`
+	ApplySecondPersonMultiplier bool               `json:"apply_second_person_multiplier"`
+	Items                       map[string]float64 `json:"items"`
+}
+
+// FlirtVerdict — итог детектора: скор, старшая сработавшая severity, решение
+// по порогам и маркеры в порядке начисления.
+type FlirtVerdict struct {
+	Score    float64
+	Severity int
+	Flirt    bool
+	Erotica  bool
+	Markers  []string
+}
+
+// flirtFile — erotic.json: чат-контур лежит в секции chat, леммы и слой
+// severity книги читает контур разбора книг.
+type flirtFile struct {
+	Chat *FlirtDictionary `json:"chat"`
+}
+
+// loadFlirtDictionary читает чат-контур erotic.json. Файла может не быть в
+// пакете — тогда детектор не взводится (nil) без ошибки.
+func loadFlirtDictionary(path string) (*FlirtDictionary, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var f flirtFile
+	if err := json.Unmarshal(b, &f); err != nil {
+		return nil, err
+	}
+	return f.Chat, nil
+}
+
 // IntentEntry — строка лексикона намерений: имя намерения, леммы и глаголы.
 type IntentEntry struct {
 	Intent string   `json:"intent"`
@@ -111,7 +194,11 @@ func LoadLexicon(dir string) (*Lexicon, error) {
 	if err != nil {
 		return nil, err
 	}
-	lex := &Lexicon{Intents: intents, Sarcasm: sarcasm}
+	flirt, err := loadFlirtDictionary(filepath.Join(dir, "erotic.json"))
+	if err != nil {
+		return nil, err
+	}
+	lex := &Lexicon{Intents: intents, Sarcasm: sarcasm, Flirt: flirt}
 	if dict != nil {
 		lex.Moods = dict.Moods
 		lex.Meta = dict.Meta
@@ -439,6 +526,140 @@ func containsEmoticon(text, mark string) bool {
 	}
 	for _, word := range strings.FieldsFunc(text, func(r rune) bool { return !unicode.IsLetter(r) }) {
 		if word == mark {
+			return true
+		}
+	}
+	return false
+}
+
+// hasRoleplayAsterisks — в тексте есть ролевая ремарка *…* длиной 3–60 знаков.
+func hasRoleplayAsterisks(text string) bool {
+	runes := []rune(text)
+	for i := 0; i < len(runes); i++ {
+		if runes[i] != '*' {
+			continue
+		}
+		for j := i + 1; j < len(runes); j++ {
+			if runes[j] != '*' {
+				continue
+			}
+			if n := j - i - 1; n >= 3 && n <= 60 {
+				return true
+			}
+			break
+		}
+	}
+	return false
+}
+
+// DetectFlirt считает скор флирта и эротики реплики по чат-контуру erotic.json
+// (T-18-03, D-11). Словаря нет — вердикт пуст; пробитый порог сарказма
+// обнуляет скор (T-18-02, шаг 3).
+func (lex *Lexicon) DetectFlirt(text string) FlirtVerdict {
+	if lex == nil || lex.Flirt == nil {
+		return FlirtVerdict{}
+	}
+	if lex.DetectSarcasm(text).Sarcastic {
+		return FlirtVerdict{}
+	}
+	return lex.Flirt.score(text)
+}
+
+// score суммирует веса элементов категорий в порядке имён: карта JSON порядок
+// не задаёт, а сумма должна быть детерминированной.
+func (d *FlirtDictionary) score(text string) FlirtVerdict {
+	var v FlirtVerdict
+	tokens := tokenizeSarcasm(text)
+	if len(tokens) == 0 {
+		return v
+	}
+	window := d.Meta.CooccurrenceWindowTokens
+	if window <= 0 {
+		window = defaultFlirtWindow
+	}
+	anti := d.antiTrigger(tokens)
+	names := make([]string, 0, len(d.Categories))
+	for name := range d.Categories {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		cat := d.Categories[name]
+		items := make([]string, 0, len(cat.Items))
+		for item := range cat.Items {
+			items = append(items, item)
+		}
+		sort.Strings(items)
+		for _, item := range items {
+			words := flirtWords(item)
+			for _, pos := range matchSarcasmPhrase(tokens, words) {
+				w := cat.Items[item]
+				if m := d.Modifiers.SecondPersonMultiplier; cat.ApplySecondPersonMultiplier && m > 0 &&
+					flirtSecondPerson(tokens, pos, len(words), window, d.Modifiers.SecondPersonTokens) {
+					w *= m
+				}
+				// Анти-медицина гасит категории intimacy и выше (severity 2–4).
+				if m := d.Modifiers.AntiTriggersMedicalTech.DampenerMultiplier; anti && cat.Severity >= 2 && m > 0 {
+					w *= m
+				}
+				v.Score += w
+				if cat.Severity > v.Severity {
+					v.Severity = cat.Severity
+				}
+				v.Markers = append(v.Markers, item)
+			}
+		}
+	}
+	if v.Score > 0 && d.Modifiers.RoleplayAsterisksBonus > 0 && hasRoleplayAsterisks(text) {
+		v.Score += d.Modifiers.RoleplayAsterisksBonus
+		v.Markers = append(v.Markers, "roleplay_asterisks")
+	}
+	flirtThreshold := d.Meta.FlirtThreshold
+	if flirtThreshold <= 0 {
+		flirtThreshold = defaultFlirtThreshold
+	}
+	eroticaThreshold := d.Meta.EroticaThreshold
+	if eroticaThreshold <= 0 {
+		eroticaThreshold = defaultEroticaThreshold
+	}
+	v.Flirt = v.Score >= flirtThreshold
+	v.Erotica = v.Score >= eroticaThreshold
+	return v
+}
+
+// flirtWords режет элемент словаря тем же резаком, что и реплику.
+func flirtWords(item string) []string {
+	return sarcasmWords(item)
+}
+
+// flirtSecondPerson — в окне вокруг вхождения есть обращение на «ты».
+func flirtSecondPerson(tokens []sarcasmToken, pos, length, window int, marks []string) bool {
+	from := pos - window
+	if from < 0 {
+		from = 0
+	}
+	to := pos + length + window
+	if to > len(tokens) {
+		to = len(tokens)
+	}
+	for _, mark := range marks {
+		w := sarcasmNormalize(strings.TrimSpace(mark))
+		if w == "" {
+			continue
+		}
+		for i := from; i < to; i++ {
+			if tokens[i].word == w {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// antiTrigger — в реплике есть медицинский или технический маркер словаря.
+func (d *FlirtDictionary) antiTrigger(tokens []sarcasmToken) bool {
+	for _, mark := range d.Modifiers.AntiTriggersMedicalTech.Tokens {
+		if len(matchSarcasmPhrase(tokens, flirtWords(mark))) > 0 {
 			return true
 		}
 	}

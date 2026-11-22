@@ -16,6 +16,24 @@ const (
 	maxLemmaWeight = 3
 )
 
+// MinSeverity, MaxSeverity — границы слоя severity словаря (T-18-03).
+const (
+	MinSeverity = 1
+	MaxSeverity = 4
+)
+
+// severityWeights — вес леммы книги по severity (T-18-03, шаг 2): 1–4 → 1/2/2/3.
+var severityWeights = [MaxSeverity + 1]int{0, 1, 2, 2, 3}
+
+// SeverityWeight возвращает вес леммы книги для severity 1–4; severity вне
+// границ — ok=false.
+func SeverityWeight(severity int) (int, bool) {
+	if severity < MinSeverity || severity > MaxSeverity {
+		return 0, false
+	}
+	return severityWeights[severity], true
+}
+
 // Ключи категорий разбора (W-22.1, §3 плана волны 14). Порядок фиксирован:
 // индекс ключа в реестре CategoryKeys служит owner_id якоря dict_anchor.
 const (
@@ -150,13 +168,18 @@ type Dictionary struct {
 	Lemmas  map[string]int
 	Pos     map[string]string
 	Phrases []Phrase
+	// Severity — слой severity 1–4 на леммах словаря (T-18-03); вес леммы
+	// обязан совпадать с SeverityWeight.
+	Severity map[string]int
 }
 
-// dictFile — формат файла словаря категории (§3); слой "pos" необязателен.
+// dictFile — формат файла словаря категории (§3); слои "pos" и "severity"
+// необязательны.
 type dictFile struct {
-	Lemmas  map[string]int    `json:"lemmas"`
-	Pos     map[string]string `json:"pos"`
-	Phrases []Phrase          `json:"phrases"`
+	Lemmas   map[string]int    `json:"lemmas"`
+	Pos      map[string]string `json:"pos"`
+	Phrases  []Phrase          `json:"phrases"`
+	Severity map[string]int    `json:"severity"`
 }
 
 // LoadDictionaries читает восемь словарей категорий из каталога пака. Отсутствие
@@ -220,6 +243,32 @@ func LoadDictionary(packDir, key string) (*Dictionary, error) {
 				return nil, fmt.Errorf("deepread: %s: лемма %q: часть речи %q вне набора OpenCorpora", name, lemma, pos)
 			}
 			d.Pos[lemma] = pos
+		}
+	}
+	// Слой severity (T-18-03): severity 1–4 на каждой лемме словаря, вес
+	// леммы книги выводится из severity по таблице 1/2/2/3.
+	if len(f.Severity) > 0 {
+		d.Severity = make(map[string]int, len(f.Severity))
+		for lemma, severity := range f.Severity {
+			lemma = strings.ToLower(strings.TrimSpace(lemma))
+			weight, ok := d.Lemmas[lemma]
+			if !ok {
+				return nil, fmt.Errorf("deepread: %s: severity задана для леммы %q вне словаря", name, lemma)
+			}
+			want, ok := SeverityWeight(severity)
+			if !ok {
+				return nil, fmt.Errorf("deepread: %s: лемма %q: severity %d вне %d..%d",
+					name, lemma, severity, MinSeverity, MaxSeverity)
+			}
+			if weight != want {
+				return nil, fmt.Errorf("deepread: %s: лемма %q: вес %d не соответствует severity %d (вес %d)",
+					name, lemma, weight, severity, want)
+			}
+			d.Severity[lemma] = severity
+		}
+		if len(d.Severity) != len(d.Lemmas) {
+			return nil, fmt.Errorf("deepread: %s: слой severity покрывает %d лемм из %d",
+				name, len(d.Severity), len(d.Lemmas))
 		}
 	}
 	return d, nil
