@@ -16,7 +16,10 @@ import (
 const anchorKey = "anchor_narrative_id"
 
 // defaultMatchThreshold — порог косинусной близости якоря по умолчанию (T-02-07, шаг 3).
-const defaultMatchThreshold = 0.5
+// 0.65 — по живой калибровке BGE-M3 (work/ANCHOR-CALIBRATION-20261123.md):
+// позитивная полоса 0.745–0.898, нерелевантные синопсисы 0.402–0.516, порог 0.5
+// пропускал нерелевант как «близкий» без пометки forced.
+const defaultMatchThreshold = 0.65
 
 // anchorResult — итог подбора якоря.
 type anchorResult struct {
