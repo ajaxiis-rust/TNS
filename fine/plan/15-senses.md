@@ -96,3 +96,5 @@
 - **Проверка:** `cd engine && bash scripts/runtests.sh ./internal/deepread TestSenseDispute TestSenseDisputeBudget` → PASS.
 - **Документы:** `engine/ARCHITECTURE.md`.
 - **Исполнитель:** код.
+
+> ✅ закрыт 2026-11-23 — коммит 1773ebb (спорные смыслы омонимов вопросами слоту; ревью 1/3).
