@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"strings"
 
 	"tns65/internal/db"
 	"tns65/internal/version"
@@ -22,6 +24,18 @@ const (
 	pythiaThemeInterest = "interest"
 	pythiaThemeHabit    = "habit"
 	pythiaThemeAvoid    = "avoid"
+	// pythiaThemeManipulation — фасет карты: пометка сработавшего детекта (W-13.7).
+	pythiaThemeManipulation = "manipulation"
+)
+
+// Детект манипуляции (W-13.7): окно реплик делится на блоки, резкий сдвиг доли
+// паттерна между соседними блоками выше порога alpha — манипуляция. Порог —
+// рабочее значение TNS35 (alpha 0.25).
+const (
+	manipAlpha   = 0.25
+	manipBlocks  = 4
+	manipVerdict = "поведение главнее слов"
+	manipLogKind = "manipulation"
 )
 
 // pythiaMaxTurns — сколько последних реплик игрока уходит в промпт Пифии.
@@ -64,6 +78,7 @@ func RunPythia(world *db.Handle, literary *db.Handle, day int) error {
 	if err != nil {
 		return err
 	}
+	manip := DetectManipulation(turns, DefaultManipulationConfig())
 
 	if slotForProvider(DefaultProvider) == nil {
 		return errors.New("workshop: слот Пифии не подключён")
@@ -85,10 +100,16 @@ func RunPythia(world *db.Handle, literary *db.Handle, day int) error {
 		return err
 	}
 
-	if err := writePlayerAtlas(world, day, po, psychotype); err != nil {
+	if err := writePlayerAtlas(world, day, po, psychotype, manip); err != nil {
 		return err
 	}
-	return writePythiaLog(literary)
+	if err := writePythiaLog(literary); err != nil {
+		return err
+	}
+	if manip.Detected {
+		return writeManipulationLog(literary)
+	}
+	return nil
 }
 
 // heroBirth читает стартовые данные карты игрока из world_meta.hero_birth
@@ -181,8 +202,10 @@ func validatePythiaOutput(po PythiaOutput) error {
 // (append-only: новая строка на прогон, старые не перезаписываются). Фасет грани
 // идёт в theme, значение — в interest; привычка дублируется в habits. Психотип
 // карты пишется при первом вычислении (W-12.4) и дальше не пересчитывается:
-// строки прогона несут его, только пока в карте психотипа нет.
-func writePlayerAtlas(world *db.Handle, day int, po PythiaOutput, psychotype string) error {
+// строки прогона несут его, только пока в карте психотипа нет. Пометка детекта
+// манипуляции (W-13.7) идёт первой строкой прогона и без психотипа: это метка
+// поведения, а не грань психотипа.
+func writePlayerAtlas(world *db.Handle, day int, po PythiaOutput, psychotype string, manip ManipulationReport) error {
 	var known int
 	if err := world.QueryRow(`SELECT COUNT(*) FROM player_atlas WHERE psychotype <> ''`).Scan(&known); err != nil {
 		return err
@@ -191,6 +214,13 @@ func writePlayerAtlas(world *db.Handle, day int, po PythiaOutput, psychotype str
 		psychotype = ""
 	}
 	return world.Tx(db.WriterCore, func(tx *db.Tx) error {
+		if manip.Detected {
+			if _, err := tx.Exec("player_atlas",
+				`INSERT INTO player_atlas (day, theme, mood, interest, source) VALUES (?, ?, ?, ?, ?)`,
+				day, pythiaThemeManipulation, po.Mood, manipulationMark(manip), pythiaSource); err != nil {
+				return err
+			}
+		}
 		for _, v := range po.Interests {
 			if _, err := tx.Exec("player_atlas",
 				`INSERT INTO player_atlas (day, theme, mood, interest, source, psychotype) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -225,4 +255,207 @@ func writePythiaLog(literary *db.Handle) error {
 			PythiaRole, PythiaRole, "done", now, now, "", version.Version)
 		return err
 	})
+}
+
+// writeManipulationLog пишет сработавший детект в журнал Пифии хэндлом forge:
+// запись метит прогон, в котором поведение разошлось с самопрезентацией.
+func writeManipulationLog(literary *db.Handle) error {
+	now := nowUTC()
+	return literary.Tx(db.WriterForge, func(tx *db.Tx) error {
+		_, err := tx.Exec("forge_log",
+			`INSERT INTO forge_log (kind, task, status, started_at, finished_at, log_path, package_version) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			manipLogKind, PythiaRole, "done", now, now, "", version.Version)
+		return err
+	})
+}
+
+// ManipulationConfig — пороги детекта манипуляции (W-13.7): Alpha — минимальная
+// резкость сдвига доли паттерна между соседними блоками окна, Blocks — число
+// блоков, на которые делится окно реплик.
+type ManipulationConfig struct {
+	Alpha  float64
+	Blocks int
+}
+
+// DefaultManipulationConfig возвращает порог alpha по умолчанию (0.25) и четыре
+// блока окна.
+func DefaultManipulationConfig() ManipulationConfig {
+	return ManipulationConfig{Alpha: manipAlpha, Blocks: manipBlocks}
+}
+
+// ManipulationReport — итог детекта: MaxShift — резкость сдвига по окну, Pattern
+// — грань, давшая сдвиг, Claimed и Behavior — самопрезентация окна и поведение
+// последнего блока, BehaviorWins — поведение главнее слов.
+type ManipulationReport struct {
+	Detected     bool
+	MaxShift     float64
+	Alpha        float64
+	Pattern      string
+	Claimed      string
+	Behavior     string
+	BehaviorWins bool
+}
+
+// manipulationPattern — грань поведения: имя для отчёта и основы слов реплик.
+type manipulationPattern struct {
+	name  string
+	stems []string
+}
+
+// manipulationPatterns — грани поведения, по долям которых считается сдвиг.
+var manipulationPatterns = []manipulationPattern{
+	{name: "техника", stems: []string{"техник", "технократ", "механизм", "схем", "чертёж", "чертеж", "инженер", "алгоритм", "датчик", "двигател", "расчёт", "расчет", "систем"}},
+	{name: "сенсорика", stems: []string{"стих", "поэт", "запах", "аромат", "шёлк", "шелк", "бархат", "нежн", "трепет", "шёпот", "шепот"}},
+	{name: "быт", stems: []string{"хлеб", "ужин", "печь", "двор", "торг", "деньг", "хозяйств", "огород", "рынок"}},
+}
+
+// manipulationClaimMarkers — обороты самопрезентации: заявление о себе, а не
+// действие (W-13.7: поведение главнее слов).
+var manipulationClaimMarkers = []string{"я —", "я -", "я есть", "по натуре", "считаю себя", "себя считаю", "я человек", "во мне", "обо мне", "про меня"}
+
+// DetectManipulation ищет манипуляцию в окне реплик игрока (W-13.7): окно
+// делится на Blocks последовательных блоков, и резкий сдвиг доли паттерна между
+// соседними блоками выше Alpha считается попыткой переиграть систему. Плавный
+// дрейф внутри окна не детектируется: важна резкость шага, а не расхождение
+// концов. Самопрезентация окна сверяется с поведением последнего блока —
+// поведение главнее слов; психотип детект не трогает (W-12.4).
+func DetectManipulation(turns []string, cfg ManipulationConfig) ManipulationReport {
+	if cfg.Blocks <= 0 {
+		cfg.Blocks = manipBlocks
+	}
+	if cfg.Alpha <= 0 {
+		cfg.Alpha = manipAlpha
+	}
+	rep := ManipulationReport{Alpha: cfg.Alpha}
+	if len(turns) < cfg.Blocks {
+		return rep
+	}
+
+	shares := manipulationBlockShares(turns, cfg.Blocks)
+	for b := 1; b < len(shares); b++ {
+		for i := range manipulationPatterns {
+			if d := math.Abs(shares[b][i] - shares[b-1][i]); d > rep.MaxShift {
+				rep.MaxShift = d
+				rep.Pattern = manipulationPatterns[i].name
+			}
+		}
+	}
+	rep.Detected = rep.MaxShift > rep.Alpha
+
+	lastBlock := turns[(cfg.Blocks-1)*(len(turns)/cfg.Blocks):]
+	rep.Behavior = manipulationDominant(lastBlock)
+	rep.Claimed = manipulationClaimed(turns)
+	rep.BehaviorWins = rep.Claimed != "" && rep.Claimed != rep.Behavior
+	return rep
+}
+
+// manipulationBlockShares делит окно на Blocks равных блоков (остаток уходит
+// последнему) и возвращает долю реплик каждой грани по блокам.
+func manipulationBlockShares(turns []string, blocks int) [][]float64 {
+	size := len(turns) / blocks
+	shares := make([][]float64, blocks)
+	for b := range shares {
+		start := b * size
+		end := start + size
+		if b == blocks-1 {
+			end = len(turns)
+		}
+		shares[b] = manipulationShares(turns[start:end])
+	}
+	return shares
+}
+
+// manipulationShares считает доли граней в блоке реплик: реплика входит в грань,
+// если несёт хоть одну её основу.
+func manipulationShares(block []string) []float64 {
+	shares := make([]float64, len(manipulationPatterns))
+	if len(block) == 0 {
+		return shares
+	}
+	for _, text := range block {
+		low := strings.ToLower(text)
+		for i, p := range manipulationPatterns {
+			if manipulationMatches(low, p) {
+				shares[i]++
+			}
+		}
+	}
+	for i := range shares {
+		shares[i] /= float64(len(block))
+	}
+	return shares
+}
+
+// manipulationMatches — реплика несёт грань, если содержит одну из её основ.
+func manipulationMatches(low string, p manipulationPattern) bool {
+	for _, stem := range p.stems {
+		if strings.Contains(low, stem) {
+			return true
+		}
+	}
+	return false
+}
+
+// manipulationDominant — грань с наибольшей долей в блоке; при равенстве
+// выигрывает первая по порядку реестра, пустой блок даёт пустую грань.
+func manipulationDominant(block []string) string {
+	shares := manipulationShares(block)
+	best := -1
+	for i, s := range shares {
+		if s > 0 && (best < 0 || s > shares[best]) {
+			best = i
+		}
+	}
+	if best < 0 {
+		return ""
+	}
+	return manipulationPatterns[best].name
+}
+
+// manipulationClaimed — грань самопрезентации окна: грани, о которых игрок
+// заявляет оборотами «я — …», «по натуре …»; пусто — заявлений нет.
+func manipulationClaimed(turns []string) string {
+	counts := make([]int, len(manipulationPatterns))
+	for _, text := range turns {
+		low := strings.ToLower(text)
+		if !manipulationIsClaim(low) {
+			continue
+		}
+		for i, p := range manipulationPatterns {
+			if manipulationMatches(low, p) {
+				counts[i]++
+			}
+		}
+	}
+	best := -1
+	for i, c := range counts {
+		if c > 0 && (best < 0 || c > counts[best]) {
+			best = i
+		}
+	}
+	if best < 0 {
+		return ""
+	}
+	return manipulationPatterns[best].name
+}
+
+// manipulationIsClaim — реплика заявляет о себе, а не описывает действие.
+func manipulationIsClaim(low string) bool {
+	for _, marker := range manipulationClaimMarkers {
+		if strings.Contains(low, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+// manipulationMark — текст пометки карты игрока: интерпретация «поведение
+// главнее слов» с метрикой сдвига (W-13.7).
+func manipulationMark(rep ManipulationReport) string {
+	mark := fmt.Sprintf("%s: сдвиг «%s» %.2f (порог %.2f), поведение — «%s»",
+		manipVerdict, rep.Pattern, rep.MaxShift, rep.Alpha, rep.Behavior)
+	if rep.Claimed != "" {
+		mark += fmt.Sprintf(", заявлено — «%s»", rep.Claimed)
+	}
+	return mark
 }
