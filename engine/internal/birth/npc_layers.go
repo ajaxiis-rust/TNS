@@ -1,7 +1,9 @@
 package birth
 
 import (
+	"encoding/binary"
 	"encoding/json"
+	"hash/fnv"
 	"math/rand"
 )
 
@@ -100,11 +102,26 @@ var (
 	}
 )
 
-// NewLayers строит три слоя NPC при создании карточки (B-07). Навыки, статы,
-// пороки и гумора детерминированно выводятся из психотипа (без LLM); скрытый
-// слой несёт психотип Юнга и пустые мотивы (B-07.3).
-func NewLayers(psychotype string, mem MemoryParams) Layers {
-	rng := rand.New(rand.NewSource(seedFromSlug(psychotype)))
+// layerSeed — семя слоёв NPC (T-19-05): семя мира (B-05.3) и психотип карточки
+// в одном хэше, чтобы слои разных психотипов одного мира различались.
+func layerSeed(worldSlug, psychotype string) int64 {
+	h := fnv.New64a()
+	var world [8]byte
+	binary.LittleEndian.PutUint64(world[:], uint64(seedFromSlug(worldSlug)))
+	_, _ = h.Write(world[:])
+	_, _ = h.Write([]byte(psychotype))
+	return int64(h.Sum64())
+}
+
+// NewLayers строит три слоя NPC при создании карточки (B-07). Семя ГСЧ слоёв —
+// от семени мира и психотипа (T-19-05): два мира с одним слагом дают те же
+// слои, другой слаг — другие; карточки одного психотипа в пачке несут
+// одинаковые слои. Смена семени касается только новых миров — слои рождённых
+// карточек не пересчитываются. Навыки, статы, пороки и гумора
+// детерминированно выводятся из психотипа (без LLM); скрытый слой несёт
+// психотип Юнга и пустые мотивы (B-07.3).
+func NewLayers(worldSlug, psychotype string, mem MemoryParams) Layers {
+	rng := rand.New(rand.NewSource(layerSeed(worldSlug, psychotype)))
 
 	skills := make(map[string]int, len(skillNames))
 	for _, name := range skillNames {

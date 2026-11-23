@@ -394,7 +394,7 @@ func promoteFanficCast(slug string, bookID int64) error {
 		return errors.New("webapi: пачка пуста (нет кодов психотипа или сословий)")
 	}
 	for i, c := range top {
-		card := promotedCard(c, i, codes, estates)
+		card := promotedCard(slug, c, i, codes, estates)
 		raw, err := json.Marshal(card)
 		if err != nil {
 			return err
@@ -411,7 +411,7 @@ func promoteFanficCast(slug string, bookID int64) error {
 // promotedCard собирает карточку именного героя: психотип и сословие — по
 // правилам пачки (детерминированный порядок кодов и сословий), описание — из
 // книги, тайны и предыстории нет (LT-16.1).
-func promotedCard(c cast.BookCharacter, i int, codes []birth.Code, estates []birth.Estate) birth.Card {
+func promotedCard(slug string, c cast.BookCharacter, i int, codes []birth.Code, estates []birth.Estate) birth.Card {
 	code := codes[i%len(codes)].String()
 	estate := estates[i%len(estates)].Estate
 	return birth.Card{
@@ -419,7 +419,7 @@ func promotedCard(c cast.BookCharacter, i int, codes []birth.Code, estates []bir
 		Estate:     estate,
 		Appearance: c.DescriptionText(),
 		Weight:     1.0,
-		Layers:     birth.NewLayers(code, birth.DefaultMemoryParams()),
+		Layers:     birth.NewLayers(slug, code, birth.DefaultMemoryParams()),
 	}
 }
 

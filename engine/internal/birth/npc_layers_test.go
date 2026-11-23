@@ -6,7 +6,7 @@ import (
 )
 
 func TestNpcLayers(t *testing.T) {
-	layers := NewLayers("ENTJ", DefaultMemoryParams())
+	layers := NewLayers(validAncketa().Slug, "ENTJ", DefaultMemoryParams())
 	checkLayers(t, layers)
 
 	// Каждая карточка пачки несёт слои (B-07): pack.go пишет их при создании.
@@ -26,7 +26,7 @@ func TestNpcLayers(t *testing.T) {
 	}
 
 	// Повторное построение того же психотипа не меняет слои (детерминированно).
-	again := NewLayers("ENTJ", DefaultMemoryParams())
+	again := NewLayers(validAncketa().Slug, "ENTJ", DefaultMemoryParams())
 	aRaw, err := json.Marshal(layers)
 	if err != nil {
 		t.Fatalf("маршалинг слоёв: %v", err)
@@ -37,6 +37,51 @@ func TestNpcLayers(t *testing.T) {
 	}
 	if string(aRaw) != string(bRaw) {
 		t.Fatalf("слои изменились при повторном построении: %s vs %s", aRaw, bRaw)
+	}
+}
+
+// TestSeedDeterminism — слои NPC сеются от семени мира (T-19-05, «Проверка»):
+// два мира с одним слагом получают одинаковые слои, другой слаг — другие.
+func TestSeedDeterminism(t *testing.T) {
+	first, err := Pack(validAncketa())
+	if err != nil {
+		t.Fatalf("Pack (мир 1): %v", err)
+	}
+	second, err := Pack(validAncketa())
+	if err != nil {
+		t.Fatalf("Pack (мир 2): %v", err)
+	}
+
+	// Один слаг — те же слои во всех карточках пачки.
+	for i := range first {
+		a, err := json.Marshal(first[i].Layers)
+		if err != nil {
+			t.Fatalf("маршалинг слоёв %d: %v", i, err)
+		}
+		b, err := json.Marshal(second[i].Layers)
+		if err != nil {
+			t.Fatalf("маршалинг слоёв %d (повтор): %v", i, err)
+		}
+		if string(a) != string(b) {
+			t.Fatalf("карточка %d: слои миров одного слага разошлись: %s vs %s", i, a, b)
+		}
+	}
+
+	// Другой слаг — другое семя мира, слои расходятся.
+	other := validAncketa()
+	other.Slug = "drugoj-mir"
+	third, err := Pack(other)
+	if err != nil {
+		t.Fatalf("Pack (мир 3): %v", err)
+	}
+	diff := 0
+	for i := range first {
+		if first[i].Layers.State.Skills["combat"] != third[i].Layers.State.Skills["combat"] {
+			diff++
+		}
+	}
+	if diff == 0 {
+		t.Fatal("слои не зависят от слага мира: навыки всех карточек совпали")
 	}
 }
 

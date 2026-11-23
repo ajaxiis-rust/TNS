@@ -121,7 +121,7 @@ func Pack(a *Ancketa) ([]Card, error) {
 				Voice:      voices[rng.Intn(len(voices))],
 				Appearance: appearances[rng.Intn(len(appearances))],
 				Weight:     estateWeight(e, a.SocialOrder),
-				Layers:     NewLayers(code.String(), DefaultMemoryParams()),
+				Layers:     NewLayers(a.Slug, code.String(), DefaultMemoryParams()),
 			})
 		}
 	}

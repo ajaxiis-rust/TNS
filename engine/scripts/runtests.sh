@@ -5,13 +5,24 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 if [ "$#" -lt 2 ]; then
-    echo "usage: $0 <pkg> <TestName>..." >&2
+    echo "usage: $0 <pkg> [<pkg>...] <TestName>..." >&2
     exit 2
 fi
 
-pkg="$1"
-shift
-names=("$@")
+# Arguments with a path separator are packages, the rest are test names:
+# `./internal/birth ./internal/turn TestSeed TestReplay`.
+pkgs=()
+names=()
+for arg in "$@"; do
+    case "$arg" in
+        */*) pkgs+=("$arg") ;;
+        *) names+=("$arg") ;;
+    esac
+done
+if [ "${#pkgs[@]}" -lt 1 ] || [ "${#names[@]}" -lt 1 ]; then
+    echo "usage: $0 <pkg> [<pkg>...] <TestName>..." >&2
+    exit 2
+fi
 
 # Build a -run regex anchored to each requested full test name.
 run_regex=""
@@ -23,7 +34,7 @@ for n in "${names[@]}"; do
     fi
 done
 
-json_out="$(go test -json -count=1 -run "(${run_regex})" "$pkg" 2>&1)"
+json_out="$(go test -json -count=1 -run "(${run_regex})" "${pkgs[@]}" 2>&1)"
 go_exit=$?
 
 # Track whether each requested name produced a PASS event.
