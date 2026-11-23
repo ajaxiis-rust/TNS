@@ -33,11 +33,14 @@ const (
 type SalienceConfig struct {
 	Confident float64 // score ≥ — полоса «уверенно».
 	Reject    float64 // score ≤ — полоса «брак».
+	// SensesMargin — порог отрыва лучшего смысла омонима от второго
+	// (deepread.senses_margin, T-15-02); 0 — константа T-15-01.
+	SensesMargin float64
 }
 
 // DefaultSalienceConfig возвращает пороги, совпадающие со значениями config.yaml.
 func DefaultSalienceConfig() SalienceConfig {
-	return SalienceConfig{Confident: 0.6, Reject: 0.15}
+	return SalienceConfig{Confident: 0.6, Reject: 0.15, SensesMargin: defaultSensesMargin}
 }
 
 // LoadSalienceConfig читает пороги полос из файла конфигурации.
@@ -74,6 +77,14 @@ func parseSalienceSection(data string) (SalienceConfig, error) {
 		}
 		if indent <= 2 {
 			inThresholds = trimmed == "thresholds:"
+			if key, value, ok := strings.Cut(trimmed, ":"); ok && strings.TrimSpace(key) == "senses_margin" {
+				value = strings.TrimSpace(strings.SplitN(value, "#", 2)[0])
+				f, err := strconv.ParseFloat(value, 64)
+				if err != nil {
+					return SalienceConfig{}, fmt.Errorf("deepread: senses_margin %q: %v", value, err)
+				}
+				cfg.SensesMargin = f
+			}
 			continue
 		}
 		if !inThresholds {
@@ -105,10 +116,14 @@ func parseSalienceSection(data string) (SalienceConfig, error) {
 	return cfg, nil
 }
 
-// validateSalienceConfig проверяет порядок порогов: 0 ≤ reject < confident ≤ 1.
+// validateSalienceConfig проверяет порядок порогов: 0 ≤ reject < confident ≤ 1,
+// senses_margin — NaN или вне 0..1.
 func validateSalienceConfig(cfg SalienceConfig) error {
 	if math.IsNaN(cfg.Confident) || math.IsNaN(cfg.Reject) {
 		return fmt.Errorf("deepread: пороги salience: NaN")
+	}
+	if math.IsNaN(cfg.SensesMargin) || cfg.SensesMargin < 0 || cfg.SensesMargin > 1 {
+		return fmt.Errorf("deepread: senses_margin %g: нужно 0 ≤ senses_margin ≤ 1", cfg.SensesMargin)
 	}
 	if cfg.Reject < 0 || cfg.Confident > 1 || cfg.Reject >= cfg.Confident {
 		return fmt.Errorf("deepread: пороги salience: confident %g, reject %g: нужно 0 ≤ reject < confident ≤ 1",
@@ -167,13 +182,22 @@ func IDF(chunks []SalienceChunk) map[string]float64 {
 	return idf
 }
 
-// TagChunks считает теги всех ключей словарей для каждого чанка книги
+// TagChunks считает теги всех ключей словарей для каждого чанка книги без
+// смыслового слоя: омонимы дают вклад словарю любой своей категорией
+// (T-14, T-15-02 шаг 1 — senses.json нет).
+func TagChunks(chunks []SalienceChunk, dicts map[string]*Dictionary, cfg SalienceConfig) ([]ChunkTags, error) {
+	return TagChunksWithSenses(chunks, dicts, nil, cfg)
+}
+
+// TagChunksWithSenses считает теги всех ключей словарей для каждого чанка книги
 // (W-23.1–W-23.3): скор ключа чанка — сумма «вес словаря × idf» по леммам
 // словаря, найденным в чанке (ключ с частью речи — только разбором той же пары
 // «лемма, POS», IMP-10), нормированная по максимуму скора книги (единый максимум
 // по всем ключам и чанкам — полосы категорий сравнимы между собой); полоса — по
 // порогам cfg; якоря — до трёх подстрок чанка вокруг опорных лемм ключа.
-func TagChunks(chunks []SalienceChunk, dicts map[string]*Dictionary, cfg SalienceConfig) ([]ChunkTags, error) {
+// Смысловой слой layer (T-15-02) снимает вклад омонима, решённого в другую
+// категорию; nil-слой — счёт как в T-14.
+func TagChunksWithSenses(chunks []SalienceChunk, dicts map[string]*Dictionary, layer *SenseLayer, cfg SalienceConfig) ([]ChunkTags, error) {
 	if cfg == (SalienceConfig{}) {
 		cfg = DefaultSalienceConfig()
 	}
@@ -204,12 +228,17 @@ func TagChunks(chunks []SalienceChunk, dicts map[string]*Dictionary, cfg Salienc
 	for i, chunk := range chunks {
 		present := chunkParses(chunk.Lemmas)
 		forms := lemmaForms(chunk.Lemmas)
+		marks := senseMarks(chunk, layer)
 		scores[i] = make([]chunkKey, len(keys))
 		for ki, key := range keys {
 			var raw float64
 			var support []string
 			for lemma, weight := range dicts[key].Lemmas {
-				if !keyMatches(present, lemma, dicts[key].Pos[lemma]) {
+				pos := dicts[key].Pos[lemma]
+				if !keyMatches(present, lemma, pos) {
+					continue
+				}
+				if !senseAllows(marks, lemma, pos, key) {
 					continue
 				}
 				raw += float64(weight) * idf[lemma]

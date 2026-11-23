@@ -1,0 +1,511 @@
+{
+ "source": "Учебный отрывок волны 15 (T-15-02): собственный текст, внешних источников нет. Бытовые и пейзажные сцены с омонимами волны (замок, ключ, коса, кисть, ножка, пол, батарея, ласка, свет, звезда, гребень, кран) в двух смыслах каждый.",
+ "chunking": "Один абзац — один чанк (31–65 слов), границы абзацев не рвутся: 18 чанков, по одному-два на каждую лемму волны.",
+ "approved": true,
+ "chunks": [
+  {
+   "id": 0,
+   "para_from": 0,
+   "para_to": 0,
+   "words": 41,
+   "homonym": "замок",
+   "sense": "строение",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": true
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": false
+    },
+    "social": {
+     "present": true
+    }
+   }
+  },
+  {
+   "id": 1,
+   "para_from": 1,
+   "para_to": 1,
+   "words": 42,
+   "homonym": "замок",
+   "sense": "запирающее устройство",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": false
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": false
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 2,
+   "para_from": 2,
+   "para_to": 2,
+   "words": 62,
+   "homonym": "ключ",
+   "sense": "родник",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": false
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": true
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 3,
+   "para_from": 3,
+   "para_to": 3,
+   "words": 45,
+   "homonym": "ключ",
+   "sense": "отпирающее устройство",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": false
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": false
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 4,
+   "para_from": 4,
+   "para_to": 4,
+   "words": 55,
+   "homonym": "коса",
+   "sense": "причёска",
+   "categories": {
+    "appearance": {
+     "present": true
+    },
+    "architecture": {
+     "present": false
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": false
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 5,
+   "para_from": 5,
+   "para_to": 5,
+   "words": 46,
+   "homonym": "коса",
+   "sense": "песчаная отмель",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": false
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": true
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 6,
+   "para_from": 6,
+   "para_to": 6,
+   "words": 52,
+   "homonym": "кисть",
+   "sense": "гроздь ягод",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": false
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": true
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 7,
+   "para_from": 7,
+   "para_to": 7,
+   "words": 44,
+   "homonym": "ножка",
+   "sense": "опора мебели",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": true
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": false
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 8,
+   "para_from": 8,
+   "para_to": 8,
+   "words": 53,
+   "homonym": "пол",
+   "sense": "настил",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": true
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": false
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 9,
+   "para_from": 9,
+   "para_to": 9,
+   "words": 34,
+   "homonym": "батарея",
+   "sense": "отопление",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": true
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": false
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 10,
+   "para_from": 10,
+   "para_to": 10,
+   "words": 42,
+   "homonym": "батарея",
+   "sense": "артиллерийская",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": false
+    },
+    "battle": {
+     "present": true
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": false
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 11,
+   "para_from": 11,
+   "para_to": 11,
+   "words": 51,
+   "homonym": "ласка",
+   "sense": "животное",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": false
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": true
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 12,
+   "para_from": 12,
+   "para_to": 12,
+   "words": 51,
+   "homonym": "ласка",
+   "sense": "нежность",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": false
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": true
+    },
+    "nature": {
+     "present": false
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 13,
+   "para_from": 13,
+   "para_to": 13,
+   "words": 44,
+   "homonym": "свет",
+   "sense": "освещение",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": true
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": true
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 14,
+   "para_from": 14,
+   "para_to": 14,
+   "words": 47,
+   "homonym": "свет",
+   "sense": "высшее общество",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": false
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": false
+    },
+    "social": {
+     "present": true
+    }
+   }
+  },
+  {
+   "id": 15,
+   "para_from": 15,
+   "para_to": 15,
+   "words": 49,
+   "homonym": "звезда",
+   "sense": "небесное тело",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": false
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": true
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 16,
+   "para_from": 16,
+   "para_to": 16,
+   "words": 53,
+   "homonym": "гребень",
+   "sense": "расчёска",
+   "categories": {
+    "appearance": {
+     "present": true
+    },
+    "architecture": {
+     "present": false
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": false
+    },
+    "social": {
+     "present": false
+    }
+   }
+  },
+  {
+   "id": 17,
+   "para_from": 17,
+   "para_to": 17,
+   "words": 45,
+   "homonym": "кран",
+   "sense": "водопроводный",
+   "categories": {
+    "appearance": {
+     "present": false
+    },
+    "architecture": {
+     "present": true
+    },
+    "battle": {
+     "present": false
+    },
+    "erotic": {
+     "present": false
+    },
+    "nature": {
+     "present": false
+    },
+    "social": {
+     "present": false
+    }
+   }
+  }
+ ]
+}
