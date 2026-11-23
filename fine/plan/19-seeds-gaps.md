@@ -18,9 +18,9 @@ T-19-13 добавлена вне аудита — по вопросу влад�
 - **Ход-рейт** — канон LT-10 (`fine/04-spec/04-live-turn.md`) закрыл тему в
   пользу времени 1:1 + декларации прыжка; возврат — только явной отменой
   атома владельцем.
-- **8 статов тела** — конфликт с действующим D&D-набором
-  (`npc_layers.go:91-99`, strength…charisma + 9 навыков + 8 пороков):
-  нужна явная форма (заменить/дополнить), без неё задача не стартует.
+- **8 статов тела** — снято с отложения 23.11 решением владельца
+  «добавить к существующему»: D&D-набор остаётся, семь телесных статов
+  добавляются к состоянию NPC и героя. Оформлено задачей T-19-14 ниже.
 
 ---
 
@@ -201,4 +201,21 @@ T-19-13 добавлена вне аудита — по вопросу влад�
   3. Текст без распознанных глав резать по абзацным границам с тем же потолком; заголовок куска пуст, порядок `ord` сохраняется.
 - **Проверка:** `cd engine && bash scripts/runtests.sh ./internal/workshop TestForgeInput TestChunkBoundaries && bash scripts/gates.sh 2>&1 | tail -5` → PASS, gates 0.
 - **Документы:** `fine/04-spec/05-workshop.md` (W-14.3 дополнить: абзацные границы, расширенные маркеры глав).
+- **Исполнитель:** код.
+
+---
+
+### T-19-14. 8 статов тела: добавить к состоянию
+- **Атомы:** B-07 (правка правил 1 и 4).
+- **Зависит от:** нет.
+- **Читать:** `engine/internal/birth/npc_layers.go:38-41,91-99` (StateLayer, statNames), `engine/internal/turn/secrets.go:116-134` (heroStateLayer, readHeroHealth), `engine/internal/webapi/handlers_chat.go:470` (chatHeroHealthLayer), `fine/04-spec/03-birth.md` (B-07), `DOCS/MECHANICS.md` §45 и §62, `work/SEEDS-AUDIT-20261123.md` §14.
+- **Создаётся:** тесты `TestBodyStats` (в `engine/internal/birth`), `TestReadHeroBodyStats` (в `engine/internal/turn`).
+- **Правится:** `engine/internal/birth/npc_layers.go`, `engine/internal/turn/secrets.go`, `fine/04-spec/03-birth.md` (B-07 правила 1 и 4), `DOCS/MECHANICS.md` (§62 — перевести из «спекулятивного» в реализованное).
+- **Шаги:**
+  1. В `StateLayer` добавить семь телесных статов рядом с `health`: `hunger`, `thirst`, `fatigue`, `comfort`, `spirit`, `bladder`, `bowel` (int, 0–100); `health` входит в набор. `NewLayers` инициализирует их стартовым состоянием: здоровье/комфорт/дух 100, голод/жажда/усталость/мочевой/кишечник 0. Телесные статы — динамическое состояние, из психотипа не выводятся.
+  2. Слой состояния героя (`turn/secrets.go` `heroStateLayer` + чтение слоя `state`) дополнить теми же полями; `readHeroHealth` и чтение остальных статов идут из одного слоя. Панель здоровья в `webapi/handlers_chat.go:470` не ломается (поле `health` остаётся).
+  3. В `fine/04-spec/03-birth.md` поправить B-07: правило 1 включить восемь телесных статов в состав состояния; правило 4 снять исключение «голод не является полем NPC» (решение владельца 23.11 «добавить к существующему»).
+  4. В `DOCS/MECHANICS.md` §62 перевести из «спекулятивного предложения моделей» в реализованное: 8 статов тела добавлены к состоянию NPC и героя, D&D-набор сохранён.
+- **Проверка:** `cd engine && bash scripts/runtests.sh ./internal/birth TestBodyStats ./internal/turn TestReadHeroBodyStats && bash scripts/gates.sh 2>&1 | tail -5 && bash scripts/docs-check.sh 2>&1 | tail -5` → PASS, gates 0, docs-check ok.
+- **Документы:** `fine/04-spec/03-birth.md`, `DOCS/MECHANICS.md`.
 - **Исполнитель:** код.
