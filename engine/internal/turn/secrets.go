@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"tns65/internal/db"
 )
@@ -143,4 +144,57 @@ func readHeroHealth(h *db.Handle) (int, bool, error) {
 		return 0, false, err
 	}
 	return st.Health, true, nil
+}
+
+// willLayer — имя слоя завещания в character_layers (писатель core, карта T-01-07):
+// завещание живёт слоем героя, отдельная таблица и миграция не нужны (T-19-03).
+const willLayer = "will"
+
+// Will — завещание героя (T-19-03, LT-16.7): текст последних слов со сцены
+// прощания. Мир держит его крючком следующей сцены.
+type Will struct {
+	Text string `json:"text"`
+}
+
+// saveWill пишет завещание героя; пустой текст завещанием не считается.
+// Последние слова перекрывают прежние: завещание — то, что сказано последним.
+func saveWill(h *db.Handle, text string) error {
+	if h == nil || strings.TrimSpace(text) == "" {
+		return nil
+	}
+	raw, err := json.Marshal(Will{Text: text})
+	if err != nil {
+		return err
+	}
+	if _, err := h.Exec("character_layers",
+		`DELETE FROM character_layers WHERE character_id = ? AND layer = ?`,
+		heroCharacterID, willLayer); err != nil {
+		return err
+	}
+	_, err = h.Exec("character_layers",
+		`INSERT INTO character_layers (character_id, layer, payload_json) VALUES (?, ?, ?)`,
+		heroCharacterID, willLayer, string(raw))
+	return err
+}
+
+// readWill читает завещание героя; false — завещания нет, поведение мира прежнее.
+func readWill(h *db.Handle) (Will, bool, error) {
+	if h == nil {
+		return Will{}, false, nil
+	}
+	var raw string
+	err := h.QueryRow(
+		`SELECT payload_json FROM character_layers WHERE character_id = ? AND layer = ?`,
+		heroCharacterID, willLayer).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Will{}, false, nil
+	}
+	if err != nil {
+		return Will{}, false, err
+	}
+	var w Will
+	if err := json.Unmarshal([]byte(raw), &w); err != nil {
+		return Will{}, false, err
+	}
+	return w, strings.TrimSpace(w.Text) != "", nil
 }

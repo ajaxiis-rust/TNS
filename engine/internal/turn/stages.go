@@ -98,6 +98,9 @@ type TurnState struct {
 	// Farewell — сцена прощания выдана: здоровье героя упало до порога смерти
 	// (T-03-19, LT-16.7). До порога — false, смерть не навязывается.
 	Farewell bool
+	// WillHook — завещание героя в мире есть (T-19-03): стадия выбора пути читает
+	// его как крючок следующей сцены; мир сам решает, как его использовать.
+	WillHook bool
 	// Feedback — план хода по сигналам игрока о последних сценах (W-04.3/4):
 	// дизлайк подряд даёт регенерацию или откат к сырому ходу игрока.
 	Feedback FeedbackPlan
@@ -131,7 +134,7 @@ func (p *Pipeline) stages() []Stage {
 		&prepathStage{db: p.DB},
 		&compositionStage{lit: p.LitDB, world: p.DriftDB, logger: p.Logger},
 		&confirmStage{configPath: "config.yaml"},
-		&selectStage{weaver: p.Weaver, bank: shuttle},
+		&selectStage{db: p.DB, weaver: p.Weaver, bank: shuttle},
 		&feedbackStage{db: p.DB, logger: p.Logger},
 		&executeStage{weaver: p.Weaver, bank: shuttle, logger: p.Logger},
 		&timejumpStage{db: p.DB},
@@ -445,6 +448,7 @@ func (s *confirmStage) Run(ctx context.Context, st *TurnState) error {
 // bank и weaver опциональны: без них жёсткое ограничение уводит ход на страховку;
 // saw опционален — без Пилы рекомендации нет.
 type selectStage struct {
+	db        *db.Handle    // оперативная база мира: слой завещания (T-19-03); nil — завещания не видно.
 	bank      *bank.Bank    // Челнок (T-03-07); nil — банк не подключён.
 	weaver    ProseSlot     // Ткач (T-03-08); nil — слот мёртв.
 	saw       *selector.Saw // Пила (T-03-06); nil — рекомендации нет.
@@ -456,12 +460,19 @@ func (*selectStage) Name() string { return "select" }
 
 func (s *selectStage) Run(_ context.Context, st *TurnState) error {
 	rec := s.recommendation()
+	_, hasWill, err := readWill(s.db)
+	if err != nil {
+		return err
+	}
+	st.WillHook = hasWill
+	// Завещание — крючок следующей сцены (T-19-03): сцена с ним уникальна, поэтому
+	// в таблицу решений она уходит эмоцией/уникальностью, а не повторяемой.
 	in := selector.Input{
 		Command:      s.commandName(st),
 		Stop:         st.Confirm.Decision == DecisionReask,
 		HardFallback: s.slotDead() && s.bankEmpty(),
-		Repeatable:   isRepeatable(st),
-		Emotional:    isEmotional(st),
+		Repeatable:   isRepeatable(st) && !st.WillHook,
+		Emotional:    isEmotional(st) || st.WillHook,
 		Saw:          rec,
 		BankEmpty:    s.bankEmpty(),
 	}
@@ -667,6 +678,11 @@ func (s *deathStage) Run(_ context.Context, st *TurnState) error {
 	if deathThresholdHit(health) {
 		st.Farewell = true
 		st.Reply = farewellReply
+		// Слова героя на сцене прощания сохраняются завещанием (T-19-03): мир
+		// держит их крючком следующей сцены.
+		if err := saveWill(s.db, st.Input.PlayerText); err != nil {
+			return err
+		}
 	}
 	return nil
 }
