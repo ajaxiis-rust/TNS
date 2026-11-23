@@ -1,9 +1,9 @@
 package deepread
 
-// run.go — оркестратор разбора книги (T-14-13): лемма-слой → salience →
-// персонажи → сцены → стиль → staging → спорные слоту. Порядок фиксирован,
-// каждый слой идемпотентен и продолжает прогон по наличию своих строк; итог
-// прогона пишется сводкой в forge_log kind='deepread'.
+// run.go — оркестратор разбора книги (T-14-13): лемма-слой → спорные смыслы
+// слоту → salience → персонажи → сцены → стиль → staging → спорные слоту.
+// Порядок фиксирован, каждый слой идемпотентен и продолжает прогон по наличию
+// своих строк; итог прогона пишется сводкой в forge_log kind='deepread'.
 
 import (
 	"bufio"
@@ -207,7 +207,7 @@ func RunPipeline(lit, world *db.Handle, in RunInput) (RunReport, error) {
 
 	var summary Summary
 	outcome, err := RunOnce(lit, key, func() (int, error) {
-		s, err := runLayers(lit, world, in, chunks, packDir, configPath, now)
+		s, err := runLayers(lit, world, in, chunks, packDir, configPath, key, now)
 		if err != nil {
 			return 0, err
 		}
@@ -231,7 +231,7 @@ func RunPipeline(lit, world *db.Handle, in RunInput) (RunReport, error) {
 // runLayers проходит слои разбора по порядку и возвращает сводку по строкам
 // литературной базы. Слой, чьи строки уже на месте, повторно не пишется —
 // прогон после обрыва продолжается с первого недописанного слоя.
-func runLayers(lit, world *db.Handle, in RunInput, chunks []runChunk, packDir, configPath, now string) (Summary, error) {
+func runLayers(lit, world *db.Handle, in RunInput, chunks []runChunk, packDir, configPath string, key Key, now string) (Summary, error) {
 	dicts, err := LoadDictionaries(packDir)
 	if err != nil {
 		return Summary{}, err
@@ -268,6 +268,14 @@ func runLayers(lit, world *db.Handle, in RunInput, chunks []runChunk, packDir, c
 	if err != nil {
 		return Summary{}, err
 	}
+	senseLayer, err := LoadSenseLayer(packDir, salCfg)
+	if err != nil {
+		return Summary{}, err
+	}
+	senseCatalog, err := LoadSenseCatalog(packDir)
+	if err != nil {
+		return Summary{}, err
+	}
 
 	texts := make([]string, len(chunks))
 	for i, chunk := range chunks {
@@ -295,7 +303,25 @@ func runLayers(lit, world *db.Handle, in RunInput, chunks []runChunk, packDir, c
 		allLemmas = append(allLemmas, chunkLemmas[i]...)
 	}
 
-	tags, err := TagChunks(salChunks, dicts, salCfg)
+	counter := &callCounter{inner: in.Slot}
+	var slot DisputeSlot
+	if in.Slot != nil {
+		slot = counter
+	}
+	senseQuestions, err := BuildSenseDisputes(SenseDisputeInput{
+		Chunks:  salChunks,
+		Layer:   senseLayer,
+		Catalog: senseCatalog,
+	})
+	if err != nil {
+		return Summary{}, err
+	}
+	senseOutcomes, err := AskSenseDisputes(lit, key, senseQuestions, disputeCfg, slot, in.Logger, now)
+	if err != nil {
+		return Summary{}, err
+	}
+
+	tags, err := TagChunksWithSenses(salChunks, SenseDictionaries(dicts, senseOutcomes), senseLayer, salCfg)
 	if err != nil {
 		return Summary{}, err
 	}
@@ -403,12 +429,7 @@ func runLayers(lit, world *db.Handle, in RunInput, chunks []runChunk, packDir, c
 		return Summary{}, err
 	}
 
-	counter := &callCounter{inner: in.Slot}
-	var slot DisputeSlot
-	if in.Slot != nil {
-		slot = counter
-	}
-	outcomes, err := ResolveDisputes(questions, disputeCfg, slot, in.Logger)
+	outcomes, err := ResolveDisputes(questions, RemainingDisputeConfig(disputeCfg, len(senseQuestions)), slot, in.Logger)
 	if err != nil {
 		return Summary{}, err
 	}
