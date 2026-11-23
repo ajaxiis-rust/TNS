@@ -178,6 +178,13 @@ func Load(path string) (*Dictionary, error) {
 // ±WindowRadius токенов в пределах абзаца (Line); триггер считается один раз
 // независимо от числа вхождений, сам токен-омоним триггером не бывает.
 func (d *Dictionary) Resolve(tokens []Token) []Decision {
+	return d.resolve(tokens, "", nil)
+}
+
+// resolve — общий путь Resolve и ResolveWithVectors (T-15-03): к триггерному
+// счёту смысла прибавляется векторный вклад слоя layer, text — текст чанка для
+// сборки окна эмбеддинга.
+func (d *Dictionary) resolve(tokens []Token, text string, layer *VectorLayer) []Decision {
 	if d == nil || len(tokens) == 0 {
 		return nil
 	}
@@ -187,7 +194,11 @@ func (d *Dictionary) Resolve(tokens []Token) []Decision {
 		if len(entries) < 2 {
 			continue
 		}
-		out = append(out, decide(i, entries, window(tokens, i)))
+		var bonus []float64
+		if layer != nil {
+			bonus = layer.scores(entries, WindowText(text, tokens, i))
+		}
+		out = append(out, decide(i, entries, window(tokens, i), bonus))
 	}
 	return out
 }
@@ -212,8 +223,9 @@ func window(tokens []Token, at int) map[string]struct{} {
 	return out
 }
 
-// decide считает смыслы по сработавшим триггерам окна и решает лучший.
-func decide(index int, entries []Sense, window map[string]struct{}) Decision {
+// decide считает смыслы по сработавшим триггерам окна и решает лучший; bonus —
+// векторный вклад смыслов (T-15-03), прибавляется к триггерному счёту.
+func decide(index int, entries []Sense, window map[string]struct{}, bonus []float64) Decision {
 	scores := make([]float64, len(entries))
 	evidence := make([][]string, len(entries))
 	for i, s := range entries {
@@ -223,6 +235,9 @@ func decide(index int, entries []Sense, window map[string]struct{}) Decision {
 			}
 			scores[i] += tr.Weight
 			evidence[i] = append(evidence[i], tr.Lemma)
+		}
+		if i < len(bonus) {
+			scores[i] += bonus[i]
 		}
 		sort.Strings(evidence[i])
 	}

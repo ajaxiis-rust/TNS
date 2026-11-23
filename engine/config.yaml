@@ -181,6 +181,7 @@ deepread:
   slot_budget: 20    # вопросов слоту на книгу
   slot_batch: 5      # вопросов в одном вызове
   senses_margin: 0.5 # отрыв лучшего смысла омонима от второго (0 — константа T-15-01)
+  senses_embed_weight: 3.0 # вес векторного счёта смысла: trigger + вес × cosine(окно, центроид); 0 — только триггеры (T-15-03)
   alias_cosine: 0.85 # слияние кандидатов персонажей
   staging_cosine: 0.8 # порог кандидата в dict_staging
   golden_min_precision: 0.7 # гейт золотых отрывков
