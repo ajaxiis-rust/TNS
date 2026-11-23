@@ -2,8 +2,11 @@ package workshop
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -237,7 +240,9 @@ func attempt(h *db.Handle, id int64, kind Kind, provider Provider, prompt string
 // (анализ данных первичного этапа) и forge_plan (план ковки всей книги), оба
 // через слот мастерской, пресет по умолчанию local. До исполнителя очереди (P4)
 // заказы живут со статусом queued. Повторная постановка того же заказа для того
-// же мира не создаёт дубль (шаг 4).
+// же мира не создаёт дубль (шаг 4). Данные первичного анализа несут любимые
+// книги героя (T-19-06): психотип выводится по ним один раз и не пересчитывается
+// (W-12.4).
 func EnqueueBirthOrders(h *db.Handle) error {
 	for _, o := range []struct {
 		kind Kind
@@ -246,15 +251,48 @@ func EnqueueBirthOrders(h *db.Handle) error {
 		{KindAnalysis, StepHeavy},
 		{KindForgePlan, StepLight},
 	} {
-		if err := enqueueOnce(h, o.kind, o.step); err != nil {
+		payload := map[string]string{"kind": string(o.kind)}
+		if o.kind == KindAnalysis {
+			books, err := favoriteBooks(h)
+			if err != nil {
+				return err
+			}
+			if books != "" {
+				payload["favorite_books"] = books
+			}
+		}
+		if err := enqueueOnce(h, o.kind, o.step, payload); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
+// favoriteBooks читает любимые книги героя из world_meta.favorite_books
+// (T-19-06); значение хранится JSON-строкой, как прочие ключи анкеты. Ключа нет
+// (анкета без книг) — пустая строка без ошибки.
+func favoriteBooks(h *db.Handle) (string, error) {
+	var raw string
+	err := h.QueryRow(`SELECT value FROM world_meta WHERE "key" = 'favorite_books'`).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	// Пустое поле анкеты пишется в world_meta пустой строкой, не JSON-строкой.
+	if strings.TrimSpace(raw) == "" {
+		return "", nil
+	}
+	var books string
+	if err := json.Unmarshal([]byte(raw), &books); err != nil {
+		return "", fmt.Errorf("workshop: разбор favorite_books: %w", err)
+	}
+	return books, nil
+}
+
 // enqueueOnce ставит заказ, если заказа того же вида для этого мира ещё нет.
-func enqueueOnce(h *db.Handle, kind Kind, step Step) error {
+func enqueueOnce(h *db.Handle, kind Kind, step Step, payload map[string]string) error {
 	var n int
 	if err := h.QueryRow(`SELECT COUNT(*) FROM workshop_queue WHERE kind = ?`, string(kind)).Scan(&n); err != nil {
 		return err
@@ -262,7 +300,7 @@ func enqueueOnce(h *db.Handle, kind Kind, step Step) error {
 	if n > 0 {
 		return nil
 	}
-	return Enqueue(h, kind, step, DefaultProvider, map[string]string{"kind": string(kind)})
+	return Enqueue(h, kind, step, DefaultProvider, payload)
 }
 
 // bindSlot привязывает вид заказа к слоту: строка model_bindings role=kind,

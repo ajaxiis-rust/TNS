@@ -30,19 +30,20 @@ func TestAncketa(t *testing.T) {
 	want := []string{
 		"slug", "title", "description", "synopsis", "prologue", "lang",
 		"travel_mode", "genres", "world_rules", "social_order",
-		"economy_mods", "magic", "hero_birth", "censorship", "source_book",
+		"economy_mods", "magic", "hero_birth", "favorite_books", "censorship",
+		"source_book",
 	}
 
-	// ровно 15 полей с ключами из шага 1
+	// ровно 16 полей с ключами из шага 1
 	got := jsonKeys((*Ancketa)(nil))
-	if len(got) != 15 {
-		t.Fatalf("полей в анкете: %d, want 15", len(got))
+	if len(got) != 16 {
+		t.Fatalf("полей в анкете: %d, want 16", len(got))
 	}
 	if !sameSet(got, want) {
 		t.Fatalf("ключи анкеты: %v, want %v", got, want)
 	}
-	if len(Fields) != 15 || !sameSet(Fields, want) {
-		t.Fatalf("Fields: %v, want ровно 15 ключей %v", Fields, want)
+	if len(Fields) != 16 || !sameSet(Fields, want) {
+		t.Fatalf("Fields: %v, want ровно 16 ключей %v", Fields, want)
 	}
 
 	// валидная анкета проходит

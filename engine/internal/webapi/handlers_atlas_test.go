@@ -237,8 +237,8 @@ func TestAtlasBirth(t *testing.T) {
 			t.Fatalf("ключ анкеты %q не перечислен в ROUTES.md", key)
 		}
 	}
-	if len(birth.Fields) != 15 {
-		t.Fatalf("ключей анкеты: %d, want 15", len(birth.Fields))
+	if len(birth.Fields) != 16 {
+		t.Fatalf("ключей анкеты: %d, want 16", len(birth.Fields))
 	}
 
 	h := NewHandler(Config{})

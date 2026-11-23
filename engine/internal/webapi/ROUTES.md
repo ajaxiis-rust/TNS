@@ -166,6 +166,7 @@ social_order
 economy_mods
 magic
 hero_birth
+favorite_books
 censorship
 source_book
 ```

@@ -30,11 +30,16 @@ var Fields = []string{
 	"economy_mods",
 	"magic",
 	"hero_birth",
+	"favorite_books",
 	"censorship",
 	"source_book",
 }
 
-// Ancketa — анкета рождения: 15 полей — слаг и четырнадцать смысловых (B-01.2).
+// optionalFields — необязательные поля анкеты: при пустом значении в JSON их нет
+// (omitempty), в world_meta пишется пустая строка.
+var optionalFields = []string{"source_book", "favorite_books"}
+
+// Ancketa — анкета рождения: 16 полей — слаг и пятнадцать смысловых (B-01.2).
 type Ancketa struct {
 	Slug        string   `json:"slug"`
 	Title       string   `json:"title"`
@@ -49,8 +54,10 @@ type Ancketa struct {
 	EconomyMods []string `json:"economy_mods"`
 	Magic       string   `json:"magic"`
 	HeroBirth   string   `json:"hero_birth"`
-	Censorship  string   `json:"censorship"`
-	SourceBook  string   `json:"source_book,omitempty"`
+	// FavoriteBooks — любимые книги героя: необязательный вход психотипа (T-19-06).
+	FavoriteBooks string `json:"favorite_books,omitempty"`
+	Censorship    string `json:"censorship"`
+	SourceBook    string `json:"source_book,omitempty"`
 }
 
 // Data — перечни анкеты из data/ancketa.json (шаг 2).
@@ -102,6 +109,9 @@ func (e *ValidationError) Error() string {
 }
 
 var slugRe = regexp.MustCompile(`^[a-z0-9-]+$`)
+
+// favoriteBooksLimit — потолок поля «любимые книги» в рунах (T-19-06, шаг 1).
+const favoriteBooksLimit = 200
 
 // Validate проверяет анкету и возвращает *ValidationError с перечнем полей и
 // причин (шаги 3–4). Валидация ничего не пишет — результат в память вызывающего.
@@ -160,6 +170,11 @@ func Validate(a *Ancketa) error {
 		if !validWorldRule(r) {
 			fields = append(fields, FieldError{Field: "world_rules", Reason: fmt.Sprintf("строка %d не в формате «название: описание»: %q", i+1, r)})
 		}
+	}
+
+	// Любимые книги необязательны: пустое поле проходит, потолок — 200 рун.
+	if n := len([]rune(strings.TrimSpace(a.FavoriteBooks))); n > favoriteBooksLimit {
+		fields = append(fields, FieldError{Field: "favorite_books", Reason: fmt.Sprintf("любимые книги должны быть до %d символов, получено %d", favoriteBooksLimit, n)})
 	}
 
 	if len(fields) > 0 {

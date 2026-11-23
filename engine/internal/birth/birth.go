@@ -87,7 +87,7 @@ const defaultEmbedURL = "http://127.0.0.1:5002"
 const defaultGazetteerPath = "seed/gazetteer.jsonl"
 
 // Birth рождает мир по анкете (B-03.1): каталог worlds/<slug>/ с оперативной
-// базой и литературной, 15 ключей анкеты и якорь сценарной рамки в world_meta.
+// базой и литературной, 16 ключей анкеты и якорь сценарной рамки в world_meta.
 // Падение любого шага удаляет частично созданный каталог; повторная попытка
 // начинается с чистого состояния.
 func Birth(a *Ancketa, cfg Config) (*Result, error) {
@@ -316,7 +316,7 @@ func createDB(path string, dirs ...string) error {
 	return nil
 }
 
-// writeWorldMeta — 15 ключей анкеты в world_meta хэндлом forge (B-03.5, карта
+// writeWorldMeta — 16 ключей анкеты в world_meta хэндлом forge (B-03.5, карта
 // писателей T-01-07). После рождения world_meta пишет только forge: запись из
 // интерфейса (писатель core) отклоняется картой писателей (D-07, B-03.8).
 func (b *builder) writeWorldMeta() error {
@@ -510,7 +510,7 @@ func checkNoProseAtBirth(worldDB string, proseCalls *int) error {
 	return nil
 }
 
-// ancketaValues — пары «ключ — JSON-значение» для 15 полей анкеты в порядке Fields.
+// ancketaValues — пары «ключ — JSON-значение» для 16 полей анкеты в порядке Fields.
 func ancketaValues(a *Ancketa) (map[string]string, error) {
 	raw, err := json.Marshal(a)
 	if err != nil {
@@ -524,9 +524,9 @@ func ancketaValues(a *Ancketa) (map[string]string, error) {
 	for _, k := range Fields {
 		v, ok := m[k]
 		if !ok {
-			// source_book необязателен и помечен omitempty: при пустом
-			// значении его нет в JSON — в world_meta пишем пустую строку.
-			if k == "source_book" {
+			// Необязательные поля помечены omitempty: при пустом значении их
+			// нет в JSON — в world_meta пишем пустую строку.
+			if contains(optionalFields, k) {
 				out[k] = ""
 				continue
 			}
