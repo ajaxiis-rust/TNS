@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
 	"tns65/internal/cast"
 	"tns65/internal/db"
@@ -20,10 +21,169 @@ import (
 // появлении лица. Имена совпадают с карточкой пачки (birth.Card), но Труппа
 // разбирает только то, что показывается игроку, без импорта пакета рождения.
 type card struct {
-	Archetype  string `json:"archetype"`
-	Voice      string `json:"voice"`
-	Appearance string `json:"appearance"`
-	Backstory  string `json:"backstory"`
+	Archetype  string   `json:"archetype"`
+	Voice      string   `json:"voice"`
+	Appearance string   `json:"appearance"`
+	Backstory  string   `json:"backstory"`
+	Idiolect   idiolect `json:"idiolect"`
+}
+
+// idiolect — идиолект лица из карточки (B-15, T-19-08): лексикон, речевые
+// привычки и табу. Поля совпадают с birth.Idiolect; табу хранятся основами.
+type idiolect struct {
+	Lexicon []string `json:"lexicon"`
+	Habits  []string `json:"habits"`
+	Taboo   []string `json:"taboo"`
+}
+
+// Метки тегов идиолекта (T-19-08, шаг 3): сцена различает словарь, привычки и
+// табу лица по префиксу тега.
+const (
+	idiolectLexiconTag = "лексикон:"
+	idiolectHabitTag   = "привычка:"
+	idiolectTabooTag   = "табу:"
+)
+
+// idiolectTags раскладывает идиолект в теги лица: словарь, привычки и табу идут
+// отдельными тегами, чтобы сцена получила речь лица целиком.
+func idiolectTags(id idiolect) []string {
+	var tags []string
+	for _, w := range id.Lexicon {
+		if w = strings.TrimSpace(w); w != "" {
+			tags = append(tags, idiolectLexiconTag+w)
+		}
+	}
+	for _, h := range id.Habits {
+		if h = strings.TrimSpace(h); h != "" {
+			tags = append(tags, idiolectHabitTag+h)
+		}
+	}
+	for _, t := range id.Taboo {
+		if t = strings.TrimSpace(t); t != "" {
+			tags = append(tags, idiolectTabooTag+t)
+		}
+	}
+	return tags
+}
+
+// tabooHit возвращает табу-основу, встреченную в реплике отдельным словом;
+// пусто — табу нет (T-19-08). Сверка по началу слова, регистр и «ё» не важны.
+func tabooHit(taboo []string, speech string) string {
+	norm := func(s string) string {
+		return strings.ToLower(strings.NewReplacer("ё", "е").Replace(strings.TrimSpace(s)))
+	}
+	words := strings.FieldsFunc(norm(speech), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	})
+	for _, t := range taboo {
+		t = norm(t)
+		if t == "" {
+			continue
+		}
+		for _, w := range words {
+			if strings.HasPrefix(w, t) {
+				return t
+			}
+		}
+	}
+	return ""
+}
+
+// tagValues — значения тегов лица с префиксом: идиолект лежит в общих тегах
+// метками «лексикон:», «привычка:», «табу:» (T-19-08).
+func tagValues(tags []string, prefix string) []string {
+	var out []string
+	for _, t := range tags {
+		if v, ok := strings.CutPrefix(t, prefix); ok {
+			if v = strings.TrimSpace(v); v != "" {
+				out = append(out, v)
+			}
+		}
+	}
+	return out
+}
+
+// idiolectPrompt — идиолект лица строкой промпта сцены (B-15, правило 4):
+// словарь, привычки и табу из тегов лица. Пусто — идиолекта нет.
+func idiolectPrompt(tags []string) string {
+	var parts []string
+	if v := tagValues(tags, idiolectLexiconTag); len(v) > 0 {
+		parts = append(parts, "лексикон — "+strings.Join(v, ", "))
+	}
+	if v := tagValues(tags, idiolectHabitTag); len(v) > 0 {
+		parts = append(parts, "привычки — "+strings.Join(v, "; "))
+	}
+	if v := tagValues(tags, idiolectTabooTag); len(v) > 0 {
+		parts = append(parts, "табу — "+strings.Join(v, "; "))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "Идиолект: " + strings.Join(parts, "; ") + "."
+}
+
+// SpeechAllowed — словарный гейт прямой речи (T-19-08, шаг 4): табу идиолекта
+// лица не попадает в его реплику. Табу читаются из тегов лица, которые Труппа
+// кладёт из карточки, поэтому гейт работает на сцене без чтения карточки.
+func SpeechAllowed(tags []string, speech string) bool {
+	return tabooHit(tagValues(tags, idiolectTabooTag), speech) == ""
+}
+
+// speechWithoutTaboo отдаёт сцену без реплик лиц с табу-основой в прямой речи
+// (T-19-08, шаг 4). Реплика сверяется с табу того лица труппы, которое названо
+// в ней самой или в соседней строке; реплика без опознанного лица не
+// отклоняется — гейт держит речь лиц карточек.
+func speechWithoutTaboo(roster Roster, scene string) string {
+	lines := strings.Split(scene, "\n")
+	kept := make([]string, 0, len(lines))
+	for i, line := range lines {
+		if !hasDirectSpeech(line) {
+			kept = append(kept, line)
+			continue
+		}
+		if npc := speechOwner(roster, lines, i); npc != nil && !SpeechAllowed(npc.Tags, line) {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
+}
+
+// speechWithoutTabooBy отдаёт текст без реплик с табу-основой названного лица
+// (T-19-08, шаг 4): сцена вести — речь одного лица, поэтому гейт идёт по его
+// тегам, а не по именам в строках.
+func speechWithoutTabooBy(tags []string, scene string) string {
+	if len(tagValues(tags, idiolectTabooTag)) == 0 {
+		return scene
+	}
+	lines := strings.Split(scene, "\n")
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if hasDirectSpeech(line) && !SpeechAllowed(tags, line) {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
+}
+
+// speechOwner — лицо труппы, которому принадлежит реплика с номером i: имя лица
+// ищется в самой реплике и в соседних строках — ремарке «— сказал Старик» или
+// строке действия перед репликой.
+func speechOwner(roster Roster, lines []string, i int) *NPC {
+	for _, j := range [...]int{i, i - 1, i + 1} {
+		if j < 0 || j >= len(lines) {
+			continue
+		}
+		lower := strings.ToLower(lines[j])
+		for k := range roster.NPCs {
+			n := &roster.NPCs[k]
+			if n.Name != "" && strings.Contains(lower, strings.ToLower(n.Name)) {
+				return n
+			}
+		}
+	}
+	return nil
 }
 
 // Реакции игрока на встречу (LT-16.2): что мир фиксирует в памяти реакций.
@@ -120,7 +280,7 @@ func (t *Troupe) LoadRoster() (Roster, error) {
 			Name:      name,
 			Role:      nonEmpty(c.Archetype, c.Voice),
 			Group:     c.Appearance,
-			Tags:      []string{c.Archetype, c.Voice, c.Appearance},
+			Tags:      append([]string{c.Archetype, c.Voice, c.Appearance}, idiolectTags(c.Idiolect)...),
 			Backstory: c.Backstory,
 		})
 	}
@@ -159,7 +319,7 @@ func (t *Troupe) Spawn(characterID int64) (NPC, error) {
 		Name:      name,
 		Role:      nonEmpty(c.Archetype, c.Voice),
 		Group:     appearance,
-		Tags:      []string{c.Archetype, c.Voice, appearance},
+		Tags:      append([]string{c.Archetype, c.Voice, appearance}, idiolectTags(c.Idiolect)...),
 		Backstory: "", // предыстории при первом появлении нет (LT-16.1).
 	}, nil
 }

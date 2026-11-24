@@ -26,10 +26,10 @@ const defaultNewsSceneMinBatch = 2
 const newsSceneLang = "ru"
 
 // newsScenePromptFmt — промпт сцены вести: действующее лицо приносит весть,
-// прямая речь с тире в начале строки.
+// прямая речь с тире в начале строки. Третий подстанов — идиолект лица (B-15).
 const newsScenePromptFmt = `Напиши короткую сцену мира (6–10 строк): действующее лицо — %s — приносит герою весть.
 Весть: %s
-Форма: проза с прямой речью, каждая реплика с тире в начале строки. Без заголовков и пояснений, только текст сцены.`
+Форма: проза с прямой речью, каждая реплика с тире в начале строки. Без заголовков и пояснений, только текст сцены.%s`
 
 // newsSceneNPCFallback — действующее лицо, если труппа не дала смертного.
 const newsSceneNPCFallback = "случайный житель мира"
@@ -75,24 +75,43 @@ func sceneNewsIndex(news []string, cfg NewsSceneConfig) int {
 	return len(news) - 1
 }
 
-// newsScenePrompt собирает промпт сцены: лицо из труппы приносит весть.
+// newsScenePrompt собирает промпт сцены: лицо из труппы приносит весть, его
+// идиолект стоит в промпте строкой (B-15, правило 4): сцена пишется от лица
+// труппы, поэтому модель видит словарь, привычки и табу.
 func newsScenePrompt(news string, roster *Roster) string {
+	actor := newsSceneActor(roster)
 	npc := newsSceneNPC(roster)
 	if npc == "" {
 		npc = newsSceneNPCFallback
 	}
-	return fmt.Sprintf(newsScenePromptFmt, npc, news)
+	var idiolect string
+	if actor != nil {
+		if line := idiolectPrompt(actor.Tags); line != "" {
+			idiolect = "\n" + line + " Речь лица держи в этом идиолекте."
+		}
+	}
+	return fmt.Sprintf(newsScenePromptFmt, npc, news, idiolect)
+}
+
+// newsSceneActor возвращает действующее лицо сцены вести — первого смертного
+// труппы; nil — лица нет.
+func newsSceneActor(r *Roster) *NPC {
+	if r == nil {
+		return nil
+	}
+	for i := range r.NPCs {
+		npc := &r.NPCs[i]
+		if npc.ID == heroCharacterID || npc.Deity || npc.Name == "" {
+			continue
+		}
+		return npc
+	}
+	return nil
 }
 
 // newsSceneNPC возвращает имя первого смертного труппы — действующего лица сцены.
 func newsSceneNPC(r *Roster) string {
-	if r == nil {
-		return ""
-	}
-	for _, npc := range r.NPCs {
-		if npc.ID == heroCharacterID || npc.Deity || npc.Name == "" {
-			continue
-		}
+	if npc := newsSceneActor(r); npc != nil {
 		return npc.Name
 	}
 	return ""

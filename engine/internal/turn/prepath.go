@@ -716,7 +716,7 @@ func promptTemplate(sel Preselect) string {
 	return bankPreset
 }
 
-const weaverPreset = "[NPCname] смотрит, как ты входишь в [PLACE]. [NPCroleDeity] молчит."
+const weaverPreset = "[NPCname] смотрит, как ты входишь в [PLACE]. [NPCroleDeity] молчит.\n[NPCidiolect]"
 const bankPreset = "Ты у [PLACE]. Всё идёт своим чередом."
 
 // collectLemmas собирает леммы сегментов резки в плоский список.

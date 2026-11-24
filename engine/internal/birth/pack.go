@@ -9,8 +9,17 @@ import (
 	"math/rand"
 )
 
-//go:embed data/estates.json data/voices.json data/appearances.json
+//go:embed data/estates.json data/voices.json data/appearances.json data/idiolects.json
 var packFS embed.FS
+
+// Idiolect — идиолект NPC (B-15, T-19-08): лексикон 30–50 лемм, 2–3 речевые
+// привычки и 1–2 табу. Табу — основы слов: гейт прямой речи сверяет начало
+// слова, поэтому «смерт» закрывает и «смерть», и «смертный».
+type Idiolect struct {
+	Lexicon []string `json:"lexicon"`
+	Habits  []string `json:"habits"`
+	Taboo   []string `json:"taboo"`
+}
 
 // Estate — сословие пачки с весовыми признаками по строю (B-05.1). Число
 // карточек от строя не меняется: веса — атрибуты сословия, а не квота.
@@ -21,16 +30,19 @@ type Estate struct {
 
 // Card — карточка персонажа пачки (B-05.3). Тайны нет: поля для тайны в
 // структуре не существует (B-05.4); предыстория может отсутствовать (omitempty).
-// Слои данных NPC (B-07) пишутся при создании карточки (T-02-06).
+// Слои данных NPC (B-07) пишутся при создании карточки (T-02-06). Идиолект
+// выдаётся по голосу карточки (B-15, T-19-08); nil — идиолекта нет (карточки
+// из книги, старые записи).
 type Card struct {
-	Psychotype string  `json:"psychotype"`
-	Estate     string  `json:"estate"`
-	Archetype  string  `json:"archetype"`
-	Voice      string  `json:"voice"`
-	Appearance string  `json:"appearance"`
-	Weight     float64 `json:"weight"`
-	Backstory  string  `json:"backstory,omitempty"`
-	Layers     Layers  `json:"layers"`
+	Psychotype string    `json:"psychotype"`
+	Estate     string    `json:"estate"`
+	Archetype  string    `json:"archetype"`
+	Voice      string    `json:"voice"`
+	Appearance string    `json:"appearance"`
+	Weight     float64   `json:"weight"`
+	Backstory  string    `json:"backstory,omitempty"`
+	Layers     Layers    `json:"layers"`
+	Idiolect   *Idiolect `json:"idiolect,omitempty"`
 }
 
 // LoadEstates возвращает шесть сословий из data/estates.json в порядке файла.
@@ -57,6 +69,22 @@ func LoadVoices() ([]string, error) {
 		return nil, err
 	}
 	return voices, nil
+}
+
+// LoadIdiolects возвращает таблицу идиолектов пачки: голос карточки → идиолект
+// (B-15). Голос без записи идиолекта не получает.
+func LoadIdiolects() (map[string]Idiolect, error) {
+	b, err := packFS.ReadFile("data/idiolects.json")
+	if err != nil {
+		return nil, err
+	}
+	var data struct {
+		Voices map[string]Idiolect `json:"voices"`
+	}
+	if err := json.Unmarshal(b, &data); err != nil {
+		return nil, err
+	}
+	return data.Voices, nil
 }
 
 // LoadAppearances возвращает кодовую таблицу внешностей из data/appearances.json.
@@ -109,19 +137,35 @@ func Pack(a *Ancketa) ([]Card, error) {
 		return nil, errors.New("birth: список архетипов пуст")
 	}
 
+	idios, err := LoadIdiolects()
+	if err != nil {
+		return nil, err
+	}
+
 	rng := rand.New(rand.NewSource(seedFromSlug(a.Slug)))
 	codes := AllCodes()
 	cards := make([]Card, 0, len(codes)*len(estates))
 	for _, code := range codes {
 		for _, e := range estates {
+			// Порядок бросков прежний: архетип, голос, внешность — от него
+			// зависит детерминированная пачка мира (B-05.3).
+			arch := archs[rng.Intn(len(archs))]
+			voice := voices[rng.Intn(len(voices))]
+			appearance := appearances[rng.Intn(len(appearances))]
+			// Идиолект — данные пака по голосу карточки (B-15, T-19-08).
+			var idio *Idiolect
+			if id, ok := idios[voice]; ok {
+				idio = &id
+			}
 			cards = append(cards, Card{
 				Psychotype: code.String(),
 				Estate:     e.Estate,
-				Archetype:  archs[rng.Intn(len(archs))],
-				Voice:      voices[rng.Intn(len(voices))],
-				Appearance: appearances[rng.Intn(len(appearances))],
+				Archetype:  arch,
+				Voice:      voice,
+				Appearance: appearance,
 				Weight:     estateWeight(e, a.SocialOrder),
 				Layers:     NewLayers(a.Slug, code.String(), DefaultMemoryParams()),
+				Idiolect:   idio,
 			})
 		}
 	}

@@ -2,6 +2,7 @@ package turn
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"tns65/internal/bank"
@@ -638,7 +639,17 @@ func (s *executeStage) weaverReply(ctx context.Context, st *TurnState) (string, 
 	if degraded {
 		return reply, true
 	}
-	return underlay + reply, false
+	reply = underlay + reply
+	// Словарный гейт прямой речи (T-19-08, шаг 4): реплика лица с табу-основой
+	// не доставляется игроку; если сцена состояла только из такой реплики —
+	// ход идёт запаской.
+	if st.Roster != nil {
+		reply = speechWithoutTaboo(*st.Roster, reply)
+		if strings.TrimSpace(reply) == "" {
+			return fallbackReply, true
+		}
+	}
+	return reply, false
 }
 
 // sceneTags — теги сцены для выбора записи банка (T-03-07, шаг 1): намерение и

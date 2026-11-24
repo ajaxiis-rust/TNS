@@ -159,6 +159,12 @@ func (s *digestStage) makeNewsScene(ctx context.Context, st *TurnState, news str
 		return NewsScene{}, false
 	}
 	prose := strings.TrimSpace(out)
+	// Сцена вести — прямая речь названного лица: табу его идиолекта в прозу
+	// хода не идёт (B-15, правило 5). Реплика убрана — сцена остаётся без неё;
+	// опустевшая сцена — брак, весть подаётся текстом.
+	if actor := newsSceneActor(st.Roster); actor != nil {
+		prose = strings.TrimSpace(speechWithoutTabooBy(actor.Tags, prose))
+	}
 	if !sceneProseUsable(prose) {
 		return NewsScene{}, false
 	}

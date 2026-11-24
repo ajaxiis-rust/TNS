@@ -18,6 +18,7 @@ const (
 	TokenNPCRole        = "[NPCrole]"
 	TokenNPCRoleDeity   = "[NPCroleDeity]"
 	TokenNPCGroup       = "[NPCgroup]"
+	TokenNPCIdiolect    = "[NPCidiolect]"
 	TokenPlace          = "[PLACE]"
 )
 
@@ -131,6 +132,11 @@ func (b *SlotBinder) Bind(template string, mentions []Mention, sceneID, chapterI
 		add(TokenNPCNamePassive, nonEmpty(npc.NamePassive, npc.Name), npc.ID, 0)
 		add(TokenNPCRole, nonEmpty(npc.Role, npc.Name), npc.ID, 0)
 		add(TokenNPCGroup, nonEmpty(npc.Group, npc.Name), npc.ID, 0)
+		// Идиолект лица (B-15, T-19-08): модель видит словарь, привычки и табу
+		// того, кто назван в реплике. Токен без идиолекта гасится как незакрытый.
+		if line := idiolectPrompt(npc.Tags); line != "" {
+			add(TokenNPCIdiolect, line, npc.ID, 0)
+		}
 	}
 	// Роль исхода силы привязывается только к влиятельной сущности — не к смертному.
 	if deity != nil {
