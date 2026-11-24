@@ -81,6 +81,27 @@ func TestWeaverPath(t *testing.T) {
 	}
 }
 
+// TestWeaverInstructionNoInternalRoles — промпт слота не называет внутренние
+// роли движка: модель принимала «Ты — Ткач мира» за образ рассказчика и
+// начинала прозу словами «Я — Ткач мира».
+func TestWeaverInstructionNoInternalRoles(t *testing.T) {
+	prompt := BuildPrompt("Иван смотрит, как ты входишь в город.", WeaverInstruction)
+	lower := strings.ToLower(prompt)
+	for _, role := range []string{"ткач", "челнок", "пила", "гефест", "паганель"} {
+		if strings.Contains(lower, role) {
+			t.Fatalf("промпт содержит внутреннюю роль %q: %q", role, prompt)
+		}
+	}
+	for _, marker := range []string{"я — ткач", "я - ткач", "ткач мира"} {
+		if strings.Contains(lower, marker) {
+			t.Fatalf("промпт содержит маркер роли %q: %q", marker, prompt)
+		}
+	}
+	if !strings.Contains(prompt, "от второго лица") {
+		t.Fatalf("промпт не задаёт лицо повествования: %q", prompt)
+	}
+}
+
 func TestWeaverRejectsTokens(t *testing.T) {
 	// Факты с незакрытым токеном биндера должны обнаруживаться стражем.
 	if !HasReplacementTokens("[NPCname] смотрит на [PLACE].") {
