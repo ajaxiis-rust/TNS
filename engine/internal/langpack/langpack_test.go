@@ -2,6 +2,7 @@ package langpack
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -233,6 +234,106 @@ func TestBuildHasTranslate(t *testing.T) {
 	if !buildHasCall {
 		t.Fatal("в internal/langpack/build.go нет вызова translateSeed")
 	}
+}
+
+// TestBuildTranslateSlot — сборка переводит исходные тексты пака слотом,
+// строки на языке пакета слоту не отдаются.
+func TestBuildTranslateSlot(t *testing.T) {
+	dir := t.TempDir()
+	writeBaseManifest(t, dir, "ru")
+
+	var calls []string
+	var log bytes.Buffer
+	opts := BuildOptions{
+		Log: &log,
+		Translate: func(_ context.Context, text string) (string, error) {
+			calls = append(calls, text)
+			return map[string]string{"hello": "привет", "world": "мир"}[text], nil
+		},
+	}
+	pools := []Pool{{Name: "stoplist.txt", Text: []string{"hello", "и", "world"}}}
+	if err := Build(context.Background(), dir, "1.1.0", pools, opts); err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+
+	got := string(mustRead(t, filepath.Join(dir, "versions", "1.1.0", "stoplist.txt")))
+	if want := "привет\nи\nмир\n"; got != want {
+		t.Fatalf("содержимое версии: %q, want %q", got, want)
+	}
+	if len(calls) != 2 || calls[0] != "hello" || calls[1] != "world" {
+		t.Fatalf("слот получил строки: %v, want [hello world]", calls)
+	}
+	if log.Len() != 0 {
+		t.Fatalf("успешный перевод не пишет в журнал сборки: %q", log.String())
+	}
+	cur, err := currentVersion(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cur != "1.1.0" {
+		t.Fatalf("current = %q, want 1.1.0", cur)
+	}
+}
+
+// TestBuildTranslateDegrade — недоступный или отказавший слот не роняет сборку:
+// строка идёт как есть, в журнал сборки попадает пометка.
+func TestBuildTranslateDegrade(t *testing.T) {
+	cases := []struct {
+		name string
+		slot TranslateFunc
+	}{
+		{"слот не задан", nil},
+		{"слот отказал", func(context.Context, string) (string, error) {
+			return "", errors.New("модель недоступна")
+		}},
+		{"слот вернул пусто", func(context.Context, string) (string, error) {
+			return "  ", nil
+		}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeBaseManifest(t, dir, "ru")
+
+			var log bytes.Buffer
+			pools := []Pool{{Name: "stoplist.txt", Text: []string{"hello"}}}
+			opts := BuildOptions{Translate: c.slot, Log: &log}
+			if err := Build(context.Background(), dir, "1.1.0", pools, opts); err != nil {
+				t.Fatalf("Build: %v", err)
+			}
+
+			got := string(mustRead(t, filepath.Join(dir, "versions", "1.1.0", "stoplist.txt")))
+			if want := "hello\n"; got != want {
+				t.Fatalf("passthrough нарушен: %q, want %q", got, want)
+			}
+			if !strings.Contains(log.String(), "строка оставлена как есть") {
+				t.Fatalf("в журнале сборки нет пометки о деградации: %q", log.String())
+			}
+		})
+	}
+}
+
+// writeBaseManifest создаёт минимальный пакет: манифест в корне каталога.
+func writeBaseManifest(t *testing.T, dir, lang string) {
+	t.Helper()
+	m := Manifest{ID: lang, Name: "Язык", Lang: lang, Version: "1.0.0", Files: map[string]string{}}
+	b, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), b, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// mustRead читает файл результата сборки.
+func mustRead(t *testing.T, path string) []byte {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
 }
 
 // writeVersion создаёт каталог versions/<version> с манифестом и одним файлом.
