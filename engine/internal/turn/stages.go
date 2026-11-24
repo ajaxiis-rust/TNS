@@ -2,10 +2,14 @@ package turn
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
 	"tns65/internal/bank"
+	"tns65/internal/book"
 	"tns65/internal/db"
 	"tns65/internal/journal"
 	"tns65/internal/models"
@@ -99,6 +103,10 @@ type TurnState struct {
 	// Farewell — сцена прощания выдана: здоровье героя упало до порога смерти
 	// (T-03-19, LT-16.7). До порога — false, смерть не навязывается.
 	Farewell bool
+	// Finale — открытый финал (T-19-10): после сцены прощания мир однажды
+	// предлагает меню «принять финал / переиграть / новый мир»; Open — меню
+	// предложено в этом ходе.
+	Finale FinaleMenu
 	// WillHook — завещание героя в мире есть (T-19-03): стадия выбора пути читает
 	// его как крючок следующей сцены; мир сам решает, как его использовать.
 	WillHook bool
@@ -147,6 +155,7 @@ func (p *Pipeline) stages() []Stage {
 		&digestStage{db: p.DB, scene: workshop.GenerationSlot(), sceneCfg: DefaultNewsSceneConfig()},
 		&positionStage{db: p.DB},
 		&deathStage{db: p.DB},
+		&finaleStage{db: p.DB},
 		&commitStage{db: p.DB},
 		&auditStage{logger: p.Logger},
 	}
@@ -678,7 +687,8 @@ func sceneTags(st *TurnState) []string {
 
 // deathStage — порог смерти (T-03-19, LT-16.7): при здоровье героя ≤ 2% сцена
 // прощания гарантирована — ответ хода заменяется заготовкой прощания; до порога
-// смерть не навязывается.
+// смерть не навязывается. Сцена прощания выдаётся один раз (T-19-10): дальше
+// мир спрашивает выбор открытого финала.
 type deathStage struct {
 	db *db.Handle
 }
@@ -694,15 +704,207 @@ func (s *deathStage) Run(_ context.Context, st *TurnState) error {
 		return nil
 	}
 	if deathThresholdHit(health) {
-		st.Farewell = true
-		st.Reply = farewellReply
 		// Слова героя на сцене прощания сохраняются завещанием (T-19-03): мир
 		// держит их крючком следующей сцены.
 		if err := saveWill(s.db, st.Input.PlayerText); err != nil {
 			return err
 		}
+		// Сцена прощания выдаётся один раз (T-19-10): после неё мир спрашивает
+		// выбор открытого финала, а не повторяет прощание.
+		menu, err := readFinale(s.db)
+		if err != nil {
+			return err
+		}
+		if menu.Farewell {
+			return nil
+		}
+		st.Farewell = true
+		st.Reply = farewellReply
+		if err := saveFinale(s.db, FinaleMenu{Farewell: true}); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// finaleLayer — имя слоя открытого финала в character_layers (писатель core):
+// сцена прощания выдана и какой путь игрок выбрал.
+const finaleLayer = "finale"
+
+// finaleMenuReply — заготовка меню открытого финала (T-19-10, п.13): мир
+// спрашивает однажды и ждёт.
+const finaleMenuReply = "Герой завершил путь. Мир спрашивает однажды: принять финал — эпилог твоей книги; переиграть — мир, который помнит прошлого героя; новый мир — новая анкета."
+
+// Константы следа переигровки (T-19-10, шаг 1; вид события T-02-12).
+const (
+	finalePastHeroKind   = "past_hero"
+	finalePastHeroReason = "death"
+	finaleSource         = "finale"
+	finaleEpilogueTitle  = "Эпилог"
+)
+
+// FinalePath — выбор игрока в меню открытого финала (T-19-10, шаг 1).
+type FinalePath string
+
+const (
+	// FinaleAccept — принять финал: эпилог книги по CB-13.
+	FinaleAccept FinalePath = "accept"
+	// FinaleReplay — переиграть: isekai-мир-который-помнит — прошлый герой
+	// остаётся в истории мира.
+	FinaleReplay FinalePath = "replay"
+	// FinaleNewWorld — новый мир: новая анкета, путь этого героя закрыт.
+	FinaleNewWorld FinalePath = "new_world"
+)
+
+// FinaleMenu — состояние открытого финала героя (T-19-10). Farewell пишет стадия
+// смерти при выдаче сцены прощания; Open — мир спрашивает; Choice — путь выбран,
+// больше не спрашивает; ChapterID — глава эпилога принятого финала.
+type FinaleMenu struct {
+	Farewell  bool       `json:"farewell"`
+	Open      bool       `json:"open"`
+	Choice    FinalePath `json:"choice,omitempty"`
+	ChapterID int64      `json:"chapter_id,omitempty"`
+}
+
+// finaleStage — открытый финал (T-19-10, п.13, §45): после завершённой сцены
+// прощания (смерть по порогу 2%) мир однажды предлагает меню: принять финал
+// (эпилог по CB-13) / переиграть (isekai-мир-который-помнит) / новый мир (новая
+// анкета). Равновесие сил — принцип Директора, не сценарный финал: в код не
+// входит, мир не программирует катастрофу и не гарантирует победу.
+type finaleStage struct {
+	db *db.Handle
+}
+
+func (*finaleStage) Name() string { return "finale" }
+
+func (s *finaleStage) Run(_ context.Context, st *TurnState) error {
+	menu, err := readFinale(s.db)
+	if err != nil {
+		return err
+	}
+	if !menu.Farewell || menu.Choice != "" {
+		return nil
+	}
+	// В этом ходе выдана сцена прощания — финал ждёт следующего хода.
+	if st.Farewell {
+		return nil
+	}
+	menu.Open = true
+	st.Finale = menu
+	st.Reply = finaleMenuReply
+	return nil
+}
+
+// ChooseFinale инициирует выбранный в меню путь открытого финала (T-19-10,
+// шаг 1) и закрывает меню. Принять финал — эпилог книги по CB-13 вместе с
+// авторской разметкой пика (CB-13.2); переиграть — событие past_hero в истории
+// мира (мир-который-помнит); новый мир — только выбор, анкету собирает рождение
+// мира. now — время метки пика (RFC3339), пусто — время метки берётся текущее;
+// peak пусто — пик не метится.
+func ChooseFinale(h *db.Handle, path FinalePath, epilogue, peak, now string) (FinaleMenu, error) {
+	if h == nil {
+		return FinaleMenu{}, errors.New("turn: нет хэндла мира")
+	}
+	menu, err := readFinale(h)
+	if err != nil {
+		return FinaleMenu{}, err
+	}
+	if !menu.Farewell || menu.Choice != "" {
+		return menu, errors.New("turn: открытый финал не ждёт выбора")
+	}
+	switch path {
+	case FinaleAccept:
+		ch, err := book.SaveEpilogue(h, finaleEpilogueTitle, strings.TrimSpace(epilogue))
+		if err != nil {
+			return menu, err
+		}
+		if peak != "" {
+			if now == "" {
+				now = time.Now().UTC().Format(time.RFC3339)
+			}
+			if _, err := book.MarkPeak(h, ch.ID, 0, book.PeakChapter, peak, now); err != nil {
+				return menu, err
+			}
+		}
+		menu.ChapterID = ch.ID
+	case FinaleReplay:
+		if err := recordPastHeroDeath(h); err != nil {
+			return menu, err
+		}
+	case FinaleNewWorld:
+		// Новая анкета — следующий шаг рождения мира: финал лишь закрывается.
+	default:
+		return menu, errors.New("turn: неизвестный путь открытого финала")
+	}
+	menu.Open = false
+	menu.Choice = path
+	if err := saveFinale(h, menu); err != nil {
+		return menu, err
+	}
+	return menu, nil
+}
+
+// recordPastHeroDeath пишет событие past_hero причиной смерти героя: при
+// переигровке мир помнит прошлого героя (T-19-10, шаг 1; T-02-12).
+func recordPastHeroDeath(h *db.Handle) error {
+	prevHero, err := readHeroBirth(h)
+	if err != nil {
+		return err
+	}
+	payload, err := json.Marshal(struct {
+		Reason       string `json:"reason"`
+		PreviousHero string `json:"previous_hero"`
+	}{Reason: finalePastHeroReason, PreviousHero: prevHero})
+	if err != nil {
+		return err
+	}
+	_, err = h.Exec("events",
+		`INSERT INTO events (day, kind, payload_json, source) VALUES (?, ?, ?, ?)`,
+		0, finalePastHeroKind, string(payload), finaleSource)
+	return err
+}
+
+// readFinale читает состояние открытого финала; нулевое значение — сцена
+// прощания ещё не выдана.
+func readFinale(h *db.Handle) (FinaleMenu, error) {
+	if h == nil {
+		return FinaleMenu{}, nil
+	}
+	var raw string
+	err := h.QueryRow(
+		`SELECT payload_json FROM character_layers WHERE character_id = ? AND layer = ?`,
+		heroCharacterID, finaleLayer).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return FinaleMenu{}, nil
+	}
+	if err != nil {
+		return FinaleMenu{}, err
+	}
+	var menu FinaleMenu
+	if err := json.Unmarshal([]byte(raw), &menu); err != nil {
+		return FinaleMenu{}, err
+	}
+	return menu, nil
+}
+
+// saveFinale пишет состояние открытого финала слоем героя.
+func saveFinale(h *db.Handle, menu FinaleMenu) error {
+	if h == nil {
+		return nil
+	}
+	raw, err := json.Marshal(menu)
+	if err != nil {
+		return err
+	}
+	if _, err := h.Exec("character_layers",
+		`DELETE FROM character_layers WHERE character_id = ? AND layer = ?`,
+		heroCharacterID, finaleLayer); err != nil {
+		return err
+	}
+	_, err = h.Exec("character_layers",
+		`INSERT INTO character_layers (character_id, layer, payload_json) VALUES (?, ?, ?)`,
+		heroCharacterID, finaleLayer, string(raw))
+	return err
 }
 
 // commitStage — коммит хода (T-03-05): после полной подтверждённой реплики пишет
