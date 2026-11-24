@@ -136,7 +136,7 @@ func TestForgePipeline(t *testing.T) {
 
 	// Переплавка осевшей записи (шаг 4): trust_level=1 → bank_pool trust_level=2.
 	sceneID := seedSedimentScene(t, litPath, 100, "{NAME} вошёл в {PLACE}.", sediment.TrustLevelUnchecked)
-	remeltID, err := workshop.RemeltScene(lit, sceneID)
+	remeltID, err := workshop.RemeltScene(lit, sceneID, "перемещение", "тревога")
 	if err != nil {
 		t.Fatalf("RemeltScene: %v", err)
 	}
@@ -145,6 +145,9 @@ func TestForgePipeline(t *testing.T) {
 	}
 	if got := bankText(t, lit, remeltID); got != "{NAME} вошёл в {PLACE}." {
 		t.Fatalf("текст переплавки = %q, want слотную заготовку", got)
+	}
+	if got := bankTags(t, lit, remeltID); got != "перемещение,тревога" {
+		t.Fatalf("теги переплавки = %q, want перемещение,тревога", got)
 	}
 
 	// Переплавка записи не с trust_level=1 отклоняется: путь наверх один.
@@ -221,6 +224,15 @@ func bankTrust(t *testing.T, lit *db.Handle, id int64) int {
 		t.Fatalf("SELECT bank_pool trust_level: %v", err)
 	}
 	return n
+}
+
+func bankTags(t *testing.T, lit *db.Handle, id int64) string {
+	t.Helper()
+	var s string
+	if err := lit.QueryRow(`SELECT tags FROM bank_pool WHERE id = ?`, id).Scan(&s); err != nil {
+		t.Fatalf("SELECT bank_pool tags: %v", err)
+	}
+	return s
 }
 
 func countFactMismatch(t *testing.T, lit *db.Handle) int {

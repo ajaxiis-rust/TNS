@@ -46,9 +46,9 @@ func TestLiteraryDeepreadSchema(t *testing.T) {
 		}
 	}
 
-	// 2. Учёт миграции: версия 7 и строка schema_migrations.
-	if uv := userVersionOf(t, w); uv != 7 {
-		t.Errorf("user_version = %d, want 7", uv)
+	// 2. Учёт миграции: версия 8 (с 0008_bank_tags) и строка schema_migrations.
+	if uv := userVersionOf(t, w); uv != 8 {
+		t.Errorf("user_version = %d, want 8", uv)
 	}
 	var accounted int
 	if err := w.QueryRow(`SELECT COUNT(*) FROM schema_migrations WHERE version = 6 AND name = '0006_book_deepread'`).Scan(&accounted); err != nil {
@@ -241,8 +241,8 @@ func TestLiteraryDeepreadSchema(t *testing.T) {
 				t.Errorf("строк учёта %s = %d, want 1", name, rows)
 			}
 		}
-		if uv := userVersionOf(t, lw); uv != 7 {
-			t.Errorf("user_version после 0006 на мире P11 = %d, want 7", uv)
+		if uv := userVersionOf(t, lw); uv != 8 {
+			t.Errorf("user_version после 0006 на мире P11 = %d, want 8", uv)
 		}
 	})
 }

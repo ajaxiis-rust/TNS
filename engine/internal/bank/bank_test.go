@@ -81,6 +81,26 @@ func newTestBank(t *testing.T) (*bank.Bank, *testkit.Clock, *testkit.FakeSlot, s
 	return b, clk, slot, litPath, logger
 }
 
+// TestBankSelectsByTags — выбор идёт по пересечению тегов: запись без тегов не
+// выбирается даже при пустых тегах сцены, а совпавшая запись находится.
+func TestBankSelectsByTags(t *testing.T) {
+	b, _, _, _, _ := newTestBank(t)
+
+	// Тег «приветствие» есть только у одной записи — выбирается она.
+	rec, err := b.Pick([]string{"приветствие"})
+	if err != nil {
+		t.Fatalf("Pick(приветствие): %v", err)
+	}
+	if rec.Tags != "приветствие,торг" {
+		t.Fatalf("выбрана запись с тегами %q, want приветствие,торг", rec.Tags)
+	}
+
+	// Пересечения нет — ErrNoRecord (пустые теги записи не совпадают ни с чем).
+	if _, err := b.Pick([]string{"неизвестный-тег"}); !errors.Is(err, bank.ErrNoRecord) {
+		t.Fatalf("Pick(неизвестный-тег) = %v, want ErrNoRecord", err)
+	}
+}
+
 func TestBank(t *testing.T) {
 	b, clk, slot, litPath, logger := newTestBank(t)
 

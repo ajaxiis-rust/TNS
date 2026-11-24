@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"tns65/internal/db"
 	"tns65/internal/sediment"
@@ -124,8 +125,10 @@ func FactCheck(world *db.Handle, lit *db.Handle, facts []sediment.Fact) ([]strin
 // RemeltScene переплавляет осевшую запись sediment_scene с trust_level=1 в
 // слотную заготовку bank_pool (шаг 4). Гефест поднимает trust_level до 2
 // (проверенного) — единственный путь наверх шкалы. Повторная переплавка той же
-// сцены не создаёт дубль.
-func RemeltScene(lit *db.Handle, sceneID int64) (int64, error) {
+// сцены не создаёт дубль. Теги сцены — данные оседания (намерение, настроение,
+// семья); sediment_scene их не хранит, поэтому их передаёт вызывающий, иначе
+// запись останется без тегов и банк её не выберет.
+func RemeltScene(lit *db.Handle, sceneID int64, tags ...string) (int64, error) {
 	var cleaned string
 	var trust int
 	var sourceSceneID int64
@@ -158,7 +161,7 @@ func RemeltScene(lit *db.Handle, sceneID int64) (int64, error) {
 		}
 		res, err := tx.Exec("bank_pool",
 			`INSERT INTO bank_pool (kind, text, lang, tags, trust_level, origin, source_scene_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-			remeltKind, cleaned, remeltLang, "", sediment.TrustLevelVerified, origin, source, nowUTC())
+			remeltKind, cleaned, remeltLang, strings.Join(tags, ","), sediment.TrustLevelVerified, origin, source, nowUTC())
 		if err != nil {
 			return err
 		}

@@ -170,9 +170,10 @@ func TestLiteraryVectors(t *testing.T) {
 		if vectorsRows != 1 {
 			t.Errorf("строк учёта 0002_vectors после легаси-миграции = %d, want 1", vectorsRows)
 		}
-		// Поверх легаси-мира встаёт и 0006_book_deepread (T-14-03), и 0007_gefest_rename.
-		if uv := userVersionOf(t, lw); uv != 7 {
-			t.Errorf("user_version = %d, want 7", uv)
+		// Поверх легаси-мира встают 0006_book_deepread (T-14-03), 0007_gefest_rename
+		// и 0008_bank_tags.
+		if uv := userVersionOf(t, lw); uv != 8 {
+			t.Errorf("user_version = %d, want 8", uv)
 		}
 	})
 }

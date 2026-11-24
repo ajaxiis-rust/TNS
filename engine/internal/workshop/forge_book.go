@@ -91,10 +91,17 @@ func RunForgeBook(ctx context.Context, world, lit *db.Handle, inputPath string, 
 	}
 
 	for i, chunk := range parsed.Chunks {
+		// Теги разбора уже есть при повторной ковке знакомой книги; на первой
+		// ковке их заполнит SyncBankTags после разбора.
+		tags, err := bankTagsForChunk(lit, bookID, i)
+		if err != nil {
+			return res, fmt.Errorf("workshop: теги чанка %d: %w", i, err)
+		}
 		bankID, err := ForgeComposition(ctx, world, lit, ForgeMaterial{
 			Origin: forgeBookOrigin(bookID, i),
 			Kind:   "routine",
 			Lang:   forgeBookLang,
+			Tags:   tags,
 			Text:   chunk.Text,
 		}, opts.Families)
 		if err != nil {
@@ -124,6 +131,12 @@ func RunForgeBook(ctx context.Context, world, lit *db.Handle, inputPath string, 
 		if opts.Progress != nil {
 			opts.Progress(len(parsed.Chunks)+1, len(parsed.Chunks)+1)
 		}
+	}
+	// Записи банка выкованы до разбора: настоящие теги чанков появились позже,
+	// поэтому пустые теги заполняются здесь. Повтор книги без разбора тоже
+	// подхватывает теги, оставшиеся от прошлого разбора.
+	if _, err := SyncBankTags(lit, bookID); err != nil {
+		return res, fmt.Errorf("workshop: теги банка книги %d: %w", bookID, err)
 	}
 	return res, nil
 }
