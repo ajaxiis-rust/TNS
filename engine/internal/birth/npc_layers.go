@@ -34,13 +34,21 @@ type Humours struct {
 	Phlegmatic  float64 `json:"phlegmatic"`
 }
 
-// StateLayer — слой состояния NPC (B-07.1): здоровье 0–100, настроение, девять
-// навыков и память.
+// StateLayer — слой состояния NPC (B-07.1): восемь телесных статов 0–100
+// (T-19-14), настроение, девять навыков и память. Телесные статы — динамическое
+// состояние: из психотипа не выводятся.
 type StateLayer struct {
-	Health int            `json:"health"`
-	Mood   string         `json:"mood"`
-	Skills map[string]int `json:"skills"`
-	Memory MemoryParams   `json:"memory"`
+	Health  int            `json:"health"`
+	Hunger  int            `json:"hunger"`
+	Thirst  int            `json:"thirst"`
+	Fatigue int            `json:"fatigue"`
+	Comfort int            `json:"comfort"`
+	Spirit  int            `json:"spirit"`
+	Bladder int            `json:"bladder"`
+	Bowel   int            `json:"bowel"`
+	Mood    string         `json:"mood"`
+	Skills  map[string]int `json:"skills"`
+	Memory  MemoryParams   `json:"memory"`
 }
 
 // EconomyLayer — слой экономики NPC (B-07.2): шесть статов, восемь пороков,
@@ -119,7 +127,8 @@ func layerSeed(worldSlug, psychotype string) int64 {
 // одинаковые слои. Смена семени касается только новых миров — слои рождённых
 // карточек не пересчитываются. Навыки, статы, пороки и гумора
 // детерминированно выводятся из психотипа (без LLM); скрытый слой несёт
-// психотип Юнга и пустые мотивы (B-07.3).
+// психотип Юнга и пустые мотивы (B-07.3). Телесные статы стартуют состоянием
+// покоя (T-19-14): здоровье, комфорт и дух — 100, остальные — 0.
 func NewLayers(worldSlug, psychotype string, mem MemoryParams) Layers {
 	rng := rand.New(rand.NewSource(layerSeed(worldSlug, psychotype)))
 
@@ -151,10 +160,17 @@ func NewLayers(worldSlug, psychotype string, mem MemoryParams) Layers {
 
 	return Layers{
 		State: StateLayer{
-			Health: 100,
-			Mood:   "спокойное",
-			Skills: skills,
-			Memory: mem,
+			Health:  100,
+			Hunger:  0,
+			Thirst:  0,
+			Fatigue: 0,
+			Comfort: 100,
+			Spirit:  100,
+			Bladder: 0,
+			Bowel:   0,
+			Mood:    "спокойное",
+			Skills:  skills,
+			Memory:  mem,
 		},
 		Economy: EconomyLayer{
 			Stats:       stats,

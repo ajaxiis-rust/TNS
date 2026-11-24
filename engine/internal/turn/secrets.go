@@ -113,34 +113,73 @@ func deathThresholdHit(health int) bool {
 	return health <= deathHealthThreshold
 }
 
-// heroStateLayer — минимальный слой состояния героя для чтения здоровья; полный
-// слой состояния рождается в birth, здесь читается только health (без импорта
-// пакета рождения).
+// heroStateLayer — слой состояния героя для чтения телесных статов (T-19-14);
+// полный слой состояния рождается в birth, здесь читаются только восемь статов
+// тела (без импорта пакета рождения).
 type heroStateLayer struct {
-	Health int `json:"health"`
+	Health  int `json:"health"`
+	Hunger  int `json:"hunger"`
+	Thirst  int `json:"thirst"`
+	Fatigue int `json:"fatigue"`
+	Comfort int `json:"comfort"`
+	Spirit  int `json:"spirit"`
+	Bladder int `json:"bladder"`
+	Bowel   int `json:"bowel"`
+}
+
+// HeroBodyStats — восемь телесных статов героя 0–100 (T-19-14, B-07.1);
+// здоровье входит в набор.
+type HeroBodyStats struct {
+	Health  int
+	Hunger  int
+	Thirst  int
+	Fatigue int
+	Comfort int
+	Spirit  int
+	Bladder int
+	Bowel   int
 }
 
 // stateLayer — имя слоя состояния в character_layers.
 const stateLayer = "state"
 
-// readHeroHealth читает здоровье героя из слоя состояния character_layers.
-// false — здоровье неизвестно (слоя нет): смерть не навязывается.
-func readHeroHealth(h *db.Handle) (int, bool, error) {
+// readHeroBodyStats читает восемь телесных статов героя из слоя состояния
+// character_layers. false — статы неизвестны (слоя нет).
+func readHeroBodyStats(h *db.Handle) (HeroBodyStats, bool, error) {
 	if h == nil {
-		return 0, false, nil
+		return HeroBodyStats{}, false, nil
 	}
 	var raw string
 	err := h.QueryRow(
 		`SELECT payload_json FROM character_layers WHERE character_id = ? AND layer = ?`,
 		heroCharacterID, stateLayer).Scan(&raw)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, false, nil
+		return HeroBodyStats{}, false, nil
 	}
 	if err != nil {
-		return 0, false, err
+		return HeroBodyStats{}, false, err
 	}
 	var st heroStateLayer
 	if err := json.Unmarshal([]byte(raw), &st); err != nil {
+		return HeroBodyStats{}, false, err
+	}
+	return HeroBodyStats{
+		Health:  st.Health,
+		Hunger:  st.Hunger,
+		Thirst:  st.Thirst,
+		Fatigue: st.Fatigue,
+		Comfort: st.Comfort,
+		Spirit:  st.Spirit,
+		Bladder: st.Bladder,
+		Bowel:   st.Bowel,
+	}, true, nil
+}
+
+// readHeroHealth читает здоровье героя из того же слоя состояния, что и
+// телесные статы. false — здоровье неизвестно (слоя нет): смерть не навязывается.
+func readHeroHealth(h *db.Handle) (int, bool, error) {
+	st, ok, err := readHeroBodyStats(h)
+	if err != nil || !ok {
 		return 0, false, err
 	}
 	return st.Health, true, nil
