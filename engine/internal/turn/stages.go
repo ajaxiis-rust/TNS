@@ -224,6 +224,7 @@ func (s *cutStage) Run(ctx context.Context, st *TurnState) error {
 		seg := Segment{Text: text}
 		if lemmatizer != nil {
 			if toks, err := lemmatizer.Lemmatize(stripPunct(text)); err == nil {
+				seg.Tokens = toks
 				for _, tok := range toks {
 					seg.Lemmas = append(seg.Lemmas, tok.Lemma)
 				}
@@ -678,20 +679,11 @@ func (s *executeStage) weaverReply(ctx context.Context, st *TurnState) (string, 
 }
 
 // sceneTags — теги сцены для выбора записи банка (T-03-07, шаг 1): намерение и
-// настроение реплики из предпути плюс слаг выбранной семьи композиции (T-10-11,
-// шаг 4). Пусто — банк выберет запись по умолчанию.
+// настроение реплики из предпути, слаг выбранной семьи композиции (T-10-11,
+// шаг 4) и ключи категорий разбора по смыслам фразы (T-15-02) — словарь общий
+// с записями book_chunk_tag. Пусто — банк выберет запись по умолчанию.
 func sceneTags(st *TurnState) []string {
-	var tags []string
-	if st.Prepath.Intent.Name != "" {
-		tags = append(tags, st.Prepath.Intent.Name)
-	}
-	if st.Prepath.Mood != "" {
-		tags = append(tags, st.Prepath.Mood)
-	}
-	if st.Composition.FamilyPrimary != "" {
-		tags = append(tags, st.Composition.FamilyPrimary)
-	}
-	return tags
+	return sceneTagsFrom(sceneTagPackDir, st)
 }
 
 // deathStage — порог смерти (T-03-19, LT-16.7): при здоровье героя ≤ 2% сцена

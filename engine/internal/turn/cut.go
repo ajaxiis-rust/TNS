@@ -16,9 +16,12 @@ type Lemmatizer interface {
 }
 
 // Segment — сегмент резки реплики: текст, леммы и вектор смысла (T-03-02, шаг 2).
+// Tokens — полный разбор лемматизатора: формы, части речи и омонимия нужны
+// смысловому слою тегов сцены (T-15-02).
 type Segment struct {
 	Text   string
 	Lemmas []string
+	Tokens []lemmarpc.Token
 	Vector []float32 // L2-нормированный, dim = models.EmbedDim.
 }
 
