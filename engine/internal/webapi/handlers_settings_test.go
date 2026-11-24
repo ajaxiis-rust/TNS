@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -1407,6 +1408,18 @@ func hasFlagPair(args []string, flag, value string) bool {
 		}
 	}
 	return false
+}
+
+// TestGenThreadsDefault — дефолт потоков генерации не выходит за пределы машины
+// и не нулевой (gen_threads: 0 в config.yaml).
+func TestGenThreadsDefault(t *testing.T) {
+	n := genThreadsDefault()
+	if n < 1 {
+		t.Fatalf("genThreadsDefault = %d, want ≥ 1", n)
+	}
+	if n > runtime.NumCPU() {
+		t.Fatalf("genThreadsDefault = %d > NumCPU %d", n, runtime.NumCPU())
+	}
 }
 
 // TestChildStartAfterInstall — «Проверка» T-13-07: после установки модели

@@ -1446,13 +1446,49 @@ const (
 	defaultEmbedThreads = 4 // BGE-M3 лёгкий, четырёх потоков достаточно.
 )
 
-// genThreadsDefault — потоки генерации по дефолту: все ядра минус одно, минимум
-// один поток (соглашение gen_threads: 0 в config.yaml).
+// genThreadsDefault — потоки генерации по дефолту: физические ядра минус одно
+// (одно ядро остаётся системе), минимум один поток (gen_threads: 0 в config.yaml).
+// На Linux физические ядра считаются по /proc/cpuinfo; иначе — логические минус
+// одно. SMT-машина (4 ядра/8 потоков) даёт 3, а не 7: прогон 2026-11-24 показал,
+// что 7 потоков режут генерацию 3.8→2.2 tok/s, 3 потока держат 3.3 tok/s.
 func genThreadsDefault() int {
+	if n := physicalCPUs(); n > 1 {
+		return n - 1
+	}
 	if n := runtime.NumCPU(); n > 1 {
 		return n - 1
 	}
 	return 1
+}
+
+// physicalCPUs — число физических ядер по /proc/cpuinfo (уникальные пары
+// physical id + core id); 0 — неизвестно (не Linux или чтение не удалось).
+func physicalCPUs() int {
+	data, err := os.ReadFile("/proc/cpuinfo")
+	if err != nil {
+		return 0
+	}
+	seen := make(map[string]struct{})
+	var phys, core string
+	flush := func() {
+		if phys != "" || core != "" {
+			seen[phys+":"+core] = struct{}{}
+		}
+		phys, core = "", ""
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(line, "physical id"):
+			phys = strings.TrimSpace(strings.TrimPrefix(line, "physical id:"))
+		case strings.HasPrefix(line, "core id"):
+			core = strings.TrimSpace(strings.TrimPrefix(line, "core id:"))
+		case line == "":
+			flush()
+		}
+	}
+	flush()
+	return len(seen)
 }
 
 var generationModelRoles = []string{"weaver", "pythia", "editor", "analysis"}
