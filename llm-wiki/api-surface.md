@@ -2,6 +2,12 @@
 
 Exported symbols only. Bodies stripped.
 
+## `_/home/ajaxii/PRJ/TNS65/engine/e2e`
+
+```go
+func TestVerne(t *testing.T)
+```
+
 ## `_/home/ajaxii/PRJ/TNS65/engine/internal/bake`
 
 ```go
@@ -17,15 +23,33 @@ var ErrNoNarratives
 
 ```go
 const Budget
+func (*Bank) PatternHits(p ScenePattern) (int)
+func (*Bank) PatternKnown(p ScenePattern) (bool)
 func (*Bank) Pick(tags []string) (Record, error)
+func (*Bank) PickScene(p ScenePattern) (Record, error)
+func (*PatternCache) Hits(key string) (int)
+func (*PatternCache) Known(key string) (bool)
+func (*PatternCache) Len() (int)
+func (*PatternCache) Lookup(key string) (Record, bool)
+func (*PatternCache) Remember(key string, rec Record)
+func (ScenePattern) Key() (string)
+func (ScenePattern) Tags() ([]string)
 func (mapBinder) Bind(text string) (string)
-func New(reader *db.Handle, clock Clock, slot Slot, binder Binder) (*Bank)
+func DefaultPatternCache() (*PatternCache)
+func New(reader *db.Handle, clock Clock, slot Slot, binder Binder, opts ...Option) (*Bank)
+func NewPatternCache() (*PatternCache)
 func TestBank(t *testing.T)
+func TestScenePattern(t *testing.T)
+func WithPatternCache(c *PatternCache) (Option)
 interface Binder
 interface Clock
 interface Slot
 struct Bank
+struct PatternCache
 struct Record
+struct ScenePattern
+type Option
+var ErrEmptyPattern
 var ErrNoReader
 var ErrNoRecord
 ```
@@ -58,9 +82,10 @@ func LoadArchetypes() ([]string, error)
 func LoadConsumers() (Consumers, error)
 func LoadData() (Data, error)
 func LoadEstates() ([]Estate, error)
+func LoadIdiolects() (map[string]Idiolect, error)
 func LoadMetrics() ([]Metric, error)
 func LoadVoices() ([]string, error)
-func NewLayers(psychotype string, mem MemoryParams) (Layers)
+func NewLayers(worldSlug, psychotype string, mem MemoryParams) (Layers)
 func Pack(a *Ancketa) ([]Card, error)
 func ParseCode(s string) (Code, error)
 func ProfileFromCode(code Code, metrics []Metric) (Profile, error)
@@ -87,15 +112,19 @@ func TestBirthOnShippedBases(t *testing.T)
 func TestBirthRollback(t *testing.T)
 func TestBirthSourceBookBinding(t *testing.T)
 func TestBirthSourceBookRequired(t *testing.T)
+func TestBodyStats(t *testing.T)
 func TestConsumers(t *testing.T)
 func TestDeepScoutLiveAtBirth(t *testing.T)
 func TestDeepScoutNoDuplicate(t *testing.T)
 func TestDeepScoutUnavailableAtBirth(t *testing.T)
 func TestEmptySynopsis(t *testing.T)
 func TestEstatesCoverAllOrders(t *testing.T)
+func TestFavoriteBooksBirth(t *testing.T)
+func TestFavoriteBooksValidation(t *testing.T)
 func TestGeoSeedFiction(t *testing.T)
 func TestGeoSeedMixed(t *testing.T)
 func TestGeoSeedReal(t *testing.T)
+func TestIdiolect(t *testing.T)
 func TestIsekaiReplay(t *testing.T)
 func TestJungArchetypes(t *testing.T)
 func TestNoProseAtBirth(t *testing.T)
@@ -104,6 +133,7 @@ func TestNpcLayers(t *testing.T)
 func TestPack96(t *testing.T)
 func TestPackDeterministic(t *testing.T)
 func TestPsychotypeSpace(t *testing.T)
+func TestSeedDeterminism(t *testing.T)
 func TestSeedFill(t *testing.T)
 func TestValidateLang(t *testing.T)
 func TestValidateLangExplicitPath(t *testing.T)
@@ -126,6 +156,7 @@ struct ExitError
 struct FieldError
 struct HiddenLayer
 struct Humours
+struct Idiolect
 struct Layers
 struct MemoryParams
 struct Metric
@@ -521,6 +552,7 @@ const DisputeEmpty
 const DisputeFailed
 const DisputeMerge
 const DisputeRole
+const DisputeSense
 const DisputeSlotRole
 const DisputeUncertain
 const EventDeepreadSlot
@@ -544,6 +576,7 @@ const KeyTime
 const KeyViolence
 const KindBookMap
 const KindDeepread
+const KindSenseDispute
 const MapChroniclerRole
 const MapFictionRole
 const MapModeFiction
@@ -577,6 +610,7 @@ func (Key) String() (string)
 func (Key) Valid() (bool)
 func ApplyBoundaries(set *BookScenes, outcomes []DisputeOutcome) (error)
 func ApplyDecision(lit *db.Handle, out DisputeOutcome) (error)
+func AskSenseDisputes(lit *db.Handle, key Key, questions []SenseQuestion, cfg DisputeConfig, slot DisputeSlot, logger *journal.Logger, now string) ([]SenseOutcome, error)
 func AttachWindowLemmas(cands []CharacterCandidate, chunks []SalienceChunk)
 func AttachWindowVectors(lit, world *db.Handle, bookID int64, cands []CharacterCandidate) (error)
 func BuildBookMap(ctx context.Context, lit *db.Handle, in MapInput) (*BookMap, error)
@@ -585,6 +619,7 @@ func BuildCharacters(lit, world *db.Handle, in CharacterInput) ([]CharacterGroup
 func BuildDictAnchors(chunks []SalienceChunk, vectors map[int64][]float32, tags []ChunkTags, dicts map[string]*Dictionary) ([]DictAnchor)
 func BuildDisputes(in DisputeInput) ([]DisputeQuestion, error)
 func BuildScenes(lit, world *db.Handle, in SceneInput) (*BookScenes, error)
+func BuildSenseDisputes(in SenseDisputeInput) ([]SenseQuestion, error)
 func BuildStagingCandidates(chunks []SalienceChunk, vectors map[int64][]float32, anchors []DictAnchor, dicts map[string]*Dictionary, cfg StagingConfig) ([]StagingCandidate)
 func CategoryID(key string) (int)
 func Centroid(windows []CharacterWindow) ([]float32)
@@ -609,6 +644,9 @@ func LoadEmotionDictionary(path string) (*EmotionDictionary, error)
 func LoadMapSource(lit *db.Handle, bookID int64) (*MapSource, error)
 func LoadRatingConfig(path string) (RatingConfig, error)
 func LoadSalienceConfig(path string) (SalienceConfig, error)
+func LoadSenseCatalog(packDir string) (SenseCatalog, error)
+func LoadSenseLayer(packDir string, cfg SalienceConfig) (*SenseLayer, error)
+func LoadSenses(packDir string) (*senses.Dictionary, error)
 func LoadStagingConfig(path string) (StagingConfig, error)
 func LoadStyles(packDir string) (*Styles, error)
 func LoadTimeLexicon(packDir string) (*TimeLexicon, error)
@@ -617,12 +655,16 @@ func MergeCharacters(cands []CharacterCandidate, dict *EmotionDictionary, cfg Ch
 func NewKey(packDir, configPath, bookText string) (Key, error)
 func OpenRun(packDir string) (*Run, error)
 func RankDisputes(questions []DisputeQuestion)
+func RankSenseDisputes(questions []SenseQuestion)
+func RemainingDisputeConfig(cfg DisputeConfig, senseQuestions int) (DisputeConfig)
 func ResolveDisputes(questions []DisputeQuestion, cfg DisputeConfig, slot DisputeSlot, logger *journal.Logger) ([]DisputeOutcome, error)
 func RunOnce(lit *db.Handle, key Key, run func(...)) (RunOutcome, error)
 func RunPipeline(lit, world *db.Handle, in RunInput) (RunReport, error)
+func SenseDictionaries(dicts map[string]*Dictionary, outcomes []SenseOutcome) (map[string]*Dictionary)
 func SeverityWeight(severity int) (int, bool)
 func StageDictionaries(lit, world *db.Handle, in StagingInput) (*StagingResult, error)
 func TagChunks(chunks []SalienceChunk, dicts map[string]*Dictionary, cfg SalienceConfig) ([]ChunkTags, error)
+func TagChunksWithSenses(chunks []SalienceChunk, dicts map[string]*Dictionary, layer *SenseLayer, cfg SalienceConfig) ([]ChunkTags, error)
 func TestBuildBookMap(t *testing.T)
 func TestBuildBookMapDegradation(t *testing.T)
 func TestBuildBookMapEmpty(t *testing.T)
@@ -640,6 +682,9 @@ func TestRunPipeline(t *testing.T)
 func TestSalienceBands(t *testing.T)
 func TestSalienceParses(t *testing.T)
 func TestScenes(t *testing.T)
+func TestSenseDispute(t *testing.T)
+func TestSenseDisputeBudget(t *testing.T)
+func TestSenseSalience(t *testing.T)
 func TestSeverityWeights(t *testing.T)
 func TestStaging(t *testing.T)
 func TestStyle(t *testing.T)
@@ -696,6 +741,13 @@ struct SalienceChunk
 struct SalienceConfig
 struct Scene
 struct SceneInput
+struct SenseDisputeInput
+struct SenseDisputeRecord
+struct SenseGroup
+struct SenseLayer
+struct SenseOption
+struct SenseOutcome
+struct SenseQuestion
 struct StagingCandidate
 struct StagingConfig
 struct StagingInput
@@ -710,6 +762,7 @@ type DisputeKind
 type DisputeState
 type EmotionProfile
 type MapMode
+type SenseCatalog
 var CategoryKeys
 var DictionaryKeys
 var ErrMapEmpty
@@ -829,22 +882,26 @@ var ErrNoWriter
 
 ```go
 func (*BrokenFilesError) Error() (string)
-func Build(packDir, version string, pools []Pool) (error)
+func Build(ctx context.Context, packDir, version string, pools []Pool, opts BuildOptions) (error)
 func List(packsDir string) ([]Listing, error)
 func LoadManifest(path string) (*Manifest, error)
 func Open(dir string) (*Pack, error)
 func Rollback(packDir string) (string, error)
 func TestBuildHasTranslate(t *testing.T)
+func TestBuildTranslateDegrade(t *testing.T)
+func TestBuildTranslateSlot(t *testing.T)
 func TestManifest(t *testing.T)
 func TestManifestBrokenFile(t *testing.T)
 func TestRollback(t *testing.T)
 func TestRollbackBrokenTarget(t *testing.T)
 struct BrokenFilesError
+struct BuildOptions
 struct Lemmatizer
 struct Listing
 struct Manifest
 struct Pack
 struct Pool
+type TranslateFunc
 ```
 
 ## `_/home/ajaxii/PRJ/TNS65/engine/internal/lemmarpc`
@@ -1442,6 +1499,38 @@ type Recommendation
 type Rule
 ```
 
+## `_/home/ajaxii/PRJ/TNS65/engine/internal/senses`
+
+```go
+const DefaultEmbedWeight
+const MinMargin
+const MinScore
+const WindowRadius
+func (*Dictionary) Resolve(tokens []Token) ([]Decision)
+func (*Dictionary) ResolveWithVectors(tokens []Token, text string, layer *VectorLayer) ([]Decision)
+func (*VectorLayer) Weight() (float64)
+func (*failEmbed) Embed(context.Context, string) ([]float32, error)
+func Load(path string) (*Dictionary, error)
+func LoadContexts(path string, dict *Dictionary) (*Contexts, error)
+func NewVectorLayer(dict *Dictionary, contexts *Contexts, embed models.Embedder, weight float64) (*VectorLayer)
+func TestLoadSenses(t *testing.T)
+func TestResolveAmbiguous(t *testing.T)
+func TestResolveSenses(t *testing.T)
+func TestSenseVectors(t *testing.T)
+func TestSenseVectorsFallback(t *testing.T)
+func TestSensesFile(t *testing.T)
+func WindowText(text string, tokens []Token, at int) (string)
+struct Contexts
+struct Decision
+struct Dictionary
+struct Sense
+struct SenseContexts
+struct Token
+struct Trigger
+struct VectorLayer
+var Categories
+```
+
 ## `_/home/ajaxii/PRJ/TNS65/engine/internal/structural`
 
 ```go
@@ -1624,6 +1713,9 @@ const BranchWeaver
 const DecisionConfirmed
 const DecisionMargin
 const DecisionReask
+const FinaleAccept
+const FinaleNewWorld
+const FinaleReplay
 const MinutesPerDay
 const NewsEventKind
 const NightThresholdMin
@@ -1634,12 +1726,16 @@ const ReactionFed
 const ReactionIgnored
 const SilenceThreshold
 const TokenNPCGroup
+const TokenNPCIdiolect
 const TokenNPCName
 const TokenNPCNameActive
 const TokenNPCNamePassive
 const TokenNPCRole
 const TokenNPCRoleDeity
 const TokenPlace
+const ToolBond
+const ToolItem
+const ToolSkill
 func (*Lexicon) DetectFlirt(text string) (FlirtVerdict)
 func (*Lexicon) DetectSarcasm(text string) (SarcasmVerdict)
 func (*Pipeline) Run(ctx context.Context, in TurnInput) (TurnOutput, error)
@@ -1679,6 +1775,8 @@ func (*executeStage) Run(ctx context.Context, st *TurnState) (error)
 func (*fakeProseSlot) Stream(_ context.Context, prompt string) (chan string, error)
 func (*feedbackStage) Name() (string)
 func (*feedbackStage) Run(_ context.Context, st *TurnState) (error)
+func (*finaleStage) Name() (string)
+func (*finaleStage) Run(_ context.Context, st *TurnState) (error)
 func (*gatedSlot) Stream(_ context.Context, _ string) (chan string, error)
 func (*metaProseSlot) LimitRemaining() (string)
 func (*metaProseSlot) ProviderName() (string)
@@ -1700,6 +1798,8 @@ func (*selectStage) Name() (string)
 func (*selectStage) Run(_ context.Context, st *TurnState) (error)
 func (*timejumpStage) Name() (string)
 func (*timejumpStage) Run(_ context.Context, st *TurnState) (error)
+func (*toolsStage) Name() (string)
+func (*toolsStage) Run(_ context.Context, st *TurnState) (error)
 func (*troupeStage) Name() (string)
 func (*troupeStage) Run(_ context.Context, st *TurnState) (error)
 func (Confirmation) Confirmed() (bool)
@@ -1712,6 +1812,7 @@ func (realClock) After(d time.Duration) (chan time.Time)
 func (realClock) Now() (time.Time)
 func (wallClock) After(d time.Duration) (chan time.Time)
 func (wordLemmatizer) Lemmatize(text string) ([]lemmarpc.Token, error)
+func ChooseFinale(h *db.Handle, path FinalePath, epilogue, peak, now string) (FinaleMenu, error)
 func DefaultConfirmConfig() (ConfirmConfig)
 func DefaultNewsSceneConfig() (NewsSceneConfig)
 func DefaultTimeConfig() (TimeConfig)
@@ -1726,6 +1827,7 @@ func NewWorldClock(startMin int64, src ClockSource) (*WorldClock)
 func PickPoolName(basePath, lang string, taken map[string]bool) (string, error)
 func ProviderSlot(def providercfg.Provider, apiKey, model string) (ProseSlot, error)
 func SecretFor(name string) (Secret, bool)
+func SpeechAllowed(tags []string, speech string) (bool)
 func TestAbsence(t *testing.T)
 func TestAudit(t *testing.T)
 func TestCommitTurnWritesPosition(t *testing.T)
@@ -1740,9 +1842,12 @@ func TestDetectMoodPack(t *testing.T)
 func TestDetectMoodVectors(t *testing.T)
 func TestDigest(t *testing.T)
 func TestFeedbackEscalation(t *testing.T)
+func TestFinaleMenu(t *testing.T)
 func TestFlirtDefaults(t *testing.T)
 func TestFlirtDictionaryGate(t *testing.T)
 func TestFlirtRealPack(t *testing.T)
+func TestHeroTools(t *testing.T)
+func TestIdiolect(t *testing.T)
 func TestNamePool(t *testing.T)
 func TestNewsSceneChoiceDeterministic(t *testing.T)
 func TestNewsSceneDegradation(t *testing.T)
@@ -1754,6 +1859,7 @@ func TestPosition(t *testing.T)
 func TestPrepath(t *testing.T)
 func TestPrepathDetectMoodSignals(t *testing.T)
 func TestProviderSlotProtocols(t *testing.T)
+func TestReadHeroBodyStats(t *testing.T)
 func TestSarcasmBroken(t *testing.T)
 func TestSarcasmCoefficients(t *testing.T)
 func TestSarcasmMarkers(t *testing.T)
@@ -1771,6 +1877,8 @@ func TestTroupe(t *testing.T)
 func TestTroupeBookDescription(t *testing.T)
 func TestTroupeStage(t *testing.T)
 func TestWeaverCallJournal(t *testing.T)
+func TestWillSaved(t *testing.T)
+func TestWillSignal(t *testing.T)
 interface Clock
 interface ClockSource
 interface Lemmatizer
@@ -1787,13 +1895,17 @@ struct Cut
 struct Digest
 struct FateVector
 struct FeedbackPlan
+struct FinaleMenu
 struct FlirtAntiTriggers
 struct FlirtCategory
 struct FlirtDictionary
 struct FlirtMeta
 struct FlirtModifiers
 struct FlirtVerdict
+struct HeroBodyStats
 struct HeroPosition
+struct HeroTool
+struct HeroTools
 struct Intent
 struct IntentEntry
 struct Lexicon
@@ -1835,8 +1947,11 @@ struct Troupe
 struct TurnInput
 struct TurnOutput
 struct TurnState
+struct Will
 struct WordVector
 struct WorldClock
+type FinalePath
+type HeroToolKind
 type Preselect
 ```
 
@@ -2160,8 +2275,12 @@ func (*DeferredTimer) FireDue() (int, error)
 func (*LocalSource) Fetch(_ context.Context, topic string) (string, error)
 func (*Luck) Draw() (float64)
 func (*Luck) Get() (float64, error)
+func (*Luck) LoadCheckpoint() (Checkpoint, bool, error)
+func (*Luck) Restore(c Checkpoint)
 func (*Luck) Roll(p float64) (Roll, error)
+func (*Luck) SaveCheckpoint() (error)
 func (*Luck) Set(v float64) (error)
+func (*Luck) Snapshot() (Checkpoint)
 func (*Order) RequeueAllowed() (bool)
 func (*PauseTimer) MarkActive()
 func (*PauseTimer) Silence() (time.Duration)
@@ -2199,10 +2318,12 @@ func ClassifyFamily(text string, fams []structural.Family) (string)
 func CollectSamples(world *db.Handle, cfg StyleConfig) ([]StyleSample, error)
 func Compose(ctx context.Context, lit *db.Handle, text string, fams []structural.Family, codeFamily string) (structural.Composition, error)
 func DefaultHoroscopeMatchConfig() (HoroscopeMatchConfig)
+func DefaultManipulationConfig() (ManipulationConfig)
 func DefaultStyleConfig() (StyleConfig)
 func Delexify(sourceSceneID int64, text string, facts []sediment.Fact, bindings []sediment.Binding) (string, []string, error)
 func DequeueEditorTask(world *db.Handle) (*EditorQueueTask, error)
 func DeriveEpoch(description string) (string)
+func DetectManipulation(turns []string, cfg ManipulationConfig) (ManipulationReport)
 func EditChapter(ctx context.Context, world *db.Handle, slot Slot, chapterID int64) (EditorResult, error)
 func EditorRoles() ([]string)
 func Enqueue(h *db.Handle, kind Kind, step Step, provider Provider, payload any) (error)
@@ -2230,6 +2351,7 @@ func KindHasProse(k Kind) (bool)
 func KindPriority(k Kind) (int)
 func LoadArcs(path string) ([]Arc, error)
 func LoadHoroscopeMatchConfig(path string) (HoroscopeMatchConfig, error)
+func LoadRollEvents(h *db.Handle) ([]RollEvent, error)
 func LoadStyleConfig(path string) (StyleConfig, error)
 func MatchHoroscope(world, literary *db.Handle, sceneID int64, early [][]float32, cfg HoroscopeMatchConfig) (*HoroscopeMatch, error)
 func NewDeferredTimer(h *db.Handle, clock DeferredClock) (*DeferredTimer)
@@ -2247,7 +2369,9 @@ func ProviderForRating(rating string, requested Provider) (Provider)
 func ProviderForWorld(world *db.Handle, requested Provider) (Provider, error)
 func ReadEpochReference(lit *db.Handle) ([]EpochReference, error)
 func ReconcileComplement(h *db.Handle, arcs []Arc) (error)
+func RecordRoll(h *db.Handle, day int, p float64, r Roll) (error)
 func RemeltScene(lit *db.Handle, sceneID int64) (int64, error)
+func ReplayRolls(c Checkpoint, events []RollEvent) (int)
 func ResolveCastRole(ctx context.Context, lit *db.Handle, name, chunkText string, tied []string) (string, error)
 func RunEditorTask(ctx context.Context, world *db.Handle, slot Slot, task *EditorQueueTask) (EditorResult, error)
 func RunForgeBook(ctx context.Context, world, lit *db.Handle, inputPath string, opts ForgeBookOptions) (ForgeBookResult, error)
@@ -2273,6 +2397,7 @@ func TestBookMapThroughSourcesMapRoute(t *testing.T)
 func TestBookMapWithoutKeys(t *testing.T)
 func TestBookRegistry(t *testing.T)
 func TestBuildDigestThroughEditorRoute(t *testing.T)
+func TestChunkBoundaries(t *testing.T)
 func TestComplement(t *testing.T)
 func TestDeferred(t *testing.T)
 func TestEditCensor(t *testing.T)
@@ -2297,6 +2422,7 @@ func TestGenerateWithRetryTwoPass(t *testing.T)
 func TestGlobalLuck(t *testing.T)
 func TestHoroscopeForge(t *testing.T)
 func TestHoroscopeMatch(t *testing.T)
+func TestManipulationDetect(t *testing.T)
 func TestParseFB2CharsetReader(t *testing.T)
 func TestParseFB2DeclarationLie(t *testing.T)
 func TestPauseBoundaries(t *testing.T)
@@ -2306,6 +2432,7 @@ func TestProviderForWorldRating18RestrictsToLocal(t *testing.T)
 func TestPythia(t *testing.T)
 func TestQueueKinds(t *testing.T)
 func TestRatingProfiles(t *testing.T)
+func TestReplayEvents(t *testing.T)
 func TestResolveCastRole(t *testing.T)
 func TestResolveCastRoleNoSlot(t *testing.T)
 func TestResolveCastRoleRefusal(t *testing.T)
@@ -2333,6 +2460,7 @@ struct Arc
 struct Book
 struct BookMeta
 struct Chapter
+struct Checkpoint
 struct Chunk
 struct ComplementPayload
 struct ComposeOutput
@@ -2354,12 +2482,15 @@ struct HoroscopeOutput
 struct HoroscopePayload
 struct LocalSource
 struct Luck
+struct ManipulationConfig
+struct ManipulationReport
 struct Order
 struct ParsedBook
 struct PauseTimer
 struct Preset
 struct PythiaOutput
 struct Roll
+struct RollEvent
 struct RoutedWorkshopSlot
 struct Scheduler
 struct SedimentOrderPayload

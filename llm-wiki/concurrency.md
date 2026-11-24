@@ -1,10 +1,10 @@
 # Concurrency Primitives
 
-Total: 428 sites across 9 kind(s).
+Total: 439 sites across 9 kind(s).
 
 > Review these sites before any concurrent refactor.
 
-## channel_send (64)
+## channel_send (65)
 
 | Function | File | Detail |
 |----------|------|--------|
@@ -38,6 +38,7 @@ Total: 428 sites across 9 kind(s).
 | `TestFakeSlot` | engine/internal/testkit/testkit_test.go:80 | done <- |
 | `TestFeedbackEscalation` | engine/internal/turn/feedback_test.go:88 | ch <- |
 | `TestFeedbackEscalation` | engine/internal/turn/feedback_test.go:115 | ch2 <- |
+| `sceneChunk` | engine/internal/turn/idiolect_test.go:16 | ch <- |
 | `(*notifiedClock).After` | engine/internal/turn/safety_test.go:55 | c.after <- |
 | `TestSilenceThreshold` | engine/internal/turn/safety_test.go:73 | ch <- |
 | `TestSilenceThreshold` | engine/internal/turn/safety_test.go:79 | done <- |
@@ -122,7 +123,7 @@ Total: 428 sites across 9 kind(s).
 | `TestTelegramBotSubscribeNews` | engine/internal/webapi/tunnel_test.go:426 | go  |
 | `(*Hub).serveHTTP` | engine/internal/webapi/ws.go:121 | go c.readLoop |
 
-## mutex_lock (127)
+## mutex_lock (132)
 
 | Function | File | Detail |
 |----------|------|--------|
@@ -133,6 +134,11 @@ Total: 428 sites across 9 kind(s).
 | `(*childRunner).stopChildByName` | engine/cmd/tns65/main.go:307 | r.mu.Lock |
 | `(*childRunner).status` | engine/cmd/tns65/main.go:323 | r.mu.Lock |
 | `(*childRunner).stop` | engine/cmd/tns65/main.go:333 | r.mu.Lock |
+| `(*PatternCache).Lookup` | engine/internal/bank/bank.go:124 | c.mu.Lock |
+| `(*PatternCache).Remember` | engine/internal/bank/bank.go:136 | c.mu.Lock |
+| `(*PatternCache).Known` | engine/internal/bank/bank.go:147 | c.mu.Lock |
+| `(*PatternCache).Hits` | engine/internal/bank/bank.go:155 | c.mu.Lock |
+| `(*PatternCache).Len` | engine/internal/bank/bank.go:165 | c.mu.Lock |
 | `(*countingEmbedder).Embed` | engine/internal/birth/anchorbench_test.go:61 | e.mu.Lock |
 | `(*countingEmbedder).Calls` | engine/internal/birth/anchorbench_test.go:68 | e.mu.Lock |
 | `Close` | engine/internal/censor/censor.go:106 | checkersMu.Lock |
@@ -254,7 +260,7 @@ Total: 428 sites across 9 kind(s).
 | `(*Scheduler).Step` | engine/internal/workshop/scheduler.go:84 | s.mu.Lock |
 | `(*Scheduler).runOne` | engine/internal/workshop/scheduler.go:177 | s.mu.Lock |
 
-## mutex_unlock (136)
+## mutex_unlock (141)
 
 | Function | File | Detail |
 |----------|------|--------|
@@ -266,6 +272,11 @@ Total: 428 sites across 9 kind(s).
 | `(*childRunner).stopChildByName` | engine/cmd/tns65/main.go:316 | r.mu.Unlock |
 | `(*childRunner).status` | engine/cmd/tns65/main.go:324 | r.mu.Unlock |
 | `(*childRunner).stop` | engine/cmd/tns65/main.go:335 | r.mu.Unlock |
+| `(*PatternCache).Lookup` | engine/internal/bank/bank.go:125 | c.mu.Unlock |
+| `(*PatternCache).Remember` | engine/internal/bank/bank.go:137 | c.mu.Unlock |
+| `(*PatternCache).Known` | engine/internal/bank/bank.go:148 | c.mu.Unlock |
+| `(*PatternCache).Hits` | engine/internal/bank/bank.go:156 | c.mu.Unlock |
+| `(*PatternCache).Len` | engine/internal/bank/bank.go:166 | c.mu.Unlock |
 | `(*countingEmbedder).Embed` | engine/internal/birth/anchorbench_test.go:63 | e.mu.Unlock |
 | `(*countingEmbedder).Calls` | engine/internal/birth/anchorbench_test.go:69 | e.mu.Unlock |
 | `Close` | engine/internal/censor/censor.go:107 | checkersMu.Unlock |
@@ -399,7 +410,7 @@ Total: 428 sites across 9 kind(s).
 
 | Function | File | Detail |
 |----------|------|--------|
-| `LoadData` | engine/internal/birth/ancketa.go:74 | dataOnce.Do |
+| `LoadData` | engine/internal/birth/ancketa.go:81 | dataOnce.Do |
 | `(*Scheduler).AcquireWorkshop` | engine/internal/core/sched.go:49 | once.Do |
 | `(*TurnGuard).End` | engine/internal/core/sched.go:75 | g.once.Do |
 | `(*child).markReady` | engine/internal/supervisor/child.go:190 | c.readyOnce.Do |
@@ -430,10 +441,10 @@ Total: 428 sites across 9 kind(s).
 | `embedderForge` | engine/internal/workshop/horoscope.go:108 | embedMu.RLock |
 | `SetLogger` | engine/internal/workshop/logger.go:19 | logMu.Lock |
 | `loggerOf` | engine/internal/workshop/logger.go:26 | logMu.RLock |
-| `SetSlot` | engine/internal/workshop/queue.go:149 | slotMu.Lock |
-| `SetScheduler` | engine/internal/workshop/queue.go:157 | schedMu.Lock |
-| `scheduler` | engine/internal/workshop/queue.go:164 | schedMu.RLock |
-| `slotForProvider` | engine/internal/workshop/queue.go:176 | slotMu.RLock |
+| `SetSlot` | engine/internal/workshop/queue.go:152 | slotMu.Lock |
+| `SetScheduler` | engine/internal/workshop/queue.go:160 | schedMu.Lock |
+| `scheduler` | engine/internal/workshop/queue.go:167 | schedMu.RLock |
+| `slotForProvider` | engine/internal/workshop/queue.go:179 | slotMu.RLock |
 
 ## rwmutex_unlock (21)
 
@@ -456,10 +467,10 @@ Total: 428 sites across 9 kind(s).
 | `embedderForge` | engine/internal/workshop/horoscope.go:109 | embedMu.RUnlock |
 | `SetLogger` | engine/internal/workshop/logger.go:20 | logMu.Unlock |
 | `loggerOf` | engine/internal/workshop/logger.go:27 | logMu.RUnlock |
-| `SetSlot` | engine/internal/workshop/queue.go:150 | slotMu.Unlock |
-| `SetScheduler` | engine/internal/workshop/queue.go:158 | schedMu.Unlock |
-| `scheduler` | engine/internal/workshop/queue.go:165 | schedMu.RUnlock |
-| `slotForProvider` | engine/internal/workshop/queue.go:177 | slotMu.RUnlock |
+| `SetSlot` | engine/internal/workshop/queue.go:153 | slotMu.Unlock |
+| `SetScheduler` | engine/internal/workshop/queue.go:161 | schedMu.Unlock |
+| `scheduler` | engine/internal/workshop/queue.go:168 | schedMu.RUnlock |
+| `slotForProvider` | engine/internal/workshop/queue.go:180 | slotMu.RUnlock |
 
 ## waitgroup_add (3)
 

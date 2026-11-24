@@ -11,8 +11,12 @@
 | `Fetch` | method |
 | `Draw` | method |
 | `Get` | method |
+| `LoadCheckpoint` | method |
+| `Restore` | method |
 | `Roll` | method |
+| `SaveCheckpoint` | method |
 | `Set` | method |
+| `Snapshot` | method |
 | `RequeueAllowed` | method |
 | `MarkActive` | method |
 | `Silence` | method |
@@ -53,6 +57,7 @@
 | `CastRole` | const |
 | `Censor` | interface |
 | `Chapter` | struct |
+| `Checkpoint` | struct |
 | `Chunk` | struct |
 | `ClassifyFamily` | function |
 | `CollectSamples` | function |
@@ -63,6 +68,7 @@
 | `DefaultArcsPath` | const |
 | `DefaultHoroscopeMatchConfig` | function |
 | `DefaultLuck` | const |
+| `DefaultManipulationConfig` | function |
 | `DefaultProvider` | const |
 | `DefaultSedimentRun` | var |
 | `DefaultStyleConfig` | function |
@@ -75,6 +81,7 @@
 | `Delexify` | function |
 | `DequeueEditorTask` | function |
 | `DeriveEpoch` | function |
+| `DetectManipulation` | function |
 | `EditChapter` | function |
 | `EditorDigestRole` | const |
 | `EditorEdit` | struct |
@@ -151,9 +158,12 @@
 | `Lemmatizer` | interface |
 | `LoadArcs` | function |
 | `LoadHoroscopeMatchConfig` | function |
+| `LoadRollEvents` | function |
 | `LoadStyleConfig` | function |
 | `LocalSource` | struct |
 | `Luck` | struct |
+| `ManipulationConfig` | struct |
+| `ManipulationReport` | struct |
 | `MatchHoroscope` | function |
 | `MaxChunkRunes` | const |
 | `MoralMarkers` | var |
@@ -193,11 +203,14 @@
 | `Rating21Plus` | const |
 | `ReadEpochReference` | function |
 | `ReconcileComplement` | function |
+| `RecordRoll` | function |
 | `RemeltScene` | function |
+| `ReplayRolls` | function |
 | `ResearchSource` | interface |
 | `ResearchSourceFunc` | type |
 | `ResolveCastRole` | function |
 | `Roll` | struct |
+| `RollEvent` | struct |
 | `RouteSlot` | interface |
 | `RoutedWorkshopSlot` | struct |
 | `RunEditorTask` | function |
@@ -246,6 +259,7 @@
 | `TestBookMapWithoutKeys` | function |
 | `TestBookRegistry` | function |
 | `TestBuildDigestThroughEditorRoute` | function |
+| `TestChunkBoundaries` | function |
 | `TestComplement` | function |
 | `TestDeferred` | function |
 | `TestEditCensor` | function |
@@ -270,6 +284,7 @@
 | `TestGlobalLuck` | function |
 | `TestHoroscopeForge` | function |
 | `TestHoroscopeMatch` | function |
+| `TestManipulationDetect` | function |
 | `TestParseFB2CharsetReader` | function |
 | `TestParseFB2DeclarationLie` | function |
 | `TestPauseBoundaries` | function |
@@ -279,6 +294,7 @@
 | `TestPythia` | function |
 | `TestQueueKinds` | function |
 | `TestRatingProfiles` | function |
+| `TestReplayEvents` | function |
 | `TestResolveCastRole` | function |
 | `TestResolveCastRoleNoSlot` | function |
 | `TestResolveCastRoleRefusal` | function |
@@ -297,5 +313,5 @@
 | `WorldRating` | function |
 | `WriteComplementCard` | function |
 
-**Internal symbols:** 355 (run `gograph focus _/home/ajaxii/PRJ/TNS65/engine/internal/workshop` for details)
+**Internal symbols:** 382 (run `gograph focus _/home/ajaxii/PRJ/TNS65/engine/internal/workshop` for details)
 

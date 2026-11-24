@@ -9,6 +9,7 @@
 | `Error` | method |
 | `BrokenFilesError` | struct |
 | `Build` | function |
+| `BuildOptions` | struct |
 | `Lemmatizer` | struct |
 | `List` | function |
 | `Listing` | struct |
@@ -19,10 +20,13 @@
 | `Pool` | struct |
 | `Rollback` | function |
 | `TestBuildHasTranslate` | function |
+| `TestBuildTranslateDegrade` | function |
+| `TestBuildTranslateSlot` | function |
 | `TestManifest` | function |
 | `TestManifestBrokenFile` | function |
 | `TestRollback` | function |
 | `TestRollbackBrokenTarget` | function |
+| `TranslateFunc` | type |
 
-**Internal symbols:** 15 (run `gograph focus _/home/ajaxii/PRJ/TNS65/engine/internal/langpack` for details)
+**Internal symbols:** 21 (run `gograph focus _/home/ajaxii/PRJ/TNS65/engine/internal/langpack` for details)
 

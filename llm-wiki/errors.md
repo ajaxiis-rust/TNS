@@ -2,7 +2,7 @@
 
 All indexed `errors.New`, `fmt.Errorf`, sentinel `var` declarations, and `panic` calls.
 
-Total: 834 error sites.
+Total: 887 error sites.
 
 | Message | Function | File |
 |---------|----------|------|
@@ -53,14 +53,15 @@ Total: 834 error sites.
 | `embedder returned dim %d, want %d` | `embed` | engine/internal/bake/bake.go:265 |
 | `bake: open %s for checksum: %w` | `sha256File` | engine/internal/bake/bake.go:287 |
 | `bake: checksum %s: %w` | `sha256File` | engine/internal/bake/bake.go:292 |
-| `bank: выборка превысила бюджет: %v ...` | `(*Bank).Pick` | engine/internal/bank/bank.go:96 |
-| `birth: эмбеддинг синопсиса: %w` | `selectAnchor` | engine/internal/birth/anchor.go:70 |
-| `birth: в базе языка base.<lang>.db нет ве�...` | `selectAnchor` | engine/internal/birth/anchor.go:79 |
-| `birth: размерность вектора наррат...` | `selectAnchor` | engine/internal/birth/anchor.go:86 |
-| `birth: открыть базу языка base.<lang>.db ...` | `readNarrativeVectors` | engine/internal/birth/anchor.go:101 |
-| `birth: читать векторы нарративов: %w` | `readNarrativeVectors` | engine/internal/birth/anchor.go:107 |
-| `birth: разбор вектора нарратива: %w` | `readNarrativeVectors` | engine/internal/birth/anchor.go:116 |
-| `birth: вектор нарратива %d: длина %d ...` | `readNarrativeVectors` | engine/internal/birth/anchor.go:119 |
+| `bank: выборка превысила бюджет: %v ...` | `(*Bank).Pick` | engine/internal/bank/bank.go:215 |
+| `bank: выборка превысила бюджет: %v ...` | `(*Bank).PickScene` | engine/internal/bank/bank.go:272 |
+| `birth: эмбеддинг синопсиса: %w` | `selectAnchor` | engine/internal/birth/anchor.go:73 |
+| `birth: в базе языка base.<lang>.db нет ве�...` | `selectAnchor` | engine/internal/birth/anchor.go:82 |
+| `birth: размерность вектора наррат...` | `selectAnchor` | engine/internal/birth/anchor.go:89 |
+| `birth: открыть базу языка base.<lang>.db ...` | `readNarrativeVectors` | engine/internal/birth/anchor.go:104 |
+| `birth: читать векторы нарративов: %w` | `readNarrativeVectors` | engine/internal/birth/anchor.go:110 |
+| `birth: разбор вектора нарратива: %w` | `readNarrativeVectors` | engine/internal/birth/anchor.go:119 |
+| `birth: вектор нарратива %d: длина %d ...` | `readNarrativeVectors` | engine/internal/birth/anchor.go:122 |
 | `birth: открыть базу языка для чтен...` | `(*builder).materializeAnchor` | engine/internal/birth/anchormat.go:36 |
 | `якорный нарратив %d не найден в �...` | `(*builder).materializeAnchor` | engine/internal/birth/anchormat.go:43 |
 | `birth: читать нарратив-якорь: %w` | `(*builder).materializeAnchor` | engine/internal/birth/anchormat.go:45 |
@@ -109,10 +110,10 @@ Total: 834 error sites.
 | `birth: прочитать прошлого героя: %w` | `replayBirth` | engine/internal/birth/isekai.go:56 |
 | `birth: переигровка: %w` | `replayBirth` | engine/internal/birth/isekai.go:68 |
 | `birth: разбор hero_birth: %w` | `readHeroBirth` | engine/internal/birth/isekai.go:87 |
-| `birth: сословий %d, want 6` | `Pack` | engine/internal/birth/pack.go:85 |
-| `birth: таблица голосов пуста` | `Pack` | engine/internal/birth/pack.go:93 |
-| `birth: таблица внешностей пуста` | `Pack` | engine/internal/birth/pack.go:101 |
-| `birth: список архетипов пуст` | `Pack` | engine/internal/birth/pack.go:109 |
+| `birth: сословий %d, want 6` | `Pack` | engine/internal/birth/pack.go:113 |
+| `birth: таблица голосов пуста` | `Pack` | engine/internal/birth/pack.go:121 |
+| `birth: таблица внешностей пуста` | `Pack` | engine/internal/birth/pack.go:129 |
+| `birth: список архетипов пуст` | `Pack` | engine/internal/birth/pack.go:137 |
 | `birth: код психотипа %q: нужно ровн�...` | `ParseCode` | engine/internal/birth/psychotype.go:39 |
 | `birth: код психотипа %q: на позиции ...` | `ParseCode` | engine/internal/birth/psychotype.go:47 |
 | `birth: полюс %q не принадлежит оси %s` | `axisValue` | engine/internal/birth/psychotype.go:89 |
@@ -352,26 +353,28 @@ Total: 834 error sites.
 | `deepread: пороги рейтинга вне 0..1: rati...` | `validateRatingConfig` | engine/internal/deepread/run.go:169 |
 | `deepread: разбор книги: book_id %d` | `RunPipeline` | engine/internal/deepread/run.go:184 |
 | `deepread: разбор книги %d: нет чанков` | `RunPipeline` | engine/internal/deepread/run.go:187 |
-| `deepread: лемма-слой: %w` | `runLayers` | engine/internal/deepread/run.go:283 |
-| `deepread: лемма-слой: %w` | `runLayers` | engine/internal/deepread/run.go:286 |
-| `deepread: разбор книги %d: чанк %d без ...` | `resolveChunks` | engine/internal/deepread/run.go:467 |
-| `deepread: разбор книги %d: ord %d` | `resolveChunks` | engine/internal/deepread/run.go:470 |
-| `deepread: строка чанка %d/%d: %w` | `chunkRowID` | engine/internal/deepread/run.go:496 |
-| `deepread: строка чанка %d/%d: %w` | `chunkRowID` | engine/internal/deepread/run.go:502 |
-| `deepread: строка чанка %d/%d: %w` | `chunkRowID` | engine/internal/deepread/run.go:506 |
-| `deepread: пак разбора %s: %w` | `resolveRunPaths` | engine/internal/deepread/run.go:535 |
-| `deepread: сводка: чанки: %w` | `summarize` | engine/internal/deepread/run.go:701 |
-| `deepread: сводка: сцены: %w` | `summarize` | engine/internal/deepread/run.go:704 |
-| `deepread: сводка: персонажи: %w` | `summarize` | engine/internal/deepread/run.go:707 |
-| `deepread: сводка: staging: %w` | `summarize` | engine/internal/deepread/run.go:710 |
-| `deepread: сводка: полосы: %w` | `summarize` | engine/internal/deepread/run.go:717 |
-| `deepread: сводка: полосы: %w` | `summarize` | engine/internal/deepread/run.go:724 |
-| `deepread: сводка: полосы: %w` | `summarize` | engine/internal/deepread/run.go:734 |
-| `deepread: сводка разбора: %w` | `writeSummary` | engine/internal/deepread/run.go:769 |
-| `deepread: пороги salience: NaN` | `validateSalienceConfig` | engine/internal/deepread/salience.go:111 |
-| `deepread: пороги salience: confident %g, reject %g:...` | `validateSalienceConfig` | engine/internal/deepread/salience.go:114 |
-| `deepread: нет словарей категорий дл...` | `TagChunks` | engine/internal/deepread/salience.go:184 |
-| `deepread: словарь ключа %q не загружен` | `TagChunks` | engine/internal/deepread/salience.go:190 |
+| `deepread: лемма-слой: %w` | `runLayers` | engine/internal/deepread/run.go:291 |
+| `deepread: лемма-слой: %w` | `runLayers` | engine/internal/deepread/run.go:294 |
+| `deepread: разбор книги %d: чанк %d без ...` | `resolveChunks` | engine/internal/deepread/run.go:488 |
+| `deepread: разбор книги %d: ord %d` | `resolveChunks` | engine/internal/deepread/run.go:491 |
+| `deepread: строка чанка %d/%d: %w` | `chunkRowID` | engine/internal/deepread/run.go:517 |
+| `deepread: строка чанка %d/%d: %w` | `chunkRowID` | engine/internal/deepread/run.go:523 |
+| `deepread: строка чанка %d/%d: %w` | `chunkRowID` | engine/internal/deepread/run.go:527 |
+| `deepread: пак разбора %s: %w` | `resolveRunPaths` | engine/internal/deepread/run.go:556 |
+| `deepread: сводка: чанки: %w` | `summarize` | engine/internal/deepread/run.go:722 |
+| `deepread: сводка: сцены: %w` | `summarize` | engine/internal/deepread/run.go:725 |
+| `deepread: сводка: персонажи: %w` | `summarize` | engine/internal/deepread/run.go:728 |
+| `deepread: сводка: staging: %w` | `summarize` | engine/internal/deepread/run.go:731 |
+| `deepread: сводка: полосы: %w` | `summarize` | engine/internal/deepread/run.go:738 |
+| `deepread: сводка: полосы: %w` | `summarize` | engine/internal/deepread/run.go:745 |
+| `deepread: сводка: полосы: %w` | `summarize` | engine/internal/deepread/run.go:755 |
+| `deepread: сводка разбора: %w` | `writeSummary` | engine/internal/deepread/run.go:790 |
+| `deepread: senses_margin %q: %v` | `parseSalienceSection` | engine/internal/deepread/salience.go:84 |
+| `deepread: пороги salience: NaN` | `validateSalienceConfig` | engine/internal/deepread/salience.go:123 |
+| `deepread: senses_margin %g: нужно 0 ≤ senses_margi...` | `validateSalienceConfig` | engine/internal/deepread/salience.go:126 |
+| `deepread: пороги salience: confident %g, reject %g:...` | `validateSalienceConfig` | engine/internal/deepread/salience.go:129 |
+| `deepread: нет словарей категорий дл...` | `TagChunksWithSenses` | engine/internal/deepread/salience.go:208 |
+| `deepread: словарь ключа %q не загружен` | `TagChunksWithSenses` | engine/internal/deepread/salience.go:214 |
 | `deepread: detectors_time.json: %w` | `LoadTimeLexicon` | engine/internal/deepread/scenes.go:62 |
 | `deepread: detectors_time.json: нет единиц вре...` | `LoadTimeLexicon` | engine/internal/deepread/scenes.go:76 |
 | `deepread: сцены: book_id %d` | `BuildScenes` | engine/internal/deepread/scenes.go:201 |
@@ -401,6 +404,20 @@ Total: 834 error sites.
 | `deepread: сцена %d: диапазон чанков %d...` | `validateScenes` | engine/internal/deepread/scenes.go:796 |
 | `deepread: сцены %d и %d пересекаются п...` | `validateScenes` | engine/internal/deepread/scenes.go:800 |
 | `deepread: сцена %d: место %q не найдено` | `validateScenes` | engine/internal/deepread/scenes.go:804 |
+| `deepread: смыслы пака: %s: %w` | `LoadSenseCatalog` | engine/internal/deepread/senses_dispute.go:108 |
+| `deepread: смыслы пака: %s: версия схе�...` | `LoadSenseCatalog` | engine/internal/deepread/senses_dispute.go:111 |
+| `deepread: спорный смысл: chunk_id %d` | `BuildSenseDisputes` | engine/internal/deepread/senses_dispute.go:170 |
+| `deepread: пустой ответ слота на спо�...` | `parseSenseAnswers` | engine/internal/deepread/senses_dispute.go:470 |
+| `deepread: ответ слота не JSON-массив: %w` | `parseSenseAnswers` | engine/internal/deepread/senses_dispute.go:476 |
+| `deepread: ответ слота не JSON: %w` | `parseSenseAnswers` | engine/internal/deepread/senses_dispute.go:481 |
+| `deepread: ответов %d, вопросов %d` | `parseSenseAnswers` | engine/internal/deepread/senses_dispute.go:486 |
+| `deepread: вопрос %q: смысл %q вне канона` | `parseSenseAnswers` | engine/internal/deepread/senses_dispute.go:494 |
+| `deepread: вопрос %q: confidence %g вне 0..1` | `parseSenseAnswers` | engine/internal/deepread/senses_dispute.go:497 |
+| `deepread: вопрос %q: цитата %q не явля�...` | `parseSenseAnswers` | engine/internal/deepread/senses_dispute.go:500 |
+| `deepread: журнал спорных смыслов: %w` | `findSenseDisputes` | engine/internal/deepread/senses_dispute.go:599 |
+| `deepread: журнал спорных смыслов: %w` | `findSenseDisputes` | engine/internal/deepread/senses_dispute.go:606 |
+| `deepread: журнал спорных смыслов: %w` | `findSenseDisputes` | engine/internal/deepread/senses_dispute.go:617 |
+| `deepread: запись спорных смыслов: %w` | `writeSenseDisputes` | engine/internal/deepread/senses_dispute.go:627 |
 | `deepread: staging_cosine: %w` | `parseStagingSection` | engine/internal/deepread/staging.go:98 |
 | `deepread: staging_cosine %g вне 0..1` | `validateStagingConfig` | engine/internal/deepread/staging.go:114 |
 | `deepread: якорь %q: owner_id %d вне реестр�...` | `WriteDictAnchors` | engine/internal/deepread/staging.go:373 |
@@ -452,6 +469,7 @@ Total: 834 error sites.
 | `geo: dayNormKm %v вне диапазона [%v, %v]` | `CheckDayNorm` | engine/internal/geo/days.go:34 |
 | `geo: разбор world_meta.%s: %w` | `ReadDayNorm` | engine/internal/geo/days.go:83 |
 | `geo: промпт содержит запретную п�...` | `CheckPrompt` | engine/internal/geo/days.go:106 |
+| `модель недоступна` | `TestBuildTranslateDegrade` | engine/internal/langpack/langpack_test.go:287 |
 | `langpack: invalid version %q` | `validateVersion` | engine/internal/langpack/versions.go:19 |
 | `langpack: invalid version %q` | `validateVersion` | engine/internal/langpack/versions.go:23 |
 | `langpack: invalid version %q` | `validateVersion` | engine/internal/langpack/versions.go:26 |
@@ -647,6 +665,31 @@ Total: 834 error sites.
 | `sediment: размерность вектора %d, want %d` | `VectorBlob` | engine/internal/sediment/vector.go:32 |
 | `sediment: длина BLOB %d не кратна 4` | `VectorFromBlob` | engine/internal/sediment/vector.go:44 |
 | `%w: %s` | `Write` | engine/internal/sediment/write.go:45 |
+| `senses: %s: %w` | `Load` | engine/internal/senses/senses.go:112 |
+| `senses: %s: версия схемы %d, ожидалась 1` | `Load` | engine/internal/senses/senses.go:115 |
+| `senses: %s: словарь смыслов пуст` | `Load` | engine/internal/senses/senses.go:118 |
+| `senses: %s: смысл %d: пустая лемма` | `Load` | engine/internal/senses/senses.go:130 |
+| `senses: %s: %s/%s: пустая часть речи` | `Load` | engine/internal/senses/senses.go:133 |
+| `senses: %s: %s: пустое имя смысла` | `Load` | engine/internal/senses/senses.go:136 |
+| `senses: %s: %s/%s: категория %q вне канона` | `Load` | engine/internal/senses/senses.go:139 |
+| `senses: %s: %s/%s: триггеров %d, нужно не...` | `Load` | engine/internal/senses/senses.go:143 |
+| `senses: %s: %s/%s: триггер без леммы` | `Load` | engine/internal/senses/senses.go:151 |
+| `senses: %s: %s/%s: триггер %q: вес %g вне %g...` | `Load` | engine/internal/senses/senses.go:154 |
+| `senses: %s: %s/%s: триггер %q повторяется` | `Load` | engine/internal/senses/senses.go:158 |
+| `senses: %s: смысл %s/%s/%s повторяется` | `Load` | engine/internal/senses/senses.go:167 |
+| `senses: контексты смыслов без слов...` | `LoadContexts` | engine/internal/senses/vectors.go:56 |
+| `senses: %s: %w` | `LoadContexts` | engine/internal/senses/vectors.go:65 |
+| `senses: %s: версия схемы %d, ожидалась 1` | `LoadContexts` | engine/internal/senses/vectors.go:68 |
+| `senses: %s: контексты смыслов пусты` | `LoadContexts` | engine/internal/senses/vectors.go:71 |
+| `senses: %s: контексты %d: пустые лемм�...` | `LoadContexts` | engine/internal/senses/vectors.go:80 |
+| `senses: %s: %s/%s/%s: смысла нет в словаре` | `LoadContexts` | engine/internal/senses/vectors.go:83 |
+| `senses: %s: контексты смысла %s/%s/%s по...` | `LoadContexts` | engine/internal/senses/vectors.go:87 |
+| `senses: %s: %s/%s/%s: контекстов %d, нужно...` | `LoadContexts` | engine/internal/senses/vectors.go:91 |
+| `senses: %s: %s/%s/%s: пустой контекст` | `LoadContexts` | engine/internal/senses/vectors.go:99 |
+| `senses: %s: %s/%s/%s: контекст %q повторя�...` | `LoadContexts` | engine/internal/senses/vectors.go:102 |
+| `senses: %s: %s/%s/%s: имя собственное в к...` | `LoadContexts` | engine/internal/senses/vectors.go:106 |
+| `senses: %s: у смысла %s/%s нет контекст...` | `LoadContexts` | engine/internal/senses/vectors.go:118 |
+| `эмбеддер недоступен` | `(*failEmbed).Embed` | engine/internal/senses/vectors_test.go:70 |
 | `structural: family_primary не указан` | `(Composition).Validate` | engine/internal/structural/composition.go:60 |
 | `structural: pattern_secondary %q совпадает с fa...` | `(Composition).Validate` | engine/internal/structural/composition.go:63 |
 | `structural: техника %q вне списка` | `(Composition).Validate` | engine/internal/structural/composition.go:66 |
@@ -689,7 +732,10 @@ Total: 834 error sites.
 | `turn: разбор имени пула: %w` | `PickPoolName` | engine/internal/turn/namepool.go:46 |
 | `провайдер недоступен` | `TestNewsSceneDegradation` | engine/internal/turn/news_scene_test.go:130 |
 | `провайдер недоступен` | `TestSilenceThreshold` | engine/internal/turn/safety_test.go:99 |
-| `turn: неизвестный протокол прова�...` | `ProviderSlot` | engine/internal/turn/slots.go:240 |
+| `turn: неизвестный протокол прова�...` | `ProviderSlot` | engine/internal/turn/slots.go:246 |
+| `turn: нет хэндла мира` | `ChooseFinale` | engine/internal/turn/stages.go:806 |
+| `turn: открытый финал не ждёт выбора` | `ChooseFinale` | engine/internal/turn/stages.go:813 |
+| `turn: неизвестный путь открытого ...` | `ChooseFinale` | engine/internal/turn/stages.go:837 |
 | `turn: инъекция отказа на таблице t...` | `commitTurn` | engine/internal/turn/stopcrane.go:48 |
 | `turn: инъекция отказа на таблице s...` | `commitTurn` | engine/internal/turn/stopcrane.go:56 |
 | `turn: инъекция отказа на таблице e...` | `commitTurn` | engine/internal/turn/stopcrane.go:63 |
@@ -698,8 +744,8 @@ Total: 834 error sites.
 | `turn: инъекция отказа на таблице c...` | `commitTurn` | engine/internal/turn/stopcrane.go:84 |
 | `turn: вектор хода dim=%d, want %d` | `insertVector` | engine/internal/turn/stopcrane.go:172 |
 | `отказ` | `TestWeaverCallJournal` | engine/internal/turn/stream_test.go:244 |
-| `turn: карточка лица %d: %w` | `(*Troupe).Spawn` | engine/internal/turn/troupe.go:136 |
-| `turn: карточка лица %d: %w` | `(*Troupe).Spawn` | engine/internal/turn/troupe.go:140 |
+| `turn: карточка лица %d: %w` | `(*Troupe).Spawn` | engine/internal/turn/troupe.go:296 |
+| `turn: карточка лица %d: %w` | `(*Troupe).Spawn` | engine/internal/turn/troupe.go:300 |
 | `webapi: пачка пуста (нет кодов псих...` | `promoteFanficCast` | engine/internal/webapi/handlers_atlas.go:394 |
 | `restart boom` | `TestChannelPutRestartErrorWarning` | engine/internal/webapi/handlers_channel_test.go:198 |
 | `bad coeffs value: %s must be in [0,1]` | `collectCoeffUpdates` | engine/internal/webapi/handlers_coeffs.go:198 |
@@ -790,18 +836,18 @@ Total: 834 error sites.
 | `workshop: вектор чанка книги: %w` | `writeBankVector` | engine/internal/workshop/forge_book.go:181 |
 | `workshop: вектор чанка книги dim=%d, want %d` | `writeBankVector` | engine/internal/workshop/forge_book.go:184 |
 | `workshop: читать вход ковки %s: %w` | `ParseBookInput` | engine/internal/workshop/forge_input.go:73 |
-| `%w: %s (принимаются только txt и fb2)` | `unsupportedFormat` | engine/internal/workshop/forge_input.go:125 |
-| `workshop: читать вход ковки %s: %w` | `NormalizeBookFile` | engine/internal/workshop/forge_input.go:232 |
-| `workshop: писать utf-8 вход ковки %s: %w` | `writeBookUTF8` | engine/internal/workshop/forge_input.go:252 |
-| `workshop: заменить вход ковки %s: %w` | `writeBookUTF8` | engine/internal/workshop/forge_input.go:256 |
-| `workshop: вход ковки: кодировка %q: %w` | `toUTF8` | engine/internal/workshop/forge_input.go:292 |
-| `workshop: вход ковки: кодировка %q не...` | `toUTF8` | engine/internal/workshop/forge_input.go:298 |
-| `workshop: вход ковки: кодировка %q: %w` | `toUTF8` | engine/internal/workshop/forge_input.go:302 |
-| `%w: кандидатов нет` | `heuristicDecode` | engine/internal/workshop/forge_input.go:336 |
-| `%w: %s` | `heuristicDecode` | engine/internal/workshop/forge_input.go:344 |
-| `workshop: декодировать вход в utf-8: %w` | `decodeWith` | engine/internal/workshop/forge_input.go:502 |
-| `workshop: fb2: кодировка %q не поддерж�...` | `charsetReader` | engine/internal/workshop/forge_input.go:567 |
-| `workshop: fb2: %w` | `parseFB2` | engine/internal/workshop/forge_input.go:629 |
+| `%w: %s (принимаются только txt и fb2)` | `unsupportedFormat` | engine/internal/workshop/forge_input.go:173 |
+| `workshop: читать вход ковки %s: %w` | `NormalizeBookFile` | engine/internal/workshop/forge_input.go:287 |
+| `workshop: писать utf-8 вход ковки %s: %w` | `writeBookUTF8` | engine/internal/workshop/forge_input.go:307 |
+| `workshop: заменить вход ковки %s: %w` | `writeBookUTF8` | engine/internal/workshop/forge_input.go:311 |
+| `workshop: вход ковки: кодировка %q: %w` | `toUTF8` | engine/internal/workshop/forge_input.go:347 |
+| `workshop: вход ковки: кодировка %q не...` | `toUTF8` | engine/internal/workshop/forge_input.go:353 |
+| `workshop: вход ковки: кодировка %q: %w` | `toUTF8` | engine/internal/workshop/forge_input.go:357 |
+| `%w: кандидатов нет` | `heuristicDecode` | engine/internal/workshop/forge_input.go:391 |
+| `%w: %s` | `heuristicDecode` | engine/internal/workshop/forge_input.go:399 |
+| `workshop: декодировать вход в utf-8: %w` | `decodeWith` | engine/internal/workshop/forge_input.go:557 |
+| `workshop: fb2: кодировка %q не поддерж�...` | `charsetReader` | engine/internal/workshop/forge_input.go:622 |
+| `workshop: fb2: %w` | `parseFB2` | engine/internal/workshop/forge_input.go:684 |
 | `workshop: делексификация: %w` | `Delexify` | engine/internal/workshop/forge_pipeline.go:59 |
 | `workshop: ковка без origin` | `ForgeBankRecord` | engine/internal/workshop/forge_pipeline.go:70 |
 | `workshop: sediment_scene %d не найдена` | `RemeltScene` | engine/internal/workshop/forge_pipeline.go:137 |
@@ -820,17 +866,24 @@ Total: 834 error sites.
 | `workshop: ветка без probe_text` | `validateHoroscopeOutput` | engine/internal/workshop/horoscope.go:274 |
 | `workshop: матчер гороскопа без хэнд...` | `MatchHoroscope` | engine/internal/workshop/horoscope_match.go:97 |
 | `workshop: issue_json гороскопа не JSON: %w` | `MatchHoroscope` | engine/internal/workshop/horoscope_match.go:121 |
-| `workshop: разбор globalLuck: %w` | `(*Luck).Get` | engine/internal/workshop/luck.go:62 |
-| `workshop: globalLuck вне диапазона [0,1]: %v` | `(*Luck).Set` | engine/internal/workshop/luck.go:71 |
-| `workshop: нет хэндла для записи globalLuck` | `(*Luck).Set` | engine/internal/workshop/luck.go:74 |
-| `workshop: слот Пифии не подключён` | `RunPythia` | engine/internal/workshop/pythia.go:69 |
-| `workshop: выход Пифии не JSON: %w` | `RunPythia` | engine/internal/workshop/pythia.go:82 |
-| `workshop: world_meta.hero_birth не найден` | `heroBirth` | engine/internal/workshop/pythia.go:100 |
-| `workshop: разбор hero_birth: %w` | `heroBirth` | engine/internal/workshop/pythia.go:107 |
-| `workshop: карточка героя (characters id 0) �...` | `playerPsychotype` | engine/internal/workshop/pythia.go:120 |
-| `workshop: выход Пифии без настроения` | `validatePythiaOutput` | engine/internal/workshop/pythia.go:172 |
-| `workshop: выход Пифии без граней ка�...` | `validatePythiaOutput` | engine/internal/workshop/pythia.go:175 |
-| `workshop: payload заказа %s: %w` | `Enqueue` | engine/internal/workshop/queue.go:194 |
+| `workshop: разбор globalLuck: %w` | `(*Luck).Get` | engine/internal/workshop/luck.go:76 |
+| `workshop: globalLuck вне диапазона [0,1]: %v` | `(*Luck).Set` | engine/internal/workshop/luck.go:85 |
+| `workshop: нет хэндла для записи globalLuck` | `(*Luck).Set` | engine/internal/workshop/luck.go:88 |
+| `workshop: нет хэндла для записи сна�...` | `(*Luck).SaveCheckpoint` | engine/internal/workshop/luck.go:150 |
+| `workshop: сериализация снапшота ГС�...` | `(*Luck).SaveCheckpoint` | engine/internal/workshop/luck.go:154 |
+| `workshop: разбор снапшота ГСЧ: %w` | `(*Luck).LoadCheckpoint` | engine/internal/workshop/luck.go:178 |
+| `workshop: нет хэндла журнала событий` | `RecordRoll` | engine/internal/workshop/luck.go:195 |
+| `workshop: сериализация броска: %w` | `RecordRoll` | engine/internal/workshop/luck.go:199 |
+| `workshop: разбор события броска: %w` | `LoadRollEvents` | engine/internal/workshop/luck.go:223 |
+| `workshop: слот Пифии не подключён` | `RunPythia` | engine/internal/workshop/pythia.go:84 |
+| `workshop: выход Пифии не JSON: %w` | `RunPythia` | engine/internal/workshop/pythia.go:97 |
+| `workshop: world_meta.hero_birth не найден` | `heroBirth` | engine/internal/workshop/pythia.go:121 |
+| `workshop: разбор hero_birth: %w` | `heroBirth` | engine/internal/workshop/pythia.go:128 |
+| `workshop: карточка героя (characters id 0) �...` | `playerPsychotype` | engine/internal/workshop/pythia.go:141 |
+| `workshop: выход Пифии без настроения` | `validatePythiaOutput` | engine/internal/workshop/pythia.go:193 |
+| `workshop: выход Пифии без граней ка�...` | `validatePythiaOutput` | engine/internal/workshop/pythia.go:196 |
+| `workshop: payload заказа %s: %w` | `Enqueue` | engine/internal/workshop/queue.go:197 |
+| `workshop: разбор favorite_books: %w` | `favoriteBooks` | engine/internal/workshop/queue.go:289 |
 | `workshop: нет хэндла мира для оседа�...` | `RunSedimentOrder` | engine/internal/workshop/sediment_run.go:68 |
 | `workshop: нет заказа оседания` | `RunSedimentOrder` | engine/internal/workshop/sediment_run.go:71 |
 | `workshop: payload заказа sediment: %w` | `loadSceneForSediment` | engine/internal/workshop/sediment_run.go:130 |

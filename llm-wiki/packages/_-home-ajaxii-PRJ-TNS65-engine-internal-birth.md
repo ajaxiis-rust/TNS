@@ -43,6 +43,7 @@
 | `Fields` | var |
 | `HiddenLayer` | struct |
 | `Humours` | struct |
+| `Idiolect` | struct |
 | `Layers` | struct |
 | `List` | function |
 | `LoadAppearances` | function |
@@ -50,6 +51,7 @@
 | `LoadConsumers` | function |
 | `LoadData` | function |
 | `LoadEstates` | function |
+| `LoadIdiolects` | function |
 | `LoadMetrics` | function |
 | `LoadVoices` | function |
 | `MemoryParams` | struct |
@@ -85,15 +87,19 @@
 | `TestBirthRollback` | function |
 | `TestBirthSourceBookBinding` | function |
 | `TestBirthSourceBookRequired` | function |
+| `TestBodyStats` | function |
 | `TestConsumers` | function |
 | `TestDeepScoutLiveAtBirth` | function |
 | `TestDeepScoutNoDuplicate` | function |
 | `TestDeepScoutUnavailableAtBirth` | function |
 | `TestEmptySynopsis` | function |
 | `TestEstatesCoverAllOrders` | function |
+| `TestFavoriteBooksBirth` | function |
+| `TestFavoriteBooksValidation` | function |
 | `TestGeoSeedFiction` | function |
 | `TestGeoSeedMixed` | function |
 | `TestGeoSeedReal` | function |
+| `TestIdiolect` | function |
 | `TestIsekaiReplay` | function |
 | `TestJungArchetypes` | function |
 | `TestNoProseAtBirth` | function |
@@ -102,6 +108,7 @@
 | `TestPack96` | function |
 | `TestPackDeterministic` | function |
 | `TestPsychotypeSpace` | function |
+| `TestSeedDeterminism` | function |
 | `TestSeedFill` | function |
 | `TestValidateLang` | function |
 | `TestValidateLangExplicitPath` | function |
@@ -117,5 +124,5 @@
 | `WorldFrozenFields` | var |
 | `WorldReaskedFields` | var |
 
-**Internal symbols:** 170 (run `gograph focus _/home/ajaxii/PRJ/TNS65/engine/internal/birth` for details)
+**Internal symbols:** 173 (run `gograph focus _/home/ajaxii/PRJ/TNS65/engine/internal/birth` for details)
 

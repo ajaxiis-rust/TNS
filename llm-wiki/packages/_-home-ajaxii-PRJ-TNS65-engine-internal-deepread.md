@@ -23,6 +23,7 @@
 | `AnswerMergeSame` | const |
 | `ApplyBoundaries` | function |
 | `ApplyDecision` | function |
+| `AskSenseDisputes` | function |
 | `AttachWindowLemmas` | function |
 | `AttachWindowVectors` | function |
 | `BandConfident` | const |
@@ -37,6 +38,7 @@
 | `BuildDictAnchors` | function |
 | `BuildDisputes` | function |
 | `BuildScenes` | function |
+| `BuildSenseDisputes` | function |
 | `BuildStagingCandidates` | function |
 | `CategoryID` | function |
 | `CategoryKeys` | var |
@@ -74,6 +76,7 @@
 | `DisputeOutcome` | struct |
 | `DisputeQuestion` | struct |
 | `DisputeRole` | const |
+| `DisputeSense` | const |
 | `DisputeSlot` | interface |
 | `DisputeSlotRole` | const |
 | `DisputeState` | type |
@@ -112,6 +115,7 @@
 | `KeyViolence` | const |
 | `KindBookMap` | const |
 | `KindDeepread` | const |
+| `KindSenseDispute` | const |
 | `Lemma` | struct |
 | `LoadBookMap` | function |
 | `LoadCharacterCandidates` | function |
@@ -124,6 +128,9 @@
 | `LoadMapSource` | function |
 | `LoadRatingConfig` | function |
 | `LoadSalienceConfig` | function |
+| `LoadSenseCatalog` | function |
+| `LoadSenseLayer` | function |
+| `LoadSenses` | function |
 | `LoadStagingConfig` | function |
 | `LoadStyles` | function |
 | `LoadTimeLexicon` | function |
@@ -150,10 +157,12 @@
 | `Phrase` | struct |
 | `Place` | struct |
 | `RankDisputes` | function |
+| `RankSenseDisputes` | function |
 | `Rating16` | const |
 | `Rating18` | const |
 | `RatingConfig` | struct |
 | `ReasonUnchangedKey` | const |
+| `RemainingDisputeConfig` | function |
 | `ResolveDisputes` | function |
 | `Run` | struct |
 | `RunChunk` | struct |
@@ -168,6 +177,15 @@
 | `Scene` | struct |
 | `SceneInput` | struct |
 | `SceneVectorTable` | const |
+| `SenseCatalog` | type |
+| `SenseDictionaries` | function |
+| `SenseDisputeInput` | struct |
+| `SenseDisputeRecord` | struct |
+| `SenseGroup` | struct |
+| `SenseLayer` | struct |
+| `SenseOption` | struct |
+| `SenseOutcome` | struct |
+| `SenseQuestion` | struct |
 | `SeverityWeight` | function |
 | `StageDictionaries` | function |
 | `StagingCandidate` | struct |
@@ -189,6 +207,7 @@
 | `Styles` | struct |
 | `Summary` | struct |
 | `TagChunks` | function |
+| `TagChunksWithSenses` | function |
 | `TestBuildBookMap` | function |
 | `TestBuildBookMapDegradation` | function |
 | `TestBuildBookMapEmpty` | function |
@@ -206,6 +225,9 @@
 | `TestSalienceBands` | function |
 | `TestSalienceParses` | function |
 | `TestScenes` | function |
+| `TestSenseDispute` | function |
+| `TestSenseDisputeBudget` | function |
+| `TestSenseSalience` | function |
 | `TestSeverityWeights` | function |
 | `TestStaging` | function |
 | `TestStyle` | function |
@@ -221,5 +243,5 @@
 | `WriteScenes` | function |
 | `WriteStagingCandidates` | function |
 
-**Internal symbols:** 257 (run `gograph focus _/home/ajaxii/PRJ/TNS65/engine/internal/deepread` for details)
+**Internal symbols:** 289 (run `gograph focus _/home/ajaxii/PRJ/TNS65/engine/internal/deepread` for details)
 

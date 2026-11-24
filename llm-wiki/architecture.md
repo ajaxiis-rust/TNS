@@ -6,9 +6,9 @@
 %%{init: {'flowchart': {'defaultRenderer': 'elk'}}}%%
 flowchart LR
     n0["engine"]
-    n1["github.com/AlexMaxy/gomorphy"]
-    n2["modernc.org/sqlite"]
-    n3["golang.org/x/text"]
+    n1["golang.org/x/text"]
+    n2["github.com/AlexMaxy/gomorphy"]
+    n3["modernc.org/sqlite"]
     n0 --> n1
     n0 --> n2
     n0 --> n3

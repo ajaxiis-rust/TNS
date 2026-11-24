@@ -8,11 +8,11 @@
 | Symbol | Callers | File |
 |--------|---------|------|
 | `writeError` | 480 | engine/internal/webapi/routes.go:45 |
-| `Scan` | 212 | engine/internal/cast/scan.go:77 |
+| `Scan` | 224 | engine/internal/cast/scan.go:77 |
 | `writeJSON` | 126 | engine/internal/webapi/routes.go:38 |
-| `nowUTC` | 50 | engine/internal/workshop/queue.go:286 |
-| `nowUTC` | 50 | engine/internal/book/wake.go:372 |
-| `nowUTC` | 50 | engine/internal/cast/store.go:177 |
+| `nowUTC` | 52 | engine/internal/cast/store.go:177 |
+| `nowUTC` | 52 | engine/internal/workshop/queue.go:324 |
+| `nowUTC` | 52 | engine/internal/book/wake.go:372 |
 | `readSettingsKeys` | 32 | engine/internal/providerroute/route.go:189 |
 | `readSettingsKeys` | 32 | engine/internal/webapi/handlers_settings.go:2190 |
 | `setModelJob` | 32 | engine/internal/webapi/handlers_settings.go:1359 |
@@ -37,10 +37,10 @@
 
 | Struct | Methods | Fields | Outgoing calls | Severity |
 |--------|---------|--------|----------------|----------|
-| `TurnState` | 0 | 33 | 0 | HIGH |
+| `TurnState` | 0 | 36 | 0 | HIGH |
 | `Config` | 5 | 17 | 3 | MEDIUM |
+| `Ancketa` | 0 | 16 | 0 | MEDIUM |
 | `settingsResponse` | 0 | 16 | 0 | MEDIUM |
-| `Ancketa` | 0 | 15 | 0 | LOW |
 | `compFixture` | 7 | 4 | 25 | LOW |
 | `builder` | 0 | 14 | 0 | LOW |
 | `DisputeQuestion` | 0 | 14 | 0 | LOW |

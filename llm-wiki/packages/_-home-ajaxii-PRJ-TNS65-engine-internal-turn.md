@@ -45,6 +45,8 @@
 | `Stream` | method |
 | `Name` | method |
 | `Run` | method |
+| `Name` | method |
+| `Run` | method |
 | `Stream` | method |
 | `LimitRemaining` | method |
 | `ProviderName` | method |
@@ -58,6 +60,8 @@
 | `Run` | method |
 | `After` | method |
 | `Now` | method |
+| `Name` | method |
+| `Run` | method |
 | `Name` | method |
 | `Run` | method |
 | `Name` | method |
@@ -83,6 +87,7 @@
 | `Binding` | struct |
 | `BranchBank` | const |
 | `BranchWeaver` | const |
+| `ChooseFinale` | function |
 | `Clock` | interface |
 | `ClockSource` | interface |
 | `Command` | struct |
@@ -98,13 +103,22 @@
 | `Digest` | struct |
 | `FateVector` | struct |
 | `FeedbackPlan` | struct |
+| `FinaleAccept` | const |
+| `FinaleMenu` | struct |
+| `FinaleNewWorld` | const |
+| `FinalePath` | type |
+| `FinaleReplay` | const |
 | `FlirtAntiTriggers` | struct |
 | `FlirtCategory` | struct |
 | `FlirtDictionary` | struct |
 | `FlirtMeta` | struct |
 | `FlirtModifiers` | struct |
 | `FlirtVerdict` | struct |
+| `HeroBodyStats` | struct |
 | `HeroPosition` | struct |
+| `HeroTool` | struct |
+| `HeroToolKind` | type |
+| `HeroTools` | struct |
 | `Intent` | struct |
 | `IntentEntry` | struct |
 | `Lemmatizer` | interface |
@@ -162,6 +176,7 @@
 | `Segment` | struct |
 | `SilenceThreshold` | const |
 | `SlotBinder` | struct |
+| `SpeechAllowed` | function |
 | `Stage` | interface |
 | `TestAbsence` | function |
 | `TestAudit` | function |
@@ -177,9 +192,12 @@
 | `TestDetectMoodVectors` | function |
 | `TestDigest` | function |
 | `TestFeedbackEscalation` | function |
+| `TestFinaleMenu` | function |
 | `TestFlirtDefaults` | function |
 | `TestFlirtDictionaryGate` | function |
 | `TestFlirtRealPack` | function |
+| `TestHeroTools` | function |
+| `TestIdiolect` | function |
 | `TestNamePool` | function |
 | `TestNewsSceneChoiceDeterministic` | function |
 | `TestNewsSceneDegradation` | function |
@@ -191,6 +209,7 @@
 | `TestPrepath` | function |
 | `TestPrepathDetectMoodSignals` | function |
 | `TestProviderSlotProtocols` | function |
+| `TestReadHeroBodyStats` | function |
 | `TestSarcasmBroken` | function |
 | `TestSarcasmCoefficients` | function |
 | `TestSarcasmMarkers` | function |
@@ -208,23 +227,30 @@
 | `TestTroupeBookDescription` | function |
 | `TestTroupeStage` | function |
 | `TestWeaverCallJournal` | function |
+| `TestWillSaved` | function |
+| `TestWillSignal` | function |
 | `TimeConfig` | struct |
 | `TimeDetector` | struct |
 | `TimeJump` | struct |
 | `TimeSpan` | struct |
 | `TokenNPCGroup` | const |
+| `TokenNPCIdiolect` | const |
 | `TokenNPCName` | const |
 | `TokenNPCNameActive` | const |
 | `TokenNPCNamePassive` | const |
 | `TokenNPCRole` | const |
 | `TokenNPCRoleDeity` | const |
 | `TokenPlace` | const |
+| `ToolBond` | const |
+| `ToolItem` | const |
+| `ToolSkill` | const |
 | `Troupe` | struct |
 | `TurnInput` | struct |
 | `TurnOutput` | struct |
 | `TurnState` | struct |
+| `Will` | struct |
 | `WordVector` | struct |
 | `WorldClock` | struct |
 
-**Internal symbols:** 324 (run `gograph focus _/home/ajaxii/PRJ/TNS65/engine/internal/turn` for details)
+**Internal symbols:** 371 (run `gograph focus _/home/ajaxii/PRJ/TNS65/engine/internal/turn` for details)
 
