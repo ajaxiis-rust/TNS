@@ -131,3 +131,50 @@ func TestScenePattern(t *testing.T) {
 		t.Fatalf("пустой узор = %v, want ErrEmptyPattern", err)
 	}
 }
+
+// TestScenePatternDefaultFallback — узор без пересечения тегов получает
+// дефолтную рутину и кэшируется: повтор отдаёт ту же форму, счётчик попаданий
+// растёт, слот генерации не вызывается.
+func TestScenePatternDefaultFallback(t *testing.T) {
+	_, clk, slot, litPath, logger := newTestBank(t)
+
+	reader, err := db.OpenReaderAs(litPath, db.DBLiterary, db.WriterForge, logger)
+	if err != nil {
+		t.Fatalf("OpenReaderAs(literary): %v", err)
+	}
+	t.Cleanup(func() { _ = reader.Close() })
+
+	cache := bank.NewPatternCache()
+	b := bank.New(reader, clk, slot, nil, bank.WithPatternCache(cache))
+
+	// Тегов узора нет в bank_pool — выбор идёт дефолтной рутиной.
+	pattern := bank.ScenePattern{
+		Participants: []string{"случайный прохожий"},
+		Location:     "пустошь",
+		SceneType:    "молчание",
+	}
+	first, err := b.PickScene(pattern)
+	if err != nil {
+		t.Fatalf("PickScene без пересечения: %v", err)
+	}
+	if first.Kind != "routine" || first.Text == "" {
+		t.Fatalf("дефолтная запись = %+v, want непустую рутину", first)
+	}
+	if !b.PatternKnown(pattern) {
+		t.Fatalf("узор не записан после дефолтного выбора")
+	}
+
+	second, err := b.PickScene(pattern)
+	if err != nil {
+		t.Fatalf("PickScene(повтор): %v", err)
+	}
+	if second.Text != first.Text {
+		t.Fatalf("повтор узора дал другой текст: %q ≠ %q", second.Text, first.Text)
+	}
+	if got := b.PatternHits(pattern); got != 1 {
+		t.Fatalf("счётчик попаданий узора = %d, want 1", got)
+	}
+	if got := slot.Calls(); got != 0 {
+		t.Fatalf("вызовов слота генерации = %d, want 0", got)
+	}
+}

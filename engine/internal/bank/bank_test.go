@@ -81,8 +81,8 @@ func newTestBank(t *testing.T) (*bank.Bank, *testkit.Clock, *testkit.FakeSlot, s
 	return b, clk, slot, litPath, logger
 }
 
-// TestBankSelectsByTags — выбор идёт по пересечению тегов: запись без тегов не
-// выбирается даже при пустых тегах сцены, а совпавшая запись находится.
+// TestBankSelectsByTags — при пересечении тегов выбор прежний: побеждает
+// запись с наибольшим числом совпадений, при равенстве — меньший id.
 func TestBankSelectsByTags(t *testing.T) {
 	b, _, _, _, _ := newTestBank(t)
 
@@ -94,10 +94,73 @@ func TestBankSelectsByTags(t *testing.T) {
 	if rec.Tags != "приветствие,торг" {
 		t.Fatalf("выбрана запись с тегами %q, want приветствие,торг", rec.Tags)
 	}
+}
 
-	// Пересечения нет — ErrNoRecord (пустые теги записи не совпадают ни с чем).
-	if _, err := b.Pick([]string{"неизвестный-тег"}); !errors.Is(err, bank.ErrNoRecord) {
-		t.Fatalf("Pick(неизвестный-тег) = %v, want ErrNoRecord", err)
+// TestBankDefaultRoutineWithoutOverlap — банк непуст, пересечения тегов нет:
+// Челнок отдаёт дефолтную рутину (наименьший usage_count, при равенстве меньший
+// id), а не ErrNoRecord. Заглушка fallback — только для пустого банка.
+func TestBankDefaultRoutineWithoutOverlap(t *testing.T) {
+	b, _, _, litPath, logger := newTestBank(t)
+
+	forge, err := db.OpenWriterAs(litPath, db.DBLiterary, db.WriterForge, logger)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(forge): %v", err)
+	}
+	if _, err := forge.Exec("bank_pool",
+		`UPDATE bank_pool SET usage_count = 5 WHERE id IN (1, 2)`); err != nil {
+		_ = forge.Close()
+		t.Fatalf("UPDATE usage_count: %v", err)
+	}
+	_ = forge.Close()
+
+	rec, err := b.Pick([]string{"неизвестный-тег"})
+	if err != nil {
+		t.Fatalf("Pick(нет пересечения): %v, want дефолтную запись", err)
+	}
+	if rec.Kind != "routine" {
+		t.Fatalf("дефолтная запись kind=%q, want routine", rec.Kind)
+	}
+	if rec.ID != 3 {
+		t.Fatalf("дефолтная запись id=%d, want 3 (наименьший usage_count)", rec.ID)
+	}
+	if rec.Text != "Пахнет травами и дымом." {
+		t.Fatalf("дефолтная запись = %q, want «Пахнет травами и дымом.»", rec.Text)
+	}
+
+	// Повтор того же набора тегов — та же запись (окно повторяемости).
+	again, err := b.Pick([]string{"неизвестный-тег"})
+	if err != nil {
+		t.Fatalf("Pick(повтор): %v", err)
+	}
+	if again.ID != rec.ID {
+		t.Fatalf("повтор дал запись id=%d, want %d", again.ID, rec.ID)
+	}
+}
+
+// TestBankEmptyReturnsErrNoRecord — действительно пустой банк — единственный
+// случай заглушки fallback.
+func TestBankEmptyReturnsErrNoRecord(t *testing.T) {
+	dir := t.TempDir()
+	litPath := filepath.Join(dir, "literary.db")
+	raw, err := db.OpenWriter(litPath)
+	if err != nil {
+		t.Fatalf("OpenWriter: %v", err)
+	}
+	if err := db.Migrate(raw, "literary"); err != nil {
+		_ = raw.Close()
+		t.Fatalf("Migrate(literary): %v", err)
+	}
+	_ = raw.Close()
+
+	reader, err := db.OpenReaderAs(litPath, db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		t.Fatalf("OpenReaderAs(literary): %v", err)
+	}
+	t.Cleanup(func() { _ = reader.Close() })
+
+	b := bank.New(reader, nil, nil, nil)
+	if _, err := b.Pick([]string{"любой-тег"}); !errors.Is(err, bank.ErrNoRecord) {
+		t.Fatalf("Pick пустого банка = %v, want ErrNoRecord", err)
 	}
 }
 

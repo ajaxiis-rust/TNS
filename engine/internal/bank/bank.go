@@ -5,6 +5,7 @@ package bank
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"sort"
@@ -299,7 +300,9 @@ func (b *Bank) patterns() *PatternCache {
 
 // selectRecord — детерминированный выбор записи: среди записей, чьи теги
 // пересекаются с тегами сцены, побеждает запись с наибольшим числом совпадений;
-// при равенстве — меньший id.
+// при равенстве — меньший id. Пересечения нет, но банк непуст — литературная
+// запись всё равно отдаётся (selectDefault), иначе Челнок падал бы в заглушку
+// на обычных рутинных фразах без словарных категорий.
 func (b *Bank) selectRecord(tags []string) (Record, error) {
 	rows, err := b.reader.Query(`SELECT id, kind, text, tags FROM bank_pool`)
 	if err != nil {
@@ -327,10 +330,29 @@ func (b *Bank) selectRecord(tags []string) (Record, error) {
 	if err := rows.Err(); err != nil {
 		return Record{}, err
 	}
-	if bestScore <= 0 {
+	if bestScore > 0 {
+		return best, nil
+	}
+	return b.selectDefault()
+}
+
+// selectDefault — дефолтная запись для сцены без пересечения тегов: рутина
+// (kind='routine') с наименьшим usage_count, при равенстве — меньший id. Рутины
+// нет, но банк непуст — берётся любая запись по тому же порядку: заглушка
+// fallback остаётся только для пустого банка.
+func (b *Bank) selectDefault() (Record, error) {
+	var rec Record
+	err := b.reader.QueryRow(
+		`SELECT id, kind, text, tags FROM bank_pool
+		 ORDER BY CASE WHEN kind = 'routine' THEN 0 ELSE 1 END, usage_count ASC, id ASC
+		 LIMIT 1`).Scan(&rec.ID, &rec.Kind, &rec.Text, &rec.Tags)
+	if errors.Is(err, sql.ErrNoRows) {
 		return Record{}, ErrNoRecord
 	}
-	return best, nil
+	if err != nil {
+		return Record{}, err
+	}
+	return rec, nil
 }
 
 // bind подставляет факты мира в форму записи биндером; без биндера — форма как есть.
