@@ -75,13 +75,17 @@ func TestConfirm(t *testing.T) {
 		t.Fatalf("пороги config.yaml = %+v, ожидались 0.6/0.75/0.7/0.85", cfg)
 	}
 
-	hyp := []string{"идти", "ехать", "плыть"}
+	// Гипотеза намерения — леммы и глаголы из лексикона, с дублями.
+	hyp := []string{"идти", "ехать", "плыть", "бежать", "идти", "ехать", "плыть", "бежать", "двигаться", "отправиться"}
 
-	// Расхождение: словарь подтверждает (2/3 ≥ 0.6), вектор против (cos 0.5 < 0.75).
-	// Решение принято по словарю.
-	div := runConfirm(t, cfg, hyp, []string{"идти", "ехать"}, 0.5)
+	// Один совпавший глагол выбранного намерения подтверждает словарный голос:
+	// доля по всему списку (1 из 10) отсекала естественную реплику.
+	div := runConfirm(t, cfg, hyp, []string{"идти"}, 0.4)
 	if div.Decision != DecisionConfirmed {
-		t.Fatalf("расхождение: решение = %q, ожидалось %q", div.Decision, DecisionConfirmed)
+		t.Fatalf("одно совпадение: решение = %q, ожидалось %q", div.Decision, DecisionConfirmed)
+	}
+	if div.DictMatch != 1 {
+		t.Fatalf("одно совпадение: dict_match = %f, ожидалось 1", div.DictMatch)
 	}
 	if !div.Disagreement {
 		t.Fatalf("расхождение: Disagreement = false, ожидалось true")
@@ -89,17 +93,17 @@ func TestConfirm(t *testing.T) {
 	if !div.Confirmed() {
 		t.Fatalf("расхождение: по словарю смысл не подтверждён")
 	}
-	if want := 2.0 / 3.0; absDiff(div.DictMatch, want) > 1e-9 {
-		t.Fatalf("dict_match = %f, ожидалось %f", div.DictMatch, want)
-	}
 
-	// dict_match < 0.6 — подтверждения нет, ход уходит на переспрос.
-	reask := runConfirm(t, cfg, hyp, []string{"идти"}, 0.95)
+	// Пересечения нет — словарного подтверждения нет, ход уходит на переспрос.
+	reask := runConfirm(t, cfg, hyp, []string{"привет"}, 0.95)
 	if reask.Decision != DecisionReask {
-		t.Fatalf("dict_match<0.6: решение = %q, ожидалось %q", reask.Decision, DecisionReask)
+		t.Fatalf("нет совпадения: решение = %q, ожидалось %q", reask.Decision, DecisionReask)
 	}
 	if reask.Confirmed() {
-		t.Fatalf("dict_match<0.6: смысл ошибочно подтверждён")
+		t.Fatalf("нет совпадения: смысл ошибочно подтверждён")
+	}
+	if empty := runConfirm(t, cfg, nil, []string{"идти"}, 0.95); empty.Decision != DecisionReask {
+		t.Fatalf("пустая гипотеза: решение = %q, ожидалось %q", empty.Decision, DecisionReask)
 	}
 
 	// Дерзкий режим: dict_match ≥ 0.7 и cos ≥ 0.85 — подтверждение коммитится сразу.
@@ -111,8 +115,8 @@ func TestConfirm(t *testing.T) {
 		t.Fatalf("запас: смысл не подтверждён")
 	}
 
-	// Обычное согласие: dict_match ≥ 0.6 и cos ≥ 0.75 без запаса.
-	plain := runConfirm(t, cfg, hyp, []string{"идти", "ехать"}, 0.9)
+	// Обычное согласие: dict_match ≥ 0.6 и cos ≥ 0.75 без запаса (cos < 0.85).
+	plain := runConfirm(t, cfg, hyp, []string{"идти", "ехать"}, 0.8)
 	if plain.Decision != DecisionConfirmed || plain.Disagreement {
 		t.Fatalf("согласие: решение = %+v, ожидалось confirmed без расхождения", plain)
 	}
@@ -129,11 +133,4 @@ func TestConfirmConfigLoaded(t *testing.T) {
 		cfg.MarginDict != 0.7 || cfg.MarginVector != 0.85 {
 		t.Fatalf("engine/config.yaml пороги = %+v, ожидались 0.6/0.75/0.7/0.85", cfg)
 	}
-}
-
-func absDiff(a, b float64) float64 {
-	if a < b {
-		return b - a
-	}
-	return a - b
 }
