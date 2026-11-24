@@ -671,6 +671,9 @@ func (d *FlirtDictionary) antiTrigger(tokens []sarcasmToken) bool {
 type SceneFrame struct {
 	HeroPlaceID int64
 	HeroMood    string
+	// HeroTools — инструменты героя (T-19-09): именованные опоры как фактор
+	// сцены; допустимость действий и опоры сцены считаются по ним.
+	HeroTools []HeroTool
 }
 
 // Preselect — решение предвыбора: запись из пула банка или преднабор промпта

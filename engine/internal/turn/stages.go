@@ -105,6 +105,9 @@ type TurnState struct {
 	// Feedback — план хода по сигналам игрока о последних сценах (W-04.3/4):
 	// дизлайк подряд даёт регенерацию или откат к сырому ходу игрока.
 	Feedback FeedbackPlan
+	// HeroTools — инструменты героя (T-19-09): стартовый набор из hero_birth и
+	// события мира; стадия tools заполняет их до сборки рамки сцены.
+	HeroTools HeroTools
 }
 
 // fallbackReply — нейтральная запись fallback из банка (T-03-01, шаг 5): до путей
@@ -132,6 +135,7 @@ func (p *Pipeline) stages() []Stage {
 		&cutStage{logger: p.Logger},
 		&troupeStage{db: p.DB, lit: p.LitDB},
 		&secretStage{db: p.DB},
+		&toolsStage{db: p.DB},
 		&prepathStage{db: p.DB},
 		&compositionStage{lit: p.LitDB, world: p.DriftDB, logger: p.Logger},
 		&confirmStage{configPath: "config.yaml"},
@@ -396,7 +400,7 @@ func intentLemmas(lex *Lexicon, name string) []string {
 }
 
 // assembleFrame собирает рамку сцены из механики: место и настроение героя из
-// character_state, от слов реплики не зависят.
+// character_state, инструменты героя из слоя tools, от слов реплики не зависят.
 func (s *prepathStage) assembleFrame(_ *TurnState) SceneFrame {
 	var f SceneFrame
 	if s.db == nil {
@@ -404,6 +408,9 @@ func (s *prepathStage) assembleFrame(_ *TurnState) SceneFrame {
 	}
 	_ = s.db.QueryRow(`SELECT place_id, mood FROM character_state WHERE character_id = 0`).
 		Scan(&f.HeroPlaceID, &f.HeroMood)
+	if tools, ok, err := readHeroTools(s.db); err == nil && ok {
+		f.HeroTools = tools.Tools
+	}
 	return f
 }
 
