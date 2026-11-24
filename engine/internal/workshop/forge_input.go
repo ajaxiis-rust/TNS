@@ -81,27 +81,75 @@ func ParseBookInput(path string) (*ParsedBook, error) {
 }
 
 // limitChunks режет чанки длиннее MaxChunkRunes на куски, сохраняя заголовок
-// главы у каждого куска (P11, T-12-11).
+// главы у каждого куска (P11, T-12-11). Граница куска — абзац, конец
+// предложения или пробел: слово не разрывается (T-19-13). Текст без глав
+// режется тем же потолком по абзацным границам, заголовок куска пуст.
 func limitChunks(chunks []Chunk) []Chunk {
 	out := make([]Chunk, 0, len(chunks))
 	for _, c := range chunks {
-		runes := []rune(c.Text)
-		if len(runes) <= MaxChunkRunes {
+		if utf8.RuneCountInString(c.Text) <= MaxChunkRunes {
 			out = append(out, c)
 			continue
 		}
-		for start := 0; start < len(runes); start += MaxChunkRunes {
-			end := start + MaxChunkRunes
-			if end > len(runes) {
-				end = len(runes)
-			}
-			out = append(out, Chunk{
-				Chapter: c.Chapter,
-				Text:    strings.TrimSpace(string(runes[start:end])),
-			})
+		for _, part := range splitLongText(c.Text) {
+			out = append(out, Chunk{Chapter: c.Chapter, Text: part})
 		}
 	}
 	return out
+}
+
+// splitLongText режет текст по потолку чанка на границах абзацев (T-19-13).
+func splitLongText(text string) []string {
+	parts := make([]string, 0, 1)
+	for {
+		runes := []rune(text)
+		if len(runes) <= MaxChunkRunes {
+			if s := strings.TrimSpace(text); s != "" {
+				parts = append(parts, s)
+			}
+			return parts
+		}
+		cut := chunkCut(runes)
+		if s := strings.TrimSpace(string(runes[:cut])); s != "" {
+			parts = append(parts, s)
+		}
+		text = string(runes[cut:])
+	}
+}
+
+// chunkCut — конец куска в рунах: ближайшая к потолку граница абзаца (перевод
+// строки), затем конца предложения, затем пробела. При абзаце без границ до
+// потолка — последний пробел перед потолком; если границ нет вовсе — жёсткий
+// разрез по потолку.
+func chunkCut(runes []rune) int {
+	limit := MaxChunkRunes
+	if limit > len(runes) {
+		limit = len(runes)
+	}
+	floor := limit / 2
+
+	for i := limit - 1; i >= floor && i > 0; i-- {
+		if runes[i] == '\n' {
+			return i
+		}
+	}
+	for i := limit - 1; i >= floor && i > 0; i-- {
+		switch runes[i] {
+		case '.', '!', '?', '…':
+			return i + 1
+		}
+	}
+	for i := limit - 1; i >= floor && i > 0; i-- {
+		if unicode.IsSpace(runes[i]) {
+			return i
+		}
+	}
+	for i := limit - 1; i > 0; i-- {
+		if unicode.IsSpace(runes[i]) {
+			return i
+		}
+	}
+	return limit
 }
 
 // parseBook разбирает вход по имени файла: txt — напрямую в чанкер, fb2 —
@@ -130,9 +178,16 @@ func parseTXT(data []byte) *ParsedBook {
 	return &ParsedBook{Chunks: chunkByChapters(string(data))}
 }
 
-// chapterHeadingRe — граница главы в тексте: «Глава N», «Глава N. Заголовок»,
-// «Chapter N», необязательно с Markdown-решёткой.
-var chapterHeadingRe = regexp.MustCompile(`^\s*(?:#{1,6}\s*)?(?:[Гг]лава|[Cc]hapter)(?:\s+\S.*)?$`)
+// chapterHeadingRe — граница главы в тексте (W-14.3, T-19-13): «Глава N»,
+// «Chapter N», «Пролог», «Эпилог», «Часть N», нумерация «I.», «IV.», «1.»,
+// разделители «===» и «***»; необязательно с Markdown-решёткой.
+var chapterHeadingRe = regexp.MustCompile(`^\s*(?:#{1,6}\s*)?(?:` +
+	`(?:[Гг]лава|[Cc]hapter|[Пп]ролог|[Ээ]пилог|[Чч]асть|[Pp]art)(?:\s+\S.*)?` +
+	`|[IVXLCDM]{1,7}\.(?:\s+\S.*)?` +
+	`|\d{1,4}\.(?:\s+\S.*)?` +
+	`|={3,}` +
+	`|(?:\*\s*){3,}` +
+	`)$`)
 
 // chunkByChapters режет тело на куски по границам глав (шаг 3): строка начала
 // главы становится заголовком куска, текст до следующей границы — его телом.

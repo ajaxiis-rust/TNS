@@ -243,3 +243,157 @@ func TestParseFB2DeclarationLie(t *testing.T) {
 		t.Fatalf("в журнале нет предупреждения %s: %s", journal.EventSourceWarning, raw)
 	}
 }
+
+// TestChunkBoundaries — T-19-13: глава длиннее потолка режется по границе
+// абзаца, предложения или пробела (слово не рвётся), маркеры глав расширены,
+// текст без глав режется по абзацам с пустым заголовком.
+func TestChunkBoundaries(t *testing.T) {
+	// Маркеры глав: каждый открывает новый кусок, заголовок — сама строка.
+	markers := []string{
+		"Глава 1. Начало", "Chapter 2", "Пролог", "Эпилог",
+		"Часть I. Первая", "Часть 2", "I. Первая", "IV. Четвёртая",
+		"1. Пункт", "===", "***",
+	}
+	for _, marker := range markers {
+		marker := marker
+		t.Run("маркер "+marker, func(t *testing.T) {
+			body := marker + "\nТекст первой сцены.\n\nГлава 99. Конец\nТекст второй сцены.\n"
+			chunks := parseChunks(t, body)
+			if len(chunks) != 2 {
+				t.Fatalf("чанков = %d, want 2: %+v", len(chunks), chunks)
+			}
+			if chunks[0].Chapter != marker {
+				t.Fatalf("Chapter куска 0 = %q, want %q", chunks[0].Chapter, marker)
+			}
+			if chunks[0].Text != "Текст первой сцены." {
+				t.Fatalf("текст куска 0 = %q, want %q", chunks[0].Text, "Текст первой сцены.")
+			}
+			if chunks[1].Chapter != "Глава 99. Конец" {
+				t.Fatalf("Chapter куска 1 = %q, want %q", chunks[1].Chapter, "Глава 99. Конец")
+			}
+			if !strings.Contains(chunks[1].Text, "Текст второй сцены.") {
+				t.Fatalf("кусок 1 не содержит тело второй главы: %q", chunks[1].Text)
+			}
+		})
+	}
+
+	// Длинная глава из абзацев: куски не длиннее потолка и кончаются на
+	// границе абзаца, слова не рвутся и не теряются.
+	para := strings.Repeat("Корабль шёл вдоль берега, и команда молчала. ", 40)
+	bodyText := strings.Join([]string{para, para, para}, "\n\n")
+	chunks := parseChunks(t, "Глава 1. Длинная\n"+bodyText+"\n")
+	if len(chunks) < 2 {
+		t.Fatalf("длинная глава не разрезана: %d чанк(ов)", len(chunks))
+	}
+	for i, c := range chunks {
+		if c.Chapter != "Глава 1. Длинная" {
+			t.Fatalf("чанк %d: Chapter = %q, want %q", i, c.Chapter, "Глава 1. Длинная")
+		}
+		if got := utf8.RuneCountInString(c.Text); got > workshop.MaxChunkRunes {
+			t.Fatalf("чанк %d длиной %d рун, want ≤ %d", i, got, workshop.MaxChunkRunes)
+		}
+		if i < len(chunks)-1 && utf8.RuneCountInString(c.Text) <= workshop.MaxChunkRunes/2 {
+			t.Fatalf("чанк %d слишком короткий: %d рун", i, utf8.RuneCountInString(c.Text))
+		}
+		if !strings.HasSuffix(c.Text, ".") {
+			t.Fatalf("чанк %d не кончается границей абзаца: %q", i, chunkTail(c.Text, 40))
+		}
+	}
+	if got, want := joinWords(chunks), strings.Join(strings.Fields(bodyText), " "); got != want {
+		t.Fatalf("слова чанков не совпадают с текстом главы: разрыв или потеря слова")
+	}
+
+	// Длинный абзац без переводов строк: граница — конец предложения.
+	sentence := "Он смотрел на воду и думал о том, что путь ещё долог. "
+	sentText := strings.Repeat(sentence, 100)
+	sentChunks := parseChunks(t, "Глава 2. Сплошная\n"+sentText)
+	if len(sentChunks) < 2 {
+		t.Fatalf("длинный абзац не разрезан: %d чанк(ов)", len(sentChunks))
+	}
+	for i, c := range sentChunks {
+		if got := utf8.RuneCountInString(c.Text); got > workshop.MaxChunkRunes {
+			t.Fatalf("чанк %d длиной %d рун, want ≤ %d", i, got, workshop.MaxChunkRunes)
+		}
+		if !strings.HasSuffix(c.Text, ".") && i < len(sentChunks)-1 {
+			t.Fatalf("чанк %d не кончается концом предложения: %q", i, chunkTail(c.Text, 40))
+		}
+	}
+	if got, want := joinWords(sentChunks), strings.Join(strings.Fields(sentText), " "); got != want {
+		t.Fatalf("слова чанков не совпадают с текстом абзаца")
+	}
+
+	// Абзац без терминаторов и переводов строк: граница — пробел, слово целое.
+	wordy := strings.Repeat("слово ", 900)
+	wordChunks := parseChunks(t, "Глава 3. Слова\n"+wordy)
+	if len(wordChunks) < 2 {
+		t.Fatalf("абзац без терминаторов не разрезан: %d чанк(ов)", len(wordChunks))
+	}
+	for i, c := range wordChunks {
+		if got := utf8.RuneCountInString(c.Text); got > workshop.MaxChunkRunes {
+			t.Fatalf("чанк %d длиной %d рун, want ≤ %d", i, got, workshop.MaxChunkRunes)
+		}
+		if !strings.HasSuffix(c.Text, "слово") {
+			t.Fatalf("чанк %d разорвал слово: %q", i, chunkTail(c.Text, 40))
+		}
+	}
+	if got, want := joinWords(wordChunks), strings.Join(strings.Fields(wordy), " "); got != want {
+		t.Fatalf("слова чанков не совпадают с текстом абзаца")
+	}
+
+	// Текст без распознанных глав: режется по абзацам, заголовок пуст,
+	// порядок кусков сохранён.
+	plain := strings.Join([]string{
+		"начало текста " + strings.Repeat("слово ", 400),
+		"середина текста " + strings.Repeat("слово ", 400),
+		"конец текста " + strings.Repeat("слово ", 400),
+	}, "\n\n")
+	plainChunks := parseChunks(t, plain)
+	if len(plainChunks) < 2 {
+		t.Fatalf("текст без глав не разрезан: %d чанк(ов)", len(plainChunks))
+	}
+	for i, c := range plainChunks {
+		if c.Chapter != "" {
+			t.Fatalf("чанк %d: Chapter = %q, want пусто", i, c.Chapter)
+		}
+		if got := utf8.RuneCountInString(c.Text); got > workshop.MaxChunkRunes {
+			t.Fatalf("чанк %d длиной %d рун, want ≤ %d", i, got, workshop.MaxChunkRunes)
+		}
+	}
+	if !strings.HasPrefix(plainChunks[0].Text, "начало текста") {
+		t.Fatalf("первый кусок = %q, want начало текста", chunkTail(plainChunks[0].Text, 40))
+	}
+	if last := plainChunks[len(plainChunks)-1].Text; !strings.Contains(last, "конец текста") {
+		t.Fatalf("последний кусок не содержит конец текста: %q", chunkTail(last, 40))
+	}
+	if got, want := joinWords(plainChunks), strings.Join(strings.Fields(plain), " "); got != want {
+		t.Fatalf("слова чанков не совпадают с текстом без глав")
+	}
+}
+
+// parseChunks разбирает книгу из строки и возвращает очередь чанков.
+func parseChunks(t *testing.T, body string) []workshop.Chunk {
+	t.Helper()
+	parsed, err := workshop.ParseBookInput(writeBook(t, "chunks.txt", body))
+	if err != nil {
+		t.Fatalf("ParseBookInput: %v", err)
+	}
+	return parsed.Chunks
+}
+
+// joinWords склеивает слова чанков через пробел — сверка без потерь.
+func joinWords(chunks []workshop.Chunk) string {
+	words := make([]string, 0, len(chunks))
+	for _, c := range chunks {
+		words = append(words, strings.Fields(c.Text)...)
+	}
+	return strings.Join(words, " ")
+}
+
+// chunkTail — последние n рун текста для сообщений об ошибке.
+func chunkTail(s string, n int) string {
+	r := []rune(s)
+	if len(r) > n {
+		r = r[len(r)-n:]
+	}
+	return string(r)
+}
