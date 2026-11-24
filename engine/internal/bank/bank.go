@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"tns65/internal/db"
@@ -45,7 +46,38 @@ var (
 	ErrNoRecord = errors.New("bank: нет записи под теги сцены")
 	// ErrNoReader — читатель литературной базы не задан.
 	ErrNoReader = errors.New("bank: читатель литературной базы не задан")
+	// ErrEmptyPattern — у узора сцены нет структуры: пусты участники, локация и тип.
+	ErrEmptyPattern = errors.New("bank: пустой узор сцены")
 )
+
+// ScenePattern — структурный ключ сцены-узора (T-19-12): состав участников,
+// локация и тип сцены из оседания. Одинаковый ключ описывает ту же сцену-узор.
+type ScenePattern struct {
+	Participants []string // состав участников; порядок и регистр не важны.
+	Location     string   // локация сцены.
+	SceneType    string   // тип сцены (намерение из оседания).
+}
+
+// Key — каноническая форма узора: участники без повторов в нижнем регистре по
+// алфавиту, затем локация и тип сцены. Пустой ключ — узор без структуры.
+func (p ScenePattern) Key() string {
+	people := sortedKeys(tagSet(p.Participants))
+	loc := normalizeField(p.Location)
+	kind := normalizeField(p.SceneType)
+	if len(people) == 0 && loc == "" && kind == "" {
+		return ""
+	}
+	return strings.Join(people, "+") + "|" + loc + "|" + kind
+}
+
+// Tags — теги сцены для обычного выбора из bank_pool (T-03-07): участники,
+// локация и тип сцены узора.
+func (p ScenePattern) Tags() []string {
+	tags := make([]string, 0, len(p.Participants)+2)
+	tags = append(tags, p.Participants...)
+	tags = append(tags, p.Location, p.SceneType)
+	return sortedKeys(tagSet(tags))
+}
 
 // Record — запись пула банка bank_pool литературной базы.
 type Record struct {
@@ -61,6 +93,80 @@ type recentPick struct {
 	rec Record
 }
 
+// patternEntry — запись кэша узоров: форма записи банка и счётчик попаданий.
+type patternEntry struct {
+	rec  Record
+	hits int
+}
+
+// PatternCache — кэш сцен-узоров Челнока (T-19-12): структурный ключ узора →
+// форма записи банка. Кэш общий на процесс: Банк собирается на ход, а сцена-узор
+// переживает ходы, поэтому повторный запрос отдаётся без слота генерации.
+// Хранится форма без фактов мира — биндер подставляет их при каждой отдаче (LT-08.5).
+type PatternCache struct {
+	mu      sync.Mutex
+	entries map[string]*patternEntry
+}
+
+// NewPatternCache — пустой кэш узоров.
+func NewPatternCache() *PatternCache {
+	return &PatternCache{entries: make(map[string]*patternEntry)}
+}
+
+// defaultPatternCache — кэш узоров для Банков, собранных без своего.
+var defaultPatternCache = NewPatternCache()
+
+// DefaultPatternCache — общий на процесс кэш сцен-узоров.
+func DefaultPatternCache() *PatternCache { return defaultPatternCache }
+
+// Lookup отдаёт форму записи узора; попадание растит счётчик узора.
+func (c *PatternCache) Lookup(key string) (Record, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e, ok := c.entries[key]
+	if !ok {
+		return Record{}, false
+	}
+	e.hits++
+	return e.rec, true
+}
+
+// Remember записывает новый узор; знакомому ключу обновляет форму, счётчик хранит.
+func (c *PatternCache) Remember(key string, rec Record) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if e, ok := c.entries[key]; ok {
+		e.rec = rec
+		return
+	}
+	c.entries[key] = &patternEntry{rec: rec}
+}
+
+// Known — есть ли узор в кэше, без роста счётчика: вход расширения RuleRepeatable.
+func (c *PatternCache) Known(key string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	_, ok := c.entries[key]
+	return ok
+}
+
+// Hits — счётчик попаданий узора для Селектора (T-19-12).
+func (c *PatternCache) Hits(key string) int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if e, ok := c.entries[key]; ok {
+		return e.hits
+	}
+	return 0
+}
+
+// Len — число узоров в кэше.
+func (c *PatternCache) Len() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.entries)
+}
+
 // Bank — Челнок: выбор записи из bank_pool по тегам сцены.
 type Bank struct {
 	reader *db.Handle // литературная база; только чтение (bank_pool пишет forge).
@@ -68,13 +174,26 @@ type Bank struct {
 	slot   Slot // не вызывается; присутствует для проверки «ноль вызовов слота».
 	binder Binder
 	recent []recentPick
+	cache  *PatternCache // кэш узоров (T-19-12); nil — общий на процесс.
+}
+
+// Option — настройка Челнока при сборке (T-19-12).
+type Option func(*Bank)
+
+// WithPatternCache подключает свой кэш узоров вместо общего на процесс.
+func WithPatternCache(c *PatternCache) Option {
+	return func(b *Bank) { b.cache = c }
 }
 
 // New собирает Челнок над литературной базой reader (чтение), часами clock,
 // слотом генерации slot и биндером фактов binder. clock и binder могут быть nil:
 // тогда время берётся реальное, а форма выдаётся без подстановки фактов.
-func New(reader *db.Handle, clock Clock, slot Slot, binder Binder) *Bank {
-	return &Bank{reader: reader, clock: clock, slot: slot, binder: binder}
+func New(reader *db.Handle, clock Clock, slot Slot, binder Binder, opts ...Option) *Bank {
+	b := &Bank{reader: reader, clock: clock, slot: slot, binder: binder}
+	for _, opt := range opts {
+		opt(b)
+	}
+	return b
 }
 
 // Pick выбирает запись банка по тегам сцены tags и возвращает её с подставленными
@@ -101,6 +220,16 @@ func (b *Bank) Pick(tags []string) (Record, error) {
 // pick — выбор с памятью последних ходов: попадание в окно возвращает прошлый
 // выбор без нового чтения; иначе — детерминированный выбор и запоминание.
 func (b *Bank) pick(tags []string) (Record, error) {
+	rec, err := b.pickForm(tags)
+	if err != nil {
+		return Record{}, err
+	}
+	return b.bind(rec), nil
+}
+
+// pickForm — выбор формы записи без подстановки фактов мира: в окне последних
+// ходов и в кэше узоров хранится форма, факты подставляет биндер при отдаче.
+func (b *Bank) pickForm(tags []string) (Record, error) {
 	key := canonicalTags(tags)
 	if i := b.recentIndex(key); i >= 0 {
 		return b.recent[i].rec, nil
@@ -110,9 +239,62 @@ func (b *Bank) pick(tags []string) (Record, error) {
 	if err != nil {
 		return Record{}, err
 	}
-	rec = b.bind(rec)
 	b.remember(key, rec)
 	return rec, nil
+}
+
+// PickScene отдаёт заготовку по узору сцены без вызова слота генерации (T-19-12,
+// расширение RuleRepeatable): попадание в кэш узоров возвращает ту же форму с
+// подставленными фактами и растит счётчик; промах идёт обычным путём выбора и
+// записывает новый узор. Бюджет выборки — тот же Budget.
+func (b *Bank) PickScene(p ScenePattern) (Record, error) {
+	if b.reader == nil {
+		return Record{}, ErrNoReader
+	}
+	key := p.Key()
+	if key == "" {
+		return Record{}, ErrEmptyPattern
+	}
+	start := b.now()
+	cache := b.patterns()
+
+	rec, hit := cache.Lookup(key)
+	if !hit {
+		selected, err := b.pickForm(p.Tags())
+		if err != nil {
+			return Record{}, err
+		}
+		cache.Remember(key, selected)
+		rec = selected
+	}
+
+	if elapsed := b.now().Sub(start); elapsed > Budget {
+		return Record{}, fmt.Errorf("bank: выборка превысила бюджет: %v > %v", elapsed, Budget)
+	}
+	return b.bind(rec), nil
+}
+
+// PatternKnown — известен ли узор: вход Селектора для RuleRepeatable без слота.
+func (b *Bank) PatternKnown(p ScenePattern) bool {
+	key := p.Key()
+	return key != "" && b.patterns().Known(key)
+}
+
+// PatternHits — сколько раз узор отдан из кэша: счётчик попаданий для Селектора.
+func (b *Bank) PatternHits(p ScenePattern) int {
+	key := p.Key()
+	if key == "" {
+		return 0
+	}
+	return b.patterns().Hits(key)
+}
+
+// patterns — кэш узоров Банка; nil — общий на процесс.
+func (b *Bank) patterns() *PatternCache {
+	if b.cache != nil {
+		return b.cache
+	}
+	return defaultPatternCache
 }
 
 // selectRecord — детерминированный выбор записи: среди записей, чьи теги
@@ -187,13 +369,22 @@ func (b *Bank) remember(key string, rec Record) {
 
 // canonicalTags — каноническая форма набора тегов для сравнения «повторяемого».
 func canonicalTags(tags []string) string {
-	set := tagSet(tags)
+	return strings.Join(sortedKeys(tagSet(tags)), ",")
+}
+
+// normalizeField — поле структурного ключа: нижний регистр без пробелов по краям.
+func normalizeField(s string) string {
+	return strings.ToLower(strings.TrimSpace(s))
+}
+
+// sortedKeys — ключи набора по алфавиту: канонический порядок тегов и узоров.
+func sortedKeys(set map[string]bool) []string {
 	keys := make([]string, 0, len(set))
 	for k := range set {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	return strings.Join(keys, ",")
+	return keys
 }
 
 // tagSet — нормализованный набор тегов: без пустых, в нижнем регистре.
