@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -139,6 +140,11 @@ type llmSlotSettings struct {
 	Temperature float64 `json:"temperature"`
 	Retries     int     `json:"retries"`
 	Concurrency int     `json:"concurrency"`
+	// Ctx/Threads/Parallel — флаги llama-server слота (-c/--threads/--parallel).
+	// 0 — безопасный дефолт: контекст 8192, потоки ядра−1, параллель 1.
+	Ctx      int `json:"ctx"`
+	Threads  int `json:"threads"`
+	Parallel int `json:"parallel"`
 }
 
 // settingsResponse — GET /api/settings: станочные настройки, мировые
@@ -1032,12 +1038,28 @@ func parseLLMSection(data string, cfg *llmSettings) {
 			if n, err := strconv.Atoi(value); err == nil {
 				cfg.Gen.Concurrency = n
 			}
+		case "gen_ctx":
+			if n, err := strconv.Atoi(value); err == nil {
+				cfg.Gen.Ctx = n
+			}
+		case "gen_threads":
+			if n, err := strconv.Atoi(value); err == nil {
+				cfg.Gen.Threads = n
+			}
+		case "gen_parallel":
+			if n, err := strconv.Atoi(value); err == nil {
+				cfg.Gen.Parallel = n
+			}
 		case "embed_addr":
 			cfg.Embed.Addr = value
 		case "embed_model":
 			cfg.Embed.Model = value
 		case "embed_timeout":
 			cfg.Embed.Timeout = value
+		case "embed_threads":
+			if n, err := strconv.Atoi(value); err == nil {
+				cfg.Embed.Threads = n
+			}
 		case "local":
 			if b, err := strconv.ParseBool(value); err == nil {
 				cfg.Local = b
@@ -1415,6 +1437,24 @@ const (
 	genModelChild  = "llama"
 )
 
+// Дефолты флагов llama-server, когда ключ не задан в config.yaml.
+const (
+	// defaultGenContext — потолок контекста генерации (-c): с запасом вмещает
+	// чанк ковки ≤4000 рун + промпт-задание + ответ и не даёт серверу взять
+	// контекст из модели (Qwen3.5 объявляет 156 672 токена → KV ~3 ГБ → своп).
+	defaultGenContext   = 8192
+	defaultEmbedThreads = 4 // BGE-M3 лёгкий, четырёх потоков достаточно.
+)
+
+// genThreadsDefault — потоки генерации по дефолту: все ядра минус одно, минимум
+// один поток (соглашение gen_threads: 0 в config.yaml).
+func genThreadsDefault() int {
+	if n := runtime.NumCPU(); n > 1 {
+		return n - 1
+	}
+	return 1
+}
+
 var generationModelRoles = []string{"weaver", "pythia", "editor", "analysis"}
 
 // modelChildCheckTimeout — потолок health и косинус-проверки после установки.
@@ -1538,14 +1578,35 @@ func modelChildSpec(role, bin string, llm llmSettings) (supervisor.Config, bool)
 func buildModelChildSpec(role, file, bin string, llm llmSettings) supervisor.Config {
 	if role == embedModelRole {
 		host, port := slotHostPort(llm.Embed.Addr, embedserver.DefaultPort)
-		return embedserver.Spec{Bin: bin, ModelPath: file, Host: host, Port: port}.Child()
+		threads := llm.Embed.Threads
+		if threads <= 0 {
+			threads = defaultEmbedThreads
+		}
+		return embedserver.Spec{Bin: bin, ModelPath: file, Host: host, Port: port, Threads: threads}.Child()
 	}
 	host, port := slotHostPort(llm.Gen.Addr, 5001)
 	genServedRole.Store(&role)
+	ctx := llm.Gen.Ctx
+	if ctx <= 0 {
+		ctx = defaultGenContext
+	}
+	threads := llm.Gen.Threads
+	if threads <= 0 {
+		threads = genThreadsDefault()
+	}
+	parallel := llm.Gen.Parallel
+	if parallel <= 0 {
+		parallel = 1
+	}
 	return supervisor.Config{
-		Name:       genModelChild,
-		Cmd:        bin,
-		Args:       []string{"--model", file, "--host", host, "--port", strconv.Itoa(port)},
+		Name: genModelChild,
+		Cmd:  bin,
+		Args: []string{
+			"--model", file, "--host", host, "--port", strconv.Itoa(port),
+			"-c", strconv.Itoa(ctx),
+			"--threads", strconv.Itoa(threads),
+			"--parallel", strconv.Itoa(parallel),
+		},
 		Port:       port,
 		HealthPath: "/health",
 	}

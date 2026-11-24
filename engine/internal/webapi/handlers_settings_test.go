@@ -1355,6 +1355,60 @@ func TestChildModelSpecs(t *testing.T) {
 	}
 }
 
+// TestChildModelLLMFlags — «Проверка»: gen_ctx/gen_threads/gen_parallel и
+// embed_threads из config.yaml доходят до флагов llama-server; без ключей
+// контекст генерации не остаётся пустым (сервер не берёт его из модели).
+func TestChildModelLLMFlags(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), "bin", "llama-server")
+	writeFakeLlama(t, bin, "version: 7777 (stub)")
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	body := "llm:\n" +
+		"  gen_addr: \":5001\"\n" +
+		"  embed_addr: \":5002\"\n" +
+		"  llama_server_path: \"" + bin + "\"\n" +
+		"  gen_ctx: 2048\n" +
+		"  gen_threads: 3\n" +
+		"  gen_parallel: 2\n" +
+		"  embed_threads: 2\n"
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	seedChildEnv(t, path)
+	writeChildModel(t, "embed", "bge-m3-Q8_0.gguf", "")
+	writeChildModel(t, "weaver", "Llama-3.2-3B-Instruct-Q4_K_M.gguf", "")
+
+	children := ModelChildren()
+	if len(children) != 2 {
+		t.Fatalf("ModelChildren = %d детей, want 2", len(children))
+	}
+	embed, gen := children[0], children[1]
+	if !hasFlagPair(embed.Args, "-c", "8192") {
+		t.Errorf("эмбеддер args = %v, want -c 8192", embed.Args)
+	}
+	if !hasFlagPair(embed.Args, "--threads", "2") {
+		t.Errorf("эмбеддер args = %v, want --threads 2", embed.Args)
+	}
+	if !hasFlagPair(gen.Args, "-c", "2048") {
+		t.Errorf("генерация args = %v, want -c 2048", gen.Args)
+	}
+	if !hasFlagPair(gen.Args, "--threads", "3") {
+		t.Errorf("генерация args = %v, want --threads 3", gen.Args)
+	}
+	if !hasFlagPair(gen.Args, "--parallel", "2") {
+		t.Errorf("генерация args = %v, want --parallel 2", gen.Args)
+	}
+}
+
+// hasFlagPair сообщает, идёт ли значение сразу за флагом в списке аргументов.
+func hasFlagPair(args []string, flag, value string) bool {
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == flag && args[i+1] == value {
+			return true
+		}
+	}
+	return false
+}
+
 // TestChildStartAfterInstall — «Проверка» T-13-07: после установки модели
 // ребёнок роли стартует в рантайме с новым файлом, без перезапуска ядра.
 func TestChildStartAfterInstall(t *testing.T) {
