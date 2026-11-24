@@ -245,3 +245,5 @@ T-19-13 добавлена вне аудита — по вопросу влад�
 - **Проверка:** `cd engine && bash scripts/runtests.sh ./internal/birth TestBodyStats ./internal/turn TestReadHeroBodyStats && bash scripts/gates.sh 2>&1 | tail -5 && bash scripts/docs-check.sh 2>&1 | tail -5` → PASS, gates 0, docs-check ok.
 - **Документы:** `fine/04-spec/03-birth.md`, `DOCS/MECHANICS.md`.
 - **Исполнитель:** код.
+
+> ✅ закрыт 2026-11-24 — коммит 07a6a77 (8 статов тела в StateLayer и слое героя, старт покоя, B-07 и MECHANICS §62; ревью 1/3).
