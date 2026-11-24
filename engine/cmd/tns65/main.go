@@ -491,8 +491,10 @@ func runWorldBirth(args []string) error {
 	}
 	// Глубокая разведка при рождении (DEC-4, B-14.4) — из конфигурации экземпляра;
 	// выключена или без ключа — nil.
-	cfg.Scout = paganel.LoadDeepScout("config.yaml", "providers.toml", "settings.toml",
-		models.CallJournalPath, nil)
+	if scout := paganel.LoadDeepScout("config.yaml", "providers.toml", "settings.toml",
+		models.CallJournalPath, nil); scout != nil {
+		cfg.Scout = scout
+	}
 	res, err := birth.Birth(&a, cfg)
 	if err != nil {
 		return err
