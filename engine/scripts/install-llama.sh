@@ -150,6 +150,14 @@ main() {
     install -m 0755 "$src/llama-server" "$bin_dir/llama-server"
     # Общие библиотеки рядом с бинарником (RUNPATH $ORIGIN), включая CPU-бэкенды.
     cp -a "$src"/lib*.so* "$bin_dir"/
+    # SONAME-симлинки: релиз несёт только lib*.so.0.X, а рантайм ищет lib*.so.0
+    # (SONAME) через RUNPATH $ORIGIN. Без них bin/llama-server не стартует
+    # («error while loading shared libraries»), что ломает запуск моделей.
+    for so in "$bin_dir"/lib*.so.0.*; do
+        [ -e "$so" ] || continue
+        base="${so%.*}"
+        [ -e "$base" ] || ln -s "$(basename "$so")" "$base"
+    done
     [ -f "$src/LICENSE" ] && install -m 0644 "$src/LICENSE" "$bin_dir/llama-LICENSE"
 
     echo "готово: ${bin_dir}/${bin_name}"
