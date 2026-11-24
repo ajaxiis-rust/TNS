@@ -670,7 +670,10 @@ func (d *FlirtDictionary) antiTrigger(tokens []sarcasmToken) bool {
 // слов реплики не зависят (T-03-03, шаг 1).
 type SceneFrame struct {
 	HeroPlaceID int64
-	HeroMood    string
+	// HeroPlaceName — имя места героя из places: биндер закрывает им [PLACE],
+	// когда игрок не назвал другого места (T-03-03, шаг 2).
+	HeroPlaceName string
+	HeroMood      string
 	// HeroTools — инструменты героя (T-19-09): именованные опоры как фактор
 	// сцены; допустимость действий и опоры сцены считаются по ним.
 	HeroTools []HeroTool

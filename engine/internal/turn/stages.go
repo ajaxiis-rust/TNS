@@ -363,6 +363,11 @@ func (s *prepathStage) Run(_ context.Context, st *TurnState) error {
 	template := promptTemplate(sel)
 
 	mentions := binder.DetectMentions(st.Input.PlayerText)
+	// Место героя — факт рамки сцены: если игрок не назвал другого места,
+	// [PLACE] закрывается им, а не вырезается как незакрытый токен.
+	if frame.HeroPlaceName != "" {
+		mentions = append(mentions, Mention{Place: &Place{ID: frame.HeroPlaceID, Name: frame.HeroPlaceName}})
+	}
 	prompt, bindings := binder.Bind(template, mentions, 0, 0)
 
 	// Память реакций (T-03-11, LT-16.2): каждая встреча названного лица
@@ -417,6 +422,10 @@ func (s *prepathStage) assembleFrame(_ *TurnState) SceneFrame {
 	}
 	_ = s.db.QueryRow(`SELECT place_id, mood FROM character_state WHERE character_id = 0`).
 		Scan(&f.HeroPlaceID, &f.HeroMood)
+	if f.HeroPlaceID != 0 {
+		_ = s.db.QueryRow(`SELECT name FROM places WHERE id = ?`, f.HeroPlaceID).
+			Scan(&f.HeroPlaceName)
+	}
 	if tools, ok, err := readHeroTools(s.db); err == nil && ok {
 		f.HeroTools = tools.Tools
 	}

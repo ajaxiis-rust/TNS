@@ -89,6 +89,41 @@ func TestPrepath(t *testing.T) {
 	}
 }
 
+// TestPrepathBindsHeroPlace — имя места героя из places закрывает [PLACE], даже
+// если игрок место не называл: промпт Ткача не теряет место («входишь в .»).
+func TestPrepathBindsHeroPlace(t *testing.T) {
+	p, path := newPositionPipeline(t)
+	seedPlaces(t, path, []PlaceCoord{{X: 0, Y: 0}})
+	insertHeroPosition(t, p, 1, 0, 0)
+
+	lex := stopCraneLexicon(t)
+	roster := Roster{NPCs: []NPC{{ID: 1, Name: "Иван", Role: "кузнец"}}}
+	stage := &prepathStage{db: p.DB, lexicon: lex, binder: NewSlotBinder(roster)}
+	st := &TurnState{
+		Input: TurnInput{SessionID: 1, PlayerText: "Иду."},
+		Cut: Cut{
+			Segments: []Segment{{Text: "Иду", Lemmas: []string{"идти"}}},
+		},
+	}
+	if err := stage.Run(context.Background(), st); err != nil {
+		t.Fatalf("prepath: %v", err)
+	}
+
+	if st.Prepath.Frame.HeroPlaceName != "место0" {
+		t.Fatalf("имя места героя = %q, want место0", st.Prepath.Frame.HeroPlaceName)
+	}
+	if !strings.Contains(st.Prepath.Prompt, "входишь в место0") {
+		t.Fatalf("промпт без имени места героя: %q", st.Prepath.Prompt)
+	}
+	if strings.Contains(st.Prepath.Prompt, "входишь в .") {
+		t.Fatalf("в промпте пустое место: %q", st.Prepath.Prompt)
+	}
+	place := findBinding(st.Bindings, TokenPlace)
+	if place == nil || place.PlaceID != 1 || place.Value != "место0" {
+		t.Fatalf("привязка %s = %+v, want место0/place_id=1", TokenPlace, place)
+	}
+}
+
 func TestSlotBinder(t *testing.T) {
 	roster := Roster{
 		NPCs: []NPC{
