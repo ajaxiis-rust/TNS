@@ -14,10 +14,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"tns65/internal/db"
+	"tns65/internal/models"
 	"tns65/internal/turn"
 )
 
@@ -660,5 +662,53 @@ func TestTurnStream(t *testing.T) {
 	}
 	if len(st.Turns) != 1 || st.Turns[0].TurnID != turnRes.TurnID {
 		t.Fatalf("turns = %+v, want ход %d", st.Turns, turnRes.TurnID)
+	}
+}
+
+// countingEmbedder — подставной эмбеддер: считает вызовы и отдаёт вектор
+// размерности смысла, чтобы хендлер-тест видел проводку без сервера :5002.
+type countingEmbedder struct {
+	mu    sync.Mutex
+	calls int
+}
+
+func (e *countingEmbedder) Embed(context.Context, string) ([]float32, error) {
+	e.mu.Lock()
+	e.calls++
+	e.mu.Unlock()
+	return make([]float32, models.EmbedDim), nil
+}
+
+func (e *countingEmbedder) Calls() int {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.calls
+}
+
+// TestTurnEndpointEmbedder — установленный SetChatEmbedder доходит до конвейера:
+// резка векторизует реплику, сегменты и ранние слова в живом ходу.
+func TestTurnEndpointEmbedder(t *testing.T) {
+	seedChatWorld(t)
+
+	emb := &countingEmbedder{}
+	old := chatEmbedder
+	SetChatEmbedder(emb)
+	defer SetChatEmbedder(old)
+
+	rr := chatRequest(t, handleChatTurn, http.MethodPost, chatTurnPath, `{"world":"alpha","text":"Я иду по дороге. Тихо."}`)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("POST /api/turn: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	var res struct {
+		TurnID int64 `json:"turn_id"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &res); err != nil {
+		t.Fatalf("bad JSON: %v", err)
+	}
+	if res.TurnID <= 0 {
+		t.Fatalf("turn_id = %d, want > 0", res.TurnID)
+	}
+	if n := emb.Calls(); n == 0 {
+		t.Fatal("конвейер не получил эмбеддер: вызовов Embed = 0")
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"tns65/internal/book"
 	"tns65/internal/db"
 	"tns65/internal/journal"
+	"tns65/internal/models"
 	"tns65/internal/sediment"
 	"tns65/internal/textlimit"
 	"tns65/internal/turn"
@@ -63,6 +64,17 @@ func SetChatWeaver(s turn.ProseSlot) {
 // chatLemmatizer — лемматизатор резки реплики (T-03-02); nil — лемм нет.
 // Подменяется e2e-хуком SetE2ELemmatizer.
 var chatLemmatizer turn.Lemmatizer
+
+// chatEmbedder — эмбеддер векторов смысла реплики (T-20-02); nil — резка без
+// векторов, векторный голос подтверждения не звучит.
+var chatEmbedder models.Embedder
+
+// SetChatEmbedder подключает эмбеддер к чатовому конвейеру: резка векторизует
+// реплику, сегменты и ранние слова, подтверждение получает векторный голос. nil
+// отключает векторный путь — ход идёт без падения.
+func SetChatEmbedder(emb models.Embedder) {
+	chatEmbedder = emb
+}
 
 // chatLastActive — момент последней реплики игрока по миру (проводка
 // последней активности сервером хода, T-08-15). Ключ — слаг мира.
@@ -199,6 +211,7 @@ func handleChatTurn(w http.ResponseWriter, r *http.Request) {
 		LastActive: chatLastActiveAt(slug),
 		Weaver:     chatWeaver,
 		Lemmatizer: chatLemmatizer,
+		Embedder:   chatEmbedder,
 	}).Run(r.Context(), turn.TurnInput{
 		SessionID:  sessionID,
 		PlayerText: text,

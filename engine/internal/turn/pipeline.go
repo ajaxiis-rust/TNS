@@ -9,6 +9,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/journal"
+	"tns65/internal/models"
 )
 
 // TurnInput — вход хода (T-03-01, шаг 1): реплика игрока с идентификатором сессии
@@ -58,6 +59,10 @@ type Pipeline struct {
 	// Lemmatizer — лемматизатор резки реплики (T-03-02); nil — лемм нет, гипотеза
 	// намерения не считается.
 	Lemmatizer Lemmatizer
+	// Embedder — эмбеддер векторов смысла реплики (T-20-02): резка векторизует
+	// реплику, сегменты и ранние слова, подтверждение — векторный голос. nil —
+	// резка без векторов.
+	Embedder models.Embedder
 }
 
 // Run прогоняет реплику по реестру стадий и возвращает результат. Каждая стадия
@@ -73,6 +78,7 @@ func (p *Pipeline) Run(ctx context.Context, in TurnInput) (TurnOutput, error) {
 
 	st := &TurnState{Input: in, StartedAt: started}
 	st.Lemmatizer = p.Lemmatizer
+	st.Embedder = p.Embedder
 	if cmd, ok := parseCommand(in.PlayerText); ok {
 		st.Command = &cmd
 	}
