@@ -754,6 +754,8 @@ func (w *workshopWorker) openWorld(slug string) error {
 	// nil-часы планировщика — системные (workshop.realPauseClock); эмбеддер —
 	// клиент T-20-01, без него оседание деградирует, заказ закрывается отказом.
 	sched := workshop.NewScheduler(world, nil, w.slot, w.logger)
+	sched.SetOrderRunners(workshop.NewOrderRunners(),
+		workshop.RunnerDeps{World: world, Literary: lit, Slot: w.slot})
 	pipeline := sediment.NewPipeline(w.embedder, w.slot, packCensor{lang: worldLang(world)}, w.logger)
 	sched.SetSedimentRunner(workshop.NewSedimentRunner(lit, pipeline))
 

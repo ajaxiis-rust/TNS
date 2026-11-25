@@ -233,3 +233,112 @@ func TestSchedulerOrderFailure(t *testing.T) {
 		t.Fatalf("повторный тик вызвал слот %d раз, want 2", got)
 	}
 }
+
+// TestOrderRunnerRegistry — реестр исполнителей по виду заказа (T-21-04): каждый
+// вид волны диспетчера отдан своему runner'у, analysis и forge_plan в реестр не
+// входят и уходят в слот. Без зависимостей каждый runner отвечает своей ошибкой.
+func TestOrderRunnerRegistry(t *testing.T) {
+	runners := workshop.NewOrderRunners()
+	want := map[workshop.Kind]string{
+		workshop.KindHoroscope:  "workshop: заказ horoscope без хэндлов мира и литературной базы",
+		workshop.KindPythia:     "workshop: заказ pythia без хэндлов мира и литературной базы",
+		workshop.KindEpoch:      "workshop: заказ epoch без хэндлов мира и литературной базы",
+		workshop.KindStyle:      "workshop: заказ style без литературной базы",
+		workshop.KindComplement: "workshop: заказ complement без хэндлов мира и литературной базы",
+		workshop.KindEdit:       "workshop: заказ edit без мира и слота мастерской",
+	}
+	if len(runners) != len(want) {
+		t.Fatalf("реестр исполнителей: %d видов, want %d", len(runners), len(want))
+	}
+	for kind, msg := range want {
+		run, ok := runners[kind]
+		if !ok || run == nil {
+			t.Fatalf("вид %s без исполнителя в реестре", kind)
+		}
+		_, err := run(context.Background(), workshop.RunnerDeps{}, &workshop.Order{Kind: kind, Payload: "{}"})
+		if err == nil {
+			t.Fatalf("исполнитель вида %s без зависимостей не отказал", kind)
+		}
+		if err.Error() != msg {
+			t.Fatalf("исполнитель вида %s ответил %q, want %q (вид ушёл не в свой runner)", kind, err, msg)
+		}
+	}
+	for _, kind := range []workshop.Kind{workshop.KindAnalysis, workshop.KindForgePlan} {
+		if _, ok := runners[kind]; ok {
+			t.Fatalf("вид %s попал в реестр исполнителей, want слот мастерской", kind)
+		}
+	}
+}
+
+// TestSchedulerKindDispatch — диспетчер по виду (T-21-04): заказ каждого вида
+// реестра исполняется своим runner'ом и закрывается done с чекпойнтом ответа;
+// виды вне реестра (analysis, forge_plan) по-прежнему уходят в слот.
+func TestSchedulerKindDispatch(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "world(a).db")
+	newDB(t, path, "world", "shared")
+
+	world, err := db.OpenWriterAs(path, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(world): %v", err)
+	}
+	defer world.Close()
+
+	registered := []workshop.Kind{
+		workshop.KindHoroscope, workshop.KindPythia, workshop.KindEpoch,
+		workshop.KindStyle, workshop.KindComplement, workshop.KindEdit,
+	}
+	seen := map[workshop.Kind]int{}
+	runners := make(map[workshop.Kind]workshop.OrderRunner, len(registered))
+	for _, kind := range registered {
+		kind := kind
+		runners[kind] = func(_ context.Context, _ workshop.RunnerDeps, o *workshop.Order) (string, error) {
+			seen[kind]++
+			return "runner:" + string(o.Kind), nil
+		}
+	}
+
+	orders := make(map[workshop.Kind]int64, len(registered)+2)
+	created := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	for i, kind := range registered {
+		orders[kind] = insertQueueOrder(t, world, kind, workshop.StepLight, 10, created.Add(time.Duration(i)*time.Second).Format(time.RFC3339))
+	}
+	slotted := []workshop.Kind{workshop.KindAnalysis, workshop.KindForgePlan}
+	for i, kind := range slotted {
+		orders[kind] = insertQueueOrder(t, world, kind, workshop.StepLight, 10, created.Add(time.Duration(10+i)*time.Second).Format(time.RFC3339))
+	}
+
+	slot := testkit.NewFakeSlot()
+	clk := testkit.NewClock()
+	s := workshop.NewScheduler(world, clk, slot, nil)
+	s.SetOrderRunners(runners, workshop.RunnerDeps{World: world})
+	// Тяжёлая ступень: прозаические виды допустимы.
+	clk.Advance(4 * time.Hour)
+
+	if err := s.Run(context.Background()); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	for _, kind := range registered {
+		if got := seen[kind]; got != 1 {
+			t.Fatalf("runner вида %s вызван %d раз, want 1", kind, got)
+		}
+		status, _, checkpoint := orderLifecycle(t, world, orders[kind])
+		if status != string(workshop.StatusDone) {
+			t.Fatalf("статус заказа %s = %q, want done", kind, status)
+		}
+		if want := "runner:" + string(kind); checkpoint != want {
+			t.Fatalf("чекпойнт заказа %s = %q, want %q", kind, checkpoint, want)
+		}
+	}
+	if got := slot.Calls(); got != len(slotted) {
+		t.Fatalf("слот вызван %d раз, want %d (только виды вне реестра)", got, len(slotted))
+	}
+	for _, kind := range slotted {
+		if got := seen[kind]; got != 0 {
+			t.Fatalf("вид %s ушёл в runner %d раз, want слот", kind, got)
+		}
+		if status, _, _ := orderLifecycle(t, world, orders[kind]); status != string(workshop.StatusDone) {
+			t.Fatalf("статус заказа %s = %q, want done", kind, status)
+		}
+	}
+}

@@ -49,6 +49,8 @@ type Scheduler struct {
 	mu            sync.Mutex
 	chapterClosed bool
 	lastStep      PauseStep
+	runners       map[Kind]OrderRunner
+	deps          RunnerDeps
 }
 
 // NewScheduler создаёт планировщик мира: h — хэндл оперативной базы (чтение),
@@ -69,6 +71,15 @@ func (s *Scheduler) SetSedimentRunner(run SedimentRunFunc) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.sedimentRunner = run
+}
+
+// SetOrderRunners задаёт реестр исполнителей по виду заказа и их зависимости
+// (T-21-04): заказы видов реестра исполняет свой runner, остальные — слот.
+func (s *Scheduler) SetOrderRunners(runners map[Kind]OrderRunner, deps RunnerDeps) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.runners = runners
+	s.deps = deps
 }
 
 // MarkActive фиксирует активность игрока (возврат с паузы).
@@ -174,11 +185,12 @@ func (s *Scheduler) Run(ctx context.Context) error {
 	}
 }
 
-// runOne исполняет один заказ через слот мастерской, подчиняясь планировщику
-// ядра (T-03-17): слот ковки берётся только с разрешения ядра. Заказ sediment
-// исполняется конвейером оседания (T-05-16), если подключён его исполнитель;
-// без исполнителя заказ проходит через слот, как прочие заказы. Статус заказа
-// ведёт ядро: running перед исполнением, done/failed после.
+// runOne исполняет один заказ через исполнителя вида (T-21-04) или слот
+// мастерской, подчиняясь планировщику ядра (T-03-17): слот ковки берётся только
+// с разрешения ядра. Заказ sediment исполняется конвейером оседания (T-05-16),
+// если подключён его исполнитель; без исполнителя заказ проходит через слот, как
+// прочие заказы. Статус заказа ведёт ядро: running перед исполнением, done/failed
+// после.
 func (s *Scheduler) runOne(ctx context.Context, o *Order) error {
 	run := s.executor(o)
 	if run == nil {
@@ -196,8 +208,8 @@ func (s *Scheduler) runOne(ctx context.Context, o *Order) error {
 	return err
 }
 
-// executor — исполнение заказа: конвейер оседания (T-05-16) или слот
-// мастерской; nil — исполнять нечем.
+// executor — исполнение заказа: конвейер оседания (T-05-16), исполнитель вида из
+// реестра (T-21-04) или слот мастерской; nil — исполнять нечем.
 func (s *Scheduler) executor(o *Order) func(context.Context) (string, error) {
 	if o.Kind == KindSediment {
 		s.mu.Lock()
@@ -208,6 +220,21 @@ func (s *Scheduler) executor(o *Order) func(context.Context) (string, error) {
 				_, err := run(ctx, s.db, o, s.logger)
 				return "", err
 			}
+		}
+	}
+	s.mu.Lock()
+	run := s.runners[o.Kind]
+	deps := s.deps
+	s.mu.Unlock()
+	if run != nil {
+		if deps.World == nil {
+			deps.World = s.db
+		}
+		if deps.Slot == nil {
+			deps.Slot = s.slot
+		}
+		return func(ctx context.Context) (string, error) {
+			return run(ctx, deps, o)
 		}
 	}
 	slot := s.slot
