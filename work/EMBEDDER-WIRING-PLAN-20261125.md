@@ -38,6 +38,8 @@
 
 ### T-20-01. Конфиг и клиент эмбеддера
 
+> ✅ Выполнено 2026-11-25 (коммит 78dd1ae): embed_addr/model/timeout из config.yaml — EmbedClient и SetAtlasEmbed для рождения.
+
 - Расширить `internal/llmparams.Config`: поля `EmbedAddr`, `EmbedModel`,
   `EmbedTimeout`; в `ParseSettings` читать `llm.embed_addr` / `llm.embed_model` /
   `llm.embed_timeout`.
