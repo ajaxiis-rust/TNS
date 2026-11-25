@@ -121,7 +121,7 @@ mechanics-from-chat.md. Статусы сверены с кодом на HEAD `8
 | T-21-05 пауза от последней активности | ✅ закрыт (fc51783, 2026-11-26) | таймер инициализируется от последней реплики/`turns.created_at`; `go test ./internal/workshop/ ./internal/webapi/ -count=1` |
 | T-21-06 ночной `RunPythia` | ✅ закрыт (7000d18, 2026-11-26) | прогон карты игрока на ночной ступени; `go test ./internal/workshop -count=1` |
 | T-21-07 гороскоп по смене темы | ✅ закрыт (fbca24b, 2026-11-26) | `EnsureHoroscopeOrder` при смене темы; `go test ./internal/webapi/ ./internal/workshop/ -count=1` |
-| T-21-08 `MatchHoroscope` + промах→кандидаты | ⏳ todo | сверка ранних векторов, промах в `SedimentCandidate`; `go test ./internal/webapi/ ./internal/workshop/ -count=1` |
+| T-21-08 `MatchHoroscope` + промах→кандидаты | ✅ закрыт (c11f2cb, 2026-11-26) | сверка ранних векторов, промах в `SedimentCandidate`; `go test ./internal/webapi/ ./internal/workshop/ -count=1` |
 | T-21-09 переплавка после оседания | ⏳ todo | `RemeltScene` для сцен высокого доверия; `go test ./internal/workshop -count=1` |
 | T-21-10 доковка персонажей | ⏳ todo | `EnsureComplementOrder` на тяжёлой ступени; `go test ./internal/workshop -count=1` |
 | T-21-11 цензор-согласование IMP-13 | ⏳ todo | доки/спека/тест под «цензора при ковке нет»; `bash scripts/gates.sh` (docs-check) |
