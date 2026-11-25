@@ -754,6 +754,9 @@ func (w *workshopWorker) openWorld(slug string) error {
 	// nil-часы планировщика — системные (workshop.realPauseClock); эмбеддер —
 	// клиент T-20-01, без него оседание деградирует, заказ закрывается отказом.
 	sched := workshop.NewScheduler(world, nil, w.slot, w.logger)
+	// Пауза набегает от последней активности мира, а не от запуска ядра
+	// (T-21-05): до первой реплики игрока ступень уже соответствует простою.
+	sched.SetLastActive(lastWorldActive(slug, world))
 	sched.SetOrderRunners(workshop.NewOrderRunners(),
 		workshop.RunnerDeps{World: world, Literary: lit, Slot: w.slot})
 	pipeline := sediment.NewPipeline(w.embedder, w.slot, packCensor{lang: worldLang(world)}, w.logger)
@@ -782,6 +785,26 @@ func (w *workshopWorker) event(event string, err error) {
 		return
 	}
 	_ = w.logger.Event("workshop", event, journal.Field{Key: "error", Value: err.Error()})
+}
+
+// lastWorldActive возвращает момент последней активности мира для таймера паузы
+// (T-21-05): последняя реплика игрока, известная чату этого процесса, иначе старт
+// последней сессии мира — у turns колонки created_at нет, а сессия заводится на
+// каждый заход игрока. Нулевое время — активности нет, отсчёт от текущего момента.
+func lastWorldActive(slug string, world *db.Handle) time.Time {
+	if at := webapi.ChatLastActive(slug); !at.IsZero() {
+		return at
+	}
+	var raw string
+	if err := world.QueryRow(
+		`SELECT started_at FROM sessions ORDER BY started_at DESC, id DESC LIMIT 1`).Scan(&raw); err != nil {
+		return time.Time{}
+	}
+	at, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		return time.Time{}
+	}
+	return at
 }
 
 // chapterClosed сообщает, что открытой главы у мира нет: только тогда молчание

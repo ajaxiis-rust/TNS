@@ -66,6 +66,31 @@ func TestPauseSteps(t *testing.T) {
 	}
 }
 
+// TestPauseFromLastActive — таймер, заведённый от последней активности мира
+// (T-21-05), сразу показывает ступень прошлого простоя, а не отсчёт от запуска
+// ядра: час молчания — лёгкая ступень, два часа — средняя.
+func TestPauseFromLastActive(t *testing.T) {
+	clk := testkit.NewClock()
+	tm := workshop.NewPauseTimer(clk)
+	tm.SetLastActive(clk.Now().Add(-time.Hour))
+	if got := tm.Step(false); got != workshop.PauseLight {
+		t.Fatalf("час молчания от последней активности = %q, want light", got)
+	}
+
+	// Планировщик получает тот же момент от воркера при открытии мира.
+	s := workshop.NewScheduler(nil, clk, nil, nil)
+	s.SetLastActive(clk.Now().Add(-2 * time.Hour))
+	if got := s.Step(); got != workshop.PauseMedium {
+		t.Fatalf("два часа молчания = %q, want medium", got)
+	}
+
+	// Нулевое время отсчёт не сбрасывает: остаётся прошлая активность.
+	tm.SetLastActive(time.Time{})
+	if got := tm.Step(false); got != workshop.PauseLight {
+		t.Fatalf("нулевое время сбросило отсчёт: %q, want light", got)
+	}
+}
+
 // recordSlot — слот, записывающий порядок ролей и максимум одновременных вызовов.
 type recordSlot struct {
 	mu        sync.Mutex

@@ -312,6 +312,22 @@ func TestTurnEndpointTooLong(t *testing.T) {
 	}
 }
 
+// TestChatLastActiveGetter — геттер последней активности мира (T-21-05): без
+// реплик — нулевое время, после реплики — момент реплики.
+func TestChatLastActiveGetter(t *testing.T) {
+	seedChatWorld(t)
+
+	if got := ChatLastActive("alpha"); !got.IsZero() {
+		t.Fatalf("без реплик = %v, want нулевое время", got)
+	}
+	before := chatClock.Now()
+	chatTouch("alpha")
+	got := ChatLastActive("alpha")
+	if got.IsZero() || got.Before(before) || got.After(chatClock.Now().Add(time.Second)) {
+		t.Fatalf("после реплики = %v, want момент между %v и текущим", got, before)
+	}
+}
+
 // TestChatState — панель мир/герой/система и сводка при возврате до первой
 // реплики.
 func TestChatState(t *testing.T) {

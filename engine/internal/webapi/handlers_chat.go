@@ -413,6 +413,13 @@ func chatLastActiveAt(slug string) time.Time {
 	return last
 }
 
+// ChatLastActive возвращает момент последней реплики игрока по миру (T-21-05):
+// воркер мастерской инициализирует от него паузу при открытии мира. Нулевое
+// время — реплик в этом процессе не было.
+func ChatLastActive(slug string) time.Time {
+	return chatLastActiveAt(slug)
+}
+
 // chatTouch фиксирует момент последней реплики игрока по миру.
 func chatTouch(slug string) {
 	chatLastActiveMu.Lock()

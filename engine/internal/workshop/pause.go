@@ -78,6 +78,25 @@ func NewPauseTimer(c PauseClock) *PauseTimer {
 	return t
 }
 
+// SetLastActive задаёт момент последней активности мира (T-21-05): молчание
+// считается от него, а не от создания таймера. Нулевое время — отсчёт от
+// текущего момента, как в NewPauseTimer.
+func (t *PauseTimer) SetLastActive(at time.Time) {
+	if at.IsZero() {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.lastActive = at
+}
+
+// SetLastActive задаёт момент последней активности мира таймеру паузы (T-21-05):
+// при открытии мира воркером ступень набегает от прошлой реплики игрока, а не от
+// запуска ядра.
+func (s *Scheduler) SetLastActive(at time.Time) {
+	s.timer.SetLastActive(at)
+}
+
 // MarkActive фиксирует активность игрока — молчание обнуляется.
 func (t *PauseTimer) MarkActive() {
 	t.mu.Lock()
