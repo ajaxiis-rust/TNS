@@ -10,11 +10,14 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -40,8 +43,10 @@ const (
 	verneMinReinforce        = 2    // повторные встречи одного лица в памяти
 )
 
-// vernePort — адрес ядра: harness поднимает один мир, порт фиксирован.
-const vernePort = "127.0.0.1:8720"
+// vernePortAttempts — сколько раз harness поднимает ядро на новом свободном
+// порту: порт занят чужим процессом — старт повторяется (T-21-02). Фиксированного
+// порта у harness нет: ядро слушает свободный порт прогона.
+const vernePortAttempts = 3
 
 // verneNarrator, verneCompanion — имена лиц мира, упоминаемых в книжке: труппа
 // узнаёт имя в реплике и пишет встречу в память реакций (memory_topics).
@@ -266,18 +271,28 @@ func verneBuild(t *testing.T) string {
 }
 
 // verneWorldDir готовит рабочий каталог прогона: базы, газетир, пакет и конфиг
-// видны по прежним путям, world_db/ рождается во временном каталоге.
+// видны по прежним путям (конфиг — копия, в него пишется порт прогона), world_db/
+// рождается во временном каталоге.
 func verneWorldDir(t *testing.T) string {
 	t.Helper()
 	root := verneEngineRoot(t)
 	dir := t.TempDir()
-	for _, name := range []string{"base", "seed", "packs", "config.yaml"} {
+	for _, name := range []string{"base", "seed", "packs"} {
 		if _, err := os.Stat(filepath.Join(root, name)); err != nil {
 			t.Fatalf("%s отсутствует в %s: %v", name, root, err)
 		}
 		if err := os.Symlink(filepath.Join(root, name), filepath.Join(dir, name)); err != nil {
 			t.Fatalf("symlink %s: %v", name, err)
 		}
+	}
+	// config.yaml копируется, а не связывается: harness прописывает в секцию web
+	// свободный порт прогона (T-21-02), правка симлинка изменила бы конфиг движка.
+	raw, err := os.ReadFile(filepath.Join(root, "config.yaml"))
+	if err != nil {
+		t.Fatalf("config.yaml в %s: %v", root, err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), raw, 0o644); err != nil {
+		t.Fatalf("config.yaml прогона: %v", err)
 	}
 	return dir
 }
@@ -337,50 +352,159 @@ func verneBirth(t *testing.T, dir, bin, slug string) {
 
 // verneCore — запущенный процесс ядра.
 type verneCore struct {
-	cmd    *exec.Cmd
-	log    *os.File
-	url    string
-	client *http.Client
+	cmd     *exec.Cmd
+	log     *os.File
+	url     string
+	client  *http.Client
+	exited  chan struct{} // закрыт после cmd.Wait: процесс ядра завершился
+	waitErr error         // итог cmd.Wait; читается после закрытия exited
+	logPath string
 }
 
 // verneStartCore поднимает ядро в dir с фейковыми часами и адресом подставного
-// слота и ждёт /api/health.
+// слота и ждёт /api/health. Порт — свободный порт прогона (T-21-02): фиксированный
+// 8720 занимал чужой процесс, и harness принимал его ответы за ядро прогона.
 func verneStartCore(t *testing.T, dir, bin, slotURL string) *verneCore {
+	t.Helper()
+	var lastErr error
+	for attempt := 1; attempt <= vernePortAttempts; attempt++ {
+		port := verneFreePort(t)
+		verneSetWebPort(t, dir, port)
+		c, err := verneLaunchCore(t, dir, bin, slotURL, port)
+		if err == nil {
+			t.Cleanup(c.stop)
+			return c
+		}
+		lastErr = err
+		t.Logf("verne: старт ядра на порту %d (%d/%d): %v", port, attempt, vernePortAttempts, err)
+	}
+	t.Fatalf("ядро не поднялось ни на одном свободном порту за %d попыток: %v", vernePortAttempts, lastErr)
+	return nil
+}
+
+// verneLaunchCore запускает ядро на порту port и ждёт /api/health. Выход процесса
+// до готовности — ошибка с журналом ядра: порт перехвачен или конфиг не прочитан.
+func verneLaunchCore(t *testing.T, dir, bin, slotURL string, port int) (*verneCore, error) {
 	t.Helper()
 	logPath := filepath.Join(t.TempDir(), "core.log")
 	logFile, err := os.Create(logPath)
 	if err != nil {
-		t.Fatalf("лог ядра: %v", err)
+		return nil, fmt.Errorf("лог ядра: %w", err)
 	}
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	cmd := exec.Command(bin, "--fake-clock", "--fake-slot", slotURL)
 	cmd.Dir = dir
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 	if err := cmd.Start(); err != nil {
-		t.Fatalf("start core: %v", err)
+		_ = logFile.Close()
+		return nil, fmt.Errorf("start core: %w", err)
 	}
 	c := &verneCore{
-		cmd:    cmd,
-		log:    logFile,
-		url:    "http://" + vernePort,
-		client: netgate.Local(vernePort),
+		cmd:     cmd,
+		log:     logFile,
+		url:     "http://" + addr,
+		client:  netgate.Local(addr),
+		exited:  make(chan struct{}),
+		logPath: logPath,
 	}
-	t.Cleanup(c.stop)
+	go func() {
+		c.waitErr = c.cmd.Wait()
+		close(c.exited)
+	}()
 	deadline := time.Now().Add(30 * time.Second)
 	for {
+		select {
+		case <-c.exited:
+			c.closeLog()
+			return nil, fmt.Errorf("ядро на %s завершилось (код %v) до готовности\n%s", addr, c.waitErr, verneLogTail(logPath))
+		default:
+		}
 		resp, err := c.client.Get(c.url + "/api/health")
 		if err == nil {
 			_ = resp.Body.Close()
 			if resp.StatusCode == http.StatusOK {
-				return c
+				// Чужой процесс на этом порту отвечает сразу: свой обязан быть жив
+				// и после короткой выдержки — иначе старт повторяется на новом порту.
+				time.Sleep(100 * time.Millisecond)
+				select {
+				case <-c.exited:
+					c.closeLog()
+					return nil, fmt.Errorf("ядро на %s завершилось после /api/health: порт занят чужим процессом", addr)
+				default:
+				}
+				return c, nil
 			}
 		}
 		if time.Now().After(deadline) {
-			journal, _ := os.ReadFile(logPath)
-			t.Fatalf("ядро не поднялось на %s\n%s", c.url, journal)
+			_ = c.cmd.Process.Kill()
+			<-c.exited
+			c.closeLog()
+			return nil, fmt.Errorf("ядро не поднялось на %s\n%s", addr, verneLogTail(logPath))
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
+}
+
+// verneFreePort берёт свободный порт loopback: пробный слушатель на :0 сразу
+// закрывается, ядро биндится на занятый им порт.
+func verneFreePort(t *testing.T) int {
+	t.Helper()
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("свободный порт ядра: %v", err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	if err := l.Close(); err != nil {
+		t.Fatalf("закрыть пробный слушатель: %v", err)
+	}
+	return port
+}
+
+// verneSetWebPort прописывает порт в секцию web копии config.yaml рабочего
+// каталога: ядро читает конфиг из своего cwd.
+func verneSetWebPort(t *testing.T, dir string, port int) {
+	t.Helper()
+	path := filepath.Join(dir, "config.yaml")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("config.yaml прогона: %v", err)
+	}
+	lines := strings.Split(string(raw), "\n")
+	inWeb, done := false, false
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if line == trimmed {
+			inWeb = trimmed == "web:"
+			continue
+		}
+		if inWeb && strings.HasPrefix(trimmed, "port:") {
+			lines[i] = "  port: " + strconv.Itoa(port)
+			done = true
+		}
+	}
+	if !done {
+		t.Fatalf("config.yaml: секция web без поля port")
+	}
+	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
+		t.Fatalf("config.yaml прогона: %v", err)
+	}
+}
+
+// verneLogTail возвращает хвост журнала ядра для сообщения об отказе старта.
+func verneLogTail(path string) string {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	const limit = 4000
+	if len(raw) > limit {
+		raw = raw[len(raw)-limit:]
+	}
+	return strings.TrimSpace(string(raw))
 }
 
 // postTurn подаёт реплику игрока в ядро.
@@ -406,9 +530,15 @@ func (c *verneCore) stop() {
 		return
 	}
 	_ = c.cmd.Process.Signal(syscall.SIGTERM)
-	_ = c.cmd.Wait()
+	<-c.exited
+	c.closeLog()
+}
+
+// closeLog закрывает журнал ядра ровно один раз.
+func (c *verneCore) closeLog() {
 	if c.log != nil {
 		_ = c.log.Close()
+		c.log = nil
 	}
 }
 
