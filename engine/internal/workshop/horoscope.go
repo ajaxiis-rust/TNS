@@ -2,6 +2,7 @@ package workshop
 
 import (
 	"context"
+	"database/sql"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -132,6 +133,57 @@ func EnsureHoroscopeOrder(h *db.Handle, payload HoroscopePayload) (bool, error) 
 		return false, err
 	}
 	return true, nil
+}
+
+// SceneTopic — тема сцены для гороскопа (W-13.1): сцена и место героя в ней.
+// Сцена разворачивается в месте героя, поэтому место и есть тема: переход героя
+// в другое место — смена темы, гороскоп перековывается.
+type SceneTopic struct {
+	SceneID int64
+	PlaceID int64
+}
+
+// CurrentSceneTopic читает тему текущей сцены сессии — последнюю сцену в scenes;
+// сцен нет — нулевая тема.
+func CurrentSceneTopic(h *db.Handle, sessionID int64) (SceneTopic, error) {
+	var t SceneTopic
+	err := h.QueryRow(`SELECT id, COALESCE(place_id, 0) FROM scenes WHERE session_id = ? ORDER BY id DESC LIMIT 1`,
+		sessionID).Scan(&t.SceneID, &t.PlaceID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return SceneTopic{}, nil
+	}
+	if err != nil {
+		return SceneTopic{}, err
+	}
+	return t, nil
+}
+
+// LiveHoroscopeTopic читает тему живого заказа horoscope: сцену из payload самого
+// свежего заказа очереди (queued, running, done) и место её сцены. ok=false —
+// заказа нет, тему держать нечему.
+func LiveHoroscopeTopic(h *db.Handle) (SceneTopic, bool, error) {
+	var raw string
+	err := h.QueryRow(`SELECT payload_json FROM workshop_queue WHERE kind = ? AND status IN (?, ?, ?) ORDER BY id DESC LIMIT 1`,
+		string(KindHoroscope), string(StatusQueued), string(StatusRunning), string(StatusDone)).Scan(&raw)
+	if errors.Is(err, sql.ErrNoRows) {
+		return SceneTopic{}, false, nil
+	}
+	if err != nil {
+		return SceneTopic{}, false, err
+	}
+	var p HoroscopePayload
+	if err := json.Unmarshal([]byte(raw), &p); err != nil {
+		return SceneTopic{}, false, fmt.Errorf("workshop: payload заказа horoscope не JSON: %w", err)
+	}
+	t := SceneTopic{SceneID: p.SceneID}
+	err = h.QueryRow(`SELECT COALESCE(place_id, 0) FROM scenes WHERE id = ?`, p.SceneID).Scan(&t.PlaceID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return t, true, nil
+	}
+	if err != nil {
+		return SceneTopic{}, false, err
+	}
+	return t, true, nil
 }
 
 // defaultHoroscopePrompt — дефолт промпта ковки гороскопа (без файла пакета):

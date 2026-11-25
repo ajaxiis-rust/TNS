@@ -18,6 +18,7 @@ import (
 	"tns65/internal/sediment"
 	"tns65/internal/textlimit"
 	"tns65/internal/turn"
+	"tns65/internal/workshop"
 )
 
 // Чат (T-08-15): реплика уходит в конвейер T-03-01, ответ мира доставляется
@@ -229,6 +230,12 @@ func handleChatTurn(w http.ResponseWriter, r *http.Request) {
 	chatTouch(slug)
 	// T-20-04: реплика возвращает мастерскую с паузы — молчание обнуляется.
 	chatMarkActive()
+	// T-21-07: гороскоп живёт до смены темы сцены (W-13.1) — при смене ставится
+	// заказ Пифии; сбой постановки ход не валит.
+	if err := ensureHoroscopeTopic(h, sessionID); err != nil && chatLogger != nil {
+		_ = chatLogger.Event("workshop", "workshop.horoscope_order",
+			journal.Field{Key: "error", Value: err.Error()})
+	}
 
 	writeJSON(w, http.StatusOK, map[string]int64{"turn_id": turnID})
 }
@@ -455,6 +462,49 @@ func chatMarkActive() {
 	if s != nil {
 		s.MarkActive()
 	}
+}
+
+// chatHoroscopeForecast — прогноз Пилы заказа гороскопа: эхо по умолчанию
+// (W-13.2); контрапункт ставит планировщик по назревающему пику.
+const chatHoroscopeForecast = "echo"
+
+// chatPythiaMap — карта игрока для payload гороскопа: последняя строка
+// player_atlas (тема, настроение, интерес); пусто — карты ещё нет.
+func chatPythiaMap(h *db.Handle) string {
+	var theme, mood, interest string
+	if err := h.QueryRow(`SELECT theme, mood, interest FROM player_atlas ORDER BY id DESC LIMIT 1`).
+		Scan(&theme, &mood, &interest); err != nil {
+		return ""
+	}
+	parts := make([]string, 0, 3)
+	for _, s := range []string{theme, mood, interest} {
+		if s = strings.TrimSpace(s); s != "" {
+			parts = append(parts, s)
+		}
+	}
+	return strings.Join(parts, "; ")
+}
+
+// ensureHoroscopeTopic ставит заказ Пифии при смене темы сцены (T-21-07,
+// W-13.1): гороскоп живёт до смены темы, повтор без смены заказ не дублирует.
+func ensureHoroscopeTopic(h *db.Handle, sessionID int64) error {
+	topic, err := workshop.CurrentSceneTopic(h, sessionID)
+	if err != nil || topic.SceneID == 0 {
+		return err
+	}
+	live, ok, err := workshop.LiveHoroscopeTopic(h)
+	if err != nil {
+		return err
+	}
+	if ok && live.PlaceID == topic.PlaceID {
+		return nil
+	}
+	_, err = workshop.EnsureHoroscopeOrder(h, workshop.HoroscopePayload{
+		SceneID:  topic.SceneID,
+		Pythia:   chatPythiaMap(h),
+		Forecast: chatHoroscopeForecast,
+	})
+	return err
 }
 
 // broadcastTurnChunk рассылает порцию сцены подписчикам топика turn.stream.

@@ -21,6 +21,7 @@ import (
 	"tns65/internal/db"
 	"tns65/internal/models"
 	"tns65/internal/turn"
+	"tns65/internal/workshop"
 )
 
 // seedChatWorld создаёт базу мира alpha по раскладке <root>/worlds/<slug>/<slug>.db,
@@ -726,5 +727,109 @@ func TestTurnEndpointEmbedder(t *testing.T) {
 	}
 	if n := emb.Calls(); n == 0 {
 		t.Fatal("конвейер не получил эмбеддер: вызовов Embed = 0")
+	}
+}
+
+// TestChatHoroscopeTopicChange — гороскоп по смене темы (T-21-07, W-13.1): ход без
+// смены темы сцены заказ не дублирует, смена места героя ставит один заказ
+// horoscope на новую сцену.
+func TestChatHoroscopeTopicChange(t *testing.T) {
+	path := seedChatWorld(t)
+
+	orders := func() []workshop.HoroscopePayload {
+		t.Helper()
+		reader, err := db.OpenReader(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer reader.Close()
+		rows, err := reader.Query(`SELECT payload_json FROM workshop_queue WHERE kind = ? ORDER BY id`,
+			string(workshop.KindHoroscope))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer rows.Close()
+		var out []workshop.HoroscopePayload
+		for rows.Next() {
+			var raw string
+			if err := rows.Scan(&raw); err != nil {
+				t.Fatal(err)
+			}
+			var p workshop.HoroscopePayload
+			if err := json.Unmarshal([]byte(raw), &p); err != nil {
+				t.Fatalf("payload заказа horoscope не JSON: %v", err)
+			}
+			out = append(out, p)
+		}
+		if err := rows.Err(); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+
+	lastScene := func() int64 {
+		t.Helper()
+		reader, err := db.OpenReader(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer reader.Close()
+		var id int64
+		if err := reader.QueryRow(`SELECT id FROM scenes ORDER BY id DESC LIMIT 1`).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+
+	turn := func() {
+		t.Helper()
+		rr := chatRequest(t, handleChatTurn, http.MethodPost, chatTurnPath, `{"world":"alpha","text":"Я иду по дороге."}`)
+		if rr.Code != http.StatusOK {
+			t.Fatalf("POST /api/turn: status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+		}
+	}
+
+	turn()
+	got := orders()
+	if len(got) != 1 {
+		t.Fatalf("заказов horoscope после первого хода = %d, want 1", len(got))
+	}
+	if scene := lastScene(); got[0].SceneID != scene {
+		t.Fatalf("сцена заказа = %d, want текущая %d", got[0].SceneID, scene)
+	}
+
+	// Повтор в том же месте тему не меняет — заказа не прибавляется.
+	turn()
+	if n := len(orders()); n != 1 {
+		t.Fatalf("заказов horoscope без смены темы = %d, want 1", n)
+	}
+
+	// Смена места героя — смена темы сцены: один заказ на новую сцену.
+	core, err := db.OpenWriterAs(path, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = core.Exec("character_state", `UPDATE character_state SET place_id = 2 WHERE character_id = 0`)
+	_ = core.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	turn()
+	got = orders()
+	if len(got) != 2 {
+		t.Fatalf("заказов horoscope после смены темы = %d, want 2", len(got))
+	}
+	if scene := lastScene(); got[1].SceneID != scene {
+		t.Fatalf("сцена нового заказа = %d, want текущая %d", got[1].SceneID, scene)
+	}
+	if got[1].SceneID == got[0].SceneID {
+		t.Fatalf("новый заказ на ту же сцену %d, want на новую", got[0].SceneID)
+	}
+
+	// Повтор после перековки снова не дублирует.
+	turn()
+	if n := len(orders()); n != 2 {
+		t.Fatalf("заказов horoscope после повтора = %d, want 2", n)
 	}
 }
