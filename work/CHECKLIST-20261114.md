@@ -118,7 +118,7 @@ mechanics-from-chat.md. Статусы сверены с кодом на HEAD `8
 | T-21-02 `TestVerne`: порт ядра | ✅ закрыт (b02d8db, 2026-11-26) | динамический порт вместо фиксированного 8720 или fail-fast на занятом порту; `go test ./e2e -run TestVerne -count=1` |
 | T-21-03 статусы заказов | ✅ закрыт (cf318d2, 2026-11-26) | running→done/failed, без переисполнения на тике; `go test ./internal/workshop -count=1` |
 | T-21-04 диспетчер видов | ✅ закрыт (d1cf20c, 2026-11-26) | исполнитель по `Kind` вместо общего `slot.Generate`; `go test ./internal/workshop -count=1 && go build ./cmd/tns65` |
-| T-21-05 пауза от последней активности | ⏳ todo | таймер инициализируется от последней реплики/`turns.created_at`; `go test ./internal/workshop/ ./internal/webapi/ -count=1` |
+| T-21-05 пауза от последней активности | ✅ закрыт (fc51783, 2026-11-26) | таймер инициализируется от последней реплики/`turns.created_at`; `go test ./internal/workshop/ ./internal/webapi/ -count=1` |
 | T-21-06 ночной `RunPythia` | ⏳ todo | прогон карты игрока на ночной ступени; `go test ./internal/workshop -count=1` |
 | T-21-07 гороскоп по смене темы | ⏳ todo | `EnsureHoroscopeOrder` при смене темы; `go test ./internal/webapi/ ./internal/workshop/ -count=1` |
 | T-21-08 `MatchHoroscope` + промах→кандидаты | ⏳ todo | сверка ранних векторов, промах в `SedimentCandidate`; `go test ./internal/webapi/ ./internal/workshop/ -count=1` |
