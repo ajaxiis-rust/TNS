@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"tns65/internal/journal"
 	"tns65/internal/netgate"
@@ -187,6 +188,12 @@ type ProviderClient struct {
 // провайдера (host в белом списке netgate); model — имя модели Gemini; пусто —
 // DefaultGeminiModel; apiKey — ключ из settings.toml.
 func NewProviderClient(baseURL, model, apiKey string) (*ProviderClient, error) {
+	return NewProviderClientTimeout(baseURL, model, apiKey, 0)
+}
+
+// NewProviderClientTimeout — клиент Gemini с тайм-аутом всего запроса
+// (gen_timeout); ноль — без тайм-аута.
+func NewProviderClientTimeout(baseURL, model, apiKey string, timeout time.Duration) (*ProviderClient, error) {
 	u, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("models: адрес провайдера: %w", err)
@@ -196,7 +203,7 @@ func NewProviderClient(baseURL, model, apiKey string) (*ProviderClient, error) {
 		m = DefaultGeminiModel
 	}
 	return &ProviderClient{
-		http:  netgate.Client(u.Host),
+		http:  netgate.ClientTimeout(u.Host, timeout),
 		url:   strings.TrimRight(baseURL, "/"),
 		model: m,
 		key:   apiKey,

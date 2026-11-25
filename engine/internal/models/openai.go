@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"tns65/internal/netgate"
 )
@@ -36,13 +37,19 @@ type OpenAIClient struct {
 // базовый адрес без /chat/completions (например https://api.deepseek.com/v1);
 // model — имя модели; apiKey — ключ из settings.toml (Authorization: Bearer).
 func NewOpenAIClient(baseURL, model, apiKey string) (*OpenAIClient, error) {
+	return NewOpenAIClientTimeout(baseURL, model, apiKey, 0)
+}
+
+// NewOpenAIClientTimeout — клиент с тайм-аутом всего запроса (gen_timeout);
+// ноль — без тайм-аута.
+func NewOpenAIClientTimeout(baseURL, model, apiKey string, timeout time.Duration) (*OpenAIClient, error) {
 	base := strings.TrimRight(strings.TrimSpace(baseURL), "/")
 	u, err := url.Parse(base)
 	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
 		return nil, fmt.Errorf("models: адрес провайдера %q", baseURL)
 	}
 	return &OpenAIClient{
-		http:     netgate.Client(u.Host),
+		http:     netgate.ClientTimeout(u.Host, timeout),
 		endpoint: base,
 		model:    strings.TrimSpace(model),
 		key:      apiKey,

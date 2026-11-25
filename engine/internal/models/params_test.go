@@ -134,6 +134,17 @@ func TestOpenAIRequestParams(t *testing.T) {
 		t.Fatalf("reasoning_effort = %s, ожидалось medium", body["reasoning_effort"])
 	}
 
+	// gen_reasoning 0 — рассуждения выключены: reasoning_effort = none.
+	ch, err = c.StreamParams(context.Background(), "промпт", GenerateParams{Reasoning: intPtr(0)})
+	if err != nil {
+		t.Fatalf("StreamParams(reasoning=0): %v", err)
+	}
+	drainCh(ch)
+	body = <-bodies
+	if err := json.Unmarshal(body["reasoning_effort"], &effort); err != nil || effort != "none" {
+		t.Fatalf("reasoning_effort при бюджете 0 = %s, ожидалось none", body["reasoning_effort"])
+	}
+
 	ch, err = c.Stream(context.Background(), "промпт")
 	if err != nil {
 		t.Fatalf("Stream: %v", err)

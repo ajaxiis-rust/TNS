@@ -9,7 +9,9 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
+	"tns65/internal/llmparams"
 	"tns65/internal/models"
 )
 
@@ -60,9 +62,10 @@ func ParseRoute(s string) Route {
 // Settings — снимок маршрутизации на старте ядра: маршруты задач, ключи и
 // модели провайдеров из settings.toml и запасной провайдер slots.default.
 type Settings struct {
-	Routes  map[Task]Route
-	Keys    map[string]string
-	Default string
+	Routes     map[Task]Route
+	Keys       map[string]string
+	Default    string
+	GenTimeout time.Duration // llm.gen_timeout: тайм-аут HTTP-клиента слота
 }
 
 // LoadSettings читает маршруты и ключи. Маршруты берутся из секции `routes:`
@@ -86,7 +89,12 @@ func LoadSettings(configPath, settingsPath string) (Settings, error) {
 			routes[task] = ParseRoute(v)
 		}
 	}
-	return Settings{Routes: routes, Keys: keys, Default: string(slots.Default)}, nil
+	return Settings{
+		Routes:     routes,
+		Keys:       keys,
+		Default:    string(slots.Default),
+		GenTimeout: llmparams.LoadSettings(configPath).Timeout,
+	}, nil
 }
 
 // routeKey — ключ settings.toml с маршрутом задачи.

@@ -11,8 +11,16 @@ type GenerateParams struct {
 	Reasoning   *int     // бюджет рассуждений thinking-модели, токены
 }
 
+// Empty сообщает, что ни один параметр не задан: тело запроса полей генерации
+// не несёт (дефолт модели).
+func (p GenerateParams) Empty() bool {
+	return p.Temperature == nil && p.MaxTokens == nil && p.TopP == nil &&
+		p.TopK == nil && p.Reasoning == nil
+}
+
 // reasoningEffort переводит бюджет рассуждений в reasoning_effort OpenAI-маршрута.
-// Точную таблицу фиксирует П3 (ключ gen_reasoning); здесь базовое соответствие.
+// Таблица gen_reasoning (П3): 0 — рассуждения выключены («none»), малый бюджет
+// — low, средний — medium, крупный — high.
 func reasoningEffort(budget int) string {
 	switch {
 	case budget <= 0:

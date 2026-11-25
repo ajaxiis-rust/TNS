@@ -149,6 +149,7 @@ func restoreActiveWorld() {
 		return
 	}
 	setActiveSlug(slug)
+	wireWorldRoleConfigs(slug)
 	if atlasLogger != nil {
 		_ = atlasLogger.Event("webapi", eventWorldRestored,
 			journal.Field{Key: atlasFieldWorld, Value: slug})
@@ -336,6 +337,7 @@ func handleAtlasSwitch(w http.ResponseWriter, r *http.Request) {
 	}
 	setActiveSlug(slug)
 	wireWorldRating(slug)
+	wireWorldRoleConfigs(slug)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "active": slug})
 }
 

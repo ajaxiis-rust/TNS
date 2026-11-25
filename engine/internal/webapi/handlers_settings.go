@@ -25,6 +25,7 @@ import (
 	"tns65/internal/embedserver"
 	"tns65/internal/geo"
 	"tns65/internal/journal"
+	"tns65/internal/llmparams"
 	"tns65/internal/models"
 	"tns65/internal/paganel"
 	"tns65/internal/providercfg"
@@ -114,13 +115,10 @@ const (
 
 // roleConfig — состав слота роли, который не помещается в model_bindings
 // (там только role/model_ref/provider): температура, промпты, приоритет.
-type roleConfig struct {
-	Temperature float64 `json:"temperature"`
-	Prompts     string  `json:"prompts"`
-	Priority    int     `json:"priority"`
-}
+// Разбор и чтение живут в общем пакете llmparams.
+type roleConfig = llmparams.RoleConfig
 
-func roleConfigKey(role string) string { return "role." + role }
+func roleConfigKey(role string) string { return llmparams.RoleConfigKey(role) }
 
 // llmSettings — слоты генерации (:5001) и эмбеддингов (:5002) из config.yaml
 // (T-08-09, шаг 3, MD-04). Ключи слотов наружу не отдаются — только признак.
@@ -138,6 +136,9 @@ type llmSlotSettings struct {
 	Timeout     string  `json:"timeout"`
 	MaxTokens   int64   `json:"max_tokens"`
 	Temperature float64 `json:"temperature"`
+	TopP        float64 `json:"top_p"`
+	TopK        int     `json:"top_k"`
+	Reasoning   int     `json:"reasoning"` // -1 — не отправлять, 0 — выключить, >0 — бюджет
 	Retries     int     `json:"retries"`
 	Concurrency int     `json:"concurrency"`
 	// Ctx/Threads/Parallel — флаги llama-server слота (-c/--threads/--parallel).
@@ -633,6 +634,8 @@ func handleSettingsBindings(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, codeInternal, "role config write failed")
 		return
 	}
+	// Сохранённый состав ролей применяется к генерации сразу, без перезапуска.
+	wireWorldRoleConfigs(slug)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -765,6 +768,25 @@ func validateSettingsConfig(raw map[string]json.RawMessage) (map[string]string, 
 				return nil, false
 			}
 			updates["llm."+key] = strconv.FormatFloat(f, 'f', -1, 64)
+		case "gen_top_p":
+			var f float64
+			if err := json.Unmarshal(val, &f); err != nil || f < 0 || f > 1 {
+				return nil, false
+			}
+			updates["llm."+key] = strconv.FormatFloat(f, 'f', -1, 64)
+		case "gen_top_k":
+			var n int
+			if err := json.Unmarshal(val, &n); err != nil || n < 0 {
+				return nil, false
+			}
+			updates["llm."+key] = strconv.Itoa(n)
+		case "gen_reasoning":
+			// -1 — не отправлять, 0 — выключить рассуждения, >0 — бюджет в токенах.
+			var n int
+			if err := json.Unmarshal(val, &n); err != nil || n < llmparams.ReasoningUnset {
+				return nil, false
+			}
+			updates["llm."+key] = strconv.Itoa(n)
 		case "local":
 			var b bool
 			if err := json.Unmarshal(val, &b); err != nil {
@@ -985,7 +1007,7 @@ func readLLMSettings(path string, keys map[string]string) llmSettings {
 
 func defaultLLMSettings() llmSettings {
 	return llmSettings{
-		Gen:      llmSlotSettings{Addr: ":5001", Timeout: "30s", Concurrency: 1},
+		Gen:      llmSlotSettings{Addr: ":5001", Timeout: "30s", Concurrency: 1, Reasoning: llmparams.ReasoningUnset},
 		Embed:    llmSlotSettings{Addr: ":5002", Timeout: "30s"},
 		Local:    true,
 		Sampling: "greedy",
@@ -1029,6 +1051,18 @@ func parseLLMSection(data string, cfg *llmSettings) {
 		case "gen_temperature":
 			if f, err := strconv.ParseFloat(value, 64); err == nil {
 				cfg.Gen.Temperature = f
+			}
+		case "gen_top_p":
+			if f, err := strconv.ParseFloat(value, 64); err == nil {
+				cfg.Gen.TopP = f
+			}
+		case "gen_top_k":
+			if n, err := strconv.Atoi(value); err == nil {
+				cfg.Gen.TopK = n
+			}
+		case "gen_reasoning":
+			if n, err := strconv.Atoi(value); err == nil {
+				cfg.Gen.Reasoning = n
 			}
 		case "gen_retries":
 			if n, err := strconv.Atoi(value); err == nil {
@@ -1094,8 +1128,7 @@ func enrichBindings(meta map[string]string, bindings []slotBinding) []slotBindin
 	out := make([]slotBinding, 0, len(bindings))
 	for _, b := range bindings {
 		if raw, ok := meta[roleConfigKey(b.Role)]; ok {
-			var rc roleConfig
-			if json.Unmarshal([]byte(raw), &rc) == nil {
+			if rc, parsed := llmparams.ParseRoleConfig(raw); parsed {
 				b.Temperature = rc.Temperature
 				b.Prompts = rc.Prompts
 				b.Priority = rc.Priority
@@ -1345,6 +1378,17 @@ func writeRoleConfigs(forge *db.Handle, bindings []slotBinding) error {
 		}
 	}
 	return nil
+}
+
+// wireWorldRoleConfigs передаёт составы ролей мира (world_meta role.<роль>)
+// слою параметров генерации: температура роли главнее llm.gen_temperature.
+// Мир не открылся — снимок остаётся прежним.
+func wireWorldRoleConfigs(slug string) {
+	roles, err := llmparams.LoadRoleConfigs(worldDBPath(slug))
+	if err != nil {
+		return
+	}
+	llmparams.SetRoleConfigs(roles)
 }
 
 // modelStatus — карточка модели менеджера моделей (MD-08): роль, модель,

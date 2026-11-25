@@ -12,6 +12,7 @@ import (
 
 	"tns65/internal/censor"
 	"tns65/internal/db"
+	"tns65/internal/llmparams"
 	"tns65/internal/models"
 	"tns65/internal/version"
 )
@@ -97,7 +98,7 @@ func ladder(ctx context.Context, lit *db.Handle, opts GenerateOptions, base stri
 		if slot == nil {
 			return "", errors.New("workshop: слот генерации не подключён")
 		}
-		out, err := slotGenerate(ctx, slot, opts.Role, ladderPrompt(base, step), opts.Params)
+		out, err := slotGenerate(ctx, slot, opts.Role, ladderPrompt(base, step), paramsFor(opts))
 		if err != nil {
 			return "", err
 		}
@@ -113,6 +114,15 @@ func ladder(ctx context.Context, lit *db.Handle, opts GenerateOptions, base stri
 		return "", err
 	}
 	return "", ErrForgeDegraded
+}
+
+// paramsFor отдаёт параметры запроса роли: явные opts.Params главнее, пусто —
+// состав роли (world_meta) и llm: config.yaml из снимка llmparams (П3).
+func paramsFor(opts GenerateOptions) models.GenerateParams {
+	if !opts.Params.Empty() {
+		return opts.Params
+	}
+	return llmparams.Params(opts.Role)
 }
 
 // slotGenerate отдаёт запрос слоту: слот с параметрами получает opts.Params,

@@ -110,16 +110,28 @@ func SetLogger(l *journal.Logger) {
 // сверяет целевой хост с белым списком до установки соединения, редирект за
 // пределы списка не выполняется. host — целевой хост (hostname или host:port).
 func Client(host string) *http.Client {
-	return defaultGate.client(host, callerName(2))
+	return defaultGate.client(host, callerName(2), 0)
+}
+
+// ClientTimeout — как Client, с тайм-аутом всего запроса (генерация слота
+// обрывается по gen_timeout). Ноль — без тайм-аута.
+func ClientTimeout(host string, timeout time.Duration) *http.Client {
+	return defaultGate.client(host, callerName(2), timeout)
 }
 
 // Local — HTTP-клиент loopback (:5001, :5002, httptest в тестах): белым списком
 // не проверяется — локальные адреса списком не занимаются.
 func Local(addr string) *http.Client {
-	return defaultGate.local(addr)
+	return defaultGate.local(addr, 0)
 }
 
-func (g *gate) client(host string, caller string) *http.Client {
+// LocalTimeout — как Local, с тайм-аутом всего запроса: зависшая генерация
+// обрывается по gen_timeout, а не ждётся бесконечно.
+func LocalTimeout(addr string, timeout time.Duration) *http.Client {
+	return defaultGate.local(addr, timeout)
+}
+
+func (g *gate) client(host string, caller string, timeout time.Duration) *http.Client {
 	g.mu.RLock()
 	allowed := g.allowed
 	logger := g.logger
@@ -153,16 +165,18 @@ func (g *gate) client(host string, caller string) *http.Client {
 	return &http.Client{
 		Transport:     &http.Transport{DialContext: dial},
 		CheckRedirect: redirect,
+		Timeout:       timeout,
 	}
 }
 
-func (g *gate) local(addr string) *http.Client {
+func (g *gate) local(addr string, timeout time.Duration) *http.Client {
 	dial := func(ctx context.Context, network, _ string) (net.Conn, error) {
 		d := &net.Dialer{Timeout: dialTimeout}
 		return d.DialContext(ctx, network, addr)
 	}
 	return &http.Client{
 		Transport: &http.Transport{DialContext: dial},
+		Timeout:   timeout,
 	}
 }
 

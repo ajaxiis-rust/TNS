@@ -112,6 +112,9 @@
     settingsGenTimeout: "settings-gen-timeout",
     settingsGenMaxTokens: "settings-gen-max-tokens",
     settingsGenTemperature: "settings-gen-temperature",
+    settingsGenTopP: "settings-gen-top-p",
+    settingsGenTopK: "settings-gen-top-k",
+    settingsGenReasoning: "settings-gen-reasoning",
     settingsGenRetries: "settings-gen-retries",
     settingsGenConcurrency: "settings-gen-concurrency",
     settingsEmbAddr: "settings-emb-addr",
@@ -2066,6 +2069,9 @@
     "settings-gen-timeout": "Сколько ждать ответа генератора (например 30s).",
     "settings-gen-max-tokens": "Предел длины ответа в токенах. 0 — без ограничения.",
     "settings-gen-temperature": "0 — строго по замыслу мира, выше — свободнее и неожиданнее.",
+    "settings-gen-top-p": "Ядерное семплирование: 0 — не отправлять, 1 — весь словарь модели.",
+    "settings-gen-top-k": "Отсечение по top-k: 0 — не отправлять, 40–64 — обычный диапазон.",
+    "settings-gen-reasoning": "Рассуждения модели: -1 — не отправлять, 0 — выключить, больше нуля — бюджет в токенах.",
     "settings-gen-retries": "Сколько раз повторить запрос при сбое генератора.",
     "settings-gen-concurrency": "Сколько запросов к генератору можно держать параллельно.",
     "settings-emb-addr": "Локальный эмбеддинг-сервер (BGE-M3): хост:порт, по умолчанию 127.0.0.1:5002.",
@@ -2698,6 +2704,9 @@
     setValue(IDS.settingsGenTimeout, gen.timeout || "");
     setValue(IDS.settingsGenMaxTokens, String(gen.max_tokens || 0));
     setValue(IDS.settingsGenTemperature, String(gen.temperature || 0));
+    setValue(IDS.settingsGenTopP, String(gen.top_p || 0));
+    setValue(IDS.settingsGenTopK, String(gen.top_k || 0));
+    setValue(IDS.settingsGenReasoning, String(typeof gen.reasoning === "number" ? gen.reasoning : -1));
     setValue(IDS.settingsGenRetries, String(gen.retries || 0));
     setValue(IDS.settingsGenConcurrency, String(gen.concurrency || 1));
     setValue(IDS.settingsEmbAddr, embed.addr || "");
@@ -3886,6 +3895,9 @@
       gen_timeout: fieldValue(IDS.settingsGenTimeout),
       gen_max_tokens: parseInt(fieldValue(IDS.settingsGenMaxTokens), 10) || 0,
       gen_temperature: parseFloat(fieldValue(IDS.settingsGenTemperature)) || 0,
+      gen_top_p: parseFloat(fieldValue(IDS.settingsGenTopP)) || 0,
+      gen_top_k: parseInt(fieldValue(IDS.settingsGenTopK), 10) || 0,
+      gen_reasoning: parseInt(fieldValue(IDS.settingsGenReasoning), 10) || 0,
       gen_retries: parseInt(fieldValue(IDS.settingsGenRetries), 10) || 0,
       gen_concurrency: parseInt(fieldValue(IDS.settingsGenConcurrency), 10) || 1,
       embed_addr: fieldValue(IDS.settingsEmbAddr),

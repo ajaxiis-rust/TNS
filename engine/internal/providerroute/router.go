@@ -67,7 +67,7 @@ func NewRouter(cfg Settings, cat providercfg.Config, logger *journal.Logger) *Ro
 	r := &Router{
 		routes:   make(map[Task]Route, len(Tasks())),
 		keys:     cfg.Keys,
-		factory:  slotClientFactory(cat, cfg.Keys),
+		factory:  slotClientFactory(cat, cfg.Keys, cfg.GenTimeout),
 		logger:   logger,
 		now:      time.Now,
 		calls:    make(map[Task]uint64),
@@ -107,7 +107,8 @@ func knownRoute(route Route, cat providercfg.Config) Route {
 // slotClientFactory собирает клиента через turn.ProviderSlot: local — локальная
 // запаска :5001, внешние — Gemini generateContent или OpenAI-совместимый вход.
 // Модель — выбранная в settings.toml, иначе заводская из providers.toml.
-func slotClientFactory(cat providercfg.Config, keys map[string]string) ClientFactory {
+// timeout — llm.gen_timeout: зависшая генерация обрывается, а не ждётся вечно.
+func slotClientFactory(cat providercfg.Config, keys map[string]string, timeout time.Duration) ClientFactory {
 	return func(name string) (ProviderClient, error) {
 		def := providercfg.Provider{Name: LocalProvider, Protocol: providercfg.ProtocolLocal}
 		if name != LocalProvider {
@@ -118,7 +119,7 @@ func slotClientFactory(cat providercfg.Config, keys map[string]string) ClientFac
 			def = found
 		}
 		model := strings.TrimSpace(keys[models.ModelSettingsKey(models.Provider(name))])
-		slot, err := turn.ProviderSlot(def, keys[name], model)
+		slot, err := turn.ProviderSlotTimeout(def, keys[name], model, timeout)
 		if err != nil {
 			return nil, err
 		}

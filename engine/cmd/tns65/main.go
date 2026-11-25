@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -21,6 +22,7 @@ import (
 	"tns65/internal/deepread"
 	"tns65/internal/journal"
 	"tns65/internal/langpack"
+	"tns65/internal/llmparams"
 	"tns65/internal/models"
 	"tns65/internal/netgate"
 	"tns65/internal/paganel"
@@ -639,6 +641,7 @@ func launchSwarmTask(name string, args []string) error {
 // прочитался — слот не подключён, ковка идёт существующей деградацией, а отказ
 // виден событием slot.wiring_fail.
 func wireWorkshopSlot(logger *journal.Logger) {
+	wireLLMParams()
 	cfg, err := providerroute.LoadSettings("config.yaml", "settings.toml")
 	if err != nil {
 		if logger != nil {
@@ -651,6 +654,32 @@ func wireWorkshopSlot(logger *journal.Logger) {
 	router := providerroute.NewRouter(cfg, providercfg.Load("providers.toml"), logger)
 	workshop.SetSlot(workshop.NewRoutedWorkshopSlot(router.Slot(providerroute.TaskSources)).
 		RouteRoles(router.Slot(providerroute.TaskEditor), workshop.EditorRoles()...))
+}
+
+// wireLLMParams передаёт слою параметров генерации станковые значения
+// (config.yaml llm:) и состав ролей активного мира (state/active_world), чтобы
+// тело запроса модели несло temperature/max_tokens/top_p/top_k/reasoning.
+// Нет активного мира — остаются станковые значения.
+func wireLLMParams() {
+	llmparams.SetConfig(llmparams.LoadSettings("config.yaml"))
+	slug := strings.TrimSpace(readActiveWorldSlug())
+	if slug == "" {
+		return
+	}
+	path := filepath.Join(db.WorldsRoot, "worlds", slug, slug+".db")
+	if roles, err := llmparams.LoadRoleConfigs(path); err == nil {
+		llmparams.SetRoleConfigs(roles)
+	}
+}
+
+// readActiveWorldSlug читает выбор игрока, записанный webapi (state/active_world);
+// пусто — мир не выбран.
+func readActiveWorldSlug() string {
+	data, err := os.ReadFile(filepath.Join("state", "active_world"))
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 // runSwarmTask — скрытая точка входа однозадачной задачи роя: первой строкой

@@ -215,6 +215,18 @@
               <input id="settings-gen-temperature" type="number" step="0.1" value="0">
             </label>
             <label class="settings-field">
+              <span data-i18n="settings.llm.top_p">top_p</span>
+              <input id="settings-gen-top-p" type="number" step="0.05" min="0" max="1" value="0">
+            </label>
+            <label class="settings-field">
+              <span data-i18n="settings.llm.top_k">top_k</span>
+              <input id="settings-gen-top-k" type="number" min="0" value="0">
+            </label>
+            <label class="settings-field">
+              <span data-i18n="settings.llm.reasoning">Рассуждения</span>
+              <input id="settings-gen-reasoning" type="number" min="-1" value="-1">
+            </label>
+            <label class="settings-field">
               <span data-i18n="settings.llm.retries">Повторы</span>
               <input id="settings-gen-retries" type="number" min="0" value="0">
             </label>

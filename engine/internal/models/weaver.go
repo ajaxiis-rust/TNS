@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"tns65/internal/netgate"
 )
@@ -35,11 +36,17 @@ func (w *Weaver) LimitRemaining() string { return "" }
 // NewWeaver создаёт клиент слота прозы по адресу weaverURL (loopback,
 // netgate.Local — все вызовы слота только через сетевой гейт).
 func NewWeaver(weaverURL string) (*Weaver, error) {
+	return NewWeaverTimeout(weaverURL, 0)
+}
+
+// NewWeaverTimeout — клиент слота прозы с тайм-аутом всего запроса (gen_timeout):
+// зависшая генерация обрывается по http.Client.Timeout. Ноль — без тайм-аута.
+func NewWeaverTimeout(weaverURL string, timeout time.Duration) (*Weaver, error) {
 	u, err := url.Parse(weaverURL)
 	if err != nil {
 		return nil, fmt.Errorf("models: адрес слота прозы: %w", err)
 	}
-	return &Weaver{http: netgate.Local(u.Host), url: strings.TrimRight(weaverURL, "/")}, nil
+	return &Weaver{http: netgate.LocalTimeout(u.Host, timeout), url: strings.TrimRight(weaverURL, "/")}, nil
 }
 
 // WeaverInstruction — инструкция движка слоту прозы: мир считает код, модель

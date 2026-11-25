@@ -3,6 +3,7 @@ package turn
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"tns65/internal/models"
 	"tns65/internal/providercfg"
@@ -212,12 +213,18 @@ func nonEmpty(v, fallback string) string {
 // /chat/completions. Оба внешних клиента ходят только через сетевой гейт.
 // Модель — model, при пустом значении заводская из providers.toml.
 func ProviderSlot(def providercfg.Provider, apiKey, model string) (ProseSlot, error) {
+	return ProviderSlotTimeout(def, apiKey, model, 0)
+}
+
+// ProviderSlotTimeout — как ProviderSlot, с тайм-аутом всего запроса
+// (llm.gen_timeout); ноль — без тайм-аута.
+func ProviderSlotTimeout(def providercfg.Provider, apiKey, model string, timeout time.Duration) (ProseSlot, error) {
 	name := strings.TrimSpace(def.Name)
 	if name == "" {
 		name = string(providercfg.ProtocolLocal)
 	}
 	if def.Protocol == providercfg.ProtocolLocal {
-		slot, err := models.NewWeaver(models.DefaultWeaverURL)
+		slot, err := models.NewWeaverTimeout(models.DefaultWeaverURL, timeout)
 		if err != nil {
 			return nil, err
 		}
@@ -229,14 +236,14 @@ func ProviderSlot(def providercfg.Provider, apiKey, model string) (ProseSlot, er
 	}
 	switch def.Protocol {
 	case providercfg.ProtocolGemini:
-		slot, err := models.NewProviderClient(def.BaseURL, model, apiKey)
+		slot, err := models.NewProviderClientTimeout(def.BaseURL, model, apiKey, timeout)
 		if err != nil {
 			return nil, err
 		}
 		slot.SetProvider(name)
 		return slot, nil
 	case providercfg.ProtocolOpenAI:
-		slot, err := models.NewOpenAIClient(def.BaseURL, model, apiKey)
+		slot, err := models.NewOpenAIClientTimeout(def.BaseURL, model, apiKey, timeout)
 		if err != nil {
 			return nil, err
 		}

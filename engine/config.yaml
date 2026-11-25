@@ -59,6 +59,12 @@ llm:
   gen_timeout: 30s
   gen_max_tokens: 0
   gen_temperature: 0.0
+  # Семплирование и рассуждения (П3): gen_top_p/top_k: 0 — поле не отправляется
+  # (дефолт модели); gen_reasoning: -1 — не отправлять, 0 — выключить
+  # рассуждения, >0 — бюджет в токенах (OpenAI-маршрут — reasoning_effort).
+  gen_top_p: 0.0
+  gen_top_k: 0
+  gen_reasoning: -1
   gen_retries: 0
   gen_concurrency: 1
   # Потолок контекста и потоки CPU для llama-server генерации (T-08-09).

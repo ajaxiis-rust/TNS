@@ -137,7 +137,7 @@ func TestNoRedirect(t *testing.T) {
 	hs.add("127.0.0.1/32")
 	g := &gate{allowed: hs, logger: logger}
 
-	client := g.client(target.Listener.Addr().String(), "test")
+	client := g.client(target.Listener.Addr().String(), "test", 0)
 	resp, err := client.Get(target.URL)
 	if resp != nil {
 		resp.Body.Close()

@@ -34,6 +34,9 @@
 | LLM — тайм-аут генерации (`llm.gen_timeout`) | Настройки → LLM | `config.yaml` `llm.gen_timeout` | `30s` | да | |
 | LLM — максимум токенов (`llm.gen_max_tokens`) | Настройки → LLM | `config.yaml` `llm.gen_max_tokens` | `0` | да | `0` — без ограничения |
 | LLM — температура (`llm.gen_temperature`) | Настройки → LLM | `config.yaml` `llm.gen_temperature` | `0.0` | да | |
+| LLM — top_p (`llm.gen_top_p`) | Настройки → LLM | `config.yaml` `llm.gen_top_p` | `0.0` | да | `0` — поле не отправляется (дефолт модели) |
+| LLM — top_k (`llm.gen_top_k`) | Настройки → LLM | `config.yaml` `llm.gen_top_k` | `0` | да | `0` — поле не отправляется (дефолт модели) |
+| LLM — рассуждения (`llm.gen_reasoning`) | Настройки → LLM | `config.yaml` `llm.gen_reasoning` | `-1` | да | `-1` — не отправлять, `0` — выключить, `>0` — бюджет в токенах; OpenAI-маршрут — `reasoning_effort` |
 | LLM — повторы (`llm.gen_retries`) | Настройки → LLM | `config.yaml` `llm.gen_retries` | `0` | да | |
 | LLM — конкурентность (`llm.gen_concurrency`) | Настройки → LLM | `config.yaml` `llm.gen_concurrency` | `1` | да | минимум 1 |
 | LLM — адрес вектора смысла (`llm.embed_addr`) | Настройки → LLM | `config.yaml` `llm.embed_addr` | `:5002` | да | BGE-M3 |

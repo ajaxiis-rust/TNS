@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"tns65/internal/db"
+	"tns65/internal/llmparams"
 	"tns65/internal/models"
 	"tns65/internal/workshop"
 )
@@ -78,6 +79,54 @@ func TestGenerateWithRetryForwardsParams(t *testing.T) {
 	got := slot.params[0]
 	if got.Temperature == nil || *got.Temperature != temp || got.MaxTokens == nil || *got.MaxTokens != maxTokens {
 		t.Fatalf("params слота = %+v, ожидались temperature=%v max_tokens=%d", got, temp, maxTokens)
+	}
+}
+
+// TestGenerateWithRetryParamsFromConfig — П3: params без явного GenerateOptions
+// собираются из llm: config.yaml и состава роли (world_meta) и доходят до слота;
+// температура роли главнее станковой.
+func TestGenerateWithRetryParamsFromConfig(t *testing.T) {
+	dir := t.TempDir()
+	litPath := filepath.Join(dir, "literary.db")
+	newDB(t, litPath, "literary")
+	lit, err := db.OpenWriterAs(litPath, db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(literary): %v", err)
+	}
+	defer lit.Close()
+
+	llmparams.SetConfig(llmparams.ParseSettings("llm:\n" +
+		"  gen_max_tokens: 300\n  gen_temperature: 0.25\n  gen_top_p: 0.8\n" +
+		"  gen_top_k: 32\n  gen_reasoning: 0\n"))
+	llmparams.SetRoleConfigs(map[string]llmparams.RoleConfig{"config-params": {Temperature: 0.65}})
+	t.Cleanup(func() {
+		llmparams.SetConfig(llmparams.Config{})
+		llmparams.SetRoleConfigs(nil)
+	})
+
+	slot := &paramsSlot{ladderSlot: ladderSlot{answers: []string{"готовая проза."}}}
+	workshop.SetSlot(slot)
+	defer workshop.SetSlot(nil)
+
+	if _, err := workshop.GenerateWithRetry(context.Background(), lit, workshop.GenerateOptions{
+		Role:     "config-params",
+		Lang:     "ru",
+		Provider: workshop.DefaultProvider,
+	}, func(_ int, _ string) string { return `{"task":"config-params"}` }); err != nil {
+		t.Fatalf("GenerateWithRetry: %v", err)
+	}
+	if len(slot.params) != 1 {
+		t.Fatalf("вызовов с параметрами = %d, want 1", len(slot.params))
+	}
+	got := slot.params[0]
+	if got.Temperature == nil || *got.Temperature != 0.65 {
+		t.Fatalf("temperature = %v, want 0.65 (роль)", got.Temperature)
+	}
+	if got.MaxTokens == nil || *got.MaxTokens != 300 ||
+		got.TopP == nil || *got.TopP != 0.8 ||
+		got.TopK == nil || *got.TopK != 32 ||
+		got.Reasoning == nil || *got.Reasoning != 0 {
+		t.Fatalf("params из config.yaml = %+v, ожидались max_tokens=300 top_p=0.8 top_k=32 reasoning=0", got)
 	}
 }
 

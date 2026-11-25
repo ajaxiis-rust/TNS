@@ -35,7 +35,8 @@ func seedSettingsWorld(t *testing.T) {
 	cfgBody := "web:\n  host: 127.0.0.1\n  port: 8720\n" +
 		"paganel:\n  enabled: false\n  scout_enabled: false\n  key_ref: paganel\n" +
 		"llm:\n  gen_addr: \":5001\"\n  gen_model: \"\"\n  gen_timeout: 30s\n" +
-		"  gen_max_tokens: 0\n  gen_temperature: 0.0\n  gen_retries: 0\n  gen_concurrency: 1\n" +
+		"  gen_max_tokens: 0\n  gen_temperature: 0.0\n  gen_top_p: 0.0\n  gen_top_k: 0\n" +
+		"  gen_reasoning: -1\n  gen_retries: 0\n  gen_concurrency: 1\n" +
 		"  embed_addr: \":5002\"\n  embed_model: \"\"\n  embed_timeout: 30s\n" +
 		"  local: true\n  sampling: greedy\n" +
 		"tunnel:\n  edge: region1.v2.argotunnel.com\n  local: http://127.0.0.1:8720\n" +
@@ -277,7 +278,8 @@ func TestLLMSettingsConfig(t *testing.T) {
 
 	body := []byte(`{
 		"gen_addr":":5003","gen_model":"weaver-q4","gen_timeout":"45s",
-		"gen_max_tokens":128,"gen_temperature":0.7,"gen_retries":2,"gen_concurrency":3,
+		"gen_max_tokens":128,"gen_temperature":0.7,"gen_top_p":0.9,"gen_top_k":40,
+		"gen_reasoning":2048,"gen_retries":2,"gen_concurrency":3,
 		"embed_addr":":5004","embed_model":"bge-m3","embed_timeout":"20s",
 		"local":false,"sampling":"top_p"
 	}`)
@@ -306,6 +308,9 @@ func TestLLMSettingsConfig(t *testing.T) {
 	if out.LLM.Gen.MaxTokens != 128 || out.LLM.Gen.Temperature != 0.7 || out.LLM.Gen.Retries != 2 || out.LLM.Gen.Concurrency != 3 {
 		t.Fatalf("llm.gen числа = %+v", out.LLM.Gen)
 	}
+	if out.LLM.Gen.TopP != 0.9 || out.LLM.Gen.TopK != 40 || out.LLM.Gen.Reasoning != 2048 {
+		t.Fatalf("llm.gen top_p/top_k/reasoning = %+v", out.LLM.Gen)
+	}
 	if !out.LLM.Gen.KeySet {
 		t.Fatal("llm.gen.key_set = false, want true после записи ключа")
 	}
@@ -324,6 +329,15 @@ func TestLLMSettingsConfig(t *testing.T) {
 		[]byte(`{"sampling":"temperature"}`), "application/json")
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("PUT config sampling=temperature: status = %d, want 400", rr.Code)
+	}
+
+	// gen_reasoning меньше -1 и top_p вне [0,1] отвергаются.
+	for _, body := range []string{`{"gen_reasoning":-2}`, `{"gen_top_p":1.5}`} {
+		rr = mcpRequest(t, handleSettingsConfig, http.MethodPut, settingsConfigRoutePath,
+			[]byte(body), "application/json")
+		if rr.Code != http.StatusBadRequest {
+			t.Fatalf("PUT config %s: status = %d, want 400", body, rr.Code)
+		}
 	}
 }
 
