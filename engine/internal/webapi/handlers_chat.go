@@ -227,6 +227,8 @@ func handleChatTurn(w http.ResponseWriter, r *http.Request) {
 		broadcastTurnChunk(turnID, chunk)
 	}
 	chatTouch(slug)
+	// T-20-04: реплика возвращает мастерскую с паузы — молчание обнуляется.
+	chatMarkActive()
 
 	writeJSON(w, http.StatusOK, map[string]int64{"turn_id": turnID})
 }
@@ -416,6 +418,36 @@ func chatTouch(slug string) {
 	chatLastActiveMu.Lock()
 	chatLastActive[slug] = chatClock.Now()
 	chatLastActiveMu.Unlock()
+}
+
+// WorkshopScheduler — планировщик мастерской, которому чат сообщает активность
+// игрока (T-20-04): реплика обнуляет молчание и возвращает ступень паузы.
+type WorkshopScheduler interface {
+	MarkActive()
+}
+
+// workshopSched — планировщик мастерской ядра; nil — воркер не подключён.
+var (
+	workshopSchedMu sync.Mutex
+	workshopSched   WorkshopScheduler
+)
+
+// SetWorkshopScheduler подключает планировщик мастерской ядра (T-20-04); nil —
+// планировщика нет, активность хода только пишется в чат.
+func SetWorkshopScheduler(s WorkshopScheduler) {
+	workshopSchedMu.Lock()
+	defer workshopSchedMu.Unlock()
+	workshopSched = s
+}
+
+// chatMarkActive сообщает планировщику мастерской о реплике игрока (T-20-04).
+func chatMarkActive() {
+	workshopSchedMu.Lock()
+	s := workshopSched
+	workshopSchedMu.Unlock()
+	if s != nil {
+		s.MarkActive()
+	}
 }
 
 // broadcastTurnChunk рассылает порцию сцены подписчикам топика turn.stream.

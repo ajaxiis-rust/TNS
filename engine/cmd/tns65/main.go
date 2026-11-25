@@ -15,9 +15,11 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"tns65/internal/birth"
 	"tns65/internal/book"
+	"tns65/internal/censor"
 	"tns65/internal/db"
 	"tns65/internal/deepread"
 	"tns65/internal/journal"
@@ -30,6 +32,7 @@ import (
 	"tns65/internal/prompts"
 	"tns65/internal/providercfg"
 	"tns65/internal/providerroute"
+	"tns65/internal/sediment"
 	"tns65/internal/structural"
 	"tns65/internal/supervisor"
 	"tns65/internal/swarm"
@@ -182,8 +185,9 @@ func run() int {
 	webapi.SetChatEmbedder(emb)
 	// Э3: слот мастерской по маршруту sources. Нет слота Ткача (e2e-сборка,
 	// нечитаемый конфиг) — маршруты не собраны, мастерская остаётся без слота.
+	var workshopSlot workshop.Slot
 	if weaver != nil {
-		wireWorkshopSlot(logger)
+		workshopSlot = wireWorkshopSlot(logger)
 	}
 
 	wl, err := portgate.LoadWhitelist("config.yaml")
@@ -248,12 +252,19 @@ func run() int {
 	webapi.SetModelChildStop(runner.stopChildByName)
 	sup.Run()
 
+	// T-20-04: воркер мастерской — очередь разбирается в живом ходе, а не только
+	// в тестах: раз в минуту он берёт активный мир и отдаёт очередь планировщику.
+	schedCtx, stopSched := context.WithCancel(context.Background())
+	defer stopSched()
+	go (&workshopWorker{slot: workshopSlot, embedder: emb, logger: logger}).run(schedCtx)
+
 	// T-01-13, шаг 4: по SIGTERM и SIGINT дети гасятся в обратном порядке.
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 	<-sig
 	webapi.StopTelegram()
 	webSrv.Close()
+	stopSched()
 	runner.stop()
 	sup.Stop()
 	return 0
@@ -651,8 +662,9 @@ func launchSwarmTask(name string, args []string) error {
 // списком route_editor; один кусок — одной моделью за один запрос. Маршруты,
 // ключи и модели читаются здесь один раз, на старте процесса. Конфиг не
 // прочитался — слот не подключён, ковка идёт существующей деградацией, а отказ
-// виден событием slot.wiring_fail.
-func wireWorkshopSlot(logger *journal.Logger) {
+// виден событием slot.wiring_fail. Собранный слот возвращается вызывающему: его
+// же получает планировщик мастерской (T-20-04).
+func wireWorkshopSlot(logger *journal.Logger) workshop.Slot {
 	wireLLMParams()
 	cfg, err := providerroute.LoadSettings("config.yaml", "settings.toml")
 	if err != nil {
@@ -661,12 +673,145 @@ func wireWorkshopSlot(logger *journal.Logger) {
 				journal.Field{Key: "role", Value: "forge-book"},
 				journal.Field{Key: "error", Value: err.Error()})
 		}
-		return
+		return nil
 	}
 	router := providerroute.NewRouter(cfg, providercfg.Load("providers.toml"), logger)
-	workshop.SetSlot(workshop.NewRoutedWorkshopSlot(router.Slot(providerroute.TaskSources)).
-		RouteRoles(router.Slot(providerroute.TaskEditor), workshop.EditorRoles()...))
+	slot := workshop.NewRoutedWorkshopSlot(router.Slot(providerroute.TaskSources)).
+		RouteRoles(router.Slot(providerroute.TaskEditor), workshop.EditorRoles()...)
+	workshop.SetSlot(slot)
+	return slot
 }
+
+// workshopWorkerTick — шаг воркера мастерской (T-20-04): раз в минуту очередь
+// перечитывается, допустимые ступенью заказы исполняются по одному.
+const workshopWorkerTick = time.Minute
+
+// workshopWorker — живой разбор очереди мастерской (T-20-04). Мир и его хэндлы
+// открываются на первом тике и меняются при смене активного мира; планировщик
+// держит ступень паузы, чат сообщает ему активность игрока (webapi).
+type workshopWorker struct {
+	slot     workshop.Slot
+	embedder models.Embedder
+	logger   *journal.Logger
+
+	slug  string
+	world *db.Handle
+	lit   *db.Handle
+	sched *workshop.Scheduler
+}
+
+// run гоняет тикер воркера до отмены контекста (SIGTERM ядра).
+func (w *workshopWorker) run(ctx context.Context) {
+	defer w.closeWorld()
+	ticker := time.NewTicker(workshopWorkerTick)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			w.tick(ctx)
+		}
+	}
+}
+
+// tick — один прогон: активный мир не выбран или не открылся — пропуск, воркер
+// остаётся жив. Состояние главы перечитывается каждый тик: закрытая глава
+// открывает ночное окно (T-05-01, шаг 2).
+func (w *workshopWorker) tick(ctx context.Context) {
+	slug := strings.TrimSpace(readActiveWorldSlug())
+	if slug == "" {
+		return
+	}
+	if slug != w.slug {
+		if err := w.openWorld(slug); err != nil {
+			w.event("workshop.worker_open", err)
+			return
+		}
+	}
+	w.sched.SetChapterClosed(chapterClosed(w.world))
+	if err := w.sched.Run(ctx); err != nil {
+		w.event("workshop.worker_run", err)
+	}
+}
+
+// openWorld открывает оперативную и литературную базы активного мира и собирает
+// планировщик с конвейером оседания (T-05-16) на слоте мастерской. Хэндлы
+// прежнего мира закрываются: смена мира не оставляет открытых баз.
+func (w *workshopWorker) openWorld(slug string) error {
+	w.closeWorld()
+	world, err := db.OpenWriterAs(filepath.Join(db.WorldsRoot, "worlds", slug, slug+".db"),
+		db.DBWorld, db.WriterCore, w.logger)
+	if err != nil {
+		return err
+	}
+	lit, err := db.OpenWriterAs(filepath.Join(db.WorldsRoot, "worlds", slug, "literary.db"),
+		db.DBLiterary, db.WriterSediment, w.logger)
+	if err != nil {
+		_ = world.Close()
+		return err
+	}
+	// nil-часы планировщика — системные (workshop.realPauseClock); эмбеддер —
+	// клиент T-20-01, без него оседание деградирует, заказ закрывается отказом.
+	sched := workshop.NewScheduler(world, nil, w.slot, w.logger)
+	pipeline := sediment.NewPipeline(w.embedder, w.slot, packCensor{lang: worldLang(world)}, w.logger)
+	sched.SetSedimentRunner(workshop.NewSedimentRunner(lit, pipeline))
+
+	w.slug, w.world, w.lit, w.sched = slug, world, lit, sched
+	webapi.SetWorkshopScheduler(sched)
+	return nil
+}
+
+// closeWorld закрывает хэндлы мира и отвязывает планировщик от чата.
+func (w *workshopWorker) closeWorld() {
+	if w.world != nil {
+		_ = w.world.Close()
+	}
+	if w.lit != nil {
+		_ = w.lit.Close()
+	}
+	w.slug, w.world, w.lit, w.sched = "", nil, nil, nil
+	webapi.SetWorkshopScheduler(nil)
+}
+
+// event пишет отказ воркера в журнал станка; отказ не валит ядро.
+func (w *workshopWorker) event(event string, err error) {
+	if w.logger == nil {
+		return
+	}
+	_ = w.logger.Event("workshop", event, journal.Field{Key: "error", Value: err.Error()})
+}
+
+// chapterClosed сообщает, что открытой главы у мира нет: только тогда молчание
+// дольше 8 часов открывает ночное окно (T-05-01, шаг 2). Сбой чтения — глава
+// считается открытой.
+func chapterClosed(world *db.Handle) bool {
+	var open int
+	if err := world.QueryRow(`SELECT COUNT(*) FROM book_chapters WHERE status = ?`,
+		string(book.StatusOpen)).Scan(&open); err != nil {
+		return false
+	}
+	return open == 0
+}
+
+// worldLang читает язык мира из world_meta.lang (T-02-03); нет записи — пакет ru.
+func worldLang(world *db.Handle) string {
+	var raw string
+	if err := world.QueryRow(`SELECT value FROM world_meta WHERE "key" = 'lang'`).Scan(&raw); err != nil {
+		return "ru"
+	}
+	var lang string
+	if err := json.Unmarshal([]byte(raw), &lang); err != nil || lang == "" {
+		return "ru"
+	}
+	return lang
+}
+
+// packCensor — Цензор оседания по словарю пакета языка мира (T-04-11): чекер
+// пакета кэшируется на процесс, отказ сборки — отказ ступени.
+type packCensor struct{ lang string }
+
+func (c packCensor) Check(text string) (bool, []string) { return censor.Check(text, c.lang) }
 
 // wireLLMParams передаёт слою параметров генерации станковые значения
 // (config.yaml llm:) и состав ролей активного мира (state/active_world), чтобы
