@@ -61,6 +61,8 @@
 
 ### T-20-02. Чат (turn): векторы реплики и векторный голос
 
+> ✅ Выполнено 2026-11-25 (коммит 5b6770c): chatEmbedder/SetChatEmbedder, Embedder в конвейере чата, проводка main.go; тест.
+
 - В `webapi` завести `chatEmbedder` и сеттер `SetChatEmbedder` (по образцу
   `SetChatWeaver` / `SetChatLemmatizer`).
 - В `turn.Pipeline` добавить поле `Embedder` и перенос в `TurnState.Embedder`
