@@ -115,7 +115,7 @@ mechanics-from-chat.md. Статусы сверены с кодом на HEAD `8
 | Пункт | Статус | Суть и проверка |
 |---|---|---|
 | T-21-01 `TestNoShortReadyBudget`: изоляция порта 5001 | ✅ закрыт (88e4dd9, 2026-11-26) | убрать зависимость от занятого 5001 (`Port: 0` или `WithCheckPort`-фейк); `go test ./internal/supervisor -run TestNoShortReadyBudget -count=1` |
-| T-21-02 `TestVerne`: порт ядра | ⏳ todo | динамический порт вместо фиксированного 8720 или fail-fast на занятом порту; `go test ./e2e -run TestVerne -count=1` |
+| T-21-02 `TestVerne`: порт ядра | ✅ закрыт (b02d8db, 2026-11-26) | динамический порт вместо фиксированного 8720 или fail-fast на занятом порту; `go test ./e2e -run TestVerne -count=1` |
 | T-21-03 статусы заказов | ⏳ todo | running→done/failed, без переисполнения на тике; `go test ./internal/workshop -count=1` |
 | T-21-04 диспетчер видов | ⏳ todo | исполнитель по `Kind` вместо общего `slot.Generate`; `go test ./internal/workshop -count=1 && go build ./cmd/tns65` |
 | T-21-05 пауза от последней активности | ⏳ todo | таймер инициализируется от последней реплики/`turns.created_at`; `go test ./internal/workshop/ ./internal/webapi/ -count=1` |
