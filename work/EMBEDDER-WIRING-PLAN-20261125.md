@@ -78,12 +78,22 @@
 
 ### T-20-04. Оседание (sediment) — blocked-dep
 
-- `sediment.Pipeline` требует эмбеддер, но в проде не собран сам исполнитель:
-  `workshop.NewScheduler`, `NewSedimentRunner`, `DefaultSedimentRun`
-  встречаются только в тестах/e2e (`int12_workshop_test.go`), в `main.go` их нет.
-- Предусловие: отдельная задача «проводка исполнителя мастерской» (очередь на
-  тяжёлой ступени + sediment runner со слотом, цензором и эмбеддером). До неё
-  эмбеддер оседания подключать некуда.
+- Компоненты есть и закрыты задачами: воркер мастерской `workshop.Scheduler`
+  (T-05-01, `scheduler.go`), исполнение заказа sediment
+  `NewSedimentRunner`/`RunSedimentOrder` (T-05-16, `sediment_run.go`).
+- Но в проде воркер не подключён: `workshop.NewScheduler`,
+  `SetSedimentRunner`, `DefaultSedimentRun`, `MarkActive`, `SetChapterClosed`
+  вызываются только в тестах/e2e (`int12_workshop_test.go`); в `main.go`,
+  `webapi` и `turn.Pipeline` их нет. Документы это и закладывали:
+  `02-birth.md` — «исполнитель очереди появится в P4»; `04-sedimentation.md`
+  — «Дальше P4: мастерская»; `brief3.md` — «конвейер (T-04-05) нигде не
+  запускается». Позже Э3 (`PROVIDER-ROUTING-PLAN`) закрыл только проводку
+  *слота* мастерской (`workshop.SetSlot` в `main.go`), а не воркера.
+- Предусловие: отдельная задача «проводка воркера мастерской в живой ход» —
+  создать `workshop.Scheduler` на ядре/в `turn`, звать `Run` на тяжёлой
+  ступени и в ночном окне, `MarkActive`/`SetChapterClosed` из хода, отдать
+  `NewSedimentRunner` со слотом, цензором и эмбеддером. До неё эмбеддер
+  оседания подключать некуда.
 - Статус: `blocked-dep`.
 
 ## Порядок и проверка
