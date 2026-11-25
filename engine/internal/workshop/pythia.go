@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"tns65/internal/db"
+	"tns65/internal/prompts"
 	"tns65/internal/version"
 )
 
@@ -173,16 +174,18 @@ func recentPlayerTurns(h *db.Handle) ([]string, error) {
 	return turns, nil
 }
 
+// defaultPythiaPrompt — дефолт промпта ночного прогона (без файла пакета):
+// стартовые данные героя, психотип и паттерны последних реплик.
+const defaultPythiaPrompt = `{"task":"pythia","hero_birth":"{hero_birth}","psychotype":"{psychotype}","turns":"{turns}"}`
+
 // pythiaPrompt строит промпт ночного прогона: стартовые данные героя, психотип
 // и паттерны последних реплик.
 func pythiaPrompt(birth, psychotype string, turns []string) string {
-	raw, _ := json.Marshal(map[string]any{
-		"task":       PythiaRole,
+	return prompts.Render(PythiaRole, "pythia", defaultPythiaPrompt, map[string]any{
 		"hero_birth": birth,
 		"psychotype": psychotype,
 		"turns":      turns,
 	})
-	return string(raw)
 }
 
 // validatePythiaOutput проверяет строгий JSON Пифии: настроение и все грани

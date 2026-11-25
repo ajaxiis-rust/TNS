@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"tns65/internal/db"
+	"tns65/internal/prompts"
 	"tns65/internal/version"
 )
 
@@ -163,7 +164,7 @@ func BuildBookMap(ctx context.Context, lit *db.Handle, in MapInput) (*BookMap, e
 	if len(src.Places) == 0 && len(src.Scenes) == 0 {
 		return nil, ErrMapEmpty
 	}
-	prompt, err := mapPromptText(in.BookID, in.Mode, src)
+	prompt, err := mapPromptText(role, in.BookID, in.Mode, src)
 	if err != nil {
 		return nil, err
 	}
@@ -196,10 +197,10 @@ func BuildBookMap(ctx context.Context, lit *db.Handle, in MapInput) (*BookMap, e
 
 // mapPromptText собирает промпт картографа из выписок разбора: JSON-документ
 // без текста книги.
-func mapPromptText(bookID int64, mode MapMode, src *MapSource) (string, error) {
+func mapPromptText(role string, bookID int64, mode MapMode, src *MapSource) (string, error) {
 	raw, err := json.Marshal(mapPrompt{
 		Task:        "book-map",
-		Instruction: mapInstruction,
+		Instruction: prompts.ForRole(role, "deepread.bookmap", mapInstruction),
 		BookID:      bookID,
 		Mode:        mode,
 		Places:      src.Places,

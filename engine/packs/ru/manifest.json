@@ -25,6 +25,7 @@
     "appearance.json": "b4a993b4a85675e119a09671f6d83f7fa4090c41cbef515c323de16471596359",
     "styles.json": "bed3797ffe136de948364ff27411d7d5194405b61f9390104b2de526383469b1",
     "senses.json": "23709663c41d891512ea9c3768cd626058fcb982debda02cece1eb4144ebfd17",
-    "senses_contexts.json": "fca1bc5edea83c5f135e44408a51da5c2bc45bbed3a8ca576804eefba30a5042"
+    "senses_contexts.json": "fca1bc5edea83c5f135e44408a51da5c2bc45bbed3a8ca576804eefba30a5042",
+    "prompts.json": "9b2429e615fb277efbe1db6c8b10d5c143820456ee83eadb977947f8260c3a94"
   }
 }

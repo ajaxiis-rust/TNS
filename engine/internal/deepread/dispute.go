@@ -16,6 +16,7 @@ import (
 	"tns65/internal/cast"
 	"tns65/internal/db"
 	"tns65/internal/journal"
+	"tns65/internal/prompts"
 )
 
 // Спорные вопросы слоту (W-24, T-14-10): очередь спорных мест разбора, топ-K по
@@ -430,20 +431,20 @@ func askBatch(batch []DisputeQuestion, num int, slot DisputeSlot, logger *journa
 	return out
 }
 
+// defaultDisputePrompt — дефолт шапки промпта спорных вопросов (без файла
+// пакета): форма ответа и смысл полей.
+const defaultDisputePrompt = "Ты отвечаешь на спорные вопросы разбора книги. Ответ — JSON-массив объектов {\"value\": ..., \"quote\": ..., \"confidence\": 0..1}, по одному на вопрос в том же порядке. value — только из списка вариантов вопроса или пустая строка; quote — дословная цитата из окна; confidence — 0..1.\n{questions}"
+
 // disputePrompt строит вопрос слота (W-24.2): тип, каноничный список вариантов и
 // текст окна по каждому вопросу батча. Ответ — JSON-массив объектов
 // {"value", "quote", "confidence"} в том же порядке.
 func disputePrompt(batch []DisputeQuestion) string {
 	var b strings.Builder
-	b.WriteString("Ты отвечаешь на спорные вопросы разбора книги. Ответ — JSON-массив объектов ")
-	b.WriteString(`{"value": ..., "quote": ..., "confidence": 0..1}, по одному на вопрос в том же порядке. `)
-	b.WriteString("value — только из списка вариантов вопроса или пустая строка; ")
-	b.WriteString("quote — дословная цитата из окна; confidence — 0..1.\n")
 	for i, q := range batch {
 		options, _ := json.Marshal(q.Options)
 		fmt.Fprintf(&b, "\nВопрос %d (тип %s): варианты %s.\nОкно: %s\n", i+1, q.Kind, options, q.Window)
 	}
-	return b.String()
+	return prompts.Render(DisputeSlotRole, "dispute", defaultDisputePrompt, map[string]any{"questions": b.String()})
 }
 
 // disputeAnswer — объект ответа слота по одному вопросу (W-24.3).

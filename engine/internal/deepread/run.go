@@ -22,6 +22,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/journal"
+	"tns65/internal/prompts"
 	"tns65/internal/version"
 )
 
@@ -189,6 +190,11 @@ func RunPipeline(lit, world *db.Handle, in RunInput) (RunReport, error) {
 
 	packDir, configPath, err := resolveRunPaths(in.PackDir, in.ConfigPath)
 	if err != nil {
+		return RunReport{}, err
+	}
+	// Промпты пакета: правка packs/<lang>/prompts.json доезжает до запросов
+	// разбора без пересборки; файла нет — работают дефолты Go.
+	if err := prompts.Load(packDir); err != nil {
 		return RunReport{}, err
 	}
 	chunks, err := resolveChunks(lit, in.BookID, in.Chunks)

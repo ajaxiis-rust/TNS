@@ -16,6 +16,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/journal"
+	"tns65/internal/prompts"
 )
 
 // Роли слота Редактора: одна модель, два запроса — правки и краткое содержание.
@@ -319,22 +320,23 @@ func parseEditorSummary(raw string) (string, error) {
 	return out.Summary, nil
 }
 
+// defaultEditorPrompt — дефолт промпта правки сцены (без файла пакета):
+// фиксированный пунктуационный лист (шаг 3) — тире, «ёлочки», многоточие.
+const defaultEditorPrompt = `{"task":"editor","scene":"{scene}","punct":"{punct}"}`
+
 // editorEditPrompt строит промпт правки сцены с фиксированным пунктуационным
 // листом (шаг 3): тире, «ёлочки», многоточие.
 func editorEditPrompt(scene string) string {
-	raw, _ := json.Marshal(map[string]any{
-		"task":  EditorRole,
+	return prompts.Render(EditorRole, "editor", defaultEditorPrompt, map[string]any{
 		"scene": scene,
 		"punct": []string{"тире", "ёлочки", "многоточие"},
 	})
-	return string(raw)
 }
+
+// defaultEditorDigestPrompt — дефолт промпта краткого содержания (без файла).
+const defaultEditorDigestPrompt = `{"task":"editor-digest","text":"{text}"}`
 
 // editorSummaryPrompt строит промпт краткого содержания обработанной главы.
 func editorSummaryPrompt(text string) string {
-	raw, _ := json.Marshal(map[string]any{
-		"task": EditorDigestRole,
-		"text": text,
-	})
-	return string(raw)
+	return prompts.Render(EditorDigestRole, "editor_digest", defaultEditorDigestPrompt, map[string]any{"text": text})
 }

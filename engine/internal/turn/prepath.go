@@ -2,11 +2,13 @@ package turn
 
 import (
 	"encoding/json"
+
 	"math"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"tns65/internal/prompts"
 	"unicode"
 )
 
@@ -717,11 +719,12 @@ func preselect(intent Intent, mood string) Preselect {
 // которые закрывает биндер слотов (T-03-03, шаг 2).
 func promptTemplate(sel Preselect) string {
 	if sel == PreselectWeaver {
-		return weaverPreset
+		return prompts.Text("turn.weaver_preset", weaverPreset)
 	}
-	return bankPreset
+	return prompts.Text("turn.bank_preset", bankPreset)
 }
 
+// weaverPreset / bankPreset — дефолты заготовок предпути (без файла пакета).
 const weaverPreset = "[NPCname] смотрит, как ты входишь в [PLACE]. [NPCroleDeity] молчит.\n[NPCidiolect]"
 const bankPreset = "Ты у [PLACE]. Всё идёт своим чередом."
 

@@ -13,6 +13,7 @@ import (
 	"tns65/internal/censor"
 	"tns65/internal/db"
 	"tns65/internal/models"
+	"tns65/internal/prompts"
 	"tns65/internal/version"
 )
 
@@ -133,16 +134,18 @@ func EnsureHoroscopeOrder(h *db.Handle, payload HoroscopePayload) (bool, error) 
 	return true, nil
 }
 
+// defaultHoroscopePrompt — дефолт промпта ковки гороскопа (без файла пакета):
+// сцена, карта игрока и прогноз Пилы (шаг 1).
+const defaultHoroscopePrompt = `{"task":"horoscope","scene_id":"{scene_id}","pythia":"{pythia}","forecast":"{forecast}"}`
+
 // HoroscopePrompt строит промпт ковки гороскопа: сцена, карта игрока и прогноз
 // Пилы (шаг 1).
 func HoroscopePrompt(p HoroscopePayload) string {
-	raw, _ := json.Marshal(map[string]any{
-		"task":     HoroscopeRole,
+	return prompts.Render(HoroscopeRole, "horoscope", defaultHoroscopePrompt, map[string]any{
 		"scene_id": p.SceneID,
 		"pythia":   p.Pythia,
 		"forecast": p.Forecast,
 	})
-	return string(raw)
 }
 
 // RunHoroscopeForge — ковка гороскопа Гефестом по заказу Пифии (шаги 2–4):

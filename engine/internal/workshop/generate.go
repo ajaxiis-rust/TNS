@@ -8,12 +8,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 
 	"tns65/internal/censor"
 	"tns65/internal/db"
 	"tns65/internal/llmparams"
 	"tns65/internal/models"
+	"tns65/internal/prompts"
 	"tns65/internal/version"
 )
 
@@ -135,23 +137,35 @@ func slotGenerate(ctx context.Context, slot Slot, role, prompt string, params mo
 }
 
 // ladderPrompt строит промпт ступени лестницы: ступень 1 добавляет художественную
-// рамку и рейтинг, ступени 2–3 уводят трудную часть за кадр.
+// рамку и рейтинг, ступени 2–3 уводят трудную часть за кадр. Тексты ступеней —
+// из файла промптов пакета (ladder.step1|step2|step3), дефолт Go — fallback.
 func ladderPrompt(base string, step int) string {
 	var m map[string]any
 	if err := json.Unmarshal([]byte(base), &m); err != nil || m == nil {
 		m = map[string]any{"prompt": base}
 	}
-	switch step {
-	case 1:
-		m[frameKey] = artisticFrame
+	patch := prompts.Render("", "ladder.step"+strconv.Itoa(step), defaultLadderPatch(step), map[string]any{"step": step})
+	var extra map[string]any
+	if err := json.Unmarshal([]byte(patch), &extra); err == nil {
+		for k, v := range extra {
+			m[k] = v
+		}
+	}
+	if step == 1 {
 		if r := ActiveRating(); r != "" {
 			m[ratingKey] = r
 		}
-	case 2, 3:
-		m[offscreenKey] = true
 	}
 	raw, _ := json.Marshal(m)
 	return string(raw)
+}
+
+// defaultLadderPatch — дефолт правки промпта ступени (без файла пакета).
+func defaultLadderPatch(step int) string {
+	if step == 1 {
+		return `{"` + frameKey + `":"` + artisticFrame + `"}`
+	}
+	return `{"` + offscreenKey + `":true}`
 }
 
 // writeRefusalLog помечает модельный отказ строкой forge_log (п.6.2, шаг 6,
@@ -197,11 +211,12 @@ func ResolveCastRole(ctx context.Context, lit *db.Handle, name, chunkText string
 // castRolePrompt строит промпт спорного случая роли: герой, кусок и спорные
 // роли из словаря. Слот должен ответить одной ролью из списка.
 func castRolePrompt(name, chunkText string, tied []string) string {
-	raw, _ := json.Marshal(map[string]any{
-		"task":  CastRole,
+	return prompts.Render(CastRole, "cast", defaultCastPrompt, map[string]any{
 		"hero":  name,
 		"chunk": chunkText,
 		"roles": tied,
 	})
-	return string(raw)
 }
+
+// defaultCastPrompt — дефолт промпта спорного случая роли (без файла пакета).
+const defaultCastPrompt = `{"task":"cast-role","hero":"{hero}","chunk":"{chunk}","roles":"{roles}"}`

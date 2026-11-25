@@ -10,6 +10,7 @@ import (
 	"unicode"
 
 	"tns65/internal/journal"
+	"tns65/internal/prompts"
 )
 
 // Slot — слот генерации мастерской: авто-критик вызывает его для ревью
@@ -161,10 +162,13 @@ func Autocritic(ctx context.Context, slot Slot, logger *journal.Logger, rec Sedi
 	return rec
 }
 
+// defaultAutocriticPrompt — дефолт промпта авто-критика (без файла пакета):
+// очищенная форма с пометками невырезаемого.
+const defaultAutocriticPrompt = "Очищенная сцена с пометками невырезаемого. Фрагменты в <needs_review> не вырезать. Ответь строго одним JSON: {\"verdict\":\"clean\"|\"issues\",\"issues\":[\"…\"]}.\n\n{marked}"
+
 // buildAutocriticPrompt собирает промпт авто-критика из очищенной формы с пометками.
 func buildAutocriticPrompt(marked string) string {
-	return "Очищенная сцена с пометками невырезаемого. Фрагменты в <needs_review> не вырезать. " +
-		`Ответь строго одним JSON: {"verdict":"clean"|"issues","issues":["…"]}.` + "\n\n" + marked
+	return prompts.Render(autocriticRole, "autocritic", defaultAutocriticPrompt, map[string]any{"marked": marked})
 }
 
 // askAutocritic вызывает слот до maxAutocriticRetries повторов при мусорном

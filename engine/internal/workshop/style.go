@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"crypto/sha256"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"unicode"
 
 	"tns65/internal/db"
+	"tns65/internal/prompts"
 	"tns65/internal/sediment"
 	"tns65/internal/structural"
 )
@@ -172,8 +172,14 @@ func normalizeStyleConfig(cfg StyleConfig) StyleConfig {
 	return cfg
 }
 
-// StyleBlockHeader — заголовок блока примеров стиля игрока в промпте (W-21.1).
+// StyleBlockHeader — дефолт заголовка блока примеров стиля игрока в промпте
+// (W-21.1); текст берётся из файла промптов пакета, это fallback.
 const StyleBlockHeader = "Стиль игрока (примеры):"
+
+// styleBlockHeader — заголовок блока примеров стиля из файла промптов пакета.
+func styleBlockHeader() string {
+	return prompts.Text("style_block_header", StyleBlockHeader)
+}
 
 // StyleBlock собирает блок примеров стиля для промпта (W-21.1): заголовок и по
 // реплике на строку. Пустой набор образцов — пустой блок.
@@ -182,7 +188,7 @@ func StyleBlock(samples []StyleSample) string {
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString(StyleBlockHeader)
+	b.WriteString(styleBlockHeader())
 	for _, s := range samples {
 		b.WriteString("\n- ")
 		b.WriteString(s.Text)
@@ -243,13 +249,12 @@ func startsWithMarker(s, marker string) bool {
 	return !unicode.IsLetter(r) && !unicode.IsDigit(r)
 }
 
+// defaultStylePrompt — дефолт промпта фоновой стилизации (без файла пакета).
+const defaultStylePrompt = `{"task":"style","draft":"{draft}"}`
+
 // styleForgePrompt строит промпт фоновой стилизации под классика (W-21.4).
 func styleForgePrompt(draft string) string {
-	raw, _ := json.Marshal(map[string]any{
-		"task":  StyleRole,
-		"draft": draft,
-	})
-	return string(raw)
+	return prompts.Render(StyleRole, "style", defaultStylePrompt, map[string]any{"draft": draft})
 }
 
 // StylizeClassic — фоновая стилизация черновика под классика внешней моделью

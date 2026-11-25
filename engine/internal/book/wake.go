@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"tns65/internal/db"
+	"tns65/internal/prompts"
 	"tns65/internal/structural"
 	"tns65/internal/workshop"
 )
@@ -364,9 +365,16 @@ func serveWakeup(h *db.Handle, ch Chapter, slot Slot) (string, error) {
 	return text, nil
 }
 
+// defaultWakePrompt — дефолт промпта живого запасного пути (без файла пакета):
+// нейтральное пробуждение без крючков.
+const defaultWakePrompt = "Нейтральное пробуждение главы {chapter} (день {day}): без крючков и вопросов, цель — спровоцировать ответ игрока."
+
 // wakePrompt — промпт живого запасного пути: нейтральное пробуждение без крючков.
 func wakePrompt(ch Chapter) string {
-	return fmt.Sprintf("Нейтральное пробуждение главы %d (день %d): без крючков и вопросов, цель — спровоцировать ответ игрока.", ch.ID, ch.Day)
+	return prompts.Render("wakeup", "book.wake", defaultWakePrompt, map[string]any{
+		"chapter": ch.ID,
+		"day":     ch.Day,
+	})
 }
 
 func nowUTC() string {

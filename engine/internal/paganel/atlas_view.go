@@ -8,6 +8,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/geo"
+	"tns65/internal/prompts"
 )
 
 // Вьюпорт Атласа (T-06-13, UI-05, W-20): данные «Прорисовки карты» для
@@ -210,15 +211,18 @@ func readAtlasRings(h *db.Handle) ([]AtlasRing, error) {
 	return out, nil
 }
 
+// defaultAtlasPrompt — дефолт промпта вьюпорта Атласа (без файла пакета):
+// места, пути и кольца подставляет код готовыми числами.
+const defaultAtlasPrompt = "Карта мира игрока.{places}{paths} Герой: долгота {hero_x}, широта {hero_y}.{rings}"
+
 // AtlasViewPrompt — промпт вьюпорта Атласа (T-06-13, шаг 2, W-20.2): координаты
 // передаются как есть, расстояния и дни — готовыми числами от кода. Задач на
 // вычисление расстояний/дней в промпте нет.
 func AtlasViewPrompt(v AtlasView) string {
 	var b strings.Builder
-	b.WriteString("Карта мира игрока.")
-	if len(v.Places) == 0 {
-		b.WriteString(" Известных мест пока нет.")
-	} else {
+	places := " Известных мест пока нет."
+	if len(v.Places) > 0 {
+		b.Reset()
 		b.WriteString(" Места: ")
 		for i, p := range v.Places {
 			if i > 0 {
@@ -231,8 +235,11 @@ func AtlasViewPrompt(v AtlasView) string {
 			}
 		}
 		b.WriteString(".")
+		places = b.String()
 	}
+	paths := ""
 	if len(v.Paths) > 0 {
+		b.Reset()
 		b.WriteString(" Пути: ")
 		for i, p := range v.Paths {
 			if i > 0 {
@@ -242,9 +249,11 @@ func AtlasViewPrompt(v AtlasView) string {
 				p.FromPlaceID, p.ToPlaceID, atlasNum(p.LengthKm), atlasNum(p.Days))
 		}
 		b.WriteString(".")
+		paths = b.String()
 	}
-	fmt.Fprintf(&b, " Герой: долгота %s, широта %s.", atlasNum(v.Hero.X), atlasNum(v.Hero.Y))
+	rings := ""
 	if len(v.Rings) > 0 {
+		b.Reset()
 		b.WriteString(" Кольца: ")
 		for i, r := range v.Rings {
 			if i > 0 {
@@ -253,8 +262,15 @@ func AtlasViewPrompt(v AtlasView) string {
 			fmt.Fprintf(&b, "%s — готово %s", r.Status, atlasNum(r.Progress))
 		}
 		b.WriteString(".")
+		rings = b.String()
 	}
-	return b.String()
+	return prompts.Render("", "atlas_view", defaultAtlasPrompt, map[string]any{
+		"places": places,
+		"paths":  paths,
+		"hero_x": atlasNum(v.Hero.X),
+		"hero_y": atlasNum(v.Hero.Y),
+		"rings":  rings,
+	})
 }
 
 // atlasNum — число для промпта без лишней точности и экспоненты.

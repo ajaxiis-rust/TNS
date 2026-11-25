@@ -13,6 +13,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/lemmarpc"
+	"tns65/internal/prompts"
 	"tns65/internal/workshop"
 )
 
@@ -484,6 +485,11 @@ func fateFact(h *db.Handle, raw string) string {
 		name, position, commit.Fate.Wealth, commit.Fate.Health, len(commit.Fate.Connections))
 }
 
+// defaultWorldNotesPrompt — дефолт промпта заметок о жизни мира (без файла):
+// только факты простоя из журнала мира, без вопросов игроку и обещаний
+// будущих событий.
+const defaultWorldNotesPrompt = "Глава {day} закрыта автоматически: открыта {started_at}, закрыта {now}. Напиши 3–5 предложений заметок о жизни мира за это время: что случилось без участия игрока, как сложились судьбы NPC. Без вопросов игроку и без обещаний будущих событий. Факты журнала мира:\n{facts}"
+
 // worldNotesPrompt — запрос заметок к слоту: только факты простоя из журнала
 // мира, без вопросов игроку и обещаний будущих событий.
 func worldNotesPrompt(ch Chapter, startedAt, now string, facts []string) string {
@@ -491,9 +497,12 @@ func worldNotesPrompt(ch Chapter, startedAt, now string, facts []string) string 
 	if len(facts) > 0 {
 		data = strings.Join(facts, "\n")
 	}
-	return fmt.Sprintf(
-		"Глава %d закрыта автоматически: открыта %s, закрыта %s. Напиши 3–5 предложений заметок о жизни мира за это время: что случилось без участия игрока, как сложились судьбы NPC. Без вопросов игроку и без обещаний будущих событий. Факты журнала мира:\n%s",
-		ch.Day, startedAt, now, data)
+	return prompts.Render(WorldNotesRole, "book.world_notes", defaultWorldNotesPrompt, map[string]any{
+		"day":        ch.Day,
+		"started_at": startedAt,
+		"now":        now,
+		"facts":      data,
+	})
 }
 
 // Text собирает текст главы из журнала сессии без правок (шаг 1): ходы

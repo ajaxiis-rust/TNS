@@ -27,6 +27,7 @@ import (
 	"tns65/internal/netgate"
 	"tns65/internal/paganel"
 	"tns65/internal/portgate"
+	"tns65/internal/prompts"
 	"tns65/internal/providercfg"
 	"tns65/internal/providerroute"
 	"tns65/internal/structural"
@@ -661,6 +662,10 @@ func wireWorkshopSlot(logger *journal.Logger) {
 // тело запроса модели несло temperature/max_tokens/top_p/top_k/reasoning.
 // Нет активного мира — остаются станковые значения.
 func wireLLMParams() {
+	// Промпты языкового пакета: файл читается при старте, правка
+	// packs/ru/prompts.json доезжает до запроса модели без пересборки движка.
+	// Файла нет — работают дефолты Go.
+	_ = prompts.Load(filepath.Join("packs", "ru"))
 	llmparams.SetConfig(llmparams.LoadSettings("config.yaml"))
 	slug := strings.TrimSpace(readActiveWorldSlug())
 	if slug == "" {
@@ -704,6 +709,7 @@ func runSwarmTask(args []string) int {
 // runForgeCardTask выполняет задачу ковки карточки роя (T-05-02): литературная
 // база мира и payload заказа complement.
 func runForgeCardTask(literaryPath, payloadJSON string) int {
+	_ = prompts.Load(filepath.Join("packs", "ru"))
 	literary, err := db.OpenWriterAs(literaryPath, db.DBLiterary, db.WriterForge, nil)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

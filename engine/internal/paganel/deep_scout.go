@@ -12,6 +12,7 @@ import (
 
 	"tns65/internal/journal"
 	"tns65/internal/models"
+	"tns65/internal/prompts"
 	"tns65/internal/providercfg"
 )
 
@@ -242,11 +243,14 @@ func (s *DeepScout) logCall(topic, prompt, text string, duration time.Duration, 
 	_ = s.cfg.Logger.Event("paganel", journal.EventScoutCall, fields...)
 }
 
+// defaultScoutPrompt — дефолт промпта глубокой разведки (без файла пакета):
+// короткая фактическая справка по теме мира, без художественного текста.
+const defaultScoutPrompt = "Разведка мира. Собери короткую фактическую справку по теме: {topic}. Ответь тремя-пятью предложениями, без вступления и без вымысла."
+
 // scoutPrompt — промпт одного вызова глубокой разведки: короткая фактическая
 // справка по теме мира, без художественного текста.
 func scoutPrompt(topic string) string {
-	return "Разведка мира. Собери короткую фактическую справку по теме: " + topic +
-		". Ответь тремя-пятью предложениями, без вступления и без вымысла."
+	return prompts.Render(RoleScout, "scout", defaultScoutPrompt, map[string]any{"topic": topic})
 }
 
 // estimateTokens — оценка токенов по размеру текста: стриминг провайдера

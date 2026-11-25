@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"tns65/internal/db"
+	"tns65/internal/prompts"
 	"tns65/internal/version"
 )
 
@@ -192,16 +193,16 @@ const ForgeCardRole = "forge-card"
 // ForgeCardKind — kind записей artifact и forge_log о ковке карточки.
 const ForgeCardKind = "forge-card"
 
+// defaultForgeCardPrompt — дефолт промпта ковки карточки (без файла пакета).
+const defaultForgeCardPrompt = `{"task":"forge-card","arc":"{arc}","scene_id":"{scene_id}","pythia":""}`
+
 // ForgeCardPrompt строит промпт задачи ковки карточки: требуемая арка и
 // сцена-источник спроса. Оценка Пифии добавляется задачей T-05-03.
 func ForgeCardPrompt(p ComplementPayload) string {
-	raw, _ := json.Marshal(map[string]any{
-		"task":     ForgeCardRole,
+	return prompts.Render(ForgeCardRole, "forge_card", defaultForgeCardPrompt, map[string]any{
 		"arc":      p.Arc,
 		"scene_id": p.SceneID,
-		"pythia":   "",
 	})
-	return string(raw)
 }
 
 // RunForgeCard — однозадачная задача ковки карточки (шаг 4): модель по арке и

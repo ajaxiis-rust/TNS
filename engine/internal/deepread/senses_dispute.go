@@ -19,6 +19,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/journal"
+	"tns65/internal/prompts"
 	"tns65/internal/senses"
 	"tns65/internal/version"
 )
@@ -434,15 +435,15 @@ func askSenseBatch(batch []SenseQuestion, num int, slot DisputeSlot, logger *jou
 	return out
 }
 
+// defaultSenseDisputePrompt — дефолт шапки промпта смысловых вопросов (без
+// файла пакета): форма ответа и смысл полей.
+const defaultSenseDisputePrompt = "Ты разбираешь смысл слова-омонима в книге. Ответ — JSON-массив объектов {\"value\": ..., \"quote\": ..., \"confidence\": 0..1}, по одному на вопрос в том же порядке. value — только имя смысла из списка вопроса или пустая строка; quote — дословная цитата из окна; confidence — 0..1.\n{questions}"
+
 // senseDisputePrompt строит вопрос слота (шаг 2): лемма, часть речи, номер
 // токена, цитата чанка и смыслы с триггерами. Ответ — JSON-массив объектов
 // {"value", "quote", "confidence"} в том же порядке.
 func senseDisputePrompt(batch []SenseQuestion) string {
 	var b strings.Builder
-	b.WriteString("Ты разбираешь смысл слова-омонима в книге. Ответ — JSON-массив объектов ")
-	b.WriteString(`{"value": ..., "quote": ..., "confidence": 0..1}, по одному на вопрос в том же порядке. `)
-	b.WriteString("value — только имя смысла из списка вопроса или пустая строка; ")
-	b.WriteString("quote — дословная цитата из окна; confidence — 0..1.\n")
 	for i, q := range batch {
 		fmt.Fprintf(&b, "\nВопрос %d (смысл): лемма %q, часть речи %s, токен %d.\n", i+1, q.Lemma, q.POS, q.Token)
 		fmt.Fprintf(&b, "Цитата: %s\nСмыслы: ", q.Quote)
@@ -458,7 +459,7 @@ func senseDisputePrompt(batch []SenseQuestion) string {
 		}
 		fmt.Fprintf(&b, "\nОкно: %s\n", q.Window)
 	}
-	return b.String()
+	return prompts.Render(DisputeSlotRole, "sense_dispute", defaultSenseDisputePrompt, map[string]any{"questions": b.String()})
 }
 
 // parseSenseAnswers проверяет ответ батча (шаг 3): число ответов, смысл из

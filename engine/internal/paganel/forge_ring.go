@@ -13,6 +13,7 @@ import (
 	"tns65/internal/censor"
 	"tns65/internal/db"
 	"tns65/internal/geo"
+	"tns65/internal/prompts"
 )
 
 // ForgeRole — роль слота ковки кольца Паганеля (tns65 swarm forge-ring).
@@ -130,6 +131,11 @@ type PromotionResult struct {
 	Reforged int64 `json:"reforged"`
 }
 
+// defaultForgePrompt — дефолт промпта ковки кольца (без файла пакета): модель
+// извлекает места и пути из голоса книги, называет направление словами и
+// дистанцию числом дней; координаты модель не считает (W-20.2).
+const defaultForgePrompt = "Ты — Паганель, ковка карты мира. Извлеки из голоса книги места и пути, включая неявные («к вечеру добрались до…»). {hero_place}Назови направление словами (север, северо-восток, восток, юго-восток, юг, юго-запад, запад, северо-запад) и дистанцию числом дней пути от героя; координаты не считай. Ответь строгим JSON без пояснений: {\"places\":[{\"name\":\"…\",\"essence\":\"…\",\"owner\":\"…\",\"prominence\":\"…\",\"bearing\":\"северо-запад\",\"distance_days\":2.5}],\"paths\":[{\"from\":\"…\",\"to\":\"…\",\"type\":\"trakt|river|sea\"}]}"
+
 // ForgePrompt собирает промпт ковки кольца: модель извлекает места и пути из
 // голоса книги, называет направление словами и дистанцию числом дней; координаты
 // модель не считает (W-20.2).
@@ -138,17 +144,11 @@ func ForgePrompt(hero HeroPosition, h *db.Handle) string {
 	if hero.PlaceID != 0 && h != nil {
 		_ = h.QueryRow(`SELECT name FROM places WHERE id = ?`, hero.PlaceID).Scan(&placeName)
 	}
-	var b strings.Builder
-	b.WriteString("Ты — Паганель, ковка карты мира. Извлеки из голоса книги места и пути, включая неявные («к вечеру добрались до…»). ")
+	heroPlace := ""
 	if placeName != "" {
-		b.WriteString("Герой сейчас у места «")
-		b.WriteString(placeName)
-		b.WriteString("». ")
+		heroPlace = "Герой сейчас у места «" + placeName + "». "
 	}
-	b.WriteString("Назови направление словами (север, северо-восток, восток, юго-восток, юг, юго-запад, запад, северо-запад) и дистанцию числом дней пути от героя; координаты не считай. ")
-	b.WriteString("Ответь строгим JSON без пояснений: ")
-	b.WriteString(`{"places":[{"name":"…","essence":"…","owner":"…","prominence":"…","bearing":"северо-запад","distance_days":2.5}],"paths":[{"from":"…","to":"…","type":"trakt|river|sea"}]}`)
-	return b.String()
+	return prompts.Render(ForgeRole, "forge_ring", defaultForgePrompt, map[string]any{"hero_place": heroPlace})
 }
 
 // ForgeRing — ковка кольца (T-06-08, шаги 1–2): модель (слот) возвращает

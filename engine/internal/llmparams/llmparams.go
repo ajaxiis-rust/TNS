@@ -202,6 +202,14 @@ func SetRoleConfigs(m map[string]RoleConfig) {
 	mu.Unlock()
 }
 
+// Prompts возвращает правку промптов роли из снимка (world_meta
+// role.<роль>.prompts); пусто — правки нет, промпт берётся из файла пакета.
+func Prompts(role string) string {
+	mu.RLock()
+	defer mu.RUnlock()
+	return roles[role].Prompts
+}
+
 // Params возвращает параметры генерации роли по снимку настроек процесса.
 func Params(role string) models.GenerateParams {
 	mu.RLock()

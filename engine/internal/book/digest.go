@@ -3,12 +3,12 @@ package book
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
 	"tns65/internal/db"
+	"tns65/internal/prompts"
 	"tns65/internal/workshop"
 )
 
@@ -84,11 +84,14 @@ func processedChapterText(h *db.Handle, chapterID int64) (string, error) {
 	return text, nil
 }
 
+// defaultDigestPrompt — дефолт промпта дайджеста (без файла пакета): тот же
+// запрос Редактора, что и краткое содержание (T-05-08 шаг 6).
+const defaultDigestPrompt = `{"task":"editor-digest","text":"{text}"}`
+
 // digestPrompt — промпт дайджеста: тот же запрос Редактора, что и краткое
 // содержание (T-05-08 шаг 6).
 func digestPrompt(text string) string {
-	raw, _ := json.Marshal(map[string]any{"task": workshop.EditorDigestRole, "text": text})
-	return string(raw)
+	return prompts.Render(workshop.EditorDigestRole, "editor_digest", defaultDigestPrompt, map[string]any{"text": text})
 }
 
 // WriteDigest записывает дайджест обработанной главы в book_chapters.digest —

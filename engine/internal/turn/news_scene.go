@@ -2,10 +2,10 @@ package turn
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"tns65/internal/censor"
+	"tns65/internal/prompts"
 	"tns65/internal/workshop"
 )
 
@@ -25,11 +25,12 @@ const defaultNewsSceneMinBatch = 2
 // newsSceneLang — язык детектора отказа пакета.
 const newsSceneLang = "ru"
 
-// newsScenePromptFmt — промпт сцены вести: действующее лицо приносит весть,
-// прямая речь с тире в начале строки. Третий подстанов — идиолект лица (B-15).
-const newsScenePromptFmt = `Напиши короткую сцену мира (6–10 строк): действующее лицо — %s — приносит герою весть.
-Весть: %s
-Форма: проза с прямой речью, каждая реплика с тире в начале строки. Без заголовков и пояснений, только текст сцены.%s`
+// newsScenePromptFmt — дефолт промпта сцены вести (без файла пакета):
+// действующее лицо приносит весть, прямая речь с тире в начале строки.
+// {idiolect} — идиолект лица (B-15).
+const newsScenePromptFmt = `Напиши короткую сцену мира (6–10 строк): действующее лицо — {npc} — приносит герою весть.
+Весть: {news}
+Форма: проза с прямой речью, каждая реплика с тире в начале строки. Без заголовков и пояснений, только текст сцены.{idiolect}`
 
 // newsSceneNPCFallback — действующее лицо, если труппа не дала смертного.
 const newsSceneNPCFallback = "случайный житель мира"
@@ -90,7 +91,11 @@ func newsScenePrompt(news string, roster *Roster) string {
 			idiolect = "\n" + line + " Речь лица держи в этом идиолекте."
 		}
 	}
-	return fmt.Sprintf(newsScenePromptFmt, npc, news, idiolect)
+	return prompts.Render(newsSceneRole, "news_scene", newsScenePromptFmt, map[string]any{
+		"npc":      npc,
+		"news":     news,
+		"idiolect": idiolect,
+	})
 }
 
 // newsSceneActor возвращает действующее лицо сцены вести — первого смертного

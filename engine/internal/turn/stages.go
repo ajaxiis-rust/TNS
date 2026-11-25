@@ -13,6 +13,7 @@ import (
 	"tns65/internal/db"
 	"tns65/internal/journal"
 	"tns65/internal/models"
+	"tns65/internal/prompts"
 	"tns65/internal/selector"
 	"tns65/internal/structural"
 	"tns65/internal/workshop"
@@ -636,7 +637,7 @@ func (s *executeStage) weaverReply(ctx context.Context, st *TurnState) (string, 
 	if clock == nil {
 		clock = wallClock{}
 	}
-	instruction := models.WeaverInstruction
+	instruction := prompts.ForRole(roleWeaver, "weaver_instruction", models.WeaverInstruction)
 	if guide := compositionGuide(st.Composition); guide != "" {
 		instruction += "\n" + guide
 	}

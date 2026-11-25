@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"tns65/internal/db"
+	"tns65/internal/prompts"
 	"tns65/internal/sediment"
 )
 
@@ -167,14 +168,15 @@ func ForgeEpoch(ctx context.Context, world *db.Handle, lit *db.Handle, source Re
 	return writeEpochRecord(lit, epoch, reference)
 }
 
+// defaultEpochPrompt — дефолт промпта ковки справочника эпохи (без файла).
+const defaultEpochPrompt = `{"task":"epoch","epoch":"{epoch}","material":"{material}"}`
+
 // EpochPrompt строит промпт ковки справочника эпохи: тема эпохи и материал источника.
 func EpochPrompt(epoch, material string) string {
-	raw, _ := json.Marshal(map[string]any{
-		"task":     EpochRole,
+	return prompts.Render(EpochRole, "epoch", defaultEpochPrompt, map[string]any{
 		"epoch":    epoch,
 		"material": material,
 	})
-	return string(raw)
 }
 
 // writeEpochRecord пишет справочник эпохи в bank_pool хэндлом forge (шаг 5):

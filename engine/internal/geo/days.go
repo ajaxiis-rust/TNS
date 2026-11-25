@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"tns65/internal/db"
+	"tns65/internal/prompts"
 )
 
 // dayNormKey — ключ world_meta с нормой дня мира (T-05-13, шаг 2).
@@ -112,13 +113,16 @@ func CheckPrompt(prompt string) error {
 // TravelPrompt — сборка промпта модели (T-05-13, шаг 4): координаты передаются
 // как есть, расстояние и дни — готовыми числами от кода (W-20.1, W-20.2).
 func TravelPrompt(from, to Place, distanceKm, days float64) string {
-	return fmt.Sprintf(
-		"Путь от места (%s, %s) до места (%s, %s): расстояние %s км, дни %s.",
-		strconv.FormatFloat(from.X, 'f', -1, 64),
-		strconv.FormatFloat(from.Y, 'f', -1, 64),
-		strconv.FormatFloat(to.X, 'f', -1, 64),
-		strconv.FormatFloat(to.Y, 'f', -1, 64),
-		strconv.FormatFloat(distanceKm, 'f', -1, 64),
-		strconv.FormatFloat(days, 'f', -1, 64),
-	)
+	return prompts.Render("", "geo.travel", defaultTravelPrompt, map[string]any{
+		"from_x":      strconv.FormatFloat(from.X, 'f', -1, 64),
+		"from_y":      strconv.FormatFloat(from.Y, 'f', -1, 64),
+		"to_x":        strconv.FormatFloat(to.X, 'f', -1, 64),
+		"to_y":        strconv.FormatFloat(to.Y, 'f', -1, 64),
+		"distance_km": strconv.FormatFloat(distanceKm, 'f', -1, 64),
+		"days":        strconv.FormatFloat(days, 'f', -1, 64),
+	})
 }
+
+// defaultTravelPrompt — дефолт промпта пути (без файла пакета): координаты как
+// есть, расстояние и дни готовыми числами.
+const defaultTravelPrompt = "Путь от места ({from_x}, {from_y}) до места ({to_x}, {to_y}): расстояние {distance_km} км, дни {days}."

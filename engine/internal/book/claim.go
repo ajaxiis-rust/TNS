@@ -11,6 +11,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/models"
+	"tns65/internal/prompts"
 )
 
 // Заявка книги (T-07-09, CB-10): заявка — текст (1–3 предложения) плюс вектор
@@ -395,13 +396,14 @@ func claimSynopsis(h *db.Handle) (string, error) {
 	return s, nil
 }
 
+// defaultClaimPrompt — дефолт промпта предложения заявки (без файла пакета).
+const defaultClaimPrompt = `{"task":"claim","synopsis":"{synopsis}","patterns":"{patterns}"}`
+
 // claimPrompt — промпт предложения заявки: синопсис анкеты и паттерны карты
 // игрока.
 func claimPrompt(synopsis string, patterns []string) string {
-	raw, _ := json.Marshal(map[string]any{
-		"task":     ClaimProposalRole,
+	return prompts.Render(ClaimProposalRole, "book.claim", defaultClaimPrompt, map[string]any{
 		"synopsis": synopsis,
 		"patterns": patterns,
 	})
-	return string(raw)
 }

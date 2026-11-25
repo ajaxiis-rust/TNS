@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"tns65/internal/db"
+	"tns65/internal/prompts"
 	"tns65/internal/structural"
 	"tns65/internal/version"
 )
@@ -185,13 +186,13 @@ func familyInRegistry(name string, fams []structural.Family) bool {
 	return false
 }
 
+// defaultComposePrompt — заготовка промпта compose (fallback без файла пакета):
+// чанк книги, строгий JSON на выходе.
+const defaultComposePrompt = `{"task":"compose","chunk":"{chunk}"}`
+
 // composePrompt строит промпт слота compose: чанк книги, строгий JSON на выходе.
 func composePrompt(text string) string {
-	raw, _ := json.Marshal(map[string]any{
-		"task":  ComposeRole,
-		"chunk": text,
-	})
-	return string(raw)
+	return prompts.Render(ComposeRole, "compose", defaultComposePrompt, map[string]any{"chunk": text})
 }
 
 // writeComposeLog помечает отказ/расхождение шага compose строкой forge_log

@@ -9,6 +9,7 @@ import (
 
 	"tns65/internal/cast"
 	"tns65/internal/db"
+	"tns65/internal/prompts"
 )
 
 // Труппа (T-03-11, LT-16): персонаж рождается в живом ходе без истории и копит
@@ -119,8 +120,11 @@ func idiolectPrompt(tags []string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	return "Идиолект: " + strings.Join(parts, "; ") + "."
+	return prompts.Render("", "idiolect", defaultIdiolectPrompt, map[string]any{"parts": strings.Join(parts, "; ")})
 }
+
+// defaultIdiolectPrompt — дефолт строки идиолекта лица в промпте сцены (B-15).
+const defaultIdiolectPrompt = "Идиолект: {parts}."
 
 // SpeechAllowed — словарный гейт прямой речи (T-19-08, шаг 4): табу идиолекта
 // лица не попадает в его реплику. Табу читаются из тегов лица, которые Труппа

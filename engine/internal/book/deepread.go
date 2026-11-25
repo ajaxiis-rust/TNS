@@ -13,6 +13,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/journal"
+	"tns65/internal/prompts"
 )
 
 // DeepReadRole — роль слота разбора первой реплики (CB-02.2): событие
@@ -306,14 +307,16 @@ func writeDeepRead(h *db.Handle, ch Chapter, res DeepReadResult, raw string, cfg
 	})
 }
 
+// defaultDeepReadPrompt — дефолт промпта разбора (без файла пакета): реплика
+// игрока и рамка главы.
+const defaultDeepReadPrompt = `{"task":"deepread","chapter_id":"{chapter_id}","day":"{day}","replica":"{replica}","fields":"{fields}"}`
+
 // deepReadPrompt строит промпт разбора: реплика игрока и рамка главы.
 func deepReadPrompt(ch Chapter, replica string) string {
-	raw, _ := json.Marshal(map[string]any{
-		"task":       DeepReadRole,
+	return prompts.Render(DeepReadRole, "deepread.book", defaultDeepReadPrompt, map[string]any{
 		"chapter_id": ch.ID,
 		"day":        ch.Day,
 		"replica":    replica,
 		"fields":     []string{"intent", "plan", "foreboding", "open_thread"},
 	})
-	return string(raw)
 }
