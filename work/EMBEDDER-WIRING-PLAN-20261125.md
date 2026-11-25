@@ -63,13 +63,19 @@
 
 - В `webapi` завести `chatEmbedder` и сеттер `SetChatEmbedder` (по образцу
   `SetChatWeaver` / `SetChatLemmatizer`).
-- В `handlers_chat.go` в литерале `turn.Pipeline` добавить
+- В `turn.Pipeline` добавить поле `Embedder` и перенос в `TurnState.Embedder`
+  (рядом с лемматизатором); в `handlers_chat.go` в литерале —
   `Embedder: chatEmbedder`.
 - В `cmd/tns65/main.go` `run()` собрать клиент из T-20-01 и вызвать
   `webapi.SetChatEmbedder(emb)`.
 - Эффект: `cutStage` векторизует сегменты/целую реплику/ранние слова;
   `confirm` включает векторный голос.
 - Тест: хендлер-тест, что конвейер получает эмбеддер при установленном сеттере.
+- Файлы: `engine/internal/turn/pipeline.go`,
+  `engine/internal/webapi/handlers_chat.go`,
+  `engine/cmd/tns65/main.go`,
+  тест `engine/internal/webapi/handlers_chat_test.go`.
+- Проверка: `cd engine && go test ./internal/turn/ ./internal/webapi/ -count=1` — PASS.
 
 ### T-20-03. Варка и разбор книг
 
