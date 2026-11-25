@@ -3,6 +3,7 @@ package workshop
 import (
 	"context"
 	"database/sql"
+	"strconv"
 	"sync"
 
 	"tns65/internal/db"
@@ -12,6 +13,10 @@ import (
 // pauseStepEvent — событие журнала станка о смене ступени паузы (T-05-01,
 // «Писатель»: переходы ступеней — в журнал станка).
 const pauseStepEvent = "workshop.pause_step"
+
+// orderFailedEvent — событие журнала станка о сбое заказа очереди (T-21-03):
+// сбой одного заказа не останавливает прогон воркера.
+const orderFailedEvent = "workshop.order_failed"
 
 // Order — заказ очереди, выбранный планировщиком (T-05-01, шаг 5).
 type Order struct {
@@ -32,8 +37,8 @@ func (o *Order) RequeueAllowed() bool { return o.Resumable }
 // Scheduler — планировщик мастерской (шаг 5): один воркер разбирает
 // workshop_queue по приоритету и (created_at, id), допускает только работы
 // текущей ступени и исполняет их по одной (шаг 7). Ступень держится в памяти,
-// её переходы пишутся в журнал станка; базу очереди эта задача не пишет
-// (Писатель: нет записи).
+// её переходы пишутся в журнал станка. Жизненный цикл заказа (running →
+// done/failed) пишет ядро (T-21-03): исполненный заказ в очередь не возвращается.
 type Scheduler struct {
 	db             *db.Handle
 	timer          *PauseTimer
@@ -149,8 +154,9 @@ func (s *Scheduler) next(skip map[int64]bool) (*Order, error) {
 }
 
 // Run — воркер мастерской (шаг 7): исполняет допустимые заказы по одному, без
-// параллельных запросов к слоту. За один прогон заказ исполняется не более
-// одного раза; статусы очереди в этой задаче не меняются.
+// параллельных запросов к слоту. Заказ закрывается исходом (T-21-03): перед
+// исполнением running, после — done с чекпойнтом ответа или failed. Сбой одного
+// заказа не валит прогон: он пишется в журнал станка, воркер идёт дальше.
 func (s *Scheduler) Run(ctx context.Context) error {
 	seen := make(map[int64]bool)
 	for {
@@ -163,7 +169,7 @@ func (s *Scheduler) Run(ctx context.Context) error {
 		}
 		seen[o.ID] = true
 		if err := s.runOne(ctx, o); err != nil {
-			return err
+			s.logOrderFailed(o, err)
 		}
 	}
 }
@@ -171,24 +177,91 @@ func (s *Scheduler) Run(ctx context.Context) error {
 // runOne исполняет один заказ через слот мастерской, подчиняясь планировщику
 // ядра (T-03-17): слот ковки берётся только с разрешения ядра. Заказ sediment
 // исполняется конвейером оседания (T-05-16), если подключён его исполнитель;
-// без исполнителя заказ проходит через слот, как прочие заказы.
+// без исполнителя заказ проходит через слот, как прочие заказы. Статус заказа
+// ведёт ядро: running перед исполнением, done/failed после.
 func (s *Scheduler) runOne(ctx context.Context, o *Order) error {
+	run := s.executor(o)
+	if run == nil {
+		return nil
+	}
+	if err := s.markRunning(o); err != nil {
+		return err
+	}
+	release := scheduler().AcquireWorkshop()
+	defer release()
+	out, err := run(ctx)
+	if ferr := s.markFinished(o, out, err); ferr != nil {
+		return ferr
+	}
+	return err
+}
+
+// executor — исполнение заказа: конвейер оседания (T-05-16) или слот
+// мастерской; nil — исполнять нечем.
+func (s *Scheduler) executor(o *Order) func(context.Context) (string, error) {
 	if o.Kind == KindSediment {
 		s.mu.Lock()
 		run := s.sedimentRunner
 		s.mu.Unlock()
 		if run != nil {
-			release := scheduler().AcquireWorkshop()
-			defer release()
-			_, err := run(ctx, s.db, o, s.logger)
-			return err
+			return func(ctx context.Context) (string, error) {
+				_, err := run(ctx, s.db, o, s.logger)
+				return "", err
+			}
 		}
 	}
-	if s.slot == nil {
+	slot := s.slot
+	if slot == nil {
 		return nil
 	}
-	release := scheduler().AcquireWorkshop()
-	defer release()
-	_, err := s.slot.Generate(ctx, string(o.Kind), o.Payload)
+	return func(ctx context.Context) (string, error) {
+		return slot.Generate(ctx, string(o.Kind), o.Payload)
+	}
+}
+
+// markRunning открывает исполнение заказа: running, время старта и счётчик
+// попыток (ядро — единственный писатель workshop_queue).
+func (s *Scheduler) markRunning(o *Order) error {
+	if s.db == nil {
+		return nil
+	}
+	_, err := s.db.Exec("workshop_queue",
+		`UPDATE workshop_queue SET status = ?, started_at = ?, attempts = attempts + 1 WHERE id = ?`,
+		string(StatusRunning), nowUTC(), o.ID)
 	return err
+}
+
+// markFinished закрывает заказ исходом: успех — done с ответом в
+// checkpoint_json, ошибка — failed. Исполненный заказ в очередь не вернётся.
+func (s *Scheduler) markFinished(o *Order, checkpoint string, runErr error) error {
+	if s.db == nil {
+		return nil
+	}
+	if runErr != nil {
+		_, err := s.db.Exec("workshop_queue",
+			`UPDATE workshop_queue SET status = ?, finished_at = ? WHERE id = ?`,
+			string(StatusFailed), nowUTC(), o.ID)
+		return err
+	}
+	if checkpoint == "" {
+		_, err := s.db.Exec("workshop_queue",
+			`UPDATE workshop_queue SET status = ?, finished_at = ? WHERE id = ?`,
+			string(StatusDone), nowUTC(), o.ID)
+		return err
+	}
+	_, err := s.db.Exec("workshop_queue",
+		`UPDATE workshop_queue SET status = ?, finished_at = ?, checkpoint_json = ? WHERE id = ?`,
+		string(StatusDone), nowUTC(), checkpoint, o.ID)
+	return err
+}
+
+// logOrderFailed пишет сбой заказа в журнал станка; прогон продолжается.
+func (s *Scheduler) logOrderFailed(o *Order, err error) {
+	if s.logger == nil {
+		return
+	}
+	_ = s.logger.Event("workshop", orderFailedEvent,
+		journal.Field{Key: "order_id", Value: strconv.FormatInt(o.ID, 10)},
+		journal.Field{Key: "kind", Value: string(o.Kind)},
+		journal.Field{Key: "error", Value: err.Error()})
 }
