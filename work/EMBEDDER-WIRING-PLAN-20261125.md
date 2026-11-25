@@ -51,6 +51,11 @@
   модель и тайм-аут эмбеддера из `config.yaml`, а не хардкод `:5002`.
 - Тест: парсинг трёх ключей, пустой адрес → nil, адрес+модель → клиент,
   тайм-аут применяется; сеттер доставляет клиент в `atlasBirthConfig`.
+- Файлы: `engine/internal/llmparams/llmparams.go`,
+  `engine/internal/models/embed.go`, `engine/internal/webapi/handlers_atlas.go`,
+  `engine/cmd/tns65/main.go`, тесты `engine/internal/llmparams/llmparams_test.go`,
+  `engine/internal/webapi/handlers_atlas_test.go`.
+- Проверка: `cd engine && go test ./internal/llmparams/ ./internal/models/ ./internal/webapi/ -count=1` — PASS.
 
 ### T-20-02. Чат (turn): векторы реплики и векторный голос
 
