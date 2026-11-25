@@ -76,30 +76,35 @@
   `SetEmbedder`; после проводки — прогон ковки 1 книги на `testforge` и
   проверка, что `vectors` заполнены.
 
-### T-20-04. Оседание (sediment) — blocked-dep
+### T-20-04. Воркер мастерской и оседание
 
-- Компоненты есть и закрыты задачами: воркер мастерской `workshop.Scheduler`
-  (T-05-01, `scheduler.go`), исполнение заказа sediment
-  `NewSedimentRunner`/`RunSedimentOrder` (T-05-16, `sediment_run.go`).
-- Но в проде воркер не подключён: `workshop.NewScheduler`,
-  `SetSedimentRunner`, `DefaultSedimentRun`, `MarkActive`, `SetChapterClosed`
-  вызываются только в тестах/e2e (`int12_workshop_test.go`); в `main.go`,
-  `webapi` и `turn.Pipeline` их нет. Документы это и закладывали:
-  `02-birth.md` — «исполнитель очереди появится в P4»; `04-sedimentation.md`
-  — «Дальше P4: мастерская»; `brief3.md` — «конвейер (T-04-05) нигде не
-  запускается». Позже Э3 (`PROVIDER-ROUTING-PLAN`) закрыл только проводку
-  *слота* мастерской (`workshop.SetSlot` в `main.go`), а не воркера.
-- Предусловие: отдельная задача «проводка воркера мастерской в живой ход» —
-  создать `workshop.Scheduler` на ядре/в `turn`, звать `Run` на тяжёлой
-  ступени и в ночном окне, `MarkActive`/`SetChapterClosed` из хода, отдать
-  `NewSedimentRunner` со слотом, цензором и эмбеддером. До неё эмбеддер
-  оседания подключать некуда.
-- Статус: `blocked-dep`.
+Проводка исполнителя мастерской в живой ход. Компоненты есть и закрыты
+(`workshop.Scheduler` T-05-01, `NewSedimentRunner`/`RunSedimentOrder`
+T-05-16); не хватает проводки и запуска.
+
+- `cmd/tns65/main.go run()`:
+  - `wireWorkshopSlot` возвращает собранный слот; им же собирается
+    `workshop.NewScheduler(activeWorldDB, nil, slot, stationLogger)`
+    (nil-часы → системные, `workshop.realPauseClock`).
+  - Собрать `sediment.NewPipeline(embedder(T-20-01), slot, censor, logger)`
+    и `sched.SetSedimentRunner(workshop.NewSedimentRunner(litDB, pipeline))`.
+  - Воркер-петля: горутина с тикером (минута) читает активный мир, открывает
+    оперативный и литературный хэндлы, выставляет `SetChapterClosed` по
+    `book_chapters.status`, зовёт `Run(ctx)`; останавливается по SIGTERM.
+- Активность и глава:
+  - `sched.MarkActive()` из обработчика хода (`handleChatTurn`, где
+    `chatTouch`).
+  - `sched.SetChapterClosed(closed)` по статусу открытой главы мира.
+- Тест: юнит воркера на фейковых часах — заказ sediment на тяжёлой ступени
+  доходит до конвейера, на лёгкой остаётся queued (паттерн уже в
+  `int12_workshop_test.go`); тикер без активного мира не падает.
+- Эффект: очередь мастерской реально разбирается в проде (сейчас — только в
+  тестах/e2e), оседание исполняется конвейером с векторами T-20-01.
 
 ## Порядок и проверка
 
-- T-20-01 → T-20-02 (независимы от мастерской) → T-20-03; T-20-04 ждёт
-  проводки исполнителя мастерской.
+- T-20-01 → T-20-02 (независимы от мастерской) → T-20-03 → T-20-04
+  (воркер берёт эмбеддера T-20-01 в конвейер оседания).
 - Гейты: `cd engine && bash scripts/gates.sh`; независимый прогон тестов каждой
   задачи.
 - Живая проверка: пересобрать движок, прогнать ковку 1 книги на `testforge`,
