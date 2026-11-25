@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"tns65/internal/journal"
+	"tns65/internal/models"
 )
 
 // RoutedProseSlot — слот прозы задачи: на каждый Stream роутер выбирает
@@ -21,10 +22,18 @@ type RoutedProseSlot struct {
 	limit    string // остаток лимита из ответа последнего вызова.
 }
 
-// Stream выбирает провайдера и стримит его поток чанков. Пустой маршрут или
-// все провайдеры без ключа — ErrNoProvider; отказ всех до первого чанка —
-// ErrExhausted. Оба случая ведут существующей деградацией (slot.degraded).
+// Stream выбирает провайдера и стримит его поток чанков без параметров
+// генерации (обратная совместимость); StreamParams — с параметрами П1.
+// Пустой маршрут или все провайдеры без ключа — ErrNoProvider; отказ всех до
+// первого чанка — ErrExhausted. Оба случая ведут существующей деградацией
+// (slot.degraded).
 func (s *RoutedProseSlot) Stream(ctx context.Context, prompt string) (<-chan string, error) {
+	return s.StreamParams(ctx, prompt, models.GenerateParams{})
+}
+
+// StreamParams выбирает провайдера и стримит его поток чанков с параметрами
+// генерации; параметры уходят клиенту выбранного провайдера.
+func (s *RoutedProseSlot) StreamParams(ctx context.Context, prompt string, params models.GenerateParams) (<-chan string, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -40,7 +49,7 @@ func (s *RoutedProseSlot) Stream(ctx context.Context, prompt string) (<-chan str
 		client, err := s.router.client(cand.name)
 		if err == nil {
 			var ch <-chan string
-			ch, err = client.Stream(ctx, prompt)
+			ch, err = client.StreamParams(ctx, prompt, params)
 			if err == nil {
 				s.setMeta(cand.name, client.LimitRemaining())
 				s.router.delivered(s.task)

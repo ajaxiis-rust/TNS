@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"tns65/internal/db"
+	"tns65/internal/models"
 	"tns65/internal/workshop"
 )
 
@@ -26,6 +27,58 @@ func (s *ladderSlot) Generate(_ context.Context, _ string, prompt string) (strin
 	s.calls++
 	s.prompts = append(s.prompts, prompt)
 	return s.answers[i], nil
+}
+
+// paramsSlot — слот с параметрами генерации (П1): помнит params каждого вызова,
+// ответ берёт из встроенного счётчика ladderSlot.
+type paramsSlot struct {
+	ladderSlot
+	params []models.GenerateParams
+}
+
+func (s *paramsSlot) GenerateParams(ctx context.Context, role, prompt string, params models.GenerateParams) (string, error) {
+	s.params = append(s.params, params)
+	return s.Generate(ctx, role, prompt)
+}
+
+// TestGenerateWithRetryForwardsParams — параметры из GenerateOptions доходят до
+// слота, умеющего их принимать (П2); слот без GenerateParams работает как раньше.
+func TestGenerateWithRetryForwardsParams(t *testing.T) {
+	dir := t.TempDir()
+	litPath := filepath.Join(dir, "literary.db")
+	newDB(t, litPath, "literary")
+	lit, err := db.OpenWriterAs(litPath, db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(literary): %v", err)
+	}
+	defer lit.Close()
+
+	temp, maxTokens := 0.45, 700
+	slot := &paramsSlot{ladderSlot: ladderSlot{answers: []string{"готовая проза."}}}
+	workshop.SetSlot(slot)
+	defer workshop.SetSlot(nil)
+
+	out, err := workshop.GenerateWithRetry(context.Background(), lit, workshop.GenerateOptions{
+		Role:     "test-params",
+		Lang:     "ru",
+		Provider: workshop.DefaultProvider,
+		Params:   models.GenerateParams{Temperature: &temp, MaxTokens: &maxTokens},
+	}, func(_ int, _ string) string {
+		return `{"task":"test-params"}`
+	})
+	if err != nil {
+		t.Fatalf("GenerateWithRetry: %v", err)
+	}
+	if out != "готовая проза." {
+		t.Fatalf("выход = %q, want %q", out, "готовая проза.")
+	}
+	if len(slot.params) != 1 {
+		t.Fatalf("вызовов с параметрами = %d, want 1", len(slot.params))
+	}
+	got := slot.params[0]
+	if got.Temperature == nil || *got.Temperature != temp || got.MaxTokens == nil || *got.MaxTokens != maxTokens {
+		t.Fatalf("params слота = %+v, ожидались temperature=%v max_tokens=%d", got, temp, maxTokens)
+	}
 }
 
 // TestGenerateWithRetryLadder — лестница повторов (T-12-08, «Проверка»):

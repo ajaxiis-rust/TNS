@@ -4,13 +4,16 @@ import (
 	"context"
 	"errors"
 	"strings"
+
+	"tns65/internal/models"
 )
 
 // RouteSlot — маршрутный слот задачи: провайдера на каждый запрос выбирает
 // роутер (providerroute.RoutedProseSlot), ошибка до первого чанка уходит
-// следующему провайдеру цепочки.
+// следующему провайдеру цепочки. Параметры генерации идут маршруту вместе с
+// промптом (П1).
 type RouteSlot interface {
-	Stream(ctx context.Context, prompt string) (<-chan string, error)
+	StreamParams(ctx context.Context, prompt string, params models.GenerateParams) (<-chan string, error)
 }
 
 // ErrRouteNotWired — маршрутный слот задачи не подключён: генерация идёт
@@ -71,10 +74,17 @@ func (s *RoutedWorkshopSlot) routeFor(role string) RouteSlot {
 	return s.routes
 }
 
-// Generate выполняет один запрос маршрута роли: поток одной модели собирается в
-// готовую строку. Отказ маршрута (нет ключей, все провайдеры отказали) уходит
-// вызывающему: лестница GenerateWithRetry и ErrForgeDegraded не меняются.
+// Generate выполняет один запрос маршрута роли без параметров генерации
+// (обратная совместимость); GenerateParams — с параметрами П1. Поток одной
+// модели собирается в готовую строку. Отказ маршрута (нет ключей, все
+// провайдеры отказали) уходит вызывающему: лестница GenerateWithRetry и
+// ErrForgeDegraded не меняются.
 func (s *RoutedWorkshopSlot) Generate(ctx context.Context, role, prompt string) (string, error) {
+	return s.GenerateParams(ctx, role, prompt, models.GenerateParams{})
+}
+
+// GenerateParams выполняет один запрос маршрута роли с параметрами генерации.
+func (s *RoutedWorkshopSlot) GenerateParams(ctx context.Context, role, prompt string, params models.GenerateParams) (string, error) {
 	if s == nil {
 		return "", ErrRouteNotWired
 	}
@@ -85,7 +95,7 @@ func (s *RoutedWorkshopSlot) Generate(ctx context.Context, role, prompt string) 
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	ch, err := routes.Stream(ctx, prompt)
+	ch, err := routes.StreamParams(ctx, prompt, params)
 	if err != nil {
 		return "", err
 	}

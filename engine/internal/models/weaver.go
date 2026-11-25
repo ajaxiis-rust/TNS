@@ -59,19 +59,39 @@ func HasReplacementTokens(text string) bool {
 	return strings.Contains(text, "[") && strings.Contains(text, "]")
 }
 
-// completionRequest — тело запроса /completion: промпт, уже без токенов.
+// completionRequest — тело запроса /completion: промпт, уже без токенов, и
+// параметры генерации (nil-поле не отправляется — дефолт модели).
 type completionRequest struct {
-	Prompt string `json:"prompt"`
+	Prompt          string   `json:"prompt"`
+	NPredict        *int     `json:"n_predict,omitempty"`
+	Temperature     *float64 `json:"temperature,omitempty"`
+	TopP            *float64 `json:"top_p,omitempty"`
+	TopK            *int     `json:"top_k,omitempty"`
+	ReasoningBudget *int     `json:"reasoning_budget,omitempty"`
 }
 
-// Stream отправляет промпт слоту на /completion и возвращает канал чанков текста.
-// Каждый чанк — непустая строка тела ответа (стриминг построчно); канал закрывается
-// по концу тела. Отмена ctx немедленно гасит чтение (T-03-08, шаг 2).
+// Stream отправляет промпт слоту без параметров генерации (обратная
+// совместимость): пустые params — дефолт модели.
 func (w *Weaver) Stream(ctx context.Context, prompt string) (<-chan string, error) {
+	return w.StreamParams(ctx, prompt, GenerateParams{})
+}
+
+// StreamParams отправляет промпт и параметры генерации слоту на /completion и
+// возвращает канал чанков текста. Каждый чанк — непустая строка тела ответа
+// (стриминг построчно); канал закрывается по концу тела. Отмена ctx немедленно
+// гасит чтение (T-03-08, шаг 2).
+func (w *Weaver) StreamParams(ctx context.Context, prompt string, params GenerateParams) (<-chan string, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	body, err := json.Marshal(completionRequest{Prompt: prompt})
+	body, err := json.Marshal(completionRequest{
+		Prompt:          prompt,
+		NPredict:        params.MaxTokens,
+		Temperature:     params.Temperature,
+		TopP:            params.TopP,
+		TopK:            params.TopK,
+		ReasoningBudget: params.Reasoning,
+	})
 	if err != nil {
 		return nil, err
 	}

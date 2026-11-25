@@ -39,13 +39,21 @@ type fakeClient struct {
 	err    error
 	limit  string
 
-	mu    sync.Mutex
-	calls int
+	mu     sync.Mutex
+	calls  int
+	params []models.GenerateParams
 }
 
-func (f *fakeClient) Stream(_ context.Context, _ string) (<-chan string, error) {
+func (f *fakeClient) Stream(ctx context.Context, prompt string) (<-chan string, error) {
+	return f.StreamParams(ctx, prompt, models.GenerateParams{})
+}
+
+// StreamParams запоминает параметры генерации последнего запроса (П1) и
+// отдаёт готовые чанки.
+func (f *fakeClient) StreamParams(_ context.Context, _ string, params models.GenerateParams) (<-chan string, error) {
 	f.mu.Lock()
 	f.calls++
+	f.params = append(f.params, params)
 	err := f.err
 	f.mu.Unlock()
 	if err != nil {
@@ -66,6 +74,13 @@ func (f *fakeClient) callCount() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.calls
+}
+
+// lastParams — параметры генерации последнего вызова (П1).
+func (f *fakeClient) lastParams() []models.GenerateParams {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]models.GenerateParams(nil), f.params...)
 }
 
 // testRouter — роутер на подставных клиентах и журнале во временном каталоге.
@@ -196,6 +211,34 @@ func TestRouterRotation(t *testing.T) {
 
 	if rotates := eventsOf(readJournal(t, logPath), journal.EventProviderRotate); len(rotates) != 0 {
 		t.Fatalf("события provider.rotate = %+v, ожидалось пусто: выбор провайдера идёт в usage.jsonl (DOC-6)", rotates)
+	}
+}
+
+// TestRouterForwardsParams — параметры StreamParams доходят до клиента
+// выбранного провайдера (П2).
+func TestRouterForwardsParams(t *testing.T) {
+	alpha := &fakeClient{name: "alpha", chunks: []string{"альфа"}}
+	r, _ := testRouter(t,
+		map[Task]Route{TaskChat: {"alpha"}},
+		keyedKeys("alpha"),
+		map[string]*fakeClient{"alpha": alpha})
+
+	temp, maxTokens := 0.3, 300
+	ch, err := r.Slot(TaskChat).StreamParams(context.Background(), "промпт",
+		models.GenerateParams{Temperature: &temp, MaxTokens: &maxTokens})
+	if err != nil {
+		t.Fatalf("StreamParams: %v", err)
+	}
+	for range ch {
+	}
+
+	params := alpha.lastParams()
+	if len(params) != 1 {
+		t.Fatalf("запросов с params = %d, want 1", len(params))
+	}
+	if params[0].Temperature == nil || *params[0].Temperature != temp ||
+		params[0].MaxTokens == nil || *params[0].MaxTokens != maxTokens {
+		t.Fatalf("params клиента = %+v, ожидались temperature=%v max_tokens=%d", params[0], temp, maxTokens)
 	}
 }
 

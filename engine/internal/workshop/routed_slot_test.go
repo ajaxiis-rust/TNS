@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"tns65/internal/db"
+	"tns65/internal/models"
 	"tns65/internal/netgate"
 	"tns65/internal/providercfg"
 	"tns65/internal/providerroute"
@@ -23,14 +24,16 @@ import (
 const composeOK = `{"family_primary":"","pattern_secondary":"","technique":"","moral_stance":"","inversion":false}`
 
 // fakeRouteSlot — маршрутный слот подставного провайдера: помнит промпты и
-// отдаёт заданные чанки одним потоком.
+// параметры каждого вызова, отдаёт заданные чанки одним потоком.
 type fakeRouteSlot struct {
 	prompts []string
+	params  []models.GenerateParams
 	chunks  []string
 }
 
-func (s *fakeRouteSlot) Stream(_ context.Context, prompt string) (<-chan string, error) {
+func (s *fakeRouteSlot) StreamParams(_ context.Context, prompt string, params models.GenerateParams) (<-chan string, error) {
 	s.prompts = append(s.prompts, prompt)
+	s.params = append(s.params, params)
 	ch := make(chan string, len(s.chunks))
 	for _, c := range s.chunks {
 		ch <- c

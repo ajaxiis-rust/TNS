@@ -12,6 +12,7 @@ import (
 
 	"tns65/internal/censor"
 	"tns65/internal/db"
+	"tns65/internal/models"
 	"tns65/internal/version"
 )
 
@@ -49,6 +50,8 @@ type GenerateOptions struct {
 	// TwoPass — двухпроходный режим ролей прозы: сначала сухие факты, затем
 	// проза (п.6.2, шаг 5).
 	TwoPass bool
+	// Params — параметры запроса генерации роли (П1); пусто — дефолт модели.
+	Params models.GenerateParams
 }
 
 // PromptFunc — строитель промпта прохода: pass 1 — сухие факты «что происходит»,
@@ -94,7 +97,7 @@ func ladder(ctx context.Context, lit *db.Handle, opts GenerateOptions, base stri
 		if slot == nil {
 			return "", errors.New("workshop: слот генерации не подключён")
 		}
-		out, err := slot.Generate(ctx, opts.Role, ladderPrompt(base, step))
+		out, err := slotGenerate(ctx, slot, opts.Role, ladderPrompt(base, step), opts.Params)
 		if err != nil {
 			return "", err
 		}
@@ -110,6 +113,15 @@ func ladder(ctx context.Context, lit *db.Handle, opts GenerateOptions, base stri
 		return "", err
 	}
 	return "", ErrForgeDegraded
+}
+
+// slotGenerate отдаёт запрос слоту: слот с параметрами получает opts.Params,
+// остальные — прежний вызов Generate (совместимость со старыми слотами).
+func slotGenerate(ctx context.Context, slot Slot, role, prompt string, params models.GenerateParams) (string, error) {
+	if ps, ok := slot.(ParamsSlot); ok {
+		return ps.GenerateParams(ctx, role, prompt, params)
+	}
+	return slot.Generate(ctx, role, prompt)
 }
 
 // ladderPrompt строит промпт ступени лестницы: ступень 1 добавляет художественную

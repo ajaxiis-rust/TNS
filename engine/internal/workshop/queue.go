@@ -12,6 +12,7 @@ import (
 
 	"tns65/internal/core"
 	"tns65/internal/db"
+	"tns65/internal/models"
 )
 
 // Kind — вид заказа мастерской (T-02-11, шаг 1).
@@ -134,6 +135,14 @@ func GenSlot(p Provider) string {
 // подключается задачей T-03-08, до того генерация не выполняется.
 type Slot interface {
 	Generate(ctx context.Context, role, prompt string) (string, error)
+}
+
+// ParamsSlot — слот, принимающий параметры генерации (П1): лестница передаёт
+// params, если слот их поддерживает. Прочие слоты получают прежний Generate —
+// пустые params означают дефолт самой модели. Контракт Slot не меняется: один
+// fake-слот testkit обслуживает интерфейсы разных пакетов.
+type ParamsSlot interface {
+	GenerateParams(ctx context.Context, role, prompt string, params models.GenerateParams) (string, error)
 }
 
 // curSlot — подменяемый слот очереди: тесты ставят testkit.FakeSlot через SetSlot.

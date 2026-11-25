@@ -240,7 +240,42 @@ func limitRemaining(h http.Header) string {
 
 // geminiGenerateRequest — тело запроса Gemini generateContent (стриминг).
 type geminiGenerateRequest struct {
-	Contents []geminiContent `json:"contents"`
+	Contents         []geminiContent         `json:"contents"`
+	GenerationConfig *geminiGenerationConfig `json:"generationConfig,omitempty"`
+}
+
+// geminiGenerationConfig — параметры генерации Gemini; nil-поле не отправляется.
+type geminiGenerationConfig struct {
+	Temperature     *float64              `json:"temperature,omitempty"`
+	MaxOutputTokens *int                  `json:"maxOutputTokens,omitempty"`
+	TopP            *float64              `json:"topP,omitempty"`
+	TopK            *int                  `json:"topK,omitempty"`
+	ThinkingConfig  *geminiThinkingConfig `json:"thinkingConfig,omitempty"`
+}
+
+// geminiThinkingConfig — бюджет рассуждений thinking-модели; ноль выключает
+// рассуждения, nil — дефолт модели.
+type geminiThinkingConfig struct {
+	ThinkingBudget *int `json:"thinkingBudget,omitempty"`
+}
+
+// geminiConfig переводит параметры генерации в generationConfig; пустые params
+// дают nil — поле в тело запроса не попадает.
+func geminiConfig(params GenerateParams) *geminiGenerationConfig {
+	if params.Temperature == nil && params.MaxTokens == nil && params.TopP == nil &&
+		params.TopK == nil && params.Reasoning == nil {
+		return nil
+	}
+	cfg := &geminiGenerationConfig{
+		Temperature:     params.Temperature,
+		MaxOutputTokens: params.MaxTokens,
+		TopP:            params.TopP,
+		TopK:            params.TopK,
+	}
+	if params.Reasoning != nil {
+		cfg.ThinkingConfig = &geminiThinkingConfig{ThinkingBudget: params.Reasoning}
+	}
+	return cfg
 }
 
 type geminiContent struct {
@@ -262,15 +297,23 @@ type geminiGenerateResponse struct {
 	} `json:"candidates"`
 }
 
-// Stream отправляет промпт провайдеру и возвращает канал чанков текста. Отмена
-// ctx немедленно гасит чтение. Ошибки разделены (шаг 1): ErrProviderRefused
-// (статус не 2xx), ErrNetwork (сеть), netgate.ErrDeniedHost (хост вне списка).
+// Stream отправляет промпт без параметров генерации (обратная совместимость):
+// пустые params — дефолт модели.
 func (c *ProviderClient) Stream(ctx context.Context, prompt string) (<-chan string, error) {
+	return c.StreamParams(ctx, prompt, GenerateParams{})
+}
+
+// StreamParams отправляет промпт и параметры генерации провайдеру и возвращает
+// канал чанков текста. Отмена ctx немедленно гасит чтение. Ошибки разделены
+// (шаг 1): ErrProviderRefused (статус не 2xx), ErrNetwork (сеть),
+// netgate.ErrDeniedHost (хост вне списка).
+func (c *ProviderClient) StreamParams(ctx context.Context, prompt string, params GenerateParams) (<-chan string, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
 	body, err := json.Marshal(geminiGenerateRequest{
-		Contents: []geminiContent{{Role: "user", Parts: []geminiPart{{Text: prompt}}}},
+		Contents:         []geminiContent{{Role: "user", Parts: []geminiPart{{Text: prompt}}}},
+		GenerationConfig: geminiConfig(params),
 	})
 	if err != nil {
 		return nil, err

@@ -69,11 +69,17 @@ func (c *OpenAIClient) setLimit(v string) {
 	c.mu.Unlock()
 }
 
-// openAIChatRequest — тело запроса /chat/completions со стримингом.
+// openAIChatRequest — тело запроса /chat/completions со стримингом; nil-поле
+// параметров не отправляется (дефолт провайдера).
 type openAIChatRequest struct {
-	Model    string          `json:"model"`
-	Messages []openAIMessage `json:"messages"`
-	Stream   bool            `json:"stream"`
+	Model           string          `json:"model"`
+	Messages        []openAIMessage `json:"messages"`
+	Stream          bool            `json:"stream"`
+	MaxTokens       *int            `json:"max_tokens,omitempty"`
+	Temperature     *float64        `json:"temperature,omitempty"`
+	TopP            *float64        `json:"top_p,omitempty"`
+	TopK            *int            `json:"top_k,omitempty"`
+	ReasoningEffort string          `json:"reasoning_effort,omitempty"`
 }
 
 type openAIMessage struct {
@@ -98,17 +104,33 @@ type openAIStreamChunk struct {
 	} `json:"error"`
 }
 
-// Stream отправляет промпт и возвращает канал чанков. Ошибки разделены:
-// ErrProviderKeyRejected (401/403), ErrProviderRefused (прочие не-2xx),
-// ErrNetwork (сеть), netgate.ErrDeniedHost (хост вне списка).
+// Stream отправляет промпт без параметров генерации (обратная совместимость):
+// пустые params — дефолт провайдера.
 func (c *OpenAIClient) Stream(ctx context.Context, prompt string) (<-chan string, error) {
+	return c.StreamParams(ctx, prompt, GenerateParams{})
+}
+
+// StreamParams отправляет промпт и параметры генерации и возвращает канал
+// чанков. Ошибки разделены: ErrProviderKeyRejected (401/403),
+// ErrProviderRefused (прочие не-2xx), ErrNetwork (сеть),
+// netgate.ErrDeniedHost (хост вне списка).
+func (c *OpenAIClient) StreamParams(ctx context.Context, prompt string, params GenerateParams) (<-chan string, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	effort := ""
+	if params.Reasoning != nil {
+		effort = reasoningEffort(*params.Reasoning)
+	}
 	body, err := json.Marshal(openAIChatRequest{
-		Model:    c.model,
-		Messages: []openAIMessage{{Role: "user", Content: prompt}},
-		Stream:   true,
+		Model:           c.model,
+		Messages:        []openAIMessage{{Role: "user", Content: prompt}},
+		Stream:          true,
+		MaxTokens:       params.MaxTokens,
+		Temperature:     params.Temperature,
+		TopP:            params.TopP,
+		TopK:            params.TopK,
+		ReasoningEffort: effort,
 	})
 	if err != nil {
 		return nil, err

@@ -30,10 +30,12 @@ var ErrNoProvider = errors.New("providerroute: нет доступного пр�
 var ErrExhausted = errors.New("providerroute: все провайдеры отказали")
 
 // ProviderClient — клиент провайдера с метаданными журнала вызовов (FIX-4):
-// поток чанков, имя провайдера и остаток лимита из ответа. models.Weaver,
-// models.ProviderClient и models.OpenAIClient удовлетворяют контракту.
+// поток чанков, имя провайдера и остаток лимита из ответа. StreamParams несёт
+// параметры генерации (П1). models.Weaver, models.ProviderClient и
+// models.OpenAIClient удовлетворяют контракту.
 type ProviderClient interface {
 	Stream(ctx context.Context, prompt string) (<-chan string, error)
+	StreamParams(ctx context.Context, prompt string, params models.GenerateParams) (<-chan string, error)
 	ProviderName() string
 	LimitRemaining() string
 }
