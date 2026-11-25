@@ -52,6 +52,13 @@ var (
 	atlasLogger *journal.Logger
 )
 
+// SetAtlasEmbed подключает эмбеддер к рождению мира (T-20-01): адрес, модель и
+// тайм-аут приходят из llm: config.yaml через llmparams.EmbedClient. nil —
+// эмбеддер не подключён, рождение деградирует без падения.
+func SetAtlasEmbed(emb models.Embedder) {
+	atlasEmbed = emb
+}
+
 // activeSlug — активный мир интерфейса (выбор игрока). Хранится в памяти
 // webapi и переживает перезапуск через файл состояния activeStatePath; список
 // миров помечает карточку активного мира.

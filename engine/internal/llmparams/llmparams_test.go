@@ -1,7 +1,16 @@
 package llmparams
 
 import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
+	"time"
+
+	"tns65/internal/models"
 )
 
 // TestParseSettingsKeys — новые ключи llm: разбираются с сохранением «поле не
@@ -98,6 +107,83 @@ func TestParamsSnapshot(t *testing.T) {
 	params = Params("editor")
 	if params.Temperature == nil || *params.Temperature != 0.4 {
 		t.Fatalf("Params(editor).Temperature = %v, want станковую 0.4", params.Temperature)
+	}
+}
+
+// TestParseSettingsEmbed — ключи эмбеддера llm:embed_addr/model/timeout.
+func TestParseSettingsEmbed(t *testing.T) {
+	cfg := ParseSettings("llm:\n  embed_addr: \":5002\"\n  embed_model: \"bge-m3\"\n  embed_timeout: 45s\n")
+	if cfg.EmbedAddr != ":5002" || cfg.EmbedModel != "bge-m3" || cfg.EmbedTimeout.Seconds() != 45 {
+		t.Fatalf("embed keys = %+v", cfg)
+	}
+
+	// Пустой адрес — эмбеддер не подключён; нулевой тайм-аут игнорируется.
+	cfg = ParseSettings("llm:\n  embed_addr: \"\"\n  embed_timeout: 0s\n")
+	if cfg.EmbedAddr != "" || cfg.EmbedTimeout != 0 {
+		t.Fatalf("пустой embed = %+v", cfg)
+	}
+}
+
+// TestEmbedClient — пустой адрес даёт nil без падения; адрес+модель собирают
+// клиент, который передаёт embed_model в тело запроса.
+func TestEmbedClient(t *testing.T) {
+	if c, err := EmbedClient(Config{}, nil); err != nil || c != nil {
+		t.Fatalf("EmbedClient(пусто) = %v, %v; want nil, nil", c, err)
+	}
+
+	// Сервер сверяет model в теле запроса и отдаёт вектор нужной размерности.
+	// Адрес передаём в форме ":5002" — EmbedClient приводит его к 127.0.0.1.
+	var gotModel string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Model string `json:"model"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Errorf("тело запроса: %v", err)
+		}
+		gotModel = req.Model
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": []any{map[string]any{"embedding": make([]float64, models.EmbedDim)}},
+		})
+	}))
+	defer srv.Close()
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatalf("адрес сервера: %v", err)
+	}
+
+	c, err := EmbedClient(Config{EmbedAddr: ":" + u.Port(), EmbedModel: "bge-m3-custom"}, nil)
+	if err != nil {
+		t.Fatalf("EmbedClient: %v", err)
+	}
+	if _, ok := c.(*models.Client); !ok {
+		t.Fatalf("EmbedClient тип = %T, want *models.Client", c)
+	}
+	if _, err := c.Embed(context.Background(), "привет"); err != nil {
+		t.Fatalf("Embed: %v", err)
+	}
+	if gotModel != "bge-m3-custom" {
+		t.Fatalf("model в теле запроса = %q, want bge-m3-custom", gotModel)
+	}
+}
+
+// TestEmbedClientTimeout — embed_timeout применяется: зависший эмбеддер
+// обрывается ошибкой тайм-аута, а не ждётся бесконечно.
+func TestEmbedClientTimeout(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+		_, _ = w.Write([]byte("поздний ответ\n"))
+	}))
+	defer srv.Close()
+
+	c, err := EmbedClient(Config{EmbedAddr: srv.URL, EmbedTimeout: 20 * time.Millisecond}, nil)
+	if err != nil {
+		t.Fatalf("EmbedClient: %v", err)
+	}
+	if _, err := c.Embed(context.Background(), "привет"); err == nil {
+		t.Fatal("Embed: ошибки нет, ожидался тайм-аут")
+	} else if !strings.Contains(err.Error(), "Timeout") && !strings.Contains(err.Error(), "deadline") {
+		t.Fatalf("Embed: err = %v, ожидался тайм-аут", err)
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"tns65/internal/db"
+	"tns65/internal/journal"
 	"tns65/internal/models"
 )
 
@@ -82,12 +83,15 @@ func LoadRoleConfigs(path string) (map[string]RoleConfig, error) {
 // означает «ключа нет»: соответствующее поле запроса не отправляется, модель
 // работает на своём дефолте.
 type Config struct {
-	Timeout     time.Duration // gen_timeout: тайм-аут HTTP-клиента слота
-	MaxTokens   *int          // gen_max_tokens; 0 — без ограничения (не отправлять)
-	Temperature *float64      // gen_temperature
-	TopP        *float64      // gen_top_p; 0 — не отправлять
-	TopK        *int          // gen_top_k; 0 — не отправлять
-	Reasoning   *int          // gen_reasoning: -1 — не отправлять, 0 — выключить, >0 — бюджет
+	Timeout      time.Duration // gen_timeout: тайм-аут HTTP-клиента слота
+	MaxTokens    *int          // gen_max_tokens; 0 — без ограничения (не отправлять)
+	Temperature  *float64      // gen_temperature
+	TopP         *float64      // gen_top_p; 0 — не отправлять
+	TopK         *int          // gen_top_k; 0 — не отправлять
+	Reasoning    *int          // gen_reasoning: -1 — не отправлять, 0 — выключить, >0 — бюджет
+	EmbedAddr    string        // embed_addr: адрес эмбеддера BGE-M3; "" — эмбеддер не подключён
+	EmbedModel   string        // embed_model: имя эмбеддинг-модели; "" — DefaultEmbedModel
+	EmbedTimeout time.Duration // embed_timeout: тайм-аут HTTP-клиента эмбеддера
 }
 
 // LoadSettings читает секцию llm из config.yaml; файла нет — пустая настройка
@@ -149,9 +153,31 @@ func ParseSettings(data string) Config {
 			if n, err := strconv.Atoi(value); err == nil && n >= 0 {
 				cfg.Reasoning = &n
 			}
+		case "embed_addr":
+			cfg.EmbedAddr = value
+		case "embed_model":
+			cfg.EmbedModel = value
+		case "embed_timeout":
+			if d, err := time.ParseDuration(value); err == nil && d > 0 {
+				cfg.EmbedTimeout = d
+			}
 		}
 	}
 	return cfg
+}
+
+// EmbedClient собирает клиент эмбеддера из настроек llm:. Пустой embed_addr —
+// (nil, nil): эмбеддер не подключён, вызовы деградируют без падения. Адрес вида
+// ":5002" приводится к http://127.0.0.1:5002 (как в проводке генерации).
+func EmbedClient(cfg Config, logger *journal.Logger) (models.Embedder, error) {
+	addr := strings.TrimSpace(cfg.EmbedAddr)
+	if addr == "" {
+		return nil, nil
+	}
+	if strings.HasPrefix(addr, ":") {
+		addr = "http://127.0.0.1" + addr
+	}
+	return models.NewClientTimeout(addr, logger, cfg.EmbedTimeout, cfg.EmbedModel)
 }
 
 // scalar обрезает комментарий и кавычки у значения YAML.

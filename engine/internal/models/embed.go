@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"tns65/internal/journal"
 	"tns65/internal/netgate"
@@ -40,6 +41,16 @@ type Client struct {
 // model — имя эмбеддинг-модели (llm.embed_model из config.yaml); пусто/без аргумента
 // — DefaultEmbedModel (bge-m3, 1024 измерения, TUN-3).
 func NewClient(embedURL string, logger *journal.Logger, model ...string) (*Client, error) {
+	return newClient(embedURL, logger, 0, model...)
+}
+
+// NewClientTimeout — как NewClient, с тайм-аутом всего запроса (llm.embed_timeout):
+// зависший эмбеддер обрывается по тайм-ауту, а не ждётся бесконечно.
+func NewClientTimeout(embedURL string, logger *journal.Logger, timeout time.Duration, model ...string) (*Client, error) {
+	return newClient(embedURL, logger, timeout, model...)
+}
+
+func newClient(embedURL string, logger *journal.Logger, timeout time.Duration, model ...string) (*Client, error) {
 	u, err := url.Parse(embedURL)
 	if err != nil {
 		return nil, fmt.Errorf("models: адрес эмбеддера: %w", err)
@@ -48,7 +59,7 @@ func NewClient(embedURL string, logger *journal.Logger, model ...string) (*Clien
 	if len(model) > 0 && strings.TrimSpace(model[0]) != "" {
 		m = strings.TrimSpace(model[0])
 	}
-	return &Client{http: netgate.Local(u.Host), url: strings.TrimRight(embedURL, "/"), model: m, logger: logger}, nil
+	return &Client{http: netgate.LocalTimeout(u.Host, timeout), url: strings.TrimRight(embedURL, "/"), model: m, logger: logger}, nil
 }
 
 type embedRequest struct {

@@ -558,6 +558,23 @@ func TestActiveWorldAutoSelectSingle(t *testing.T) {
 	}
 }
 
+// TestSetAtlasEmbed — сеттер доставляет эмбеддер в atlasBirthConfig (T-20-01):
+// без сеттера конфиг рождения пуст, после — тот же клиент.
+func TestSetAtlasEmbed(t *testing.T) {
+	old := atlasEmbed
+	t.Cleanup(func() { atlasEmbed = old })
+
+	atlasEmbed = nil
+	if cfg := atlasBirthConfig(birth.Ancketa{Lang: "ru"}, false); cfg.Embed != nil {
+		t.Fatalf("без сеттера Embed = %T, want nil", cfg.Embed)
+	}
+	fake := testkit.NewFakeEmbed()
+	SetAtlasEmbed(fake)
+	if cfg := atlasBirthConfig(birth.Ancketa{Lang: "ru"}, false); cfg.Embed != fake {
+		t.Fatalf("после SetAtlasEmbed Embed = %T, want фейк", cfg.Embed)
+	}
+}
+
 // TestActiveWorldNoAutoSelectTwoWorlds — при двух мирах без файла выбор пуст:
 // сами ничего не выбираем.
 func TestActiveWorldNoAutoSelectTwoWorlds(t *testing.T) {

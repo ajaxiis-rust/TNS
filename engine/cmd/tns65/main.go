@@ -169,6 +169,14 @@ func run() int {
 	// (e2e-хук --fake-slot) сеттер не перезаписывает.
 	weaver := providerroute.DefaultChatWeaver(logger)
 	webapi.SetChatWeaver(weaver)
+	// T-20-01: эмбеддер рождения мира — адрес, модель и тайм-аут из llm:
+	// config.yaml. Пустой embed_addr даёт nil: рождение деградирует без падения.
+	emb, err := llmparams.EmbedClient(llmparams.LoadSettings("config.yaml"), logger)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	webapi.SetAtlasEmbed(emb)
 	// Э3: слот мастерской по маршруту sources. Нет слота Ткача (e2e-сборка,
 	// нечитаемый конфиг) — маршруты не собраны, мастерская остаётся без слота.
 	if weaver != nil {
