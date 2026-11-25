@@ -90,9 +90,18 @@
   контексты и эмбеддер; `RunForgeBook` передаёт `embedderForge()` в
   `RunPipeline`; `runDeepreadTask` передаёт клиент в `RunInput.Embedder`.
 - Эффект: векторы чанков/сцен/персонажей/якорей + векторный слой смыслов.
-- Проверка: существующий `forge_book_test` покрывает векторы при
-  `SetEmbedder`; после проводки — прогон ковки 1 книги на `testforge` и
-  проверка, что `vectors` заполнены.
+- Тест: существующий `forge_book_test` покрывает векторы при `SetEmbedder`; юнит
+  слоя смыслов — `senses.VectorLayer` собирается при словаре+контекстах+эмбеддере.
+- Файлы: `engine/cmd/tns65/main.go`,
+  `engine/internal/deepread/run.go`,
+  `engine/internal/deepread/senses.go`,
+  `engine/internal/deepread/salience.go`,
+  `engine/internal/workshop/forge_book.go`,
+  тесты `engine/internal/deepread/run_test.go`,
+  `engine/internal/deepread/senses_test.go`,
+  `engine/internal/deepread/salience_test.go`,
+  `engine/internal/workshop/forge_book_test.go`.
+- Проверка: `cd engine && go test ./internal/workshop/ ./internal/deepread/ ./internal/senses/ -count=1` — PASS.
 
 ### T-20-04. Воркер мастерской и оседание
 
@@ -118,6 +127,10 @@ T-05-16); не хватает проводки и запуска.
   `int12_workshop_test.go`); тикер без активного мира не падает.
 - Эффект: очередь мастерской реально разбирается в проде (сейчас — только в
   тестах/e2e), оседание исполняется конвейером с векторами T-20-01.
+- Файлы: `engine/cmd/tns65/main.go`,
+  `engine/internal/webapi/handlers_chat.go`,
+  тест `engine/internal/workshop/scheduler_test.go`.
+- Проверка: `cd engine && go test ./internal/workshop/ ./internal/webapi/ -count=1 && go build ./cmd/tns65` — PASS.
 
 ## Порядок и проверка
 
