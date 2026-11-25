@@ -165,3 +165,4 @@ mechanics-from-chat.md. Статусы сверены с кодом на HEAD `8
 | T-20-01 Конфиг и клиент эмбеддера (EMBEDDER-WIRING-PLAN-20261125) | 25.11 | ✅ закрыт (78dd1ae, 2026-11-25): embed_addr/model/timeout, EmbedClient, SetAtlasEmbed; ревью 2/3 |
 | T-20-02 Чат (turn): векторы реплики и векторный голос (EMBEDDER-WIRING-PLAN-20261125) | 25.11 | ✅ закрыт (5b6770c, 2026-11-25): chatEmbedder/SetChatEmbedder, Pipeline.Embedder→TurnState, проводка main.go; ревью 1/3 |
 | T-20-03 Варка и разбор книг (EMBEDDER-WIRING-PLAN-20261125) | 25.11 | ✅ закрыт (897c2e1, 2026-11-25): VectorLayer в runLayers, embedderForge→RunPipeline, эмбеддер в ребёнках; ревью 1/3 |
+| T-20-04 Воркер мастерской и оседание (EMBEDDER-WIRING-PLAN-20261125) | 25.11 | ✅ закрыт (23387c1, 2026-11-25): воркер-петля main.go, MarkActive из чата, SetChapterClosed, оседание конвейером; ревью 1/3 |
