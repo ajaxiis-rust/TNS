@@ -110,6 +110,23 @@ mechanics-from-chat.md. Статусы сверены с кодом на HEAD `8
 | DOC-3 решения в журнал/спеку | ✅ закрыт (2026-11-14) | DEC-1…4 записаны в журнал 99-LEDGER (:354–357) и в спеку: CB-03 (`06-chapter-book.md`), INT-10…12 (`09-acceptance.md`), B-14.4 (`03-birth.md`) |
 | DOC-4 `ui-check release`: веб-разметка | ✅ закрыт (57b526f, 2026-11-14) | Инлайн-скрипт → `static/wizard.js`; семь id сняты или оживлены; `ui-check release` зелёный |
 
+### Волна T-21 — таймеры, хуки, мастерская (план `work/TIMERS-HOOKS-WORKSHOP-PLAN-20261126.md`, 2026-11-26)
+
+| Пункт | Статус | Суть и проверка |
+|---|---|---|
+| T-21-01 `TestNoShortReadyBudget`: изоляция порта 5001 | ⏳ todo | убрать зависимость от занятого 5001 (`Port: 0` или `WithCheckPort`-фейк); `go test ./internal/supervisor -run TestNoShortReadyBudget -count=1` |
+| T-21-02 `TestVerne`: порт ядра | ⏳ todo | динамический порт вместо фиксированного 8720 или fail-fast на занятом порту; `go test ./e2e -run TestVerne -count=1` |
+| T-21-03 статусы заказов | ⏳ todo | running→done/failed, без переисполнения на тике; `go test ./internal/workshop -count=1` |
+| T-21-04 диспетчер видов | ⏳ todo | исполнитель по `Kind` вместо общего `slot.Generate`; `go test ./internal/workshop -count=1 && go build ./cmd/tns65` |
+| T-21-05 пауза от последней активности | ⏳ todo | таймер инициализируется от последней реплики/`turns.created_at`; `go test ./internal/workshop/ ./internal/webapi/ -count=1` |
+| T-21-06 ночной `RunPythia` | ⏳ todo | прогон карты игрока на ночной ступени; `go test ./internal/workshop -count=1` |
+| T-21-07 гороскоп по смене темы | ⏳ todo | `EnsureHoroscopeOrder` при смене темы; `go test ./internal/webapi/ ./internal/workshop/ -count=1` |
+| T-21-08 `MatchHoroscope` + промах→кандидаты | ⏳ todo | сверка ранних векторов, промах в `SedimentCandidate`; `go test ./internal/webapi/ ./internal/workshop/ -count=1` |
+| T-21-09 переплавка после оседания | ⏳ todo | `RemeltScene` для сцен высокого доверия; `go test ./internal/workshop -count=1` |
+| T-21-10 доковка персонажей | ⏳ todo | `EnsureComplementOrder` на тяжёлой ступени; `go test ./internal/workshop -count=1` |
+| T-21-11 цензор-согласование IMP-13 | ⏳ todo | доки/спека/тест под «цензора при ковке нет»; `bash scripts/gates.sh` (docs-check) |
+| T-21-12 варка по релевантности W-02 | ⏳ todo | выбор заготовок по пути (день/ночь, 2–5/сутки); `go test ./internal/workshop -count=1` |
+
 ## 3. Работы по маршрутизации провайдеров (Э1–Э6 закрыты 2026-11-14)
 
 - [x] Э1. Роутер + чат: `internal/providerroute`, `RoutedProseSlot`,
