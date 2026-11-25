@@ -2,9 +2,11 @@ package turn
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"tns65/internal/db"
+	"tns65/internal/models"
 	"tns65/internal/workshop"
 )
 
@@ -96,6 +98,58 @@ type SedimentCandidate struct {
 	SessionID int64  `json:"session_id"`
 	Kind      string `json:"kind"`
 	Text      string `json:"text,omitempty"`
+}
+
+// BranchHoroscope — ветка хода, сверенная с гороскопом (T-21-08): ветка
+// гороскопа, не вошедшая в ход, уходит кандидатом в оседание (W-13.6).
+const BranchHoroscope = "horoscope"
+
+// EarlyVectors собирает ранние векторы реплики для сверки с гороскопом
+// (W-13.7): по вектору на слово, граница — пробел или знак (шаг 3 резки).
+// Ошибка эмбеддера пропускает слово: сверка идёт по собранному.
+func EarlyVectors(ctx context.Context, emb models.Embedder, text string) [][]float32 {
+	if emb == nil {
+		return nil
+	}
+	words := splitWords(text)
+	out := make([][]float32, 0, len(words))
+	for _, w := range words {
+		v, err := emb.Embed(ctx, w)
+		if err != nil {
+			continue
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+// MatchSceneHoroscope сверяет ранние векторы реплики с гороскопом сцены
+// (T-21-08, W-13.7): совпадение отдаёт текст готовой bank_ref-ветки, промах
+// ставит ветку кандидатом в оседание через queueSedimentCandidates (W-13.6).
+// Без выпуска гороскопа под сцену сверять нечего — ни ветки, ни кандидата.
+func MatchSceneHoroscope(ctx context.Context, world, literary *db.Handle, sceneID int64, text string, emb models.Embedder, candidate SedimentCandidate) (string, error) {
+	if world == nil || literary == nil || sceneID == 0 || emb == nil {
+		return "", nil
+	}
+	issued, err := workshop.HasHoroscope(literary, sceneID)
+	if err != nil || !issued {
+		return "", err
+	}
+	early := EarlyVectors(ctx, emb, text)
+	m, err := workshop.MatchHoroscope(world, literary, sceneID, early, workshop.DefaultHoroscopeMatchConfig())
+	if err != nil {
+		return "", err
+	}
+	if m == nil {
+		// Промах не форсируется (W-13.6): ветка вне прогноза — кандидат в оседание.
+		candidate.Kind = BranchHoroscope
+		return "", queueSedimentCandidates(world, []SedimentCandidate{candidate})
+	}
+	branch, err := m.BankText(literary)
+	if errors.Is(err, workshop.ErrHoroscopeBranchNotBank) {
+		return "", nil
+	}
+	return branch, err
 }
 
 // queueSedimentCandidates ставит ветки, не вошедшие в ход, заказом sediment в

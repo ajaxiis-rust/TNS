@@ -5,8 +5,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -832,4 +834,153 @@ func TestChatHoroscopeTopicChange(t *testing.T) {
 	if n := len(orders()); n != 2 {
 		t.Fatalf("заказов horoscope после повтора = %d, want 2", n)
 	}
+}
+
+// horoscopeEmbed — подставной эмбеддер сверки с гороскопом: единичный вектор
+// заданной оси, чтобы косинус с пробой ветки был точным (T-21-08).
+type horoscopeEmbed struct{ axis int }
+
+func (e horoscopeEmbed) Embed(context.Context, string) ([]float32, error) {
+	v := make([]float32, models.EmbedDim)
+	v[e.axis] = 1
+	return v, nil
+}
+
+// axisBlob кодирует единичный вектор оси в BLOB little-endian (D-17.2).
+func axisBlob(dim, axis int) []byte {
+	buf := make([]byte, dim*4)
+	binary.LittleEndian.PutUint32(buf[axis*4:], math.Float32bits(1))
+	return buf
+}
+
+// TestChatSceneHoroscope — сверка ранних векторов с гороскопом сцены (T-21-08,
+// W-13.7): совпадение отдаёт готовую bank_ref-ветку без кандидата, промах
+// ставит ветку кандидатом в оседание (W-13.6).
+func TestChatSceneHoroscope(t *testing.T) {
+	worldPath := seedChatWorld(t)
+
+	litRaw, err := db.OpenWriter(litDBPath("alpha"))
+	if err != nil {
+		t.Fatalf("OpenWriter(literary): %v", err)
+	}
+	if err := db.Migrate(litRaw, "literary"); err != nil {
+		_ = litRaw.Close()
+		t.Fatalf("Migrate(literary): %v", err)
+	}
+	if err := litRaw.Close(); err != nil {
+		t.Fatalf("Close(literary raw): %v", err)
+	}
+
+	const bankText = "Стражник преграждает путь."
+	lit, err := db.OpenWriterAs(litDBPath("alpha"), db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(literary): %v", err)
+	}
+	if _, err := lit.Exec("bank_pool",
+		`INSERT INTO bank_pool (id, kind, text, lang, tags, trust_level, origin, created_at) VALUES (12, 'drama', ?, 'ru', '', 2, 'forge', '2026-01-01T00:00:00Z')`,
+		bankText); err != nil {
+		_ = lit.Close()
+		t.Fatalf("INSERT bank_pool: %v", err)
+	}
+	issue := workshop.HoroscopeOutput{
+		Branches: []workshop.HoroscopeBranch{
+			{ID: "neg", Kind: "bank_ref", Ref: "bank://12", Theme: "опасность", ProbeText: "герой отступает"},
+		},
+		Forecast: "echo",
+	}
+	issueRaw, err := json.Marshal(issue)
+	if err != nil {
+		_ = lit.Close()
+		t.Fatalf("marshal issue: %v", err)
+	}
+	const sceneID = 7
+	res, err := lit.Exec("horoscope_issue",
+		`INSERT INTO horoscope_issue (scene_id, issue_json, created_at) VALUES (?, ?, ?)`,
+		int64(sceneID), string(issueRaw), "2026-01-01T00:00:00Z")
+	if err != nil {
+		_ = lit.Close()
+		t.Fatalf("INSERT horoscope_issue: %v", err)
+	}
+	issueID, err := res.LastInsertId()
+	if err != nil {
+		_ = lit.Close()
+		t.Fatalf("horoscope_issue id: %v", err)
+	}
+	_ = lit.Close()
+
+	world, err := db.OpenWriterAs(worldPath, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(world): %v", err)
+	}
+	defer world.Close()
+
+	// Проба ветки — ось 1; сцена 7 принадлежит ходу 5.
+	if _, err := world.Exec("vectors",
+		`INSERT INTO vectors (owner_table, owner_id, model, dim, lang, source_text, vec, created_at) VALUES ('horoscope_issue', ?, 'bge-m3', 1024, 'ru', 'герой отступает', ?, '2026-01-01T00:00:00Z')`,
+		issueID, axisBlob(models.EmbedDim, 1)); err != nil {
+		t.Fatalf("INSERT vectors: %v", err)
+	}
+	if _, err := world.Exec("scenes",
+		`INSERT INTO scenes (id, session_id, day, status, prose, turn_id) VALUES (?, 1, 1, 'open', '', 5)`,
+		int64(sceneID)); err != nil {
+		t.Fatalf("INSERT scenes: %v", err)
+	}
+
+	litReader := openChatLiterary("alpha")
+	if litReader == nil {
+		t.Fatal("литературная база не открылась")
+	}
+	defer litReader.Close()
+
+	old := chatEmbedder
+	defer SetChatEmbedder(old)
+
+	// Совпадение: реплика на оси пробы — отдана готовая запись банка, кандидата нет.
+	SetChatEmbedder(horoscopeEmbed{axis: 1})
+	branch, err := sceneHoroscopeReply(context.Background(), world, litReader, 5, 1, "герой отступает")
+	if err != nil {
+		t.Fatalf("sceneHoroscopeReply (совпадение): %v", err)
+	}
+	if branch != bankText {
+		t.Fatalf("ветка = %q, want %q", branch, bankText)
+	}
+	if n := sedimentOrders(t, world); n != 0 {
+		t.Fatalf("кандидатов оседания при совпадении = %d, want 0", n)
+	}
+
+	// Промах не форсируется: ветка вне прогноза уходит кандидатом в оседание.
+	SetChatEmbedder(horoscopeEmbed{axis: 0})
+	branch, err = sceneHoroscopeReply(context.Background(), world, litReader, 5, 1, "герой идёт вперёд")
+	if err != nil {
+		t.Fatalf("sceneHoroscopeReply (промах): %v", err)
+	}
+	if branch != "" {
+		t.Fatalf("промах отдал ветку %q", branch)
+	}
+	if n := sedimentOrders(t, world); n != 1 {
+		t.Fatalf("кандидатов оседания при промахе = %d, want 1", n)
+	}
+	var raw string
+	if err := world.QueryRow(`SELECT payload_json FROM workshop_queue WHERE kind = ?`,
+		string(workshop.KindSediment)).Scan(&raw); err != nil {
+		t.Fatalf("payload заказа sediment: %v", err)
+	}
+	var c turn.SedimentCandidate
+	if err := json.Unmarshal([]byte(raw), &c); err != nil {
+		t.Fatalf("payload заказа sediment не JSON: %v", err)
+	}
+	if c.TurnID != 5 || c.SessionID != 1 || c.Kind != turn.BranchHoroscope {
+		t.Fatalf("кандидат = %+v, want turn 5, session 1, kind %q", c, turn.BranchHoroscope)
+	}
+}
+
+// sedimentOrders считает заказы оседания в очереди мастерской.
+func sedimentOrders(t *testing.T, h *db.Handle) int {
+	t.Helper()
+	var n int
+	if err := h.QueryRow(`SELECT COUNT(*) FROM workshop_queue WHERE kind = ?`,
+		string(workshop.KindSediment)).Scan(&n); err != nil {
+		t.Fatalf("COUNT(workshop_queue sediment): %v", err)
+	}
+	return n
 }

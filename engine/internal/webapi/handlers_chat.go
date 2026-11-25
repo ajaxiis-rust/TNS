@@ -1,6 +1,7 @@
 package webapi
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -226,6 +227,19 @@ func handleChatTurn(w http.ResponseWriter, r *http.Request) {
 	turnID := lastTurnID(h, sessionID)
 	for _, chunk := range chatChunks(out.ReplyText) {
 		broadcastTurnChunk(turnID, chunk)
+	}
+	// T-21-08: ранние векторы набора сверяются с гороскопом сцены (W-13.7);
+	// совпавшая bank_ref-ветка отдаётся готовой записью банка, промах ставит
+	// ветку кандидатом в оседание (W-13.6). Сбой сверки ход не валит.
+	if branch, err := sceneHoroscopeReply(r.Context(), h, lit, turnID, sessionID, text); err != nil {
+		if chatLogger != nil {
+			_ = chatLogger.Event("workshop", "workshop.horoscope_match",
+				journal.Field{Key: "error", Value: err.Error()})
+		}
+	} else {
+		for _, chunk := range chatChunks(branch) {
+			broadcastTurnChunk(turnID, chunk)
+		}
 	}
 	chatTouch(slug)
 	// T-20-04: реплика возвращает мастерскую с паузы — молчание обнуляется.
@@ -505,6 +519,30 @@ func ensureHoroscopeTopic(h *db.Handle, sessionID int64) error {
 		Forecast: chatHoroscopeForecast,
 	})
 	return err
+}
+
+// sceneHoroscopeReply сверяет ранние векторы реплики с гороскопом сцены хода
+// (T-21-08, W-13.7): совпадение отдаёт текст готовой bank_ref-ветки, промах
+// ставит ветку кандидатом в оседание (W-13.6). Пусто — ветки нет.
+func sceneHoroscopeReply(ctx context.Context, h, lit *db.Handle, turnID, sessionID int64, text string) (string, error) {
+	if lit == nil {
+		return "", nil
+	}
+	sceneID := turnSceneID(h, turnID)
+	if sceneID == 0 {
+		return "", nil
+	}
+	return turn.MatchSceneHoroscope(ctx, h, lit, sceneID, text, chatEmbedder,
+		turn.SedimentCandidate{TurnID: turnID, SessionID: sessionID})
+}
+
+// turnSceneID возвращает сцену хода; 0 — сцены нет (слеш-команда, откат).
+func turnSceneID(h *db.Handle, turnID int64) int64 {
+	var id int64
+	if err := h.QueryRow(`SELECT id FROM scenes WHERE turn_id = ? ORDER BY id DESC LIMIT 1`, turnID).Scan(&id); err != nil {
+		return 0
+	}
+	return id
 }
 
 // broadcastTurnChunk рассылает порцию сцены подписчикам топика turn.stream.

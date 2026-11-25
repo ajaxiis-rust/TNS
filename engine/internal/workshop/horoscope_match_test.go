@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"path/filepath"
@@ -80,6 +81,70 @@ func TestHoroscopeMatch(t *testing.T) {
 	}
 }
 
+// TestHoroscopeBranchBankText — готовая bank_ref-ветка отдаётся записью банка
+// (T-21-08, W-13.7): ссылка bank://<id> резолвится в текст bank_pool
+// литературной базы; ветка weaver_prompt записи банка не имеет.
+func TestHoroscopeBranchBankText(t *testing.T) {
+	dir := t.TempDir()
+	worldPath := filepath.Join(dir, "world(a).db")
+	litPath := filepath.Join(dir, "literary.db")
+
+	newDB(t, worldPath, "world", "shared")
+	newDB(t, litPath, "literary")
+
+	world, err := db.OpenWriterAs(worldPath, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(world): %v", err)
+	}
+	defer world.Close()
+	lit, err := db.OpenWriterAs(litPath, db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(literary): %v", err)
+	}
+	defer lit.Close()
+
+	sceneID := insertScene(t, world, "open")
+	insertHoroscopeFixture(t, world, lit, sceneID)
+
+	const bankText = "Стражник преграждает путь."
+	if _, err := lit.Exec("bank_pool",
+		`INSERT INTO bank_pool (id, kind, text, lang, tags, trust_level, origin, created_at) VALUES (12, 'drama', ?, 'ru', '', 2, 'forge', '2026-01-01T00:00:00Z')`,
+		bankText); err != nil {
+		t.Fatalf("INSERT bank_pool: %v", err)
+	}
+
+	cfg := workshop.DefaultHoroscopeMatchConfig()
+
+	// Отрицательная ветка (bank_ref) — ось 1: реплика на этой оси отдаёт
+	// готовую запись банка.
+	m, err := workshop.MatchHoroscope(world, lit, sceneID, [][]float32{earlyVectorNeg(0.5)}, cfg)
+	if err != nil {
+		t.Fatalf("MatchHoroscope (bank_ref): %v", err)
+	}
+	if m == nil || m.Branch.ID != "neg" || m.Branch.Kind != "bank_ref" {
+		t.Fatalf("ветка = %+v, want neg/bank_ref", m)
+	}
+	text, err := m.BankText(lit)
+	if err != nil {
+		t.Fatalf("BankText: %v", err)
+	}
+	if text != bankText {
+		t.Fatalf("текст ветки = %q, want %q", text, bankText)
+	}
+
+	// Положительная ветка — собранный промпт Ткача: записи банка у неё нет.
+	m, err = workshop.MatchHoroscope(world, lit, sceneID, [][]float32{earlyVector(0.75)}, cfg)
+	if err != nil {
+		t.Fatalf("MatchHoroscope (weaver_prompt): %v", err)
+	}
+	if m == nil || m.Branch.Kind != "weaver_prompt" {
+		t.Fatalf("ветка = %+v, want weaver_prompt", m)
+	}
+	if _, err := m.BankText(lit); !errors.Is(err, workshop.ErrHoroscopeBranchNotBank) {
+		t.Fatalf("BankText (weaver_prompt) = %v, want ErrHoroscopeBranchNotBank", err)
+	}
+}
+
 // insertHoroscopeFixture пишет гороскоп и векторы веток прямо в базы, чтобы
 // задать точные косинусы: положительная ветка — ось 0, отрицательная — ось 1.
 func insertHoroscopeFixture(t *testing.T, world, lit *db.Handle, sceneID int64) int64 {
@@ -125,6 +190,15 @@ func insertHoroscopeFixture(t *testing.T, world, lit *db.Handle, sceneID int64) 
 func earlyVector(t float64) []float32 {
 	v := make([]float32, 1024)
 	v[0] = float32(t)
+	v[1] = float32(math.Sqrt(1 - t*t))
+	return v
+}
+
+// earlyVectorNeg строит вектор [-t, sqrt(1-t²), 0…]: его косинус с осью 1
+// равен t.
+func earlyVectorNeg(t float64) []float32 {
+	v := make([]float32, 1024)
+	v[0] = float32(-t)
 	v[1] = float32(math.Sqrt(1 - t*t))
 	return v
 }

@@ -165,6 +165,68 @@ func MatchHoroscope(world, literary *db.Handle, sceneID int64, early [][]float32
 	return best, nil
 }
 
+// bankRefPrefix — схема ссылки ветки bank_ref на запись bank_pool.
+const bankRefPrefix = "bank://"
+
+// ErrHoroscopeBranchNotBank — ветка гороскопа записи банка не имеет: ссылкой
+// bank_ref служит только отрицательная ветка.
+var ErrHoroscopeBranchNotBank = errors.New("workshop: ветка гороскопа не bank_ref")
+
+// HasHoroscope сообщает, выпущен ли гороскоп под сцену (T-21-08): без выпуска
+// сверять нечего, и реплика вне прогноза промахом не считается (W-13.6).
+func HasHoroscope(lit *db.Handle, sceneID int64) (bool, error) {
+	if lit == nil || sceneID == 0 {
+		return false, nil
+	}
+	var n int
+	if err := lit.QueryRow(`SELECT COUNT(*) FROM horoscope_issue WHERE scene_id = ?`, sceneID).Scan(&n); err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
+// BankText отдаёт готовую bank_ref-ветку (T-21-08, W-13.7): ссылка bank://<id>
+// резолвится в текст записи bank_pool литературной базы. Ветка другого вида
+// записи банка не имеет — ErrHoroscopeBranchNotBank.
+func (m *HoroscopeMatch) BankText(lit *db.Handle) (string, error) {
+	if m == nil {
+		return "", errors.New("workshop: пустая ветка гороскопа")
+	}
+	if lit == nil {
+		return "", errors.New("workshop: ветка банка без хэндла литературной базы")
+	}
+	if m.Branch.Kind != "bank_ref" {
+		return "", ErrHoroscopeBranchNotBank
+	}
+	id, ok := bankRefID(m.Branch.Ref)
+	if !ok {
+		return "", fmt.Errorf("workshop: ссылка ветки %q не bank://<id>", m.Branch.Ref)
+	}
+	var text string
+	err := lit.QueryRow(`SELECT text FROM bank_pool WHERE id = ?`, id).Scan(&text)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", fmt.Errorf("workshop: записи банка %d нет", id)
+	}
+	if err != nil {
+		return "", err
+	}
+	return text, nil
+}
+
+// bankRefID разбирает ссылку bank://<id> в номер записи bank_pool; иная схема
+// или нечисловой номер — не ссылка банка.
+func bankRefID(ref string) (int64, bool) {
+	rest, ok := strings.CutPrefix(strings.TrimSpace(ref), bankRefPrefix)
+	if !ok {
+		return 0, false
+	}
+	id, err := strconv.ParseInt(strings.TrimSpace(rest), 10, 64)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+	return id, true
+}
+
 // horoscopeVecFromBlob декодирует BLOB вектора ветки в Float32 little-endian
 // (D-17.2); битый BLOB (не кратен 4 байтам) даёт nil.
 func horoscopeVecFromBlob(blob []byte) []float32 {
