@@ -113,6 +113,24 @@ func RunPythia(world *db.Handle, literary *db.Handle, day int) error {
 	return nil
 }
 
+// RunNightPythia — ночной прогон Пифии на ступени паузы (T-21-06): воркер
+// вызывает его на каждом тике, а прогон идёт только в ночном окне. День берётся
+// из книги — последняя глава закрытого дня; повтор в тот же день новых строк не
+// даёт (идемпотентность по дню внутри RunPythia).
+func RunNightPythia(world, literary *db.Handle, pause PauseStep) error {
+	if pause != PauseNight {
+		return nil
+	}
+	var day int
+	if err := world.QueryRow(`SELECT COALESCE(MAX(day), 0) FROM book_chapters`).Scan(&day); err != nil {
+		return err
+	}
+	if day <= 0 {
+		return nil
+	}
+	return RunPythia(world, literary, day)
+}
+
 // heroBirth читает стартовые данные карты игрока из world_meta.hero_birth
 // (W-12.3); значение world_meta хранится JSON-строкой (T-02-03, шаг 3).
 func heroBirth(h *db.Handle) (string, error) {

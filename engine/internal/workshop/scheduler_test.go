@@ -342,3 +342,85 @@ func TestSchedulerKindDispatch(t *testing.T) {
 		}
 	}
 }
+
+// TestSchedulerNightPythia — ночной прогон Пифии из воркера (T-21-06): на лёгкой
+// ступени RunPythia не вызывается, на ночной — пополняет карту за день
+// последней главы; повтор тика в тот же день слот не дёргает.
+func TestSchedulerNightPythia(t *testing.T) {
+	dir := t.TempDir()
+	worldPath := filepath.Join(dir, "world(a).db")
+	litPath := filepath.Join(dir, "literary.db")
+	newDB(t, worldPath, "world", "shared")
+	newDB(t, litPath, "literary")
+	seedPythiaMeta(t, worldPath, "простолюдин")
+
+	world, err := db.OpenWriterAs(worldPath, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(world): %v", err)
+	}
+	defer world.Close()
+	lit, err := db.OpenWriterAs(litPath, db.DBLiterary, db.WriterForge, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(literary): %v", err)
+	}
+	defer lit.Close()
+
+	seedPythiaHeroCard(t, world, "ENTJ")
+	seedPythiaTurns(t, world)
+	const day = 2
+	if _, err := world.Exec("book_chapters",
+		`INSERT INTO book_chapters (day, title, status, kind) VALUES (?, 'Глава 2', 'closed', 'chapter')`, day); err != nil {
+		t.Fatalf("INSERT book_chapters: %v", err)
+	}
+
+	slot := testkit.NewFakeSlot()
+	slot.SetResponse("pythia", pythiaOutput("INTP"))
+	workshop.SetSlot(slot)
+	defer workshop.SetSlot(nil)
+
+	clk := testkit.NewClock()
+	s := workshop.NewScheduler(world, clk, nil, nil)
+
+	// Лёгкая ступень: ночного прогона нет.
+	clk.Advance(10 * time.Minute)
+	if step := s.Step(); step != workshop.PauseLight {
+		t.Fatalf("ступень после 10 минут = %q, want light", step)
+	}
+	if err := workshop.RunNightPythia(world, lit, s.Step()); err != nil {
+		t.Fatalf("RunNightPythia(light): %v", err)
+	}
+	if got := countAtlasDay(t, world, day); got != 0 {
+		t.Fatalf("на лёгкой ступени карта дня пополнена: %d строк, want 0", got)
+	}
+	if got := slot.Calls(); got != 0 {
+		t.Fatalf("на лёгкой ступени слот Пифии вызван %d раз, want 0", got)
+	}
+
+	// Ночное окно: прогон за день последней главы книги.
+	s.SetChapterClosed(true)
+	clk.Advance(8 * time.Hour)
+	if step := s.Step(); step != workshop.PauseNight {
+		t.Fatalf("ступень в ночном окне = %q, want night", step)
+	}
+	if err := workshop.RunNightPythia(world, lit, s.Step()); err != nil {
+		t.Fatalf("RunNightPythia(night): %v", err)
+	}
+	rows := countAtlasDay(t, world, day)
+	if rows == 0 {
+		t.Fatal("на ночной ступени RunPythia не пополнил карту дня")
+	}
+	if got := slot.Calls(); got != 1 {
+		t.Fatalf("на ночной ступени слот Пифии вызван %d раз, want 1", got)
+	}
+
+	// Повтор ночного тика карту не дублирует и слот не дёргает.
+	if err := workshop.RunNightPythia(world, lit, s.Step()); err != nil {
+		t.Fatalf("RunNightPythia(повтор): %v", err)
+	}
+	if got := countAtlasDay(t, world, day); got != rows {
+		t.Fatalf("повторный ночной тик добавил строк карты: %d → %d", rows, got)
+	}
+	if got := slot.Calls(); got != 1 {
+		t.Fatalf("повторный ночной тик вызвал слот %d раз, want 1", got)
+	}
+}

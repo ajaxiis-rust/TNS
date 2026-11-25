@@ -733,6 +733,11 @@ func (w *workshopWorker) tick(ctx context.Context) {
 	if err := w.sched.Run(ctx); err != nil {
 		w.event("workshop.worker_run", err)
 	}
+	// Ночное окно — прогон Пифии за прошедший день книги (T-21-06); повтор тика
+	// в тот же день карту не дублирует. Сбой прогона не валит воркер.
+	if err := workshop.RunNightPythia(w.world, w.lit, w.sched.Step()); err != nil {
+		w.event("workshop.worker_pythia", err)
+	}
 }
 
 // openWorld открывает оперативную и литературную базы активного мира и собирает
