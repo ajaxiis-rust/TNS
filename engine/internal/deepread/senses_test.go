@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"tns65/internal/deepread"
+	"tns65/internal/testkit"
 )
 
 // TestSenseSalience — гейт смыслового слоя salience (T-15-02): омоним,
@@ -174,6 +175,83 @@ func TestSenseSalience(t *testing.T) {
 			t.Error("senses_margin 1.5: ошибки нет")
 		}
 	})
+}
+
+// TestSenseVectorLayer — T-20-03: смысловой слой собирает senses.VectorLayer,
+// когда есть словарь, контексты пака и эмбеддер; без эмбеддера, без
+// senses_contexts.json или при нулевом весе векторный счёт не подключается.
+func TestSenseVectorLayer(t *testing.T) {
+	root := findEngineRoot()
+	if root == "" {
+		t.Fatal("корень движка не найден")
+	}
+	packDir := filepath.Join(root, "packs", "ru")
+	cfg, err := deepread.LoadSalienceConfig(filepath.Join(root, "config.yaml"))
+	if err != nil {
+		t.Fatalf("LoadSalienceConfig(engine/config.yaml): %v", err)
+	}
+	if cfg.SensesEmbedWeight != 3.0 {
+		t.Fatalf("deepread.senses_embed_weight = %g, ожидалось 3.0", cfg.SensesEmbedWeight)
+	}
+
+	emb := testkit.NewFakeEmbed()
+	layer, err := deepread.LoadSenseLayer(packDir, cfg, emb)
+	if err != nil {
+		t.Fatalf("LoadSenseLayer(эмбеддер): %v", err)
+	}
+	if layer == nil || layer.Vector == nil {
+		t.Fatal("LoadSenseLayer(эмбеддер): слой векторов смыслов не собран")
+	}
+
+	// Слой векторов участвует в решении смысла: окно омонима уходит в эмбеддер.
+	dicts := map[string]*deepread.Dictionary{
+		deepread.KeyArchitecture: {Key: deepread.KeyArchitecture, Lemmas: map[string]int{"замок": 2}},
+	}
+	chunk := senseChunk(1, "замок", "скважина", "защёлка", "засов")
+	if _, err := deepread.TagChunksWithSenses([]deepread.SalienceChunk{chunk}, dicts, layer, cfg); err != nil {
+		t.Fatalf("TagChunksWithSenses(слой векторов): %v", err)
+	}
+	if emb.Calls() == 0 {
+		t.Error("эмбеддер не вызывался: векторный счёт смыслов не подключён")
+	}
+
+	plain, err := deepread.LoadSenseLayer(packDir, cfg)
+	if err != nil {
+		t.Fatalf("LoadSenseLayer(без эмбеддера): %v", err)
+	}
+	if plain == nil || plain.Vector != nil {
+		t.Fatalf("LoadSenseLayer(без эмбеддера): слой векторов %+v, ожидался nil", plain)
+	}
+
+	off := cfg
+	off.SensesEmbedWeight = 0
+	noWeight, err := deepread.LoadSenseLayer(packDir, off, emb)
+	if err != nil {
+		t.Fatalf("LoadSenseLayer(вес 0): %v", err)
+	}
+	if noWeight == nil || noWeight.Vector != nil {
+		t.Fatalf("LoadSenseLayer(вес 0): слой векторов %+v, ожидался nil", noWeight)
+	}
+
+	// senses_contexts.json нет — словарь есть, векторного слоя нет, ошибки нет.
+	dir := t.TempDir()
+	raw, err := os.ReadFile(filepath.Join(packDir, "senses.json"))
+	if err != nil {
+		t.Fatalf("ReadFile(senses.json): %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "senses.json"), raw, 0o644); err != nil {
+		t.Fatalf("WriteFile(senses.json): %v", err)
+	}
+	bare, err := deepread.LoadSenseLayer(dir, cfg, emb)
+	if err != nil {
+		t.Fatalf("LoadSenseLayer(без контекстов): %v", err)
+	}
+	if bare == nil || bare.Dict == nil {
+		t.Fatal("LoadSenseLayer(без контекстов): словарь смыслов не загружен")
+	}
+	if bare.Vector != nil {
+		t.Fatal("LoadSenseLayer(без контекстов): слой векторов собран без senses_contexts.json")
+	}
 }
 
 // senseChunk собирает чанк из одного токена-омонима и токенов-триггеров: формы

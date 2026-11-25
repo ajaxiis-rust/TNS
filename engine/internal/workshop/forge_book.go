@@ -121,9 +121,10 @@ func RunForgeBook(ctx context.Context, world, lit *db.Handle, inputPath string, 
 			runChunks[i] = deepread.RunChunk{Ord: i, Chapter: chunk.Chapter, Text: chunk.Text}
 		}
 		if _, err := deepread.RunPipeline(lit, world, deepread.RunInput{
-			BookID: bookID,
-			Author: parsed.Meta.Author,
-			Chunks: runChunks,
+			BookID:   bookID,
+			Author:   parsed.Meta.Author,
+			Chunks:   runChunks,
+			Embedder: embedderForge(),
 		}); err != nil {
 			return res, fmt.Errorf("workshop: разбор книги %d: %w", bookID, err)
 		}

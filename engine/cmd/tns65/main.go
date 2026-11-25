@@ -789,6 +789,14 @@ func runForgeBookTask(payloadJSON string) int {
 	// отдельный запуск роя собирает слот сам, слот ядра сюда не переходит.
 	forgeLogger, _ := journal.New(filepath.Join("state", "journal", "engine.log"))
 	wireWorkshopSlot(forgeLogger)
+	// T-20-03: ребёнок ковки поднимает клиент эмбеддингов сам — векторы чанков
+	// (writeBankVector) и векторный счёт смыслов разбора живут в этом процессе.
+	emb, err := llmparams.EmbedClient(llmparams.LoadSettings("config.yaml"), forgeLogger)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	workshop.SetEmbedder(emb)
 
 	name := filepath.Base(payload.InputPath)
 	_ = webapi.SetForgeProgress(slug, name, 0)
@@ -870,6 +878,12 @@ func runDeepreadTask(literaryPath, payloadJSON string) int {
 	// Спорные случаи разбора адресуются слоту роя тем же маршрутом источников,
 	// что и ковка: слот ядра сюда не переходит.
 	deepLogger, _ := journal.New(filepath.Join("state", "journal", "engine.log"))
+	// T-20-03: клиент эмбеддингов разбора — векторный счёт смыслов книги.
+	emb, err := llmparams.EmbedClient(llmparams.LoadSettings("config.yaml"), deepLogger)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	var slot deepread.DisputeSlot
 	if cfg, err := providerroute.LoadSettings("config.yaml", "settings.toml"); err == nil {
 		router := providerroute.NewRouter(cfg, providercfg.Load("providers.toml"), deepLogger)
@@ -877,11 +891,12 @@ func runDeepreadTask(literaryPath, payloadJSON string) int {
 	}
 
 	report, err := deepread.RunPipeline(lit, world, deepread.RunInput{
-		BookID: bookID,
-		Author: parsed.Meta.Author,
-		Chunks: chunks,
-		Slot:   slot,
-		Logger: deepLogger,
+		BookID:   bookID,
+		Author:   parsed.Meta.Author,
+		Chunks:   chunks,
+		Slot:     slot,
+		Logger:   deepLogger,
+		Embedder: emb,
 	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

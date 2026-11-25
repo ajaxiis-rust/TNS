@@ -22,6 +22,7 @@ import (
 
 	"tns65/internal/db"
 	"tns65/internal/journal"
+	"tns65/internal/models"
 	"tns65/internal/prompts"
 	"tns65/internal/version"
 )
@@ -51,7 +52,8 @@ type RunChunk struct {
 
 // RunInput — вход прогона разбора книги: книга реестра, чанки, каталог пака,
 // файл конфигурации, слот спорных вопросов и журнал. Пустые PackDir и
-// ConfigPath разрешаются от корня движка.
+// ConfigPath разрешаются от корня движка. Embedder (T-20-03) подключает к
+// смысловому слою векторный счёт смыслов; nil — только триггеры.
 type RunInput struct {
 	BookID     int64
 	Author     string
@@ -61,6 +63,7 @@ type RunInput struct {
 	Slot       DisputeSlot
 	Logger     *journal.Logger
 	Now        string
+	Embedder   models.Embedder
 }
 
 // Summary — сводка прогона разбора (шаг 4 T-14-13): число чанков, полосы тегов
@@ -274,7 +277,7 @@ func runLayers(lit, world *db.Handle, in RunInput, chunks []runChunk, packDir, c
 	if err != nil {
 		return Summary{}, err
 	}
-	senseLayer, err := LoadSenseLayer(packDir, salCfg)
+	senseLayer, err := LoadSenseLayer(packDir, salCfg, in.Embedder)
 	if err != nil {
 		return Summary{}, err
 	}

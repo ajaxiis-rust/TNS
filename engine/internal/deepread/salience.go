@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"tns65/internal/senses"
 )
 
 // Salience чанка (W-23): IDF лемм по книге, скор ключа на чанк, полоса и
@@ -36,11 +38,19 @@ type SalienceConfig struct {
 	// SensesMargin — порог отрыва лучшего смысла омонима от второго
 	// (deepread.senses_margin, T-15-02); 0 — константа T-15-01.
 	SensesMargin float64
+	// SensesEmbedWeight — вес векторного счёта смысла
+	// (deepread.senses_embed_weight, T-20-03); 0 — только триггеры.
+	SensesEmbedWeight float64
 }
 
 // DefaultSalienceConfig возвращает пороги, совпадающие со значениями config.yaml.
 func DefaultSalienceConfig() SalienceConfig {
-	return SalienceConfig{Confident: 0.6, Reject: 0.15, SensesMargin: defaultSensesMargin}
+	return SalienceConfig{
+		Confident:         0.6,
+		Reject:            0.15,
+		SensesMargin:      defaultSensesMargin,
+		SensesEmbedWeight: senses.DefaultEmbedWeight,
+	}
 }
 
 // LoadSalienceConfig читает пороги полос из файла конфигурации.
@@ -77,13 +87,23 @@ func parseSalienceSection(data string) (SalienceConfig, error) {
 		}
 		if indent <= 2 {
 			inThresholds = trimmed == "thresholds:"
-			if key, value, ok := strings.Cut(trimmed, ":"); ok && strings.TrimSpace(key) == "senses_margin" {
+			key, value, ok := strings.Cut(trimmed, ":")
+			if ok {
 				value = strings.TrimSpace(strings.SplitN(value, "#", 2)[0])
-				f, err := strconv.ParseFloat(value, 64)
-				if err != nil {
-					return SalienceConfig{}, fmt.Errorf("deepread: senses_margin %q: %v", value, err)
+				switch strings.TrimSpace(key) {
+				case "senses_margin":
+					f, err := strconv.ParseFloat(value, 64)
+					if err != nil {
+						return SalienceConfig{}, fmt.Errorf("deepread: senses_margin %q: %v", value, err)
+					}
+					cfg.SensesMargin = f
+				case "senses_embed_weight":
+					f, err := strconv.ParseFloat(value, 64)
+					if err != nil {
+						return SalienceConfig{}, fmt.Errorf("deepread: senses_embed_weight %q: %v", value, err)
+					}
+					cfg.SensesEmbedWeight = f
 				}
-				cfg.SensesMargin = f
 			}
 			continue
 		}
@@ -124,6 +144,9 @@ func validateSalienceConfig(cfg SalienceConfig) error {
 	}
 	if math.IsNaN(cfg.SensesMargin) || cfg.SensesMargin < 0 || cfg.SensesMargin > 1 {
 		return fmt.Errorf("deepread: senses_margin %g: нужно 0 ≤ senses_margin ≤ 1", cfg.SensesMargin)
+	}
+	if math.IsNaN(cfg.SensesEmbedWeight) || cfg.SensesEmbedWeight < 0 {
+		return fmt.Errorf("deepread: senses_embed_weight %g: нужно senses_embed_weight ≥ 0", cfg.SensesEmbedWeight)
 	}
 	if cfg.Reject < 0 || cfg.Confident > 1 || cfg.Reject >= cfg.Confident {
 		return fmt.Errorf("deepread: пороги salience: confident %g, reject %g: нужно 0 ≤ reject < confident ≤ 1",
