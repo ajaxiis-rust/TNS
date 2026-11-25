@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -210,6 +211,8 @@ func TestNoShortReadyBudget(t *testing.T) {
 	var mu sync.Mutex
 	var readyFlag bool
 	var procs []*fakeProcess
+	// Подменённый порт-чек: тест не зависит от реального сокета на Port (T-21-01).
+	var portChecks atomic.Int32
 	runner := &fakeRunner{
 		makeProc: func(name string) *fakeProcess {
 			p := &fakeProcess{name: name, crashCh: make(chan error, 1), stopCh: make(chan struct{})}
@@ -230,6 +233,10 @@ func TestNoShortReadyBudget(t *testing.T) {
 	}},
 		WithClock(clock),
 		WithRunner(runner),
+		WithPortCheck(func(int) error {
+			portChecks.Add(1)
+			return nil
+		}),
 		WithReady(func(Config) error {
 			mu.Lock()
 			defer mu.Unlock()
@@ -254,6 +261,9 @@ func TestNoShortReadyBudget(t *testing.T) {
 	mu.Unlock()
 	if proc.isStopped() {
 		t.Fatal("ребёнок убит до готовности — короткий бюджет всё же есть")
+	}
+	if portChecks.Load() == 0 {
+		t.Fatal("порт-чек не вызван — тест прошёл мимо подмены")
 	}
 
 	s.Stop()
