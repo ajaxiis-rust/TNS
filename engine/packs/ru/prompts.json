@@ -1,7 +1,7 @@
 {
   "_note": "Тексты промптов движка (пакет ru). Правка файла доезжает до запроса без пересборки: файл читается при старте пакета. Заготовки {имя} подставляет код (например, {chunk}, {text}, {step}); JSON-обёртка промпта сохраняется. Ключа нет — работает дефолт из Go. Правка роли из world_meta role.<роль>.prompts главнее этого файла.",
   "weaver_instruction": "Опиши сцену прозой от второго лица, строго по фактам сцены, ничего не добавляя от себя. Не представляйся и не говори о себе.",
-  "compose": "{\"task\":\"compose\",\"chunk\":\"{chunk}\"}",
+  "compose": "{\"task\": \"compose\", \"chunk\": \"{chunk}\", \"instruction\": \"Извлеки структурную композицию чанка книги. Ответь строго одним JSON-объектом и больше ничем — без пояснений, без markdown и без текста до или после. Поля объекта: \\\"family_primary\\\" — одна из семей escape_liberation, judgment_trial, loyalty, betrayal, inheritance_return, endurance_suffering, rescue, rise_fall_rise, wisdom_counsel, political_intrigue, quest_journey, temptation_fall, prophetic_oracle, teaching_discourse (пустая строка допустима); \\\"pattern_secondary\\\" — другая семья из того же списка или пустая строка; \\\"technique\\\" — slow_revelation, sudden_reversal, procedural_pressure, intimate_psychological, social_panorama, ironic_distance, tragic_inevitability, redemptive_arc, oracular_declaration, didactic_exhortation (пустая строка допустима); \\\"moral_stance\\\" — redemptive, tragic, ironic, ambivalent, cynical, moralistic (пустая строка допустима); \\\"inversion\\\" — true или false.\"}",
   "ladder.step1": "{\"frame\":\"художественная проза\"}",
   "ladder.step2": "{\"offscreen\":true}",
   "ladder.step3": "{\"offscreen\":true}",

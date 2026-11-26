@@ -181,7 +181,7 @@ main() {
     GEN_PID=$!
     "$ENGINE_ROOT/bin/llama-server" \
         --model "$ENGINE_ROOT/$BGE_M3_Q4_FILE" --host 127.0.0.1 --port 5002 \
-        --embeddings --pooling cls -c 8192 \
+        --embeddings --pooling cls -c 8192 -b 8192 -ub 8192 \
         >"$ENGINE_ROOT/state/llama-embed.log" 2>&1 &
     EMBED_PID=$!
 

@@ -187,8 +187,8 @@ func familyInRegistry(name string, fams []structural.Family) bool {
 }
 
 // defaultComposePrompt — заготовка промпта compose (fallback без файла пакета):
-// чанк книги, строгий JSON на выходе.
-const defaultComposePrompt = `{"task":"compose","chunk":"{chunk}"}`
+// чанк книги и строгий контракт выхода — один JSON-объект ComposeOutput.
+const defaultComposePrompt = `{"task":"compose","chunk":"{chunk}","instruction":"Извлеки структурную композицию чанка книги. Ответь строго одним JSON-объектом и больше ничем — без пояснений, без markdown и без текста до или после. Поля объекта: \"family_primary\" — одна из семей escape_liberation, judgment_trial, loyalty, betrayal, inheritance_return, endurance_suffering, rescue, rise_fall_rise, wisdom_counsel, political_intrigue, quest_journey, temptation_fall, prophetic_oracle, teaching_discourse (пустая строка допустима); \"pattern_secondary\" — другая семья из того же списка или пустая строка; \"technique\" — slow_revelation, sudden_reversal, procedural_pressure, intimate_psychological, social_panorama, ironic_distance, tragic_inevitability, redemptive_arc, oracular_declaration, didactic_exhortation (пустая строка допустима); \"moral_stance\" — redemptive, tragic, ironic, ambivalent, cynical, moralistic (пустая строка допустима); \"inversion\" — true или false."}`
 
 // composePrompt строит промпт слота compose: чанк книги, строгий JSON на выходе.
 func composePrompt(text string) string {

@@ -115,7 +115,7 @@ engine/scripts/test-local.sh --check  # только перечислить от
 
 | Роль | Файл | Порт | Что |
 |---|---|---|---|
-| векторы смысла | `models/bge-m3-Q4_K_M.gguf` | :5002 | BGE-M3 Q4, dim 1024, `--embeddings --pooling cls -c 8192` |
+| векторы смысла | `models/bge-m3-Q4_K_M.gguf` | :5002 | BGE-M3 Q4, dim 1024, `--embeddings --pooling cls -c 8192 -b 8192 -ub 8192` (батчи равны контексту: весь вход должен укладываться в один физический батч) |
 | генерация | `models/Llama-3.2-3B-Instruct-Q4_K_M.gguf` | :5001 | генеративная 3B, `/completion` |
 
 sha256 каждой модели — oid LFS файла на Hugging Face; загрузка идёт только по

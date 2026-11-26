@@ -68,6 +68,8 @@ func TestArgs(t *testing.T) {
 		"--embeddings",
 		"--pooling", "cls",
 		"-c", "8192",
+		"-b", "8192",
+		"-ub", "8192",
 		"--threads", "8",
 	}
 	if !reflect.DeepEqual(got, want) {

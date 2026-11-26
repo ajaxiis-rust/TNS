@@ -47,6 +47,9 @@ func (s Spec) port() int {
 
 // Args собирает флаги llama-server эмбеддера: --model, --host, --port,
 // --embeddings, --pooling cls, -c и, если задан, --threads (шаг 1).
+// Размеры батча -b/-ub равны контексту: /embeddings требует уложить весь вход
+// в один физический батч, иначе чанк книги длиннее дефолтных 512 токенов
+// отдаёт 500 «input is too large to process».
 func (s Spec) Args() []string {
 	args := []string{
 		"--model", s.ModelPath,
@@ -55,6 +58,8 @@ func (s Spec) Args() []string {
 		"--embeddings",
 		"--pooling", "cls",
 		"-c", strconv.Itoa(DefaultContext),
+		"-b", strconv.Itoa(DefaultContext),
+		"-ub", strconv.Itoa(DefaultContext),
 	}
 	if s.Threads > 0 {
 		args = append(args, "--threads", strconv.Itoa(s.Threads))
