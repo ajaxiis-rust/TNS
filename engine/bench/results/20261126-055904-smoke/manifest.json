@@ -1,0 +1,14 @@
+{
+  "mode": "smoke",
+  "models_dir": "/home/ajaxii/PRJ/TNS-GOLD/world_db/models",
+  "threads": "1,4",
+  "n_prompt": 64,
+  "n_gen": 16,
+  "reps": 1,
+  "ngls": "0",
+  "cpu_info": "AMD Ryzen 5 3500U with Radeon Vega Mobile Gfx",
+  "nproc": "8",
+  "mem_total_kb": "13211100",
+  "host": "ajaxii-NucBox-G10-Pro",
+  "date": "2026-11-26T05:59:09+02:00"
+}
