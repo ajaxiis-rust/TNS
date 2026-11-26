@@ -154,6 +154,8 @@
 
 ### T-21-10. Доковка персонажей пачки на тяжёлой ступени
 
+> ✅ Выполнено 2026-11-26 (коммит 8f20652): воркер ставит complement-заказ по аркам на тяжёлой ступени.
+
 - Суть: на тяжёлой ступени воркер по аркам (`birth/data/arcs.json`) ставит
   `complement`-заказ; диспетчер исполняет `RunForgeCard`+`ReconcileComplement`.
 - Файлы: `engine/cmd/tns65/main.go`, `engine/internal/workshop/complement.go`,
