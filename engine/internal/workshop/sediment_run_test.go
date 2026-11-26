@@ -3,6 +3,7 @@ package workshop_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -201,5 +202,109 @@ func TestSedimentRun(t *testing.T) {
 	}
 	if firstID != liked {
 		t.Fatalf("первой осела сцена %d, want %d (с лайком)", firstID, liked)
+	}
+}
+
+// bankPoolCount — число строк банка литературной базы.
+func bankPoolCount(t *testing.T, lit *db.Handle) int {
+	t.Helper()
+	var n int
+	if err := lit.QueryRow(`SELECT COUNT(*) FROM bank_pool`).Scan(&n); err != nil {
+		t.Fatalf("COUNT(bank_pool): %v", err)
+	}
+	return n
+}
+
+// TestSedimentRemelt — переплавка осевшего (T-21-09): запись высокого доверия
+// (вердикт авто-критика clean) ложится слотной заготовкой drama с trust_level=2,
+// запись с замечаниями (issues) не переплавляется.
+func TestSedimentRemelt(t *testing.T) {
+	dir := t.TempDir()
+	worldPath := filepath.Join(dir, "world(a).db")
+	litPath := filepath.Join(dir, "literary.db")
+
+	newDB(t, worldPath, "world", "shared")
+	newDB(t, litPath, "literary")
+
+	world, err := db.OpenWriterAs(worldPath, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(world): %v", err)
+	}
+	defer world.Close()
+	lit, err := db.OpenWriterAs(litPath, db.DBLiterary, db.WriterSediment, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(literary): %v", err)
+	}
+	defer lit.Close()
+
+	slot := testkit.NewFakeSlot()
+	slot.SetResponse("autocritic", `{"verdict":"clean"}`)
+	pipeline := sediment.NewPipeline(testkit.NewFakeEmbed(), slot, passCensor{}, nil)
+
+	clk := testkit.NewClock()
+	s := workshop.NewScheduler(world, clk, nil, nil)
+	s.SetSedimentRunner(workshop.NewSedimentRunner(lit, pipeline))
+
+	trusted := insertSedimentScene(t, world, 21, "Он поднялся по тропе к воротам.")
+	insertSedimentOrder(t, world, 21, 50, "2026-01-01T00:00:00Z")
+
+	// Лёгкая ступень заказ не запускает, тяжёлая — прогоняет конвейер.
+	clk.Advance(10 * time.Minute)
+	if err := s.Run(context.Background()); err != nil {
+		t.Fatalf("Run(light): %v", err)
+	}
+	if n := bankPoolCount(t, lit); n != 0 {
+		t.Fatalf("на лёгкой ступени строк bank_pool = %d, want 0", n)
+	}
+	clk.Advance(4 * time.Hour)
+	if err := s.Run(context.Background()); err != nil {
+		t.Fatalf("Run(heavy): %v", err)
+	}
+
+	var sedimentID int64
+	if err := lit.QueryRow(`SELECT id FROM sediment_scene WHERE source_scene_id = ?`, trusted).Scan(&sedimentID); err != nil {
+		t.Fatalf("SELECT sediment_scene: %v", err)
+	}
+
+	// Осевшее высокого доверия переплавлено: одна заготовка drama trust_level=2
+	// с origin оседания и ссылкой на сцену.
+	if n := bankPoolCount(t, lit); n != 1 {
+		t.Fatalf("строк bank_pool = %d, want 1", n)
+	}
+	var kind, origin string
+	var trust int
+	var source int64
+	if err := lit.QueryRow(`SELECT kind, origin, trust_level, source_scene_id FROM bank_pool`).
+		Scan(&kind, &origin, &trust, &source); err != nil {
+		t.Fatalf("SELECT bank_pool: %v", err)
+	}
+	if kind != "drama" || trust != sediment.TrustLevelVerified {
+		t.Fatalf("заготовка банка = %s/trust=%d, want drama/trust=%d", kind, trust, sediment.TrustLevelVerified)
+	}
+	if want := fmt.Sprintf("sediment:%d", sedimentID); origin != want {
+		t.Fatalf("origin заготовки = %q, want %q", origin, want)
+	}
+	if source != trusted {
+		t.Fatalf("source_scene_id заготовки = %d, want %d", source, trusted)
+	}
+
+	// Низкое доверие: авто-критик нашёл замечания — записи банка нет.
+	slot.SetResponse("autocritic", `{"verdict":"issues","issues":["сухо"]}`)
+	insertSedimentScene(t, world, 22, "Она вошла в зал и огляделась по сторонам.")
+	insertSedimentOrder(t, world, 22, 50, "2026-01-01T00:01:00Z")
+	clk.Advance(4 * time.Hour)
+	if err := s.Run(context.Background()); err != nil {
+		t.Fatalf("Run(heavy, issues): %v", err)
+	}
+
+	var settled int
+	if err := lit.QueryRow(`SELECT COUNT(*) FROM sediment_scene`).Scan(&settled); err != nil {
+		t.Fatalf("COUNT(sediment_scene): %v", err)
+	}
+	if settled != 2 {
+		t.Fatalf("строк sediment_scene = %d, want 2", settled)
+	}
+	if n := bankPoolCount(t, lit); n != 1 {
+		t.Fatalf("после оседания низкого доверия строк bank_pool = %d, want 1", n)
 	}
 }

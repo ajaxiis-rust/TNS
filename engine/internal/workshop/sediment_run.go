@@ -43,6 +43,10 @@ const (
 // sedimentRunEvent — событие журнала станка об исходе заказа оседания.
 const sedimentRunEvent = "workshop.sediment"
 
+// sedimentRemeltEvent — событие журнала станка об отказе переплавки осевшего
+// (T-21-09): оседание состоялось, заготовка банка не создана.
+const sedimentRemeltEvent = "workshop.remelt"
+
 // SedimentRunFunc — исполнение заказа оседания: прогон конвейера на сцену
 // кандидата, перевод заказа в done/failed и событие журнала с исходом.
 type SedimentRunFunc func(ctx context.Context, world *db.Handle, o *Order, logger *journal.Logger) (SedimentOutcome, error)
@@ -82,7 +86,7 @@ func RunSedimentOrder(ctx context.Context, world *db.Handle, lit *db.Handle, pip
 		return "", err
 	}
 
-	_, runErr := pipeline.Run(ctx, lit, scene, bindings)
+	ws, runErr := pipeline.Run(ctx, lit, scene, bindings)
 	outcome := outcomeFor(runErr)
 	status := string(StatusDone)
 	if outcome != SedimentWrite && outcome != SedimentDupSkip {
@@ -100,10 +104,68 @@ func RunSedimentOrder(ctx context.Context, world *db.Handle, lit *db.Handle, pip
 			{Key: "outcome", Value: string(outcome)}}
 		_ = logger.Event("workshop", sedimentRunEvent, fields...)
 	}
+	// Высокое доверие — запись осела без замечаний авто-критика (вердикт питает
+	// уровень доверия, W-03): Гефест переплавляет её в слотную заготовку банка
+	// (T-21-09). Отказ переплавки оседание не отменяет — строка уже лежит.
+	if outcome == SedimentWrite && ws.Verdict == sediment.VerdictClean {
+		if _, err := remeltSedimented(lit, ws.ID, logger); err != nil {
+			if logger != nil {
+				_ = logger.Event("workshop", sedimentRemeltEvent,
+					journal.Field{Key: "order_id", Value: strconv.FormatInt(o.ID, 10)},
+					journal.Field{Key: "sediment_id", Value: strconv.FormatInt(ws.ID, 10)},
+					journal.Field{Key: "err", Value: err.Error()})
+			}
+		}
+	}
 	if runErr != nil {
 		return outcome, runErr
 	}
 	return outcome, nil
+}
+
+// remeltSedimented переплавляет осевшую запись высокого доверия в слотную
+// заготовку bank_pool (T-21-09): RemeltScene поднимает trust_level до 2.
+// Хэндл оседания помечен писателем sediment и bank_pool писать не может (карта
+// писателей T-01-07), поэтому переплавка идёт отдельным хэндлом forge на ту же
+// литературную базу. Тегов нет: sediment_scene их не хранит, а заказ оседания
+// несёт только ссылку на сцену.
+func remeltSedimented(lit *db.Handle, sedimentID int64, logger *journal.Logger) (int64, error) {
+	forge, err := forgeHandle(lit, logger)
+	if err != nil {
+		return 0, err
+	}
+	defer forge.Close()
+	return RemeltScene(forge, sedimentID)
+}
+
+// forgeHandle открывает хэндл писателя forge на литературную базу хэндла h:
+// путь базы (файл main) читается у самого хэндла, чтобы не тащить его через
+// заказ оседания.
+func forgeHandle(h *db.Handle, logger *journal.Logger) (*db.Handle, error) {
+	rows, err := h.Query(`PRAGMA database_list`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var path string
+	for rows.Next() {
+		var seq int
+		var name, file string
+		if err := rows.Scan(&seq, &name, &file); err != nil {
+			return nil, err
+		}
+		if name == "main" {
+			path = file
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if path == "" {
+		return nil, errors.New("workshop: литературная база без файла для переплавки")
+	}
+	return db.OpenWriterAs(path, db.DBLiterary, db.WriterForge, logger)
 }
 
 // outcomeFor сопоставляет причину отказа конвейера исходу оседания; успех — write.
