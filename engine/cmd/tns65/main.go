@@ -733,11 +733,29 @@ func (w *workshopWorker) tick(ctx context.Context) {
 	if err := w.sched.Run(ctx); err != nil {
 		w.event("workshop.worker_run", err)
 	}
+	// Доковка персонажей пачки на тяжёлой ступени (T-21-10): по реестру арок
+	// воркер ставит заказ complement, если под арку нет карточки. Сбой чтения
+	// реестра не валит воркер.
+	if err := ensureComplementDemand(w.world, w.sched.Step()); err != nil {
+		w.event("workshop.worker_complement", err)
+	}
 	// Ночное окно — прогон Пифии за прошедший день книги (T-21-06); повтор тика
 	// в тот же день карту не дублирует. Сбой прогона не валит воркер.
 	if err := workshop.RunNightPythia(w.world, w.lit, w.sched.Step()); err != nil {
 		w.event("workshop.worker_pythia", err)
 	}
+}
+
+// ensureComplementDemand ставит заказы доукомплектации пачки по реестру арок
+// (T-21-10): реестр читается из файла пакета, ступень паузы решает, идёт ли
+// доковка.
+func ensureComplementDemand(world *db.Handle, step workshop.PauseStep) error {
+	arcs, err := workshop.LoadArcs(workshop.DefaultArcsPath)
+	if err != nil {
+		return err
+	}
+	_, err = workshop.EnsureComplementDemand(world, arcs, step)
+	return err
 }
 
 // openWorld открывает оперативную и литературную базы активного мира и собирает

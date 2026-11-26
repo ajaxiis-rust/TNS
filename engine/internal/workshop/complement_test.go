@@ -107,6 +107,73 @@ func TestComplement(t *testing.T) {
 	assertForgeArtifact(t, lit)
 }
 
+// TestComplementHeavyDemand — доковка пачки из воркера (T-21-10): на лёгкой
+// ступени заказ не ставится, на тяжёлой — ставится на арку без подходящей
+// карточки; повтор тика дублей не даёт, без открытой сцены спроса нет.
+func TestComplementHeavyDemand(t *testing.T) {
+	dir := t.TempDir()
+	worldPath := filepath.Join(dir, "world(b).db")
+	newDB(t, worldPath, "world", "shared")
+
+	arcs, err := workshop.LoadArcs("../birth/data/arcs.json")
+	if err != nil {
+		t.Fatalf("LoadArcs: %v", err)
+	}
+
+	world, err := db.OpenWriterAs(worldPath, db.DBWorld, db.WriterCore, nil)
+	if err != nil {
+		t.Fatalf("OpenWriterAs(world): %v", err)
+	}
+	defer world.Close()
+
+	sceneID := insertScene(t, world, "open")
+
+	// Лёгкая ступень доковку не ставит.
+	n, err := workshop.EnsureComplementDemand(world, arcs, workshop.PauseLight)
+	if err != nil {
+		t.Fatalf("EnsureComplementDemand(light): %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("на лёгкой ступени заказов: %d, want 0", n)
+	}
+	if got := countComplementQueued(t, world); got != 0 {
+		t.Fatalf("на лёгкой ступени заказов complement в очереди: %d, want 0", got)
+	}
+
+	// Тяжёлая ступень: заказ на каждую арку без подходящей карточки.
+	n, err = workshop.EnsureComplementDemand(world, arcs, workshop.PauseHeavy)
+	if err != nil {
+		t.Fatalf("EnsureComplementDemand(heavy): %v", err)
+	}
+	if n != len(arcs) {
+		t.Fatalf("на тяжёлой ступени заказов: %d, want %d", n, len(arcs))
+	}
+	assertComplementQueued(t, world, arcs[0].Arc, sceneID, true)
+	if got := countComplementQueued(t, world); got != len(arcs) {
+		t.Fatalf("заказов complement в очереди: %d, want %d", got, len(arcs))
+	}
+
+	// Повтор тика дублей не создаёт.
+	if n, err = workshop.EnsureComplementDemand(world, arcs, workshop.PauseHeavy); err != nil {
+		t.Fatalf("EnsureComplementDemand(повтор): %v", err)
+	}
+	if n != len(arcs) {
+		t.Fatalf("повтор: заказов %d, want %d", n, len(arcs))
+	}
+	if got := countComplementQueued(t, world); got != len(arcs) {
+		t.Fatalf("повтор тика создал дубли: заказов %d, want %d", got, len(arcs))
+	}
+
+	// Закрытая сцена спрос не держит: новых заказов нет.
+	closeScene(t, world, sceneID)
+	if n, err = workshop.EnsureComplementDemand(world, arcs, workshop.PauseHeavy); err != nil {
+		t.Fatalf("EnsureComplementDemand(сцена закрыта): %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("без открытой сцены заказов: %d, want 0", n)
+	}
+}
+
 func newDB(t *testing.T, path string, dirs ...string) {
 	t.Helper()
 	w, err := db.OpenWriter(path)
@@ -184,6 +251,15 @@ func assertComplementQueued(t *testing.T, h *db.Handle, arc string, sceneID int6
 	if !want && n != 0 {
 		t.Fatalf("заказ complement (arc=%s, scene=%d) остался в очереди", arc, sceneID)
 	}
+}
+
+func countComplementQueued(t *testing.T, h *db.Handle) int {
+	t.Helper()
+	var n int
+	if err := h.QueryRow(`SELECT COUNT(*) FROM workshop_queue WHERE kind = 'complement' AND status = 'queued'`).Scan(&n); err != nil {
+		t.Fatalf("COUNT complement queue: %v", err)
+	}
+	return n
 }
 
 func assertForgeArtifact(t *testing.T, lit *db.Handle) {

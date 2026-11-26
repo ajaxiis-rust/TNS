@@ -80,6 +80,35 @@ func EnsureComplementOrder(h *db.Handle, arc Arc, sceneID int64, pause PauseStep
 	return true, nil
 }
 
+// EnsureComplementDemand — доукомплектация пачки на ступени паузы (T-21-10):
+// на тяжёлой ступени воркер сверяет реестр арок с пачкой и ставит заказ
+// complement на каждую арку без подходящей карточки. Источник спроса — текущая
+// открытая сцена: без открытой сцены доковывать нечего. Возвращает число арок,
+// по которым заказ стоит в очереди; повтор тика дублей не создаёт.
+func EnsureComplementDemand(h *db.Handle, arcs []Arc, pause PauseStep) (int, error) {
+	if pause != PauseHeavy {
+		return 0, nil
+	}
+	sceneID, err := openSceneID(h)
+	if err != nil {
+		return 0, err
+	}
+	if sceneID == 0 {
+		return 0, nil
+	}
+	var placed int
+	for _, a := range arcs {
+		ok, err := EnsureComplementOrder(h, a, sceneID, pause)
+		if err != nil {
+			return placed, err
+		}
+		if ok {
+			placed++
+		}
+	}
+	return placed, nil
+}
+
 // ReconcileComplement снимает заказы complement, чей спрос исчез (шаг 3):
 // сцена-источник закрыта или арка покрыта подходящей карточкой. Снятый заказ
 // переходит в status=cancelled и недокованная карточка в пачку не появляется.
@@ -132,6 +161,20 @@ func ReconcileComplement(h *db.Handle, arcs []Arc) error {
 		}
 	}
 	return nil
+}
+
+// openSceneID — текущая открытая сцена мира, источник спроса на доковку;
+// 0 — открытой сцены нет.
+func openSceneID(h *db.Handle) (int64, error) {
+	var id int64
+	err := h.QueryRow(`SELECT id FROM scenes WHERE status = 'open' ORDER BY id DESC LIMIT 1`).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 // sceneActive сообщает, активна ли сцена-источник спроса: активна только open;
