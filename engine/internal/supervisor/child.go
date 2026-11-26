@@ -135,8 +135,13 @@ func (c *child) run() {
 			<-waitCh //nolint:errcheck // код выхода после Stop не важен: лечение как ErrNotReady
 			exitErr = ErrNotReady
 		} else {
-			// Готов или остановка: ждём выхода процесса; при остановке его гасит
-			// terminate() в обратном порядке — сам цикл процесс не останавливает.
+			// Готов — процесс живёт до Stop/terminate, который его гасит.
+			// Остановка во время старта: terminate мог прочитать c.proc до
+			// setProc (гонка) и пропустить Stop, поэтому гасим здесь; Stop
+			// идемпотентен.
+			if stopping {
+				_ = proc.Stop()
+			}
 			exitErr = <-waitCh
 		}
 		c.healthy.Store(false)

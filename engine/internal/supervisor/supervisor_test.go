@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,6 +40,10 @@ func (c *fakeClock) After(d time.Duration) <-chan time.Time {
 	c.now = c.now.Add(d)
 	now := c.now
 	c.mu.Unlock()
+	// Уступаем планировщику, чтобы горутина ребёнка успела отметиться
+	// готовой: иначе waitChildReady вхолостую прокручивает часы до дедлайна
+	// раньше, чем run() вызовет markReady.
+	runtime.Gosched()
 	ch := make(chan time.Time, 1)
 	ch <- now
 	return ch
