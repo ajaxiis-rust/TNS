@@ -122,7 +122,7 @@ mechanics-from-chat.md. Статусы сверены с кодом на HEAD `8
 | T-21-06 ночной `RunPythia` | ✅ закрыт (7000d18, 2026-11-26) | прогон карты игрока на ночной ступени; `go test ./internal/workshop -count=1` |
 | T-21-07 гороскоп по смене темы | ✅ закрыт (fbca24b, 2026-11-26) | `EnsureHoroscopeOrder` при смене темы; `go test ./internal/webapi/ ./internal/workshop/ -count=1` |
 | T-21-08 `MatchHoroscope` + промах→кандидаты | ✅ закрыт (c11f2cb, 2026-11-26) | сверка ранних векторов, промах в `SedimentCandidate`; `go test ./internal/webapi/ ./internal/workshop/ -count=1` |
-| T-21-09 переплавка после оседания | ⏳ todo | `RemeltScene` для сцен высокого доверия; `go test ./internal/workshop -count=1` |
+| T-21-09 переплавка после оседания | ✅ закрыт (3906d4a, 2026-11-26) | `RemeltScene` для сцен высокого доверия; `go test ./internal/workshop -count=1` |
 | T-21-10 доковка персонажей | ⏳ todo | `EnsureComplementOrder` на тяжёлой ступени; `go test ./internal/workshop -count=1` |
 | T-21-11 цензор-согласование IMP-13 | ⏳ todo | доки/спека/тест под «цензора при ковке нет»; `bash scripts/gates.sh` (docs-check) |
 | T-21-12 варка по релевантности W-02 | ⏳ todo | выбор заготовок по пути (день/ночь, 2–5/сутки); `go test ./internal/workshop -count=1` |
