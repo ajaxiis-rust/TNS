@@ -730,6 +730,13 @@ func (w *workshopWorker) tick(ctx context.Context) {
 		}
 	}
 	w.sched.SetChapterClosed(chapterClosed(w.world))
+	// План ковки по релевантности пути (T-21-12): до разбора очереди воркер
+	// снимает заготовки вне окна ступени, сверх суточной нормы и дальние при
+	// занятой очереди — исполняется только релевантное текущему пути. Сбой не
+	// валит воркер.
+	if _, err := workshop.ApplyForgePlan(w.world, w.sched.Step(), time.Now()); err != nil {
+		w.event("workshop.worker_forge_plan", err)
+	}
 	if err := w.sched.Run(ctx); err != nil {
 		w.event("workshop.worker_run", err)
 	}

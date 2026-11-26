@@ -222,6 +222,16 @@ func Enqueue(h *db.Handle, kind Kind, step Step, provider Provider, payload any)
 	return nil
 }
 
+// Cancel снимает заказ очереди (W-02.5): статус cancelled, время закрытия
+// пишется в finished_at. Снимается только ждущий заказ: исполняемый и уже
+// закрытый не трогается, история, попытки и чекпойнт сохраняются.
+func Cancel(h *db.Handle, id int64) error {
+	_, err := h.Exec("workshop_queue",
+		`UPDATE workshop_queue SET status = ?, finished_at = ? WHERE id = ? AND status = ?`,
+		string(StatusCancelled), nowUTC(), id, string(StatusQueued))
+	return err
+}
+
 // attempt пробует выполнить заказ через слот по пресету (T-02-14, шаги 1–2).
 // Отказ локального слота не отменяет рождение и не теряет заказ: attempts растёт,
 // статус остаётся queued. Успех кладёт ответ в checkpoint_json — до исполнителя
